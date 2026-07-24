@@ -49,8 +49,8 @@ export default function PosView() {
       .catch(() => {});
   }, []);
 
-  const filteredLayanan = layananList.filter(l => 
-    l.tipe === mode && l.layanan.toLowerCase().includes(search.toLowerCase().trim())
+  const filteredLayanan = (layananList || []).filter(l => 
+    l && l.tipe === mode && (l.layanan || '').toLowerCase().includes((search || '').toLowerCase().trim())
   );
 
   const updateCart = (item: LayananItem, delta: number) => {

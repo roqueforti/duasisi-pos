@@ -135,14 +135,15 @@ export default function RiwayatView() {
     printWindow.document.close();
   };
 
-  const filteredTx = txList.filter((t) => {
+  const filteredTx = (txList || []).filter((t) => {
+    if (!t) return false;
     const matchFilter = filter === 'Semua' || t.tipe === filter;
-    const q = search.toLowerCase().trim();
+    const q = (search || '').toLowerCase().trim();
     const matchSearch =
       !q ||
-      t.noNota.toLowerCase().includes(q) ||
-      (t.namaPelanggan && t.namaPelanggan.toLowerCase().includes(q)) ||
-      (t.noHp && t.noHp.includes(q));
+      (t.noNota || '').toLowerCase().includes(q) ||
+      (t.namaPelanggan && (t.namaPelanggan || '').toLowerCase().includes(q)) ||
+      (t.noHp && (t.noHp || '').includes(q));
     return matchFilter && matchSearch;
   });
 
