@@ -10,6 +10,9 @@ import RiwayatView from '@/components/RiwayatView';
 import AbsensiView from '@/components/AbsensiView';
 import InventoryView from '@/components/InventoryView';
 import MesinView from '@/components/MesinView';
+import PegawaiView from '@/components/PegawaiView';
+import ProdukView from '@/components/ProdukView';
+import RekapView from '@/components/RekapView';
 import { UserRole } from '@/lib/types';
 
 export default function HomePage() {
@@ -64,13 +67,9 @@ export default function HomePage() {
               {currentTab === 'absensi' && <AbsensiView />}
               {currentTab === 'inventory' && <InventoryView />}
               {currentTab === 'mesin' && <MesinView />}
-              {['pegawai', 'produk', 'rekap'].includes(currentTab) && (
-                <div className="p-8 text-center text-slate-400">
-                  <div className="text-4xl mb-2">📊</div>
-                  <div className="text-sm font-bold text-slate-700">Fitur Manager Sedang Di-load...</div>
-                  <div className="text-xs text-slate-400 mt-1">Khusus akun Manager/Owner</div>
-                </div>
-              )}
+              {currentTab === 'pegawai' && <PegawaiView />}
+              {currentTab === 'produk' && <ProdukView />}
+              {currentTab === 'rekap' && <RekapView />}
             </main>
           </div>
         </div>
