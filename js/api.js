@@ -31,7 +31,8 @@ function runBackend(fn, cb, ...args) {
     fetch(EXTERNAL_GAS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: fn, args: args })
+      body: JSON.stringify({ action: fn, args: args }),
+      redirect: 'follow'
     })
       .then(res => res.json())
       .then(data => {
