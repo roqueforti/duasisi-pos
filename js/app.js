@@ -137,12 +137,18 @@ function loginVerifikasiPin() {
       document.getElementById('userRoleLabel').innerText = res.label;
 
       const mgrSec = document.getElementById('navManagerSection');
-      if (mgrSec) {
-        if (res.role === 'MANAGER') mgrSec.classList.remove('hidden');
-        else mgrSec.classList.add('hidden');
+      const posBtn = document.getElementById('navTransaksiBtn');
+
+      if (res.role === 'MANAGER') {
+        if (mgrSec) mgrSec.classList.remove('hidden');
+        if (posBtn) posBtn.classList.add('hidden');
+        switchTab('riwayat');
+      } else {
+        if (mgrSec) mgrSec.classList.add('hidden');
+        if (posBtn) posBtn.classList.remove('hidden');
+        switchTab('transaksi');
       }
 
-      loadLayananPOS();
       showToast('Selamat datang, ' + res.label);
     } else {
       showToast('⚠️ ' + res.message, 'error');
@@ -184,6 +190,10 @@ function toggleSidebar(show) {
 }
 
 function switchTab(tab) {
+  if (tab === 'transaksi' && currentRole === 'MANAGER') {
+    showToast('🔒 Fitur POS Kasir hanya untuk Staff/Kasir', 'error');
+    return;
+  }
   if (['pegawai', 'produk', 'rekap'].includes(tab) && currentRole !== 'MANAGER') {
     showToast('🔒 Akses Ditolak — Khusus Manager/Owner', 'error');
     return;
