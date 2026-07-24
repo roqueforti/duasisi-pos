@@ -37,9 +37,22 @@ export default function PosView() {
     setLoading(true);
     runBackend('getLayananList')
       .then((res) => {
-        if (Array.isArray(res) && res.length > 0) setLayananList(res);
+        if (Array.isArray(res) && res.length > 0) {
+          // Map backend fields (nama, harga) to frontend fields (layanan, hargaSatuan)
+          const mapped: LayananItem[] = res.map((item: any) => ({
+            layanan: item.nama || item.layanan || '',
+            hargaSatuan: item.harga ?? item.hargaSatuan ?? 0,
+            tipe: item.tipe || 'SelfService',
+            satuan: item.satuan || 'pcs',
+            icon: item.icon || '🧺',
+          }));
+          setLayananList(mapped);
+        }
       })
-      .catch(() => {})
+      .catch(() => {
+        // Keep defaultLayanan as fallback when backend is unavailable
+        console.warn('[POS] Backend unreachable, using default layanan list.');
+      })
       .finally(() => setLoading(false));
 
     runBackend('getPegawaiList')
