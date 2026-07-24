@@ -65,17 +65,17 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile Backdrop */}
+      {/* Mobile & Tablet Backdrop (< 1024px) */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-[150] md:hidden"
+          className="fixed inset-0 bg-black/50 z-[150] lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      <aside className={`bg-[#11292B] text-white flex flex-col shrink-0 z-[200] fixed md:static inset-y-0 left-0 transition-all duration-200 overflow-y-auto ${
-        isCollapsed ? 'md:w-[64px]' : 'md:w-60'
-      } ${isSidebarOpen ? 'w-60 translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      <aside className={`bg-[#11292B] text-white flex flex-col shrink-0 z-[200] fixed lg:static inset-y-0 left-0 transition-all duration-200 overflow-y-auto ${
+        isCollapsed ? 'lg:w-[64px]' : 'lg:w-60'
+      } ${isSidebarOpen ? 'w-60 translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         
         {/* Header Logo & Minimize */}
         {isCollapsed ? (
@@ -87,7 +87,7 @@ export default function Sidebar({
             />
             <button
               onClick={() => setIsCollapsed(false)}
-              className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition"
+              className="hidden lg:flex text-slate-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition"
               title="Expand Sidebar"
             >
               <PanelLeftOpen className="w-4 h-4" />
@@ -103,13 +103,13 @@ export default function Sidebar({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setIsCollapsed(true)}
-                className="hidden md:flex text-slate-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition"
+                className="hidden lg:flex text-slate-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition"
                 title="Minimize Sidebar"
               >
                 <PanelLeftClose className="w-4 h-4" />
               </button>
               <button 
-                className="md:hidden text-slate-400 hover:text-white p-1"
+                className="lg:hidden text-slate-400 hover:text-white p-1"
                 onClick={() => setIsSidebarOpen(false)}
               >
                 <X className="w-5 h-5" />

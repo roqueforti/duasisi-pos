@@ -297,7 +297,7 @@ export default function PosView() {
 
         {/* Product Grid */}
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
             {loading ? (
               Array.from({ length: 8 }).map((_, idx) => (
                 <div key={idx} className="bg-white rounded-lg border border-slate-200 p-4 animate-pulse space-y-3">
@@ -368,7 +368,7 @@ export default function PosView() {
       </div>
 
       {/* RIGHT: Order Panel */}
-      <div className="w-[340px] bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-hidden">
+      <div className="w-[280px] sm:w-[310px] md:w-[320px] lg:w-[340px] bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-hidden">
         {/* Order Header */}
         <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-800">Order</h2>
