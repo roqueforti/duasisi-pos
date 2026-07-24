@@ -670,8 +670,7 @@ function cetakStrukDirect(noNota) {
 
   receipt.innerHTML = `
     <div class="r-header">
-      <div class="r-title">DUA SISI POS</div>
-      <div>Smart Laundry & Service</div>
+      <img src="./assets/logo-full-black.svg" alt="Dua SiSi" style="width: 130px; height: auto; margin: 0 auto 6px auto; display: block;">
       <div>Telp/WA: 0812-XXXX-XXXX</div>
     </div>
     <div class="r-divider"></div>
