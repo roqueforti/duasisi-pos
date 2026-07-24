@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Dua SiSi POS</title>
+  <meta name="theme-color" content="#1E4648">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Dua SiSi POS">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%231E4648' rx='100'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='260'>✨</text></svg>">
+  <link rel="manifest" id="manifestLink">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #1E4648; --primary-hover: #153334; --primary-light: #E9F1F2;
+      --primary-dark: #102728; --primary-glow: rgba(30,70,72,0.18);
+      --bg: #F1F5F9; --card-bg: #FFFFFF; --sidebar-bg: #11292B;
+      --text-main: #0F172A; --text-muted: #64748B; --text-light: #94A3B8; --border: #E2E8F0;
+      --success: #10B981; --success-bg: #D1FAE5; --warning: #F59E0B; --warning-bg: #FEF3C7;
+      --danger: #EF4444; --danger-bg: #FEE2E2; --info: #0EA5E9; --info-bg: #E0F2FE;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06); --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+      --shadow-lg: 0 12px 24px rgba(0,0,0,0.12);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px; --radius-full: 9999px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin:0; font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text-main); height:100vh; height:100dvh; overflow:hidden; }
+    .app { display:flex; height:100vh; height:100dvh; position:relative; width:100vw; }
+
+    /* ===== SIDEBAR (Dark) ===== */
+    .sidebar { width:250px; background:var(--sidebar-bg); display:flex; flex-direction:column; padding:20px 12px; flex-shrink:0; z-index:200; transition:transform .3s cubic-bezier(.4,0,.2,1); overflow-y:auto; }
+    .logo { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; padding:0 10px; }
+    .logo-brand { display:flex; align-items:center; gap:10px; }
+    .logo-icon { width:38px; height:38px; background:linear-gradient(135deg,var(--primary),#2D6063); border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px; box-shadow:0 4px 14px rgba(30,70,72,0.35); }
+    .logo-text { font-weight:800; font-size:15px; color:#fff; letter-spacing:-.3px; line-height:1.2; }
+    .logo-text span { display:block; font-size:10px; color:var(--text-light); font-weight:600; letter-spacing:.5px; text-transform:uppercase; }
+    .close-sidebar { display:none; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-light); padding:4px; border-radius:var(--radius-sm); }
+    .close-sidebar:hover { background:rgba(255,255,255,.1); }
+    .nav-section { margin-bottom:22px; }
+    .nav-title { font-size:10px; font-weight:700; color:var(--text-light); text-transform:uppercase; letter-spacing:1px; padding:0 12px 10px; opacity:.6; }
+    .nav-item { display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:var(--radius-md); font-size:13px; font-weight:600; color:rgba(255,255,255,.65); cursor:pointer; margin-bottom:3px; transition:all .2s; white-space:nowrap; }
+    .nav-item:hover { background:rgba(255,255,255,.08); color:#fff; }
+    .nav-item.active { background:var(--primary); color:#fff; box-shadow:0 4px 14px rgba(30,70,72,.35); }
+    .nav-icon { font-size:16px; width:22px; text-align:center; flex-shrink:0; }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(15,23,42,.6); backdrop-filter:blur(4px); z-index:150; opacity:0; transition:opacity .3s; }
+    .sidebar-overlay.show { opacity:1; }
+
+    /* ===== MAIN ===== */
+    .main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; background:var(--bg); }
+
+    /* TOPBAR */
+    .topbar { background:var(--card-bg); border-bottom:1px solid var(--border); padding:14px 24px; z-index:90; }
+    .topbar-row1 { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .topbar-left { display:flex; align-items:center; gap:12px; min-width:0; }
+    .hamburger { display:none; background:var(--bg); border:1px solid var(--border); width:38px; height:38px; border-radius:var(--radius-md); font-size:20px; cursor:pointer; color:var(--text-main); align-items:center; justify-content:center; flex-shrink:0; }
+    .page-title { font-size:20px; font-weight:800; color:var(--text-main); letter-spacing:-.4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .topbar-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+    .profile { display:flex; align-items:center; gap:10px; font-size:13px; background:var(--bg); padding:5px 12px 5px 6px; border-radius:var(--radius-full); border:1px solid var(--border); }
+    .avatar { width:32px; height:32px; border-radius:var(--radius-full); background:linear-gradient(135deg,var(--primary),#2D6063); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; }
+    .profile-text { display:block; font-weight:600; line-height:1.2; }
+    .profile-text span { font-weight:500; color:var(--text-muted); font-size:11px; }
+    .clock-chip { display:flex; align-items:center; gap:6px; background:var(--primary-light); padding:6px 12px; border-radius:var(--radius-full); font-size:12px; font-weight:700; color:var(--primary-dark); white-space:nowrap; }
+
+    /* TOPBAR ROW 2 */
+    .topbar-row2 { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); }
+    .pill-input { display:flex; align-items:center; gap:8px; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 12px; font-size:13px; flex:1; min-width:150px; transition:border-color .2s,box-shadow .2s; }
+    .pill-input:focus-within { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-glow); background:#fff; }
+    .pill-input input { border:none; outline:none; background:transparent; font-size:13px; width:100%; color:var(--text-main); font-family:inherit; font-weight:500; }
+    .pill-input input::placeholder { color:var(--text-light); }
+
+    /* SERVICE MODE TOGGLE */
+    .mode-toggle { display:flex; background:var(--bg); border-radius:var(--radius-full); padding:3px; border:1px solid var(--border); }
+    .mode-btn { padding:8px 18px; border-radius:var(--radius-full); font-size:12px; font-weight:700; cursor:pointer; border:none; background:transparent; color:var(--text-muted); transition:all .25s; font-family:inherit; }
+    .mode-btn.active { background:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(99,102,241,.3); }
+
+    /* CONTENT */
+    .content { flex:1; overflow-y:auto; padding:20px 24px 130px; -webkit-overflow-scrolling:touch; }
+    .toolbar-row { display:flex; justify-content:space-between; margin-bottom:18px; gap:12px; flex-wrap:wrap; align-items:center; }
+
+    /* BUTTONS */
+    .btn { border:none; padding:10px 18px; border-radius:var(--radius-md); font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; transition:all .2s; font-family:inherit; white-space:nowrap; }
+    .btn:active { transform:scale(.97); }
+    .btn-primary { background:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(99,102,241,.3); }
+    .btn-primary:hover { background:var(--primary-hover); }
+    .btn-cancel { background:var(--danger-bg); color:var(--danger); }
+    .btn-proses { background:var(--success); color:#fff; box-shadow:0 2px 8px rgba(16,185,129,.3); }
+    .btn-proses:hover { background:#059669; }
+    .btn-sm { padding:7px 12px; font-size:12px; border-radius:var(--radius-sm); }
+    .btn-outline { background:#fff; border:1px solid var(--border); color:var(--text-main); }
+    .btn-outline:hover { background:var(--bg); border-color:var(--text-light); }
+
+    /* GRID */
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:14px; }
+    .card { background:var(--card-bg); border-radius:var(--radius-lg); border:1px solid var(--border); overflow:hidden; cursor:pointer; position:relative; transition:all .2s; display:flex; flex-direction:column; box-shadow:var(--shadow-sm); }
+    .card:hover { transform:translateY(-3px); box-shadow:var(--shadow-md); border-color:rgba(99,102,241,.3); }
+    .card-img { height:85px; background:linear-gradient(135deg,#EEF2FF,#E0E7FF); display:flex; align-items:center; justify-content:center; font-size:36px; position:relative; }
+    .badge { position:absolute; top:8px; right:8px; background:var(--primary); color:#fff; font-weight:800; font-size:11px; width:24px; height:24px; border-radius:var(--radius-full); display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.15); animation:popIn .2s cubic-bezier(.175,.885,.32,1.275); }
+    @keyframes popIn { 0%{transform:scale(0)} 100%{transform:scale(1)} }
+    .card-info { padding:12px; flex:1; display:flex; flex-direction:column; justify-content:space-between; }
+    .card-name { font-size:13px; font-weight:700; color:var(--text-main); margin-bottom:4px; line-height:1.3; }
+    .card-price { font-size:14px; color:var(--primary); font-weight:800; }
+    .card-unit { font-size:11px; color:var(--text-muted); font-weight:500; }
+    .card-qty { display:flex; align-items:center; gap:6px; margin-top:8px; justify-content:center; }
+    .card-qty button { width:28px; height:28px; border-radius:var(--radius-full); border:1px solid var(--border); background:#fff; font-size:16px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; color:var(--primary); }
+    .card-qty button:hover { background:var(--primary); color:#fff; }
+    .card-qty span { font-size:14px; font-weight:800; min-width:20px; text-align:center; }
+
+    /* MOKA POS SPLIT LAYOUT */
+    .pos-container { display:flex; gap:16px; height:calc(100vh - 100px); height:calc(100dvh - 100px); overflow:hidden; }
+    .pos-left { flex:1; display:flex; flex-direction:column; overflow-y:auto; padding-right:4px; min-width:0; }
+    .pos-right { width:350px; background:#fff; border-radius:var(--radius-lg); border:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; box-shadow:var(--shadow-sm); overflow:hidden; }
+    .cart-header { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; }
+    .cart-customer-bar { display:flex; align-items:center; gap:8px; cursor:pointer; padding:4px 8px; border-radius:var(--radius-sm); transition:background .15s; }
+    .cart-customer-bar:hover { background:var(--primary-light); }
+    .cart-mode-badge { font-size:11px; font-weight:700; background:var(--primary-light); color:var(--primary-dark); padding:4px 10px; border-radius:var(--radius-full); }
+    .cart-items-body { flex:1; overflow-y:auto; padding:12px 16px; display:flex; flex-direction:column; gap:10px; }
+    .cart-item-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; padding-bottom:10px; border-bottom:1px dashed var(--border); }
+    .cart-item-name { font-weight:700; color:var(--text-main); }
+    .cart-item-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+    .cart-item-qty-controls { display:flex; align-items:center; gap:6px; }
+    .cart-item-qty-controls button { width:24px; height:24px; border-radius:50%; border:1px solid var(--border); background:#fff; font-weight:800; cursor:pointer; font-size:13px; color:var(--primary); transition:all .15s; }
+    .cart-item-qty-controls button:hover { background:var(--primary); color:#fff; }
+    .cart-summary { padding:14px 16px; border-top:1px solid var(--border); background:#F8FAFC; font-size:13px; }
+    .summary-row { display:flex; justify-content:space-between; margin-bottom:6px; font-weight:600; color:var(--text-muted); }
+    .summary-row.total-row { font-size:15px; font-weight:800; color:var(--text-main); margin-bottom:0; padding-top:6px; border-top:1px dashed var(--border); }
+    .cart-footer { padding:12px 16px; background:#fff; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
+    .btn-clear-sale { width:100%; font-size:12px; color:var(--text-muted); border-color:var(--border); }
+    .btn-charge { width:100%; padding:14px; font-size:15px; font-weight:800; background:var(--primary); display:flex; justify-content:space-between; align-items:center; border-radius:var(--radius-md); box-shadow:0 4px 12px rgba(99,102,241,.35); color:#fff; border:none; cursor:pointer; }
+    .btn-charge:hover { background:var(--primary-hover); }
+
+    @media (max-width:850px) {
+      .pos-right { width:290px; }
+    }
+    @media (max-width:600px) {
+      .pos-container { flex-direction:column; height:auto; overflow:visible; gap:14px; }
+      .pos-left { overflow:visible; }
+      .pos-right { width:100%; height:auto; max-height:none; flex-shrink:0; }
+    }
+
+    /* TABLES */
+    .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; background:#fff; border-radius:var(--radius-lg); border:1px solid var(--border); box-shadow:var(--shadow-sm); }
+    table { width:100%; border-collapse:collapse; font-size:13px; min-width:600px; }
+    th,td { padding:12px 16px; border-bottom:1px solid var(--border); text-align:left; vertical-align:middle; }
+    th { background:#F8FAFC; color:var(--text-muted); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.5px; position:sticky; top:0; }
+    tr:last-child td { border-bottom:none; }
+    select.status-select { padding:6px 10px; border-radius:var(--radius-sm); border:1px solid var(--border); font-size:12px; font-weight:600; font-family:inherit; background:#fff; cursor:pointer; }
+    .item-tag { display:inline-flex; align-items:center; background:var(--primary-light); color:var(--primary-dark); border-radius:var(--radius-sm); padding:3px 8px; font-size:11px; font-weight:600; margin:2px 4px 2px 0; }
+    .tag-self { background:#DBEAFE; color:#1E40AF; }
+    .tag-full { background:#FEE2E2; color:#991B1B; }
+
+    /* PIPELINE KANBAN */
+    .pipeline-board { display:flex; gap:14px; overflow-x:auto; padding-bottom:10px; -webkit-overflow-scrolling:touch; }
+    .pipeline-col { min-width:220px; max-width:260px; flex-shrink:0; background:var(--bg); border-radius:var(--radius-lg); border:1px solid var(--border); }
+    .pipeline-col-header { padding:12px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+    .pipeline-col-header .col-icon { font-size:18px; }
+    .pipeline-col-header .col-title { font-size:13px; font-weight:700; color:var(--text-main); }
+    .pipeline-col-header .col-count { background:var(--primary-light); color:var(--primary); font-size:11px; font-weight:800; padding:2px 8px; border-radius:var(--radius-full); margin-left:auto; }
+    .pipeline-col-body { padding:10px; min-height:80px; display:flex; flex-direction:column; gap:10px; }
+    .pipeline-card { background:#fff; border-radius:var(--radius-md); padding:12px; border:1px solid var(--border); cursor:pointer; transition:all .2s; box-shadow:var(--shadow-sm); }
+    .pipeline-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:var(--primary); }
+    .pipeline-card .pc-nota { font-size:12px; font-weight:800; color:var(--primary); }
+    .pipeline-card .pc-nama { font-size:13px; font-weight:700; margin:4px 0 2px; }
+    .pipeline-card .pc-info { font-size:11px; color:var(--text-muted); }
+    .pipeline-card .pc-tag { display:inline-block; font-size:10px; font-weight:700; padding:2px 6px; border-radius:var(--radius-sm); margin-top:6px; }
+
+    /* REKAP */
+    .rekap-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:20px; }
+    .rekap-card { background:#fff; border-radius:var(--radius-lg); padding:18px 20px; border:1px solid var(--border); box-shadow:var(--shadow-sm); }
+    .rekap-card .label { font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:8px; }
+    .rekap-card .value { font-size:22px; font-weight:800; color:var(--primary); }
+
+    /* LIST CARDS */
+    .list-card { background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:12px; box-shadow:var(--shadow-sm); transition:all .2s; }
+    .list-card:hover { box-shadow:var(--shadow-md); }
+    .list-card-left { display:flex; align-items:center; gap:14px; min-width:0; }
+    .list-icon { font-size:22px; width:42px; height:42px; background:var(--primary-light); border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .list-name { font-weight:700; font-size:14px; color:var(--text-main); }
+    .list-sub { font-size:12px; color:var(--text-muted); margin-top:2px; }
+    .list-actions { display:flex; gap:8px; flex-shrink:0; }
+    .tag-nonaktif { background:var(--danger-bg); color:var(--danger); font-size:11px; font-weight:700; padding:2px 8px; border-radius:var(--radius-sm); margin-left:6px; }
+    .stok-low { color:var(--danger); font-weight:800; }
+    .stok-ok { color:var(--success); font-weight:800; }
+
+    /* MESIN */
+    .mesin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:14px; }
+    .mesin-card { background:#fff; border-radius:var(--radius-lg); padding:18px; border:2px solid var(--border); cursor:pointer; transition:all .2s; box-shadow:var(--shadow-sm); }
+    .mesin-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
+    .mesin-card.kosong { border-color:var(--success); }
+    .mesin-card.digunakan { border-color:var(--warning); background:#FFFDF5; }
+    .mesin-card.maintenance { border-color:var(--text-light); background:#F8FAFC; opacity:.7; }
+    .mesin-icon { font-size:30px; margin-bottom:10px; }
+    .mesin-nama { font-weight:800; font-size:15px; margin-bottom:2px; }
+    .mesin-tipe { font-size:11px; font-weight:600; color:var(--text-muted); margin-bottom:10px; text-transform:uppercase; }
+    .status-chip { display:inline-block; padding:4px 10px; border-radius:var(--radius-full); font-size:11px; font-weight:700; }
+    .status-chip.kosong { background:var(--success-bg); color:var(--success); }
+    .status-chip.digunakan { background:var(--warning-bg); color:var(--warning); }
+    .status-chip.maintenance { background:#E2E8F0; color:var(--text-muted); }
+    .mesin-info { font-size:11.5px; color:var(--text-muted); margin-top:10px; border-top:1px dashed var(--border); padding-top:8px; }
+
+    /* CHARTS */
+    .chart-row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+    .chart-card { background:#fff; border-radius:var(--radius-lg); border:1px solid var(--border); padding:18px; flex:1; min-width:280px; box-shadow:var(--shadow-sm); }
+    .chart-card h4 { margin:0 0 14px; font-size:14px; font-weight:700; }
+    .chart-card canvas { max-height:250px; }
+    .date-range { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .date-range span { font-size:12px; font-weight:600; color:var(--text-muted); }
+    .empty-note { text-align:center; padding:40px 10px; color:var(--text-muted); font-size:13px; font-weight:500; }
+
+    /* MODAL */
+    .modal-overlay { position:fixed; inset:0; background:rgba(15,23,42,.55); backdrop-filter:blur(5px); display:none; align-items:center; justify-content:center; z-index:500; padding:16px; opacity:0; transition:opacity .2s; }
+    .modal-overlay.show { display:flex; opacity:1; }
+    .modal-box { background:#fff; border-radius:var(--radius-xl); padding:24px; width:100%; max-width:460px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-lg); transform:scale(.95); transition:transform .2s; }
+    .modal-overlay.show .modal-box { transform:scale(1); }
+    .modal-title { font-size:17px; font-weight:800; color:var(--text-main); margin-bottom:16px; }
+    .form-group { margin-bottom:14px; }
+    .form-group label { display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:6px; }
+    .form-group input,.form-group select,.form-group textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-md); font-size:13px; font-family:inherit; outline:none; }
+    .form-group input:focus,.form-group select:focus { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-glow); }
+    .modal-actions { display:flex; gap:10px; margin-top:20px; }
+    .modal-actions .btn { flex:1; }
+
+    /* PIPELINE TIMELINE */
+    .timeline { padding:0; margin:0; list-style:none; }
+    .timeline li { position:relative; padding-left:28px; padding-bottom:16px; border-left:2px solid var(--border); }
+    .timeline li:last-child { border-left:2px solid transparent; padding-bottom:0; }
+    .timeline li .t-dot { position:absolute; left:-7px; top:2px; width:12px; height:12px; border-radius:var(--radius-full); background:var(--border); border:2px solid #fff; box-shadow:var(--shadow-sm); }
+    .timeline li.done .t-dot { background:var(--success); }
+    .timeline li.active .t-dot { background:var(--primary); animation:pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.4)} 50%{box-shadow:0 0 0 6px rgba(99,102,241,0)} }
+    .timeline .t-title { font-size:13px; font-weight:700; }
+    .timeline .t-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+    /* TOAST */
+    .toast { position:fixed; top:20px; right:20px; left:20px; margin:0 auto; max-width:380px; background:var(--text-main); color:#fff; padding:14px 20px; border-radius:var(--radius-md); font-size:13.5px; font-weight:600; box-shadow:var(--shadow-lg); display:none; z-index:999; text-align:center; animation:slideDown .3s cubic-bezier(.175,.885,.32,1.275); }
+    .toast.show { display:block; }
+    @keyframes slideDown { 0%{transform:translateY(-20px);opacity:0} 100%{transform:translateY(0);opacity:1} }
+    input[type="date"],input[type="time"] { padding:8px 12px; border-radius:var(--radius-md); border:1px solid var(--border); font-size:12px; font-family:inherit; }
+
+    /* THERMAL RECEIPT */
+    #thermalReceipt { display:none; width:58mm; max-width:100%; padding:5px; font-family:'Courier New',Courier,monospace; font-size:11px; color:#000; background:#fff; line-height:1.2; }
+    #thermalReceipt .r-header { text-align:center; font-weight:bold; margin-bottom:8px; }
+    #thermalReceipt .r-title { font-size:14px; text-transform:uppercase; }
+    #thermalReceipt .r-divider { border-top:1px dashed #000; margin:6px 0; }
+    #thermalReceipt .r-row { display:flex; justify-content:space-between; margin:2px 0; }
+    #thermalReceipt .r-footer { text-align:center; margin-top:10px; font-size:10px; }
+
+    @media print {
+      body * { visibility:hidden !important; }
+      body.printing-receipt #thermalReceipt,body.printing-receipt #thermalReceipt * { visibility:visible !important; }
+      body.printing-receipt #thermalReceipt { display:block !important; position:absolute; left:0; top:0; width:58mm; }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width:1024px) {
+      .sidebar { position:fixed; top:0; left:0; bottom:0; transform:translateX(-100%); box-shadow:var(--shadow-lg); }
+      .sidebar.open { transform:translateX(0); }
+      .sidebar-overlay { display:block; pointer-events:none; }
+      .sidebar-overlay.show { pointer-events:auto; }
+      .hamburger { display:flex; }
+      .close-sidebar { display:block; }
+    }
+    @media (max-width:640px) {
+      .topbar { padding:10px 14px; }
+      .page-title { font-size:16px; }
+      .profile-text { display:none; }
+      .content { padding:12px 12px 20px; }
+      .grid { grid-template-columns:repeat(2, 1fr); gap:8px; }
+      .card-img { height:65px; font-size:26px; }
+      .card-name { font-size:11.5px; }
+      .card-price { font-size:12px; }
+      .card-info { padding:8px; }
+      .toolbar-row { flex-direction:column; align-items:stretch; gap:8px; }
+      .toolbar-row .pill-input { max-width:none !important; width:100%; }
+      .list-card { flex-direction:column; align-items:flex-start; }
+      .list-actions { width:100%; justify-content:flex-end; margin-top:6px; }
+      .mesin-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; }
+      .pipeline-col { min-width:200px; }
+      .date-range { width:100%; } .date-range input { flex:1; }
+      .modal-box { max-width:94vw; padding:18px 14px; }
+    }
+    @media (max-width:480px) {
+      .clock-chip { display:none; }
+      #btnInstallPwa { font-size:10px; padding:4px 8px; }
+      .topbar-right { gap:6px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="thermalReceipt"></div>
+
+<div class="app">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar(false)"></div>
+
+  <!-- LOGIN MODAL -->
+  <div class="modal-overlay show" id="loginModalOverlay" style="z-index:1000; background:rgba(15,23,42,.88); backdrop-filter:blur(10px);">
+    <div class="modal-box" style="text-align:center; max-width:360px; padding:28px 24px;">
+      <div style="font-size:42px; margin-bottom:8px;">🔐</div>
+      <div style="font-size:20px; font-weight:800; margin-bottom:4px;">Dua SiSi POS</div>
+      <div style="font-size:12px; color:var(--text-muted); margin-bottom:20px;">Masukkan PIN Keamanan untuk Masuk</div>
+      <div class="form-group">
+        <input type="password" id="inputPinAkses" placeholder="Masukkan PIN" maxlength="6" style="text-align:center; font-size:22px; font-weight:800; letter-spacing:8px; padding:14px;" onkeyup="if(event.key==='Enter') loginVerifikasiPin()">
+      </div>
+      <button class="btn btn-primary" style="width:100%; padding:12px; font-size:14px; margin-top:8px;" onclick="loginVerifikasiPin()">Masuk Aplikasi ➔</button>
+      <div style="margin-top:18px; font-size:11px; color:var(--text-muted); line-height:1.5; background:var(--bg); padding:10px; border-radius:var(--radius-md);">
+        💡 <strong>Default PIN:</strong><br>• Staff / Kasir: <code>1234</code><br>• Manager / Owner: <code>8888</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="logo">
+      <div class="logo-brand">
+        <div class="logo-icon">✨</div>
+        <div class="logo-text">DUA SISI POS<span>Smart Management</span></div>
+      </div>
+      <button class="close-sidebar" onclick="toggleSidebar(false)">✕</button>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-title">Operasional</div>
+      <div class="nav-item active" data-tab="transaksi" onclick="switchTab('transaksi')"><span class="nav-icon">🛒</span> Transaksi Baru</div>
+      <div class="nav-item" data-tab="pipeline" onclick="switchTab('pipeline')"><span class="nav-icon">📋</span> Pipeline Tracking</div>
+      <div class="nav-item" data-tab="absensi" onclick="switchTab('absensi')"><span class="nav-icon">⏰</span> Absensi Shift</div>
+      <div class="nav-item" data-tab="inventory" onclick="switchTab('inventory')"><span class="nav-icon">📦</span> Inventory Stok</div>
+      <div class="nav-item" data-tab="mesin" onclick="switchTab('mesin')"><span class="nav-icon">🌀</span> Status Mesin</div>
+    </div>
+
+    <div class="nav-section manager-only" id="navManagerSection">
+      <div class="nav-title" style="color:rgba(233,241,242,.7);">Manajemen</div>
+      <div class="nav-item" data-tab="pegawai" onclick="switchTab('pegawai')"><span class="nav-icon">👥</span> Pegawai & Kinerja</div>
+      <div class="nav-item" data-tab="produk" onclick="switchTab('produk')"><span class="nav-icon">🏷️</span> Produk & Layanan</div>
+      <div class="nav-item" data-tab="rekap" onclick="switchTab('rekap')"><span class="nav-icon">📈</span> Laporan Omzet</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-row1">
+        <div class="topbar-left">
+          <button class="hamburger" onclick="toggleSidebar(true)">☰</button>
+          <div class="page-title" id="pageTitle">Transaksi Baru</div>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-sm btn-outline" id="btnInstallPwa" onclick="installPWA()" title="Install Aplikasi ke HP / Tablet" style="display:inline-flex; gap:4px; padding:6px 10px; font-size:11px;">📲 Install App</button>
+          <div class="clock-chip"><span>🕒</span><span id="clockWib">--:--:-- WIB</span></div>
+          <div class="profile">
+            <div class="avatar" id="userRoleAvatar">S</div>
+            <div class="profile-text"><span id="userRoleLabel" style="font-weight:700; color:var(--primary-dark);">Staff</span></div>
+          </div>
+          <button class="btn btn-sm btn-outline" style="padding:6px 10px; font-size:11px;" onclick="logoutSession()">🔒</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="content" id="content">
+
+      <!-- TAB TRANSAKSI (MOKA POS LAYOUT) -->
+      <div id="tab-transaksi">
+        <div class="pos-container">
+          <!-- LEFT: PRODUCTS -->
+          <div class="pos-left">
+            <div class="toolbar-row">
+              <div class="mode-toggle" id="modeToggle">
+                <button class="mode-btn active" onclick="setServiceMode('SelfService')">🫧 Self Service</button>
+                <button class="mode-btn" onclick="setServiceMode('FullService')">👔 Full Service</button>
+              </div>
+              <input class="pill-input" id="searchLayanan" placeholder="🔍 Cari layanan..." oninput="renderGrid()" style="max-width:240px; min-width:160px;">
+            </div>
+            <div class="grid" id="grid"></div>
+          </div>
+
+          <!-- RIGHT: LIVE BILL PANEL (MOKA STYLE) -->
+          <div class="pos-right">
+            <div class="cart-header">
+              <div class="cart-customer-bar" onclick="bukaCustomerInputQuick()" title="Klik untuk atur nama pelanggan">
+                <span style="font-size:16px;">👤</span>
+                <span id="cartCustomerLabel" style="font-weight:700; font-size:13px; color:var(--primary);">+ Add Customer</span>
+              </div>
+              <div class="cart-mode-badge" id="cartModeBadge">Self Service</div>
+            </div>
+
+            <div class="cart-items-body" id="cartItemsBody">
+              <div class="empty-note" style="margin:auto;">Keranjang kosong</div>
+            </div>
+
+            <div class="cart-summary">
+              <div class="summary-row">
+                <span>Sub-Total</span>
+                <span id="cartSubtotal">Rp 0</span>
+              </div>
+              <div class="summary-row total-row">
+                <span>Total</span>
+                <span id="cartTotal" style="color:var(--primary); font-size:17px; font-weight:800;">Rp 0</span>
+              </div>
+            </div>
+
+            <div class="cart-footer">
+              <button class="btn btn-outline btn-clear-sale" onclick="clearCart()">Clear Sale</button>
+              <button class="btn btn-charge" onclick="prosesTransaksi()">
+                <span>💳 Charge</span>
+                <span id="chargeBtnTotal">Rp 0</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB PIPELINE -->
+      <div id="tab-pipeline" style="display:none;">
+        <div class="toolbar-row">
+          <div class="mode-toggle">
+            <button class="mode-btn active" id="pipeFilterAll" onclick="loadPipeline('Semua')">Semua</button>
+            <button class="mode-btn" id="pipeFilterSelf" onclick="loadPipeline('SelfService')">Self Service</button>
+            <button class="mode-btn" id="pipeFilterFull" onclick="loadPipeline('FullService')">Full Service</button>
+          </div>
+        </div>
+        <div class="pipeline-board" id="pipelineBoard"></div>
+      </div>
+
+      <!-- TAB ABSENSI -->
+      <div id="tab-absensi" style="display:none;">
+        <div class="toolbar-row"><div style="font-size:13px; font-weight:600; color:var(--text-muted);">Pencatatan Presensi & Shift Kerja Pegawai</div></div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-bottom:20px;">
+          <div class="card" style="padding:20px; cursor:default;">
+            <h4 style="margin:0 0 12px; font-size:15px; font-weight:800; color:var(--primary);">⏰ Clock In / Out</h4>
+            <div class="form-group"><label>Nama Pegawai</label><select id="absensiNamaPegawai" onchange="cekStatusAbsensiUI()"></select></div>
+            <div class="form-group"><label>Shift Kerja</label><select id="absensiShift"></select></div>
+            <div class="form-group"><label>Catatan (Opsional)</label><input id="absensiCatatan" placeholder="Keterangan"></div>
+            <div id="absensiStatusBadge" style="margin-bottom:14px; font-size:12px; font-weight:600; color:var(--text-muted); background:var(--bg); padding:10px; border-radius:var(--radius-md);">Memeriksa...</div>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-proses" id="btnClockIn" style="flex:1;" onclick="doClockIn()">▶️ Clock In</button>
+              <button class="btn btn-cancel" id="btnClockOut" style="flex:1;" onclick="doClockOut()">⏹️ Clock Out</button>
+            </div>
+          </div>
+          <div class="rekap-card">
+            <div class="label" style="font-size:13px; font-weight:800; color:var(--text-main); margin-bottom:10px;">💡 Prosedur Shift</div>
+            <ul style="font-size:12px; color:var(--text-muted); padding-left:18px; line-height:1.6; margin:0;">
+              <li><strong>Clock In</strong> saat mulai shift kerja.</li>
+              <li>Pastikan pilih nama Anda di <code>Nama Petugas</code> saat proses transaksi.</li>
+              <li><strong>Clock Out</strong> saat shift berakhir — durasi otomatis terhitung.</li>
+              <li>Rekap jam kerja untuk perhitungan gaji/insentif bulanan.</li>
+            </ul>
+          </div>
+        </div>
+        <h4 style="margin:20px 0 10px; font-size:14px; font-weight:700;">📋 Riwayat Presensi</h4>
+        <div class="table-wrap" id="absensiTable"></div>
+      </div>
+
+      <!-- TAB INVENTORY -->
+      <div id="tab-inventory" style="display:none;">
+        <div class="toolbar-row">
+          <div style="font-size:13px; font-weight:600; color:var(--text-muted);">Manajemen Stok Bahan</div>
+          <button class="btn btn-primary" onclick="openModalInventory()">+ Tambah Barang</button>
+        </div>
+        <div id="listInventory"></div>
+      </div>
+
+      <!-- TAB MESIN -->
+      <div id="tab-mesin" style="display:none;">
+        <div class="toolbar-row">
+          <div style="font-size:13px; font-weight:600; color:var(--text-muted);">Status Mesin Cuci & Dryer</div>
+          <button class="btn btn-primary" onclick="openModalMesin()">+ Tambah Mesin</button>
+        </div>
+        <div class="mesin-grid" id="mesinGrid"></div>
+      </div>
+
+      <!-- TAB PEGAWAI -->
+      <div id="tab-pegawai" style="display:none;">
+        <div class="toolbar-row">
+          <div style="font-size:13px; font-weight:600; color:var(--text-muted);">Master Data Pegawai & Kinerja</div>
+          <button class="btn btn-primary" onclick="openModalPegawai()">+ Tambah Pegawai</button>
+        </div>
+        <div style="margin-bottom:20px;"><h4 style="margin:0 0 10px; font-size:14px; font-weight:700;">📊 Rekap Kinerja</h4><div class="table-wrap" id="rekapKinerjaTable"></div></div>
+        <div style="margin-bottom:25px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h4 style="margin:0; font-size:14px; font-weight:700;">⚙️ Master Shift Kerja</h4>
+            <button class="btn btn-sm btn-outline" onclick="openModalTambahShift()">+ Tambah Shift</button>
+          </div>
+          <div id="listMasterShift"></div>
+        </div>
+        <div><h4 style="margin:0 0 10px; font-size:14px; font-weight:700;">👥 Daftar Pegawai</h4><div id="listPegawai"></div></div>
+      </div>
+
+      <!-- TAB PRODUK -->
+      <div id="tab-produk" style="display:none;">
+        <div class="toolbar-row">
+          <div style="font-size:13px; font-weight:600; color:var(--text-muted);">Kelola Katalog Layanan & Harga</div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-outline" onclick="loadPriceListSelfServiceUI()">🔄 Reset Self Service</button>
+            <button class="btn btn-primary" onclick="openModalLayanan()">+ Tambah Layanan</button>
+          </div>
+        </div>
+        <div id="listLayanan"></div>
+      </div>
+
+      <!-- TAB REKAP -->
+      <div id="tab-rekap" style="display:none;">
+        <div class="toolbar-row">
+          <div class="date-range">
+            <span>Periode:</span>
+            <input type="date" id="tglMulai">
+            <span>s/d</span>
+            <input type="date" id="tglSelesai">
+            <button class="btn btn-primary btn-sm" onclick="loadLaporan()">Tampilkan</button>
+          </div>
+        </div>
+        <div class="rekap-cards" id="rekapCards"></div>
+        <div class="chart-row">
+          <div class="chart-card"><h4>📊 Omzet Harian</h4><canvas id="chartOmzet"></canvas></div>
+          <div class="chart-card"><h4>🏆 Layanan Terlaris</h4><canvas id="chartLayanan"></canvas></div>
+        </div>
+        <div class="table-wrap" id="laporanTable"></div>
+      </div>
+
+    </div><!-- /content -->
+
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+  // ============ PWA (PROGRESSIVE WEB APP) SETUP ============
+  (function initPWA() {
+    try {
+      const execUrl = window.top !== window.self ? document.referrer || location.href : location.href;
+      const manifestData = {
+        name: "Dua SiSi POS",
+        short_name: "DuaSiSi POS",
+        description: "Aplikasi POS & Pipeline Management Dua SiSi",
+        start_url: execUrl,
+        scope: "/",
+        display: "standalone",
+        display_override: ["standalone", "fullscreen", "minimal-ui"],
+        orientation: "any",
+        background_color: "#11292B",
+        theme_color: "#1E4648",
+        icons: [{
+          src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%231E4648' rx='100'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='260'>✨</text></svg>",
+          sizes: "512x512 192x192",
+          type: "image/svg+xml",
+          purpose: "any maskable"
+        }]
+      };
+      const blobManifest = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+      const manifestUrl = URL.createObjectURL(blobManifest);
+      const manifestLink = document.getElementById('manifestLink');
+      if (manifestLink) manifestLink.setAttribute('href', manifestUrl);
+    } catch(e) { console.log('Manifest PWA Note:', e); }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const swCode = `
+          const CACHE_NAME = 'duasisi-pos-cache-v1';
+          self.addEventListener('install', (e) => self.skipWaiting());
+          self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
+          self.addEventListener('fetch', (e) => {
+            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+          });
+        `;
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl).catch(e => console.log('SW Note:', e));
+      });
+    }
+  })();
+
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!sessionStorage.getItem('pwaPromptShown')) {
+      setTimeout(() => {
+        showPwaInstallModal();
+        sessionStorage.setItem('pwaPromptShown', 'true');
+      }, 1200);
+    }
+  });
+
+  function showPwaInstallModal() {
+    if (deferredPrompt) {
+      openModal(
+        '<div style="text-align:center; padding:10px 4px;">' +
+          '<div style="font-size:48px; margin-bottom:8px;">✨</div>' +
+          '<div class="modal-title" style="font-size:19px; margin-bottom:6px;">Install Aplikasi Dua SiSi POS</div>' +
+          '<div style="font-size:13px; color:var(--text-muted); line-height:1.5; margin-bottom:20px;">' +
+            'Install aplikasi ke layar utama HP / Tablet untuk akses instan full-screen tanpa address bar browser.' +
+          '</div>' +
+          '<button class="btn btn-primary" style="width:100%; padding:14px; font-size:15px; font-weight:800; margin-bottom:10px;" onclick="trigPwaInstall()">📲 Install Sekarang (1-Klik)</button>' +
+          '<button class="btn btn-outline" style="width:100%; color:var(--text-muted);" onclick="closeModal()">Nanti Saja</button>' +
+        '</div>'
+      );
+    } else {
+      openModal(
+        '<div class="modal-title">📲 Install Dua SiSi POS</div>' +
+        '<div style="font-size:13px; color:var(--text-main); line-height:1.6;">' +
+          '<p><strong>Android (Google Chrome / Edge / Brave):</strong><br>1. Klik titik tiga (<strong>⋮</strong>) di kanan atas browser.<br>2. Pilih <strong>"Tambah ke Layar Utama"</strong> atau <strong>"Install Aplikasi"</strong>.</p>' +
+          '<hr style="border:none; border-top:1px dashed var(--border); margin:12px 0;">' +
+          '<p><strong>iPhone / iPad (Safari):</strong><br>1. Klik tombol Share (<strong>📤</strong>) di Safari.<br>2. Pilih <strong>"Tambah ke Layar Utama" (Add to Home Screen)</strong>.</p>' +
+        '</div>' +
+        '<div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Mengerti</button></div>'
+      );
+    }
+  }
+
+  function trigPwaInstall() {
+    closeModal();
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((res) => {
+        if (res.outcome === 'accepted') showToast("🎉 Dua SiSi POS berhasil diinstall!");
+        deferredPrompt = null;
+      });
+    }
+  }
+
+  function installPWA() {
+    showPwaInstallModal();
+  }
+
+  // ============ GLOBAL STATE ============
+  let currentRole = '';
+  let currentServiceMode = 'SelfService';
+  let layananData = [];
+  let keranjang = {};
+  let chartOmzet = null;
+  let chartLayanan = null;
+
+  // Set your deployed GAS Web App Exec URL here if hosting frontend on GitHub Pages / Vercel
+  let EXTERNAL_GAS_API_URL = '';
+
+  // ============ BACKEND RPC ============
+  function runBackend(fn, cb, ...args) {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      const runner = google.script.run.withSuccessHandler(cb).withFailureHandler(e => { console.error(fn, e); alert('Error: ' + e.message); });
+      if (args.length === 0) runner[fn]();
+      else if (args.length === 1) runner[fn](args[0]);
+      else if (args.length === 2) runner[fn](args[0], args[1]);
+      else if (args.length === 3) runner[fn](args[0], args[1], args[2]);
+      else if (args.length === 4) runner[fn](args[0], args[1], args[2], args[3]);
+    } else if (EXTERNAL_GAS_API_URL) {
+      fetch(EXTERNAL_GAS_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: fn, args: args })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.error) { alert('API Error: ' + data.message); }
+        else if (cb) { cb(data); }
+      })
+      .catch(e => { console.error(fn, e); alert('Connection Error: ' + e.message); });
+    } else {
+      console.warn("Backend unavailable: google.script.run not found & EXTERNAL_GAS_API_URL not set.");
+    }
+  }
+
+  // ============ AUTH ============
+  function loginVerifikasiPin() {
+    const pin = document.getElementById('inputPinAkses').value;
+    runBackend('verifikasiPin', res => {
+      if (res.success) {
+        currentRole = res.role;
+        document.getElementById('loginModalOverlay').classList.remove('show');
+        document.getElementById('loginModalOverlay').style.display = 'none';
+        document.getElementById('userRoleAvatar').innerText = res.role === 'MANAGER' ? 'M' : 'S';
+        document.getElementById('userRoleLabel').innerText = res.label;
+        document.getElementById('navManagerSection').style.display = res.role === 'MANAGER' ? 'block' : 'none';
+        loadLayananPOS();
+      } else { alert(res.message); document.getElementById('inputPinAkses').value = ''; }
+    }, pin);
+  }
+
+  function logoutSession() {
+    currentRole = '';
+    document.getElementById('loginModalOverlay').style.display = 'flex';
+    document.getElementById('loginModalOverlay').classList.add('show');
+    document.getElementById('inputPinAkses').value = '';
+    document.getElementById('inputPinAkses').focus();
+  }
+
+  // ============ CLOCK ============
+  setInterval(() => {
+    const now = new Date();
+    const wib = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    document.getElementById('clockWib').innerText = wib.toLocaleTimeString('id-ID') + ' WIB';
+  }, 1000);
+
+  // ============ SIDEBAR ============
+  function toggleSidebar(show) {
+    document.getElementById('sidebar').classList.toggle('open', show);
+    const ov = document.getElementById('sidebarOverlay');
+    if (show) { ov.style.display = 'block'; setTimeout(() => ov.classList.add('show'), 10); }
+    else { ov.classList.remove('show'); setTimeout(() => ov.style.display = 'none', 300); }
+  }
+
+  // ============ MODAL ============
+  function openModal(html) { const m = document.getElementById('modalOverlay'); document.getElementById('modalBox').innerHTML = html; m.classList.add('show'); }
+  function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+
+  function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3500); }
+
+  // ============ TAB SWITCH ============
+  function switchTab(tab) {
+    if (['pegawai','produk','rekap'].includes(tab) && currentRole !== 'MANAGER') {
+      alert("🔒 Akses Ditolak — khusus Manager/Owner.");
+      return;
+    }
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const activeNav = document.querySelector('.nav-item[data-tab="' + tab + '"]');
+    if (activeNav) activeNav.classList.add('active');
+    toggleSidebar(false);
+
+    ['transaksi','pipeline','absensi','inventory','mesin','pegawai','produk','rekap'].forEach(t => {
+      const el = document.getElementById('tab-' + t);
+      if (el) el.style.display = (t === tab) ? 'block' : 'none';
+    });
+
+    document.getElementById('orderBar').style.display = tab === 'transaksi' ? 'flex' : 'none';
+
+    const titles = {
+      transaksi:'Transaksi Baru', pipeline:'Pipeline Tracking', absensi:'Absensi Shift',
+      inventory:'Inventory Stok', mesin:'Status Mesin', pegawai:'Pegawai & Kinerja',
+      produk:'Produk & Layanan', rekap:'Laporan Omzet'
+    };
+    document.getElementById('pageTitle').innerText = titles[tab] || 'POS Laundry';
+
+    if (tab === 'pipeline') loadPipeline('Semua');
+    if (tab === 'absensi') loadAbsensiUI();
+    if (tab === 'inventory') loadInventory();
+    if (tab === 'mesin') loadMesin();
+    if (tab === 'pegawai') { loadPegawaiManagement(); loadRekapKinerjaPegawai(); }
+    if (tab === 'produk') loadLayananManagement();
+    if (tab === 'rekap') {
+      if (!document.getElementById('tglSelesai').value) {
+        const today = new Date(); const weekAgo = new Date(); weekAgo.setDate(today.getDate() - 6);
+        document.getElementById('tglSelesai').valueAsDate = today;
+        document.getElementById('tglMulai').valueAsDate = weekAgo;
+      }
+      loadLaporan();
+    }
+  }
+
+  let customerDraft = { nama: '', noHp: '' };
+
+  // ============ SERVICE MODE ============
+  function setServiceMode(mode) {
+    currentServiceMode = mode;
+    keranjang = {};
+    document.querySelectorAll('#modeToggle .mode-btn').forEach(b => b.classList.remove('active'));
+    if (event && event.target) event.target.classList.add('active');
+    loadLayananPOS();
+  }
+
+  // ============ LAYANAN POS ============
+  function loadLayananPOS() {
+    runBackend('getLayananList', list => { layananData = list; renderGrid(); }, currentServiceMode);
+  }
+
+  function renderGrid() {
+    const q = (document.getElementById('searchLayanan').value || '').toLowerCase();
+    const filtered = layananData.filter(l => l.nama.toLowerCase().includes(q));
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    if (filtered.length === 0) {
+      if (currentServiceMode === 'FullService') {
+        grid.innerHTML = '<div style="text-align:center; padding:50px 20px; grid-column:1/-1;">' +
+          '<div style="font-size:48px; margin-bottom:12px;">👔</div>' +
+          '<div style="font-size:16px; font-weight:800; color:var(--text-main); margin-bottom:6px;">Full Service — Segera Hadir</div>' +
+          '<div style="font-size:13px; color:var(--text-muted); line-height:1.6; max-width:360px; margin:0 auto;">Produk Full Service belum ditambahkan.<br>Manager dapat menambahkan layanan melalui menu <strong>🏷️ Produk & Layanan</strong>.</div>' +
+          '</div>';
+      } else {
+        grid.innerHTML = '<div class="empty-note">Tidak ada layanan ditemukan.</div>';
+      }
+      renderLiveCart(); return;
+    }
+
+    filtered.forEach(l => {
+      const qty = keranjang[l.nama] ? keranjang[l.nama].qty : 0;
+      const div = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML =
+        '<div class="card-img">' + l.icon + (qty > 0 ? '<div class="badge">' + qty + '</div>' : '') + '</div>' +
+        '<div class="card-info">' +
+          '<div class="card-name">' + l.nama + '</div>' +
+          '<div><span class="card-price">Rp ' + Number(l.harga).toLocaleString('id-ID') + '</span> <span class="card-unit">/' + l.satuan + '</span></div>' +
+          '<div class="card-qty">' +
+            '<button onclick="event.stopPropagation(); ubahQty(\'' + l.nama.replace(/'/g, "\\'") + '\', ' + l.harga + ', -1)">−</button>' +
+            '<span>' + qty + '</span>' +
+            '<button onclick="event.stopPropagation(); ubahQty(\'' + l.nama.replace(/'/g, "\\'") + '\', ' + l.harga + ', 1)">+</button>' +
+          '</div>' +
+        '</div>';
+      div.onclick = () => ubahQty(l.nama, l.harga, 1);
+      grid.appendChild(div);
+    });
+    renderLiveCart();
+  }
+
+  function ubahQty(nama, harga, delta) {
+    if (!keranjang[nama]) keranjang[nama] = { layanan: nama, hargaSatuan: harga, qty: 0 };
+    keranjang[nama].qty = Math.max(0, keranjang[nama].qty + delta);
+    if (keranjang[nama].qty === 0) delete keranjang[nama];
+    renderGrid();
+  }
+
+  function renderLiveCart() {
+    const items = Object.values(keranjang);
+    const body = document.getElementById('cartItemsBody');
+    const badge = document.getElementById('cartModeBadge');
+    if (badge) badge.innerText = currentServiceMode === 'SelfService' ? 'Self Service' : 'Full Service';
+
+    let total = 0;
+    if (!body) return;
+
+    if (items.length === 0) {
+      body.innerHTML = '<div class="empty-note" style="margin:auto;">Keranjang kosong</div>';
+    } else {
+      let html = '';
+      items.forEach(i => {
+        const sub = i.qty * i.hargaSatuan;
+        total += sub;
+        html += '<div class="cart-item-row">' +
+          '<div>' +
+            '<div class="cart-item-name">' + i.layanan + '</div>' +
+            '<div class="cart-item-sub">Rp ' + Number(i.hargaSatuan).toLocaleString('id-ID') + ' x ' + i.qty + '</div>' +
+          '</div>' +
+          '<div style="display:flex; align-items:center; gap:10px;">' +
+            '<div class="cart-item-qty-controls">' +
+              '<button onclick="ubahQty(\'' + i.layanan.replace(/'/g, "\\'") + '\', ' + i.hargaSatuan + ', -1)">−</button>' +
+              '<span style="font-weight:700; font-size:13px; min-width:16px; text-align:center;">' + i.qty + '</span>' +
+              '<button onclick="ubahQty(\'' + i.layanan.replace(/'/g, "\\'") + '\', ' + i.hargaSatuan + ', 1)">+</button>' +
+            '</div>' +
+            '<div style="font-weight:800; font-size:13px; color:var(--text-main); min-width:70px; text-align:right;">Rp ' + sub.toLocaleString('id-ID') + '</div>' +
+          '</div>' +
+        '</div>';
+      });
+      body.innerHTML = html;
+    }
+
+    const subEl = document.getElementById('cartSubtotal');
+    const totEl = document.getElementById('cartTotal');
+    const chgEl = document.getElementById('chargeBtnTotal');
+    if (subEl) subEl.innerText = 'Rp ' + total.toLocaleString('id-ID');
+    if (totEl) totEl.innerText = 'Rp ' + total.toLocaleString('id-ID');
+    if (chgEl) chgEl.innerText = 'Rp ' + total.toLocaleString('id-ID');
+  }
+
+  function clearCart() {
+    if (Object.keys(keranjang).length === 0) return;
+    if (confirm("Kosongkan keranjang belanja?")) {
+      keranjang = {};
+      renderGrid();
+    }
+  }
+
+  function bukaCustomerInputQuick() {
+    openModal(
+      '<div class="modal-title">👤 Atur Pelanggan</div>' +
+      '<div class="form-group"><label>Nama Pelanggan</label><input id="qNamaPlg" value="' + (customerDraft.nama || '') + '" placeholder="Masukkan nama pelanggan"></div>' +
+      '<div class="form-group"><label>No HP / WA</label><input id="qNoHpPlg" value="' + (customerDraft.noHp || '') + '" placeholder="08..."></div>' +
+      '<div class="modal-actions">' +
+        '<button class="btn btn-outline" onclick="closeModal()">Batal</button>' +
+        '<button class="btn btn-primary" onclick="simpanCustomerQuick()">Simpan</button>' +
+      '</div>'
+    );
+  }
+
+  function simpanCustomerQuick() {
+    const nama = document.getElementById('qNamaPlg').value.trim();
+    const noHp = document.getElementById('qNoHpPlg').value.trim();
+    customerDraft = { nama: nama, noHp: noHp };
+    const label = document.getElementById('cartCustomerLabel');
+    if (label) label.innerText = nama ? '👤 ' + nama : '+ Add Customer';
+    closeModal();
+    showToast(nama ? "Pelanggan: " + nama : "Pelanggan direset");
+  }
+
+  function buildCartTable() {
+    const items = Object.values(keranjang);
+    let rows = '';
+    let grandTotal = 0;
+    items.forEach(i => {
+      const sub = i.qty * i.hargaSatuan;
+      grandTotal += sub;
+      rows += '<tr><td>' + i.layanan + '</td><td style="text-align:center">' + i.qty + '</td><td style="text-align:right">Rp ' + sub.toLocaleString('id-ID') + '</td></tr>';
+    });
+    return {
+      html: '<div class="table-wrap" style="margin-bottom:16px;"><table style="min-width:auto;"><tr><th>Layanan</th><th style="text-align:center">Qty</th><th style="text-align:right">Subtotal</th></tr>' + rows +
+        '<tr style="font-weight:800; background:#F8FAFC;"><td colspan="2">TOTAL</td><td style="text-align:right; color:var(--primary); font-size:15px;">Rp ' + grandTotal.toLocaleString('id-ID') + '</td></tr></table></div>',
+      total: grandTotal
+    };
+  }
+
+  function prosesTransaksi() {
+    const items = Object.values(keranjang);
+    if (items.length === 0) { alert("Keranjang kosong!"); return; }
+    const cart = buildCartTable();
+    const modeBadge = currentServiceMode === 'SelfService'
+      ? '<span class="pc-tag tag-self" style="font-size:12px;">Self Service</span>'
+      : '<span class="pc-tag tag-full" style="font-size:12px;">Full Service</span>';
+
+    openModal(
+      '<div class="modal-title">💳 Proses Transaksi ' + modeBadge + '</div>' +
+      cart.html +
+      '<div style="border-top:1px dashed var(--border); padding-top:16px; margin-top:4px;">' +
+        '<div style="font-size:13px; font-weight:700; color:var(--text-main); margin-bottom:12px;">📝 Data Pelanggan & Petugas</div>' +
+        '<div class="form-group"><label>Nama Pelanggan <span style="color:var(--danger);">*</span></label><input id="cNamaPelanggan" value="' + (customerDraft.nama || '') + '" placeholder="Masukkan nama pelanggan"></div>' +
+        '<div class="form-group"><label>No HP / WhatsApp</label><input id="cNoHp" type="tel" value="' + (customerDraft.noHp || '') + '" placeholder="08..."></div>' +
+        '<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">' +
+          '<div class="form-group"><label>Nama Petugas <span style="color:var(--danger);">*</span></label><input id="cNamaPetugas" value="Kasir 1" placeholder="Nama petugas"></div>' +
+          '<div class="form-group"><label>Estimasi Selesai</label><input id="cEstimasi" type="date"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="modal-actions" style="margin-top:16px;"><button class="btn btn-outline" onclick="closeModal()">← Kembali</button><button class="btn btn-proses" style="flex:2;" onclick="konfirmasiTransaksi()">✅ Konfirmasi & Simpan</button></div>'
+    );
+  }
+
+  function konfirmasiTransaksi() {
+    const nama = document.getElementById('cNamaPelanggan').value.trim();
+    const petugas = document.getElementById('cNamaPetugas').value.trim();
+    if (!nama) { alert("⚠️ Nama pelanggan wajib diisi!"); document.getElementById('cNamaPelanggan').focus(); return; }
+    if (!petugas) { alert("⚠️ Nama petugas wajib diisi!"); document.getElementById('cNamaPetugas').focus(); return; }
+
+    const data = {
+      namaPelanggan: nama,
+      noHp: document.getElementById('cNoHp').value.trim(),
+      estimasiSelesai: document.getElementById('cEstimasi').value,
+      namaPetugas: petugas,
+      tipeLayanan: currentServiceMode,
+      items: Object.values(keranjang)
+    };
+
+    runBackend('simpanTransaksi', res => {
+      closeModal();
+      showToast("✅ " + res.noNota + " — Rp " + res.total.toLocaleString('id-ID'));
+      keranjang = {};
+      customerDraft = { nama: '', noHp: '' };
+      const label = document.getElementById('cartCustomerLabel');
+      if (label) label.innerText = '+ Add Customer';
+      renderGrid();
+    }, data);
+  }
+
+  // ============ PIPELINE TRACKING ============
+  function loadPipeline(filter) {
+    document.querySelectorAll('#tab-pipeline .mode-btn').forEach(b => b.classList.remove('active'));
+    if (filter === 'Semua') document.getElementById('pipeFilterAll').classList.add('active');
+    else if (filter === 'SelfService') document.getElementById('pipeFilterSelf').classList.add('active');
+    else document.getElementById('pipeFilterFull').classList.add('active');
+
+    runBackend('getTransaksiByPipeline', function(txList) {
+      const board = document.getElementById('pipelineBoard');
+
+      // Determine columns: collect all unique current steps
+      const stepMap = {};
+      txList.forEach(tx => {
+        const activeStep = tx.pipeline.find(p => p.status === 'Aktif');
+        const stepName = activeStep ? activeStep.namaStep : 'Diterima';
+        if (!stepMap[stepName]) stepMap[stepName] = { icon: activeStep ? '📋' : '📥', cards: [] };
+        stepMap[stepName].cards.push(tx);
+      });
+
+      // Get all possible steps from both pipeline configs
+      const allSteps = [];
+      const selfConfig = [{step:1,nama:'Diterima',icon:'📥'},{step:2,nama:'Washer',icon:'🫧'},{step:3,nama:'Dryer',icon:'♨️'}];
+      const fullConfig = [{step:1,nama:'Diterima',icon:'📥'},{step:2,nama:'Timbang & Sorting',icon:'⚖️'},{step:3,nama:'Cuci',icon:'🫧'},{step:4,nama:'Pengeringan',icon:'♨️'},{step:5,nama:'Setrika',icon:'👔'},{step:6,nama:'Lipat & Packing',icon:'📦'},{step:7,nama:'Siap Ambil',icon:'✅'}];
+      const configToUse = filter === 'SelfService' ? selfConfig : filter === 'FullService' ? fullConfig : [...selfConfig, ...fullConfig];
+
+      const seen = new Set();
+      configToUse.forEach(c => { if (!seen.has(c.nama)) { allSteps.push(c); seen.add(c.nama); } });
+
+      board.innerHTML = '';
+      if (txList.length === 0 && allSteps.length === 0) {
+        board.innerHTML = '<div class="empty-note" style="width:100%;">Belum ada transaksi aktif di pipeline.</div>';
+        return;
+      }
+
+      allSteps.forEach(col => {
+        const cards = stepMap[col.nama] ? stepMap[col.nama].cards : [];
+        const colDiv = document.createElement('div');
+        colDiv.className = 'pipeline-col';
+        let cardsHtml = '';
+        cards.forEach(tx => {
+          const tipeTag = tx.tipe === 'FullService'
+            ? '<span class="pc-tag tag-full">Full Service</span>'
+            : '<span class="pc-tag tag-self">Self Service</span>';
+          cardsHtml += '<div class="pipeline-card" onclick=\'openPipelineDetail("' + tx.noNota + '")\' >' +
+            '<div class="pc-nota">' + tx.noNota + '</div>' +
+            '<div class="pc-nama">' + tx.namaPelanggan + '</div>' +
+            '<div class="pc-info">Rp ' + tx.total.toLocaleString('id-ID') + ' · ' + tx.petugas + '</div>' +
+            tipeTag +
+            '</div>';
+        });
+
+        colDiv.innerHTML =
+          '<div class="pipeline-col-header">' +
+            '<span class="col-icon">' + col.icon + '</span>' +
+            '<span class="col-title">' + col.nama + '</span>' +
+            '<span class="col-count">' + cards.length + '</span>' +
+          '</div>' +
+          '<div class="pipeline-col-body">' + (cardsHtml || '<div style="text-align:center; font-size:11px; color:var(--text-light); padding:20px;">Kosong</div>') + '</div>';
+        board.appendChild(colDiv);
+      });
+    }, filter);
+  }
+
+  function openPipelineDetail(noNota) {
+    runBackend('getPipelineSteps', function(steps) {
+      runBackend('getTransaksiList', function(allTx) {
+        const tx = allTx.find(t => t.noNota === noNota);
+        if (!tx) { alert("Transaksi tidak ditemukan."); return; }
+
+        const itemTags = tx.items.map(i => '<span class="item-tag">' + i.layanan + ' x' + i.qty + '</span>').join('');
+        const tipeTag = tx.tipe === 'FullService' ? '<span class="pc-tag tag-full" style="font-size:12px;">Full Service</span>' : '<span class="pc-tag tag-self" style="font-size:12px;">Self Service</span>';
+
+        let timelineHtml = '<ul class="timeline">';
+        const activeStep = steps.find(s => s.status === 'Aktif');
+
+        steps.forEach(s => {
+          let cls = '';
+          if (s.status === 'Selesai') cls = 'done';
+          else if (s.status === 'Aktif') cls = 'active';
+
+          const staffInfo = s.assignedStaff ? ' · 👨‍💼 ' + s.assignedStaff : '';
+          const timeInfo = s.waktuMulai ? '<br>Mulai: ' + s.waktuMulai : '';
+          const endInfo = s.waktuSelesai ? ' → Selesai: ' + s.waktuSelesai : '';
+
+          timelineHtml += '<li class="' + cls + '"><div class="t-dot"></div><div class="t-title">' + s.namaStep + ' <span style="font-size:11px; color:var(--text-muted);">(' + s.status + ')</span></div>' +
+            '<div class="t-sub">' + staffInfo + timeInfo + endInfo + '</div></li>';
+        });
+        timelineHtml += '</ul>';
+
+        let actionHtml = '';
+        if (activeStep) {
+          // Get pipeline config for needStaff/needMesin
+          runBackend('getPipelineConfig', function(config) {
+            const stepConfig = config.find(c => c.nama === activeStep.namaStep);
+            let staffSelect = '';
+            let mesinSelect = '';
+
+            if (stepConfig && stepConfig.needStaff) {
+              staffSelect = '<div class="form-group"><label>Assign Staff untuk Step Ini</label><select id="pipeStaff"><option value="">— Pilih Staff —</option></select></div>';
+            }
+            if (stepConfig && stepConfig.needMesin) {
+              mesinSelect = '<div class="form-group"><label>Pilih Mesin</label><select id="pipeMesin"><option value="">— Pilih Mesin —</option></select></div>';
+            }
+
+            const modalContent =
+              '<div class="modal-title">📋 ' + noNota + ' ' + tipeTag + '</div>' +
+              '<div style="margin-bottom:14px;"><strong>' + tx.namaPelanggan + '</strong> · ' + (tx.noHp || '-') + '<br><span style="font-size:12px; color:var(--text-muted);">' + tx.tanggal + ' · Petugas: ' + tx.petugas + '</span></div>' +
+              '<div style="margin-bottom:14px;">' + itemTags + '</div>' +
+              '<div style="font-size:16px; font-weight:800; color:var(--primary); margin-bottom:16px;">Total: Rp ' + tx.total.toLocaleString('id-ID') + '</div>' +
+              '<h4 style="font-size:14px; font-weight:700; margin-bottom:10px;">📍 Pipeline Progress</h4>' +
+              timelineHtml +
+              '<div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--border);">' +
+                '<h4 style="font-size:13px; font-weight:700; margin-bottom:10px;">⏭️ Majukan: ' + activeStep.namaStep + ' → Next</h4>' +
+                staffSelect + mesinSelect +
+                '<div class="form-group"><label>Catatan (Opsional)</label><input id="pipeCatatan" placeholder="Catatan proses"></div>' +
+                '<button class="btn btn-proses" style="width:100%;" onclick="doAdvancePipeline(\'' + noNota + '\')">✅ Selesaikan Step & Lanjut</button>' +
+              '</div>';
+
+            openModal(modalContent);
+
+            // Populate staff dropdown
+            if (stepConfig && stepConfig.needStaff) {
+              runBackend('getPegawaiList', function(pList) {
+                const sel = document.getElementById('pipeStaff');
+                if (sel) pList.forEach(p => { const o = document.createElement('option'); o.value = p.nama; o.innerText = p.nama; sel.appendChild(o); });
+              });
+            }
+            // Populate mesin dropdown
+            if (stepConfig && stepConfig.needMesin) {
+              runBackend('getMesinList', function(mList) {
+                const sel = document.getElementById('pipeMesin');
+                if (sel) mList.filter(m => m.status === 'Kosong').forEach(m => { const o = document.createElement('option'); o.value = m.id; o.innerText = m.nama + ' (' + m.tipe + ')'; sel.appendChild(o); });
+              });
+            }
+          }, tx.tipe);
+        } else {
+          // No active step — all done or issue
+          openModal(
+            '<div class="modal-title">📋 ' + noNota + ' ' + tipeTag + '</div>' +
+            '<div style="margin-bottom:14px;"><strong>' + tx.namaPelanggan + '</strong><br><span style="font-size:12px; color:var(--text-muted);">' + tx.tanggal + '</span></div>' +
+            '<div style="margin-bottom:14px;">' + itemTags + '</div>' +
+            '<div style="font-size:16px; font-weight:800; color:var(--primary); margin-bottom:16px;">Total: Rp ' + tx.total.toLocaleString('id-ID') + '</div>' +
+            timelineHtml +
+            '<div class="modal-actions"><button class="btn btn-outline" onclick="closeModal()">Tutup</button></div>'
+          );
+        }
+      }, 'Semua');
+    }, noNota);
+  }
+
+  function doAdvancePipeline(noNota) {
+    const staff = document.getElementById('pipeStaff') ? document.getElementById('pipeStaff').value : '';
+    const mesin = document.getElementById('pipeMesin') ? document.getElementById('pipeMesin').value : '';
+    const catatan = document.getElementById('pipeCatatan') ? document.getElementById('pipeCatatan').value.trim() : '';
+
+    runBackend('advancePipeline', function(res) {
+      if (res.success) {
+        showToast(res.message);
+        closeModal();
+        loadPipeline('Semua');
+      } else { alert("⚠️ " + res.message); }
+    }, noNota, staff, mesin, catatan);
+  }
+
+  // ============ ABSENSI ============
+  function loadAbsensiUI() { populasiOptionPegawai(); populasiOptionShift(); loadRekapAbsensiTable(); }
+
+  function populasiOptionShift() {
+    runBackend('getMasterShiftList', function(list) {
+      const sel = document.getElementById('absensiShift'); if (!sel) return; sel.innerHTML = '';
+      if (!list || list.length === 0) { sel.innerHTML = '<option>Shift Normal</option>'; return; }
+      list.forEach(s => { const o = document.createElement('option'); o.value = s.nama + ' (' + s.jamMasuk + '-' + s.jamKeluar + ')'; o.innerText = o.value; sel.appendChild(o); });
+    });
+  }
+
+  function populasiOptionPegawai() {
+    runBackend('getPegawaiList', function(list) {
+      const sel = document.getElementById('absensiNamaPegawai'); if (!sel) return; sel.innerHTML = '';
+      if (!list || list.length === 0) { sel.innerHTML = '<option value="">Belum ada pegawai</option>'; return; }
+      list.forEach(p => { const o = document.createElement('option'); o.value = p.nama; o.innerText = p.nama + ' (' + (p.jabatan||'Staff') + ')'; sel.appendChild(o); });
+      cekStatusAbsensiUI();
+    });
+  }
+
+  function cekStatusAbsensiUI() {
+    const nama = document.getElementById('absensiNamaPegawai').value; if (!nama) return;
+    runBackend('getStatusAbsensiHariIni', function(res) {
+      const badge = document.getElementById('absensiStatusBadge');
+      const btnIn = document.getElementById('btnClockIn');
+      const btnOut = document.getElementById('btnClockOut');
+      if (res.status === 'SUDAH_IN') {
+        badge.innerHTML = '🟢 <strong>Sedang Bekerja</strong> (' + res.shift + ')<br><small>In: ' + res.clockIn + '</small>';
+        badge.style.background = 'var(--success-bg)'; badge.style.color = 'var(--success)';
+        btnIn.disabled = true; btnIn.style.opacity = '.5'; btnOut.disabled = false; btnOut.style.opacity = '1';
+      } else if (res.status === 'SUDAH_OUT') {
+        badge.innerHTML = '🔴 <strong>Shift Selesai</strong><br><small>' + res.clockIn + ' → ' + res.clockOut + ' (' + res.durasi + ')</small>';
+        badge.style.background = '#F1F5F9'; badge.style.color = 'var(--text-muted)';
+        btnIn.disabled = false; btnIn.style.opacity = '1'; btnOut.disabled = true; btnOut.style.opacity = '.5';
+      } else {
+        badge.innerHTML = '⚪ <strong>Belum Clock In</strong>';
+        badge.style.background = '#FEF3C7'; badge.style.color = '#B45309';
+        btnIn.disabled = false; btnIn.style.opacity = '1'; btnOut.disabled = true; btnOut.style.opacity = '.5';
+      }
+    }, nama);
+  }
+
+  function doClockIn() {
+    const nama = document.getElementById('absensiNamaPegawai').value;
+    const shift = document.getElementById('absensiShift').value;
+    const cat = document.getElementById('absensiCatatan').value.trim();
+    if (!nama) { alert("Pilih pegawai dulu."); return; }
+    runBackend('clockInPegawai', res => { if (res.success) { showToast(res.message); document.getElementById('namaPetugas').value = nama; cekStatusAbsensiUI(); loadRekapAbsensiTable(); } else alert("⚠️ " + res.message); }, nama, shift, cat);
+  }
+
+  function doClockOut() {
+    const nama = document.getElementById('absensiNamaPegawai').value;
+    const cat = document.getElementById('absensiCatatan').value.trim();
+    if (!nama) return;
+    if (!confirm("Clock Out untuk " + nama + "?")) return;
+    runBackend('clockOutPegawai', res => { if (res.success) { showToast(res.message); cekStatusAbsensiUI(); loadRekapAbsensiTable(); } else alert("⚠️ " + res.message); }, nama, cat);
+  }
+
+  function loadRekapAbsensiTable() {
+    runBackend('getRekapAbsensi', function(list) {
+      const w = document.getElementById('absensiTable');
+      if (!list || list.length === 0) { w.innerHTML = '<div class="empty-note">Belum ada riwayat.</div>'; return; }
+      let h = '<table><tr><th>Tanggal</th><th>Pegawai</th><th>Shift</th><th>Clock In</th><th>Clock Out</th><th>Durasi</th></tr>';
+      list.forEach(a => { h += '<tr><td>' + a.tanggal + '</td><td><strong>' + a.namaPegawai + '</strong></td><td><span class="item-tag">' + a.shift + '</span></td><td>' + a.clockIn + '</td><td>' + a.clockOut + '</td><td><strong>' + a.durasi + '</strong></td></tr>'; });
+      h += '</table>'; w.innerHTML = h;
+    });
+  }
+
+  // ============ INVENTORY ============
+  function loadInventory() {
+    runBackend('getInventoryList', function(list) {
+      const el = document.getElementById('listInventory'); el.innerHTML = '';
+      if (!list || list.length === 0) { el.innerHTML = '<div class="empty-note">Belum ada data.</div>'; return; }
+      list.forEach(b => {
+        const low = b.stok <= b.stokMinimum;
+        const div = document.createElement('div'); div.className = 'list-card';
+        div.innerHTML = '<div class="list-card-left"><div class="list-icon">📦</div><div><div class="list-name">' + b.nama + '</div><div class="list-sub">Stok: <span class="' + (low ? 'stok-low' : 'stok-ok') + '">' + b.stok + '</span> ' + b.satuan + ' (Min: ' + b.stokMinimum + ') · Update: ' + b.terakhirUpdate + '</div></div></div>' +
+          '<div class="list-actions"><button class="btn btn-sm btn-outline" onclick="updateStokUI(\'' + b.id + '\', 1)">+1</button><button class="btn btn-sm btn-outline" onclick="updateStokUI(\'' + b.id + '\', -1)">−1</button><button class="btn btn-sm btn-cancel" onclick="hapusInvUI(\'' + b.id + '\')">Hapus</button></div>';
+        el.appendChild(div);
+      });
+    });
+  }
+
+  function openModalInventory() {
+    openModal('<div class="modal-title">Tambah Barang Inventory</div><div class="form-group"><label>Nama Barang</label><input id="mNamaInv" placeholder="Deterjen / Plastik"></div><div class="form-group"><label>Stok Awal</label><input id="mStokInv" type="number" value="10"></div><div class="form-group"><label>Satuan</label><input id="mSatuanInv" value="pcs"></div><div class="form-group"><label>Stok Minimum</label><input id="mMinInv" type="number" value="5"></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal()">Batal</button><button class="btn btn-primary" onclick="simpanInv()">Simpan</button></div>');
+  }
+
+  function simpanInv() {
+    const d = { nama: document.getElementById('mNamaInv').value.trim(), stok: Number(document.getElementById('mStokInv').value), satuan: document.getElementById('mSatuanInv').value.trim(), stokMinimum: Number(document.getElementById('mMinInv').value) };
+    if (!d.nama) { alert("Nama wajib diisi."); return; }
+    runBackend('tambahInventory', () => { closeModal(); showToast("✅ Barang ditambahkan"); loadInventory(); }, d);
+  }
+
+  function updateStokUI(id, delta) { runBackend('updateStokInventory', () => { showToast("Stok diperbarui"); loadInventory(); }, id, delta); }
+  function hapusInvUI(id) { if (!confirm("Hapus?")) return; runBackend('hapusInventory', () => { showToast("Dihapus"); loadInventory(); }, id); }
+
+  // ============ MESIN ============
+  function loadMesin() {
+    runBackend('getMesinList', function(list) {
+      const el = document.getElementById('mesinGrid'); el.innerHTML = '';
+      if (!list || list.length === 0) { el.innerHTML = '<div class="empty-note">Belum ada mesin.</div>'; return; }
+      list.forEach(m => {
+        const statusClass = m.status === 'Kosong' ? 'kosong' : m.status === 'Digunakan' ? 'digunakan' : 'maintenance';
+        const icon = m.tipe === 'Dryer' ? '♨️' : '🫧';
+        const div = document.createElement('div'); div.className = 'mesin-card ' + statusClass;
+        let actions = '';
+        if (m.status === 'Kosong') actions = '<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); mulaiMesinUI(\'' + m.id + '\')">▶️ Mulai</button><button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); maintenanceUI(\'' + m.id + '\', true)">🔧</button>';
+        else if (m.status === 'Digunakan') actions = '<button class="btn btn-sm btn-proses" onclick="event.stopPropagation(); selesaiMesinUI(\'' + m.id + '\')">✅ Selesai</button>';
+        else actions = '<button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); maintenanceUI(\'' + m.id + '\', false)">✅ Aktifkan</button>';
+
+        div.innerHTML = '<div class="mesin-icon">' + icon + '</div><div class="mesin-nama">' + m.nama + '</div><div class="mesin-tipe">' + m.tipe + '</div><div class="status-chip ' + statusClass + '">' + m.status + '</div>' +
+          (m.status === 'Digunakan' ? '<div class="mesin-info">Mulai: ' + m.mulaiPakai + (m.keterangan ? ' · ' + m.keterangan : '') + '</div>' : '') +
+          '<div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">' + actions + '</div>';
+        el.appendChild(div);
+      });
+    });
+  }
+
+  function openModalMesin() {
+    openModal('<div class="modal-title">Tambah Mesin</div><div class="form-group"><label>Nama Mesin</label><input id="mNamaMesin" placeholder="Mesin Cuci 3"></div><div class="form-group"><label>Tipe</label><select id="mTipeMesin"><option>Washer</option><option>Dryer</option></select></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal()">Batal</button><button class="btn btn-primary" onclick="simpanMesin()">Simpan</button></div>');
+  }
+
+  function simpanMesin() { runBackend('tambahMesin', () => { closeModal(); showToast("✅ Mesin ditambahkan"); loadMesin(); }, { nama: document.getElementById('mNamaMesin').value.trim(), tipe: document.getElementById('mTipeMesin').value }); }
+  function mulaiMesinUI(id) { runBackend('mulaiPakaiMesin', () => { showToast("Mesin mulai digunakan"); loadMesin(); }, id, '', ''); }
+  function selesaiMesinUI(id) { runBackend('selesaiMesin', () => { showToast("Mesin selesai"); loadMesin(); }, id); }
+  function maintenanceUI(id, aktif) { runBackend('setMaintenanceMesin', () => { showToast(aktif ? "Mesin maintenance" : "Mesin aktif"); loadMesin(); }, id, aktif); }
+
+  // ============ PEGAWAI ============
+  function loadPegawaiManagement() {
+    loadMasterShiftManagement();
+    runBackend('getPegawaiList', function(list) {
+      const el = document.getElementById('listPegawai'); el.innerHTML = '';
+      if (!list || list.length === 0) { el.innerHTML = '<div class="empty-note">Belum ada pegawai.</div>'; return; }
+      list.forEach(p => {
+        const div = document.createElement('div'); div.className = 'list-card';
+        div.innerHTML = '<div class="list-card-left"><div class="list-icon">👨‍💼</div><div><div class="list-name">' + p.nama + ' <span class="item-tag">' + (p.jabatan || 'Operator') + '</span></div><div class="list-sub">HP: ' + (p.noHp || '-') + ' · ' + p.status + '</div></div></div>' +
+          '<div class="list-actions"><button class="btn btn-sm btn-cancel" onclick="hapusPegawaiUI(\'' + p.id + '\')">Hapus</button></div>';
+        el.appendChild(div);
+      });
+    });
+  }
+
+  function loadRekapKinerjaPegawai() {
+    runBackend('getRekapKinerjaPegawai', function(list) {
+      const w = document.getElementById('rekapKinerjaTable');
+      if (!list || list.length === 0) { w.innerHTML = '<div class="empty-note">Belum ada data.</div>'; return; }
+      let h = '<table><tr><th>Pegawai</th><th>Jabatan</th><th>Transaksi</th><th>Omzet</th></tr>';
+      list.forEach(p => { h += '<tr><td><strong>' + p.nama + '</strong></td><td>' + p.jabatan + '</td><td>' + p.totalTransaksi + '</td><td><strong style="color:var(--primary);">Rp ' + p.totalOmzet.toLocaleString('id-ID') + '</strong></td></tr>'; });
+      h += '</table>'; w.innerHTML = h;
+    });
+  }
+
+  function openModalPegawai() {
+    openModal('<div class="modal-title">Tambah Pegawai</div><div class="form-group"><label>Nama</label><input id="mNamaPegawai" placeholder="Budi Santoso"></div><div class="form-group"><label>No HP</label><input id="mNoHpPegawai" placeholder="08..."></div><div class="form-group"><label>Jabatan</label><input id="mJabatanPegawai" placeholder="Operator / Kasir"></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal()">Batal</button><button class="btn btn-primary" onclick="simpanPegawai()">Simpan</button></div>');
+  }
+
+  function simpanPegawai() {
+    const d = { nama: document.getElementById('mNamaPegawai').value.trim(), noHp: document.getElementById('mNoHpPegawai').value.trim(), jabatan: document.getElementById('mJabatanPegawai').value.trim() };
+    if (!d.nama) { alert("Nama wajib."); return; }
+    runBackend('tambahPegawai', () => { closeModal(); showToast("✅ Pegawai ditambahkan"); loadPegawaiManagement(); loadRekapKinerjaPegawai(); }, d);
+  }
+
+  function hapusPegawaiUI(id) { if (!confirm("Hapus?")) return; runBackend('hapusPegawai', () => { showToast("Dihapus"); loadPegawaiManagement(); }, id); }
+
+  // ============ MASTER SHIFT ============
+  function loadMasterShiftManagement() {
+    runBackend('getMasterShiftList', function(list) {
+      const el = document.getElementById('listMasterShift'); if (!el) return; el.innerHTML = '';
+      if (!list || list.length === 0) { el.innerHTML = '<div class="empty-note">Belum ada shift.</div>'; return; }
+      list.forEach(s => {
+        const div = document.createElement('div'); div.className = 'list-card';
+        div.innerHTML = '<div class="list-card-left"><div class="list-icon">⏰</div><div><div class="list-name">' + s.nama + '</div><div class="list-sub"><strong style="color:var(--primary);">' + s.jamMasuk + ' - ' + s.jamKeluar + ' WIB</strong> ' + (s.keterangan ? '· ' + s.keterangan : '') + '</div></div></div>' +
+          '<div class="list-actions"><button class="btn btn-sm btn-cancel" onclick="hapusMasterShiftUI(\'' + s.id + '\')">Hapus</button></div>';
+        el.appendChild(div);
+      });
+    });
+  }
+
+  function openModalTambahShift() {
+    openModal('<div class="modal-title">Tambah Shift</div><div class="form-group"><label>Nama Shift</label><input id="mNamaShift" placeholder="Shift 3 (Malam)"></div><div class="form-group"><label>Jam Masuk</label><input id="mJamMasuk" type="time" value="07:00"></div><div class="form-group"><label>Jam Keluar</label><input id="mJamKeluar" type="time" value="15:00"></div><div class="form-group"><label>Keterangan</label><input id="mKetShift" placeholder="Opsional"></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal()">Batal</button><button class="btn btn-primary" onclick="simpanMasterShift()">Simpan</button></div>');
+  }
+
+  function simpanMasterShift() {
+    const d = { nama: document.getElementById('mNamaShift').value.trim(), jamMasuk: document.getElementById('mJamMasuk').value, jamKeluar: document.getElementById('mJamKeluar').value, keterangan: document.getElementById('mKetShift').value.trim() };
+    if (!d.nama) { alert("Nama wajib."); return; }
+    runBackend('tambahMasterShift', () => { closeModal(); showToast("✅ Shift ditambahkan"); loadMasterShiftManagement(); }, d);
+  }
+
+  function hapusMasterShiftUI(id) { if (!confirm("Hapus?")) return; runBackend('hapusMasterShift', () => { showToast("Dihapus"); loadMasterShiftManagement(); }, id); }
+
+  // ============ PRODUK & LAYANAN ============
+  function loadPriceListSelfServiceUI() {
+    if (!confirm("Reset daftar Self Service ke default?")) return;
+    runBackend('resetLayananSelfService', () => { showToast("✅ Self Service direset"); loadLayananManagement(); loadLayananPOS(); });
+  }
+
+  function loadLayananManagement() {
+    runBackend('getLayananListAll', function(list) {
+      const el = document.getElementById('listLayanan'); el.innerHTML = '';
+      if (!list || list.length === 0) { el.innerHTML = '<div class="empty-note">Belum ada layanan.</div>'; return; }
+      list.forEach(l => {
+        const div = document.createElement('div'); div.className = 'list-card';
+        const tipeTag = l.tipe === 'FullService' ? '<span class="pc-tag tag-full" style="font-size:10px; margin-left:6px;">Full</span>' : '<span class="pc-tag tag-self" style="font-size:10px; margin-left:6px;">Self</span>';
+        div.innerHTML = '<div class="list-card-left"><div class="list-icon">' + (l.icon || '🧺') + '</div><div><div class="list-name">' + l.nama + (l.aktif !== 'Y' ? ' <span class="tag-nonaktif">Nonaktif</span>' : '') + tipeTag + '</div><div class="list-sub">Rp ' + Number(l.harga).toLocaleString('id-ID') + ' / ' + l.satuan + '</div></div></div>' +
+          '<div class="list-actions"><button class="btn btn-sm btn-outline" onclick="toggleLayananUI(\'' + l.id + '\', ' + (l.aktif === 'Y' ? 'false' : 'true') + ')">' + (l.aktif === 'Y' ? '🚫' : '✅') + '</button><button class="btn btn-sm btn-cancel" onclick="hapusLayananUI(\'' + l.id + '\')">Hapus</button></div>';
+        el.appendChild(div);
+      });
+    });
+  }
+
+  function openModalLayanan() {
+    openModal('<div class="modal-title">Tambah Layanan</div><div class="form-group"><label>Nama</label><input id="mNamaLay" placeholder="Cuci Lipat"></div><div class="form-group"><label>Harga (Rp)</label><input id="mHargaLay" type="number" placeholder="10000"></div><div class="form-group"><label>Satuan</label><input id="mSatuanLay" value="kg"></div><div class="form-group"><label>Icon (Emoji)</label><input id="mIconLay" value="🧺"></div><div class="form-group"><label>Tipe</label><select id="mTipeLay"><option value="SelfService">Self Service</option><option value="FullService">Full Service</option></select></div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal()">Batal</button><button class="btn btn-primary" onclick="simpanLayanan()">Simpan</button></div>');
+  }
+
+  function simpanLayanan() {
+    const d = { nama: document.getElementById('mNamaLay').value.trim(), harga: Number(document.getElementById('mHargaLay').value), satuan: document.getElementById('mSatuanLay').value.trim(), icon: document.getElementById('mIconLay').value.trim(), tipe: document.getElementById('mTipeLay').value };
+    if (!d.nama || !d.harga) { alert("Nama & harga wajib."); return; }
+    runBackend('tambahLayanan', () => { closeModal(); showToast("✅ Layanan ditambahkan"); loadLayananManagement(); loadLayananPOS(); }, d);
+  }
+
+  function toggleLayananUI(id, aktif) { runBackend('toggleAktifLayanan', () => { showToast("Status diubah"); loadLayananManagement(); loadLayananPOS(); }, id, aktif); }
+  function hapusLayananUI(id) { if (!confirm("Hapus?")) return; runBackend('hapusLayanan', () => { showToast("Dihapus"); loadLayananManagement(); loadLayananPOS(); }, id); }
+
+  // ============ LAPORAN ============
+  function loadLaporan() {
+    const start = document.getElementById('tglMulai').value;
+    const end = document.getElementById('tglSelesai').value;
+    if (!start || !end) return;
+
+    runBackend('getLaporanRange', function(data) {
+      const r = data.ringkasan;
+      document.getElementById('rekapCards').innerHTML =
+        '<div class="rekap-card"><div class="label">Total Omzet</div><div class="value">Rp ' + r.totalOmzet.toLocaleString('id-ID') + '</div></div>' +
+        '<div class="rekap-card"><div class="label">Jumlah Transaksi</div><div class="value">' + r.jumlahTransaksi + '</div></div>' +
+        '<div class="rekap-card"><div class="label">Rata-rata</div><div class="value">Rp ' + r.rataRata.toLocaleString('id-ID') + '</div></div>' +
+        '<div class="rekap-card"><div class="label">Self / Full</div><div class="value" style="font-size:16px;">' + (r.selfCount || 0) + ' / ' + (r.fullCount || 0) + '</div></div>';
+
+      // Chart Omzet
+      if (chartOmzet) chartOmzet.destroy();
+      chartOmzet = new Chart(document.getElementById('chartOmzet'), {
+        type: 'bar', data: { labels: data.omzetHarian.map(d => d.tanggal), datasets: [{ label: 'Omzet', data: data.omzetHarian.map(d => d.omzet), backgroundColor: 'rgba(30,70,72,.75)', borderRadius: 6 }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+
+      // Chart Layanan
+      if (chartLayanan) chartLayanan.destroy();
+      const top5 = data.layananTerlaris.slice(0, 5);
+      chartLayanan = new Chart(document.getElementById('chartLayanan'), {
+        type: 'doughnut', data: { labels: top5.map(l => l.layanan), datasets: [{ data: top5.map(l => l.omzet), backgroundColor: ['#1E4648','#10B981','#F59E0B','#EF4444','#0EA5E9'] }] },
+        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+      });
+
+      // Table
+      let h = '<table><tr><th>Nota</th><th>Pelanggan</th><th>Total</th><th>Tipe</th><th>Status</th></tr>';
+      data.transaksiList.forEach(t => {
+        const tTag = t.tipe === 'FullService' ? '<span class="pc-tag tag-full" style="font-size:10px;">Full</span>' : '<span class="pc-tag tag-self" style="font-size:10px;">Self</span>';
+        h += '<tr><td><strong>' + t.noNota + '</strong><br><small style="color:var(--text-muted);">' + t.tanggal + '</small></td><td>' + t.namaPelanggan + '</td><td><strong>Rp ' + t.total.toLocaleString('id-ID') + '</strong></td><td>' + tTag + '</td><td>' + t.status + '</td></tr>';
+      });
+      h += '</table>';
+      document.getElementById('laporanTable').innerHTML = h;
+    }, start, end);
+  }
+
+  // ============ THERMAL PRINT ============
+  function cetakStrukThermal(tx) {
+    const el = document.getElementById('thermalReceipt');
+    let itemsHtml = '';
+    tx.items.forEach(i => {
+      itemsHtml += '<div>' + i.layanan + ' x' + i.qty + '</div><div class="r-row"><div></div><div>Rp ' + (i.qty * (i.hargaSatuan || i.subtotal / i.qty)).toLocaleString('id-ID') + '</div></div>';
+    });
+
+    el.innerHTML =
+      '<div class="r-header"><div class="r-title">DUA SISI POS</div><div>Outlet Central</div></div>' +
+      '<div class="r-divider"></div>' +
+      '<div class="r-row"><div>No Nota:</div><div>' + tx.noNota + '</div></div>' +
+      '<div class="r-row"><div>Tanggal:</div><div>' + tx.tanggal + '</div></div>' +
+      '<div class="r-row"><div>Pelanggan:</div><div>' + tx.namaPelanggan + '</div></div>' +
+      '<div class="r-row"><div>Petugas:</div><div>' + (tx.petugas || 'Kasir') + '</div></div>' +
+      '<div class="r-row"><div>Tipe:</div><div>' + (tx.tipe === 'FullService' ? 'Full Service' : 'Self Service') + '</div></div>' +
+      '<div class="r-divider"></div>' +
+      itemsHtml +
+      '<div class="r-divider"></div>' +
+      '<div class="r-row" style="font-weight:bold;font-size:13px;"><div>TOTAL</div><div>Rp ' + tx.total.toLocaleString('id-ID') + '</div></div>' +
+      '<div class="r-divider"></div>' +
+      '<div class="r-footer">Terima kasih telah menggunakan<br>jasa layanan kami! ✨</div>';
+
+    document.body.classList.add('printing-receipt');
+    setTimeout(() => { window.print(); document.body.classList.remove('printing-receipt'); }, 300);
+  }
+
+  async function cetakBluetoothDirect(tx) {
+    try {
+      const device = await navigator.bluetooth.requestDevice({ filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }] });
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+      const char = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+      const enc = new TextEncoder();
+      const ESC = '\x1B'; const LF = '\x0A';
+      let text = ESC + '@' + ESC + 'a\x01' + 'DUA SISI POS' + LF + 'Outlet Central' + LF;
+      text += '================================' + LF;
+      text += 'No: ' + tx.noNota + LF + 'Tgl: ' + tx.tanggal + LF + 'Plg: ' + tx.namaPelanggan + LF + 'Tipe: ' + (tx.tipe === 'FullService' ? 'Full Service' : 'Self Service') + LF;
+      text += '================================' + LF;
+      tx.items.forEach(i => { text += i.layanan + ' x' + i.qty + LF + '  Rp ' + (i.qty * i.hargaSatuan).toLocaleString('id-ID') + LF; });
+      text += '================================' + LF + ESC + 'a\x01' + 'TOTAL: Rp ' + tx.total.toLocaleString('id-ID') + LF + LF + 'Terima kasih!' + LF + LF + LF;
+      await char.writeValue(enc.encode(text));
+      showToast("✅ Dicetak via Bluetooth!");
+    } catch (err) { console.error(err); cetakStrukThermal(tx); }
+  }
+</script>
+</body>
+</html>
