@@ -437,7 +437,9 @@ function prosesTransaksi() {
         '<div><label class="block text-[11px] font-bold text-slate-500 mb-1">Nama Pelanggan <span class="text-red-500">*</span></label><input id="cNamaPelanggan" value="' + (customerDraft.nama || '') + '" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648]" placeholder="Masukkan nama pelanggan"></div>' +
         '<div><label class="block text-[11px] font-bold text-slate-500 mb-1">No HP / WhatsApp</label><input id="cNoHp" type="tel" value="' + (customerDraft.noHp || '') + '" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648]" placeholder="08..."></div>' +
         '<div class="grid grid-cols-2 gap-3">' +
-          '<div><label class="block text-[11px] font-bold text-slate-500 mb-1">Nama Petugas <span class="text-red-500">*</span></label><select id="cNamaPetugas" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648] bg-white"><option value="">— Memuat Petugas... —</option></select></div>' +
+          '<div><label class="block text-[11px] font-bold text-slate-500 mb-1">Nama Petugas <span class="text-red-500">*</span></label>' +
+          '<input id="cNamaPetugas" list="petugasDatalist" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648] bg-white" placeholder="🔍 Cari / pilih nama..." autocomplete="off">' +
+          '<datalist id="petugasDatalist"></datalist></div>' +
           '<div><label class="block text-[11px] font-bold text-slate-500 mb-1">Estimasi Selesai</label><input id="cEstimasi" type="date" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648]"></div>' +
         '</div>' +
       '</div>' +
@@ -446,9 +448,10 @@ function prosesTransaksi() {
   );
 
   runBackend('getPegawaiList', function(pList) {
-    const sel = document.getElementById('cNamaPetugas');
-    if (!sel) return;
-    sel.innerHTML = '';
+    const dl = document.getElementById('petugasDatalist');
+    const input = document.getElementById('cNamaPetugas');
+    if (!dl) return;
+    dl.innerHTML = '';
 
     const list = pList && pList.length > 0 ? pList : [
       { nama: 'Siti Rahma', jabatan: 'Kasir' },
@@ -456,14 +459,15 @@ function prosesTransaksi() {
       { nama: 'Manager / Owner', jabatan: 'Manager' }
     ];
 
-    list.forEach((p, idx) => {
+    list.forEach((p) => {
       const o = document.createElement('option');
-      const val = p.nama;
-      o.value = val;
-      o.innerText = p.nama + (p.jabatan ? ' (' + p.jabatan + ')' : '');
-      if (idx === 0) o.selected = true;
-      sel.appendChild(o);
+      o.value = p.nama + (p.jabatan ? ' (' + p.jabatan + ')' : '');
+      dl.appendChild(o);
     });
+
+    if (input && !input.value && list.length > 0) {
+      input.value = list[0].nama + (list[0].jabatan ? ' (' + list[0].jabatan + ')' : '');
+    }
   });
 }
 
