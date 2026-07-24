@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, LogIn, LogOut, RefreshCw, Calendar, UserCheck } from 'lucide-react';
+import { Clock, LogIn, LogOut, RefreshCw, UserCheck } from 'lucide-react';
 import { runBackend } from '@/lib/api';
+import { Pegawai } from '@/lib/types';
 
 interface AbsensiRecord {
   id: string;
@@ -15,18 +16,47 @@ interface AbsensiRecord {
   catatan: string;
 }
 
+interface MasterShift {
+  id: string;
+  nama: string;
+  jamMasuk: string;
+  jamKeluar: string;
+}
+
 export default function AbsensiView() {
+  const [pegawaiList, setPegawaiList] = useState<Pegawai[]>([]);
+  const [shiftList, setShiftList] = useState<MasterShift[]>([]);
   const [namaPegawai, setNamaPegawai] = useState('');
   const [shift, setShift] = useState('Shift 1 (Pagi)');
   const [catatan, setCatatan] = useState('');
   const [loading, setLoading] = useState(false);
   const [rekap, setRekap] = useState<AbsensiRecord[]>([]);
 
-  const loadAbsensi = async () => {
+  const loadInitialData = async () => {
     setLoading(true);
     try {
-      const data = await runBackend<AbsensiRecord[]>('getRekapAbsensi');
-      if (Array.isArray(data)) setRekap(data);
+      const [rekapRes, pegawaiRes, shiftRes] = await Promise.all([
+        runBackend<AbsensiRecord[]>('getRekapAbsensi').catch(() => []),
+        runBackend<Pegawai[]>('getPegawaiList').catch(() => []),
+        runBackend<MasterShift[]>('getMasterShiftList').catch(() => [])
+      ]);
+
+      if (Array.isArray(rekapRes)) setRekap(rekapRes);
+      if (Array.isArray(pegawaiRes) && pegawaiRes.length > 0) {
+        setPegawaiList(pegawaiRes);
+        setNamaPegawai(pegawaiRes[0].nama);
+      } else {
+        setPegawaiList([
+          { nama: 'Siti Rahma', jabatan: 'Kasir', role: 'STAFF' },
+          { nama: 'Budi Santoso', jabatan: 'Operator Laundry', role: 'STAFF' }
+        ]);
+        setNamaPegawai('Siti Rahma');
+      }
+
+      if (Array.isArray(shiftRes) && shiftRes.length > 0) {
+        setShiftList(shiftRes);
+        setShift(shiftRes[0].nama);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -35,17 +65,17 @@ export default function AbsensiView() {
   };
 
   useEffect(() => {
-    loadAbsensi();
+    loadInitialData();
   }, []);
 
   const handleClockIn = async () => {
-    if (!namaPegawai.trim()) { alert('Masukkan nama pegawai!'); return; }
+    if (!namaPegawai.trim()) { alert('Pilih nama pegawai!'); return; }
     setLoading(true);
     try {
       const res = await runBackend('clockInPegawai', namaPegawai.trim(), shift, catatan.trim());
       alert(res.message || 'Clock In Berhasil');
       setCatatan('');
-      loadAbsensi();
+      loadInitialData();
     } catch (err) {
       alert('Gagal Clock In');
     } finally {
@@ -54,13 +84,13 @@ export default function AbsensiView() {
   };
 
   const handleClockOut = async () => {
-    if (!namaPegawai.trim()) { alert('Masukkan nama pegawai!'); return; }
+    if (!namaPegawai.trim()) { alert('Pilih nama pegawai!'); return; }
     setLoading(true);
     try {
       const res = await runBackend('clockOutPegawai', namaPegawai.trim(), catatan.trim());
       alert(res.message || 'Clock Out Berhasil');
       setCatatan('');
-      loadAbsensi();
+      loadInitialData();
     } catch (err) {
       alert('Gagal Clock Out');
     } finally {
@@ -69,43 +99,59 @@ export default function AbsensiView() {
   };
 
   return (
-    <div className="p-5 space-y-5 max-w-5xl mx-auto">
+    <div className="p-3 md:p-4 space-y-4 w-full">
       {/* Clock In / Out Box */}
-      <div className="bg-white rounded-lg border border-slate-200 p-5">
-        <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-slate-800">
+      <div className="bg-white rounded-lg border border-slate-200 p-4">
+        <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-slate-800">
           <Clock className="w-4 h-4 text-[#1E4648]" />
           <span>Presensi Shift Pegawai</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Nama Pegawai</label>
-            <input
-              type="text"
+            <label className="block text-xs font-medium text-slate-500 mb-1">Pilih Pegawai *</label>
+            <select
               value={namaPegawai}
               onChange={(e) => setNamaPegawai(e.target.value)}
-              placeholder="Contoh: Siti Rahma"
-              className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
-            />
+              className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white font-medium text-slate-800"
+            >
+              {pegawaiList.map((p, idx) => (
+                <option key={idx} value={p.nama}>
+                  {p.nama} {p.jabatan ? `(${p.jabatan})` : ''}
+                </option>
+              ))}
+            </select>
           </div>
+
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Pilih Shift</label>
             <select
               value={shift}
               onChange={(e) => setShift(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white"
+              className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white text-slate-800"
             >
-              <option value="Shift 1 (Pagi)">Shift 1 (07.00 - 15.00)</option>
-              <option value="Shift 2 (Sore/Malam)">Shift 2 (15.00 - 23.00)</option>
+              {shiftList.length > 0 ? (
+                shiftList.map((s, idx) => (
+                  <option key={idx} value={s.nama}>
+                    {s.nama} ({s.jamMasuk} - {s.jamKeluar})
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="Shift 1 (Pagi)">Shift 1 (07.00 - 15.00)</option>
+                  <option value="Shift 2 (Sore/Malam)">Shift 2 (15.00 - 23.00)</option>
+                </>
+              )}
             </select>
           </div>
+
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Catatan (Opsional)</label>
             <input
               type="text"
               value={catatan}
               onChange={(e) => setCatatan(e.target.value)}
-              placeholder="Keterangan..."
+              placeholder="Keterangan shift..."
               className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
             />
           </div>
@@ -130,14 +176,14 @@ export default function AbsensiView() {
       </div>
 
       {/* Rekap Absensi Table */}
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden w-full">
+        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
             <UserCheck className="w-4 h-4 text-[#1E4648]" />
             <span>Riwayat Absensi</span>
           </div>
           <button
-            onClick={loadAbsensi}
+            onClick={loadInitialData}
             className="p-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition"
             title="Refresh"
           >
@@ -145,7 +191,7 @@ export default function AbsensiView() {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">

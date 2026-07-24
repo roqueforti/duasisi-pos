@@ -144,7 +144,7 @@ export default function RiwayatView() {
   });
 
   return (
-    <div className="p-5 space-y-4 max-w-6xl mx-auto">
+    <div className="p-3 md:p-4 space-y-4 w-full">
       {/* Header Filters & Search */}
       <div className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex bg-slate-100 p-0.5 rounded-md gap-0.5">

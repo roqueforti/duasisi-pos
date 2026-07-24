@@ -104,7 +104,7 @@ export default function MesinView() {
   };
 
   return (
-    <div className="p-5 space-y-5 max-w-5xl mx-auto">
+    <div className="p-3 md:p-4 space-y-4 w-full">
       {/* Header & Control */}
       <div className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
