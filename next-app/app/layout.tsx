@@ -21,6 +21,30 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                  for(let registration of registrations) {
+                    registration.unregister();
+                  }
+                });
+              }
+              if ('caches' in window) {
+                caches.keys().then(function(names) {
+                  for (let name of names) {
+                    if (name.includes('duasisi-pos-v')) {
+                      caches.delete(name);
+                    }
+                  }
+                });
+              }
+            `,
+          }}
+        />
+      </head>
       <body className={`${plusJakartaSans.variable} font-sans bg-slate-50 text-slate-900 antialiased h-full overflow-hidden`}>
         {children}
       </body>
