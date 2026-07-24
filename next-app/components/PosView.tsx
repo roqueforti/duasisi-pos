@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Minus, Trash2, CreditCard, User, Check, X } from 'lucide-react';
-import { LayananItem, CartItem, Pegawai } from '@/lib/types';
+import { LayananItem, CartItem, Pegawai, Transaksi } from '@/lib/types';
 import { runBackend } from '@/lib/api';
+import { addToPendingOutbox, saveLocalTxCache } from '@/lib/syncEngine';
 
 const defaultLayanan: LayananItem[] = [
   { layanan: 'Cuci 7.5 Kg', hargaSatuan: 10000, tipe: 'SelfService', satuan: 'kg', icon: '🫧' },
@@ -109,19 +110,52 @@ export default function PosView() {
       total: grandTotal
     };
 
-    try {
-      const res = await runBackend('simpanTransaksi', payload);
-      if (res.success) {
-        alert(`🎉 Transaksi Berhasil! Nota: ${res.noNota}`);
-        setCart({});
-        setCustomer({ nama: '', noHp: '' });
-        setShowCheckoutModal(false);
-      } else {
-        alert('⚠️ Gagal: ' + res.message);
+    if (navigator.onLine) {
+      try {
+        const res = await runBackend('simpanTransaksi', payload);
+        if (res && res.success) {
+          alert(`🎉 Transaksi Berhasil! Nota: ${res.noNota}`);
+          const txObj: Transaksi = {
+            noNota: res.noNota,
+            tanggal: new Date().toLocaleString('id-ID'),
+            namaPelanggan: payload.namaPelanggan,
+            noHp: payload.noHp,
+            petugas: payload.petugas,
+            tipe: payload.tipe,
+            total: payload.total,
+            status: 'Diterima',
+            items: payload.items
+          };
+          saveLocalTxCache(txObj);
+          setCart({});
+          setCustomer({ nama: '', noHp: '' });
+          setShowCheckoutModal(false);
+          return;
+        }
+      } catch (err) {
+        // Fallback to offline outbox
       }
-    } catch (err: any) {
-      alert('⚠️ Gagal menyimpan transaksi!');
     }
+
+    // OFFLINE SYNC ENGINE FALLBACK:
+    const offlineItem = addToPendingOutbox(payload);
+    const localTx: Transaksi = {
+      noNota: offlineItem.id,
+      tanggal: new Date().toLocaleString('id-ID') + ' (Offline)',
+      namaPelanggan: payload.namaPelanggan,
+      noHp: payload.noHp,
+      petugas: payload.petugas,
+      tipe: payload.tipe,
+      total: payload.total,
+      status: 'Diterima',
+      items: payload.items
+    };
+    saveLocalTxCache(localTx);
+
+    alert(`📶 Mode Offline: Transaksi disimpan lokal (Nota: ${offlineItem.id}). Otomatis tersinkron saat internet tersambung!`);
+    setCart({});
+    setCustomer({ nama: '', noHp: '' });
+    setShowCheckoutModal(false);
   };
 
   return (

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, Send, Eye, CheckCircle, RefreshCw, X } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend } from '@/lib/api';
+import { getLocalTxCache } from '@/lib/syncEngine';
 
 export default function RiwayatView() {
   const [filter, setFilter] = useState<'Semua' | 'SelfService' | 'FullService'>('Semua');
@@ -14,11 +15,26 @@ export default function RiwayatView() {
 
   const loadRiwayat = async () => {
     setLoading(true);
+    const localCached = getLocalTxCache();
+    
+    if (!navigator.onLine) {
+      setTxList(localCached);
+      setLoading(false);
+      return;
+    }
+
     try {
       const data = await runBackend<Transaksi[]>('getTransaksiList', 'Semua');
-      if (Array.isArray(data)) setTxList(data);
+      if (Array.isArray(data)) {
+        // Merge server transactions with any local offline transactions not yet on server
+        const seen = new Set(data.map(t => t.noNota));
+        const unSyncedLocal = localCached.filter(t => !seen.has(t.noNota));
+        setTxList([...unSyncedLocal, ...data]);
+      } else {
+        setTxList(localCached);
+      }
     } catch (err) {
-      console.error(err);
+      setTxList(localCached);
     } finally {
       setLoading(false);
     }
