@@ -1,0 +1,231 @@
+/* ============================================================
+   DUA SISI POS — DESIGN SYSTEM & CUSTOM STYLES
+   Theme Palette: #1E4648 (Deep Teal)
+   ============================================================ */
+
+:root {
+  --primary: #1E4648;
+  --primary-hover: #153334;
+  --primary-light: #E9F1F2;
+  --primary-dark: #102728;
+  --primary-glow: rgba(30, 70, 72, 0.18);
+  --bg: #F8FAFC;
+  --card-bg: #FFFFFF;
+  --sidebar-bg: #11292B;
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --text-light: #94A3B8;
+  --border: #E2E8F0;
+  
+  --success: #10B981;
+  --success-bg: #D1FAE5;
+  --warning: #F59E0B;
+  --warning-bg: #FEF3C7;
+  --danger: #EF4444;
+  --danger-bg: #FEE2E2;
+  --info: #0EA5E9;
+  --info-bg: #E0F2FE;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Glassmorphism & Elevation */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.shadow-glow {
+  box-shadow: 0 4px 20px rgba(30, 70, 72, 0.15);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pop {
+  animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* MOKA POS LAYOUT */
+.pos-container {
+  display: flex;
+  gap: 16px;
+  height: calc(100vh - 84px);
+  height: calc(100dvh - 84px);
+  overflow: hidden;
+}
+
+.pos-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.pos-right {
+  width: 360px;
+  background: #FFFFFF;
+  border-radius: 16px;
+  border: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.cart-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed #E2E8F0;
+  transition: background 0.15s;
+}
+
+/* PIPELINE KANBAN */
+.pipeline-board {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pipeline-col {
+  min-width: 240px;
+  max-width: 280px;
+  flex-shrink: 0;
+  background: #F1F5F9;
+  border-radius: 16px;
+  border: 1px solid #E2E8F0;
+}
+
+.pipeline-card {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 14px;
+  border: 1px solid #E2E8F0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.pipeline-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(30, 70, 72, 0.12);
+  border-color: #1E4648;
+}
+
+/* TIMELINE */
+.timeline {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.timeline li {
+  position: relative;
+  padding-left: 28px;
+  padding-bottom: 18px;
+  border-left: 2px solid #E2E8F0;
+}
+.timeline li:last-child {
+  border-left: 2px solid transparent;
+  padding-bottom: 0;
+}
+.timeline li .t-dot {
+  position: absolute;
+  left: -7px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 99px;
+  background: #CBD5E1;
+  border: 2px solid #FFF;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.timeline li.done .t-dot {
+  background: #10B981;
+}
+.timeline li.active .t-dot {
+  background: #1E4648;
+  animation: pulseGlow 1.5s infinite;
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(30, 70, 72, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(30, 70, 72, 0); }
+}
+
+/* THERMAL RECEIPT STYLES FOR PRINTING */
+#thermalReceipt {
+  display: none;
+  width: 58mm;
+  max-width: 100%;
+  padding: 6px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: #000;
+  background: #fff;
+  line-height: 1.2;
+}
+#thermalReceipt .r-header { text-align: center; font-weight: bold; margin-bottom: 8px; }
+#thermalReceipt .r-title { font-size: 14px; text-transform: uppercase; }
+#thermalReceipt .r-divider { border-top: 1px dashed #000; margin: 6px 0; }
+#thermalReceipt .r-row { display: flex; justify-content: space-between; margin: 2px 0; }
+#thermalReceipt .r-footer { text-align: center; margin-top: 10px; font-size: 10px; }
+
+@media print {
+  body * { visibility: hidden !important; }
+  body.printing-receipt #thermalReceipt, body.printing-receipt #thermalReceipt * { visibility: visible !important; }
+  body.printing-receipt #thermalReceipt { display: block !important; position: absolute; left: 0; top: 0; width: 58mm; }
+}
+
+/* RESPONSIVE LAYOUT */
+@media (max-width: 850px) {
+  .pos-right { width: 300px; }
+}
+
+@media (max-width: 640px) {
+  .pos-container {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+    gap: 16px;
+  }
+  .pos-left { overflow: visible; }
+  .pos-right {
+    width: 100%;
+    height: auto;
+    max-height: none;
+    flex-shrink: 0;
+  }
+}
