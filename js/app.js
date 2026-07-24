@@ -1109,6 +1109,7 @@ function openModal(html) {
   if (m) {
     m.classList.remove('hidden');
     m.classList.add('flex');
+    m.style.display = 'flex';
   }
 }
 
@@ -1117,6 +1118,7 @@ function closeModal() {
   if (m) {
     m.classList.add('hidden');
     m.classList.remove('flex');
+    m.style.display = 'none';
   }
 }
 

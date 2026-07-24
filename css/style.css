@@ -185,6 +185,33 @@
   50% { box-shadow: 0 0 0 6px rgba(30, 70, 72, 0); }
 }
 
+/* UNIVERSAL MODAL CENTERING */
+#modalOverlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background-color: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+#modalOverlay.flex {
+  display: flex !important;
+}
+
+#modalBox {
+  margin: auto !important;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
 /* THERMAL RECEIPT STYLES FOR PRINTING */
 #thermalReceipt {
   display: none;
