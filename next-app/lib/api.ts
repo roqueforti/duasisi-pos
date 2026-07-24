@@ -1,4 +1,4 @@
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxnc_m6BqGoFKXXPnJLVT0QuJRJw0PXaKLmnjOfli2EWcpMtPosq2vJEGYNXkAo9cjKPQ/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxK417ni-3Ya51LdwSBwF-30HMYv2rXKIvAEUjAaqAstTSXL82_vQKmA42N_J8JRhmIlg/exec';
 
 export async function runBackend<T = any>(action: string, ...args: any[]): Promise<T> {
   const payload = { action, args };

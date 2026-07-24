@@ -188,7 +188,7 @@ function setupSheets() {
   shPipe.clear();
   shPipe.appendRow(["ID", "No Nota", "Step", "Nama Step", "Status", "Assigned Staff", "Mesin ID", "Waktu Mulai", "Waktu Selesai", "Catatan"]);
 
-  SpreadsheetApp.getUi().alert("✅ Setup v2.0 selesai! Semua sheet sudah dibuat.");
+  Logger.log("✅ Setup v2.0 selesai! Semua sheet sudah dibuat.");
 }
 
 // ============================================================
