@@ -613,12 +613,47 @@ function bukaDetailRiwayatModal(noNota) {
       `<div class="text-xs text-slate-500 mb-3">Pelanggan: <strong>${tx.namaPelanggan}</strong> (${tx.noHp || '-'})<br>Tanggal: ${tx.tanggal} · Petugas: ${tx.petugas}</div>` +
       '<div class="bg-slate-50 p-3 rounded-xl mb-3 space-y-1">' + itemRows + '</div>' +
       `<div class="flex justify-between items-center font-extrabold text-sm text-slate-900 mb-4"><span>TOTAL BAYAR</span><span class="text-[#1E4648] text-base">Rp ${Number(tx.total).toLocaleString('id-ID')}</span></div>` +
-      '<div class="flex gap-2 justify-end pt-2 border-t border-slate-100">' +
-        `<button class="bg-[#1E4648] text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5" onclick="cetakStrukDirect('${tx.noNota}')">🖨️ Cetak Struk</button>` +
-        '<button class="bg-slate-100 text-slate-600 font-bold px-4 py-2 rounded-xl text-xs" onclick="closeModal()">Tutup</button>' +
+      '<div class="flex flex-wrap gap-2 justify-end pt-2 border-t border-slate-100">' +
+        `<button class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition" onclick="kirimWhatsAppStrukDirect('${tx.noNota}')">📱 Kirim WA Struk</button>` +
+        `<button class="bg-[#1E4648] hover:bg-[#153334] text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition" onclick="cetakStrukDirect('${tx.noNota}')">🖨️ Cetak Struk</button>` +
+        '<button class="bg-slate-100 text-slate-600 font-bold px-3.5 py-2 rounded-xl text-xs" onclick="closeModal()">Tutup</button>' +
       '</div>' +
     '</div>'
   );
+}
+
+function kirimWhatsAppStrukDirect(noNota) {
+  const tx = riwayatDataCache.find(t => t.noNota === noNota);
+  if (!tx) { showToast('⚠️ Data nota tidak ditemukan', 'error'); return; }
+
+  let rawPhone = (tx.noHp || '').replace(/[^0-9]/g, '');
+  if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
+  if (!rawPhone) { showToast('⚠️ No HP pelanggan belum diisi!', 'error'); return; }
+
+  let itemText = '';
+  (tx.items || []).forEach(i => {
+    itemText += `• ${i.layanan} (${i.qty}x) = Rp ${(i.qty * i.hargaSatuan).toLocaleString('id-ID')}\n`;
+  });
+
+  const msg = `✨ *DUA SISI POS — NOTA LAUNDRY DIGITAL* ✨\n` +
+    `====================================\n` +
+    `No. Nota   : ${tx.noNota}\n` +
+    `Tanggal    : ${tx.tanggal}\n` +
+    `Pelanggan  : ${tx.namaPelanggan}\n` +
+    `Layanan    : ${tx.tipe}\n` +
+    `Petugas    : ${tx.petugas}\n` +
+    `------------------------------------\n` +
+    `*RINCIAN ITEM:*\n` +
+    itemText +
+    `------------------------------------\n` +
+    `*TOTAL BAYAR : Rp ${Number(tx.total).toLocaleString('id-ID')}*\n` +
+    `====================================\n` +
+    `Status : ${tx.status}\n\n` +
+    `Terima kasih telah mencuci di *Dua SiSi POS*! 🧺\n` +
+    `Pakaian Bersih, Rapi & Wangi ✨`;
+
+  const waUrl = `https://api.whatsapp.com/send?phone=${rawPhone}&text=${encodeURIComponent(msg)}`;
+  window.open(waUrl, '_blank');
 }
 
 function cetakStrukDirect(noNota) {
