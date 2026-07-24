@@ -202,7 +202,7 @@ function switchTab(tab) {
 
   toggleSidebar(false);
 
-  ['transaksi', 'pipeline', 'absensi', 'inventory', 'mesin', 'pegawai', 'produk', 'rekap'].forEach(t => {
+  ['transaksi', 'riwayat', 'absensi', 'inventory', 'mesin', 'pegawai', 'produk', 'rekap'].forEach(t => {
     const el = document.getElementById('tab-' + t);
     if (el) {
       if (t === tab) el.classList.remove('hidden');
@@ -211,13 +211,13 @@ function switchTab(tab) {
   });
 
   const titles = {
-    transaksi: 'Transaksi Baru', pipeline: 'Pipeline Tracking', absensi: 'Absensi Shift',
+    transaksi: 'Transaksi Baru', riwayat: 'Riwayat Transaksi', absensi: 'Absensi Shift',
     inventory: 'Inventory Stok', mesin: 'Status Mesin', pegawai: 'Pegawai & Kinerja',
     produk: 'Produk & Layanan', rekap: 'Laporan Omzet'
   };
   document.getElementById('pageTitle').innerText = titles[tab] || 'Dua SiSi POS';
 
-  if (tab === 'pipeline') loadPipeline('Semua');
+  if (tab === 'riwayat') loadRiwayatTransaksi();
   if (tab === 'absensi') loadAbsensiUI();
   if (tab === 'inventory') loadInventory();
   if (tab === 'mesin') loadMesin();
@@ -470,164 +470,184 @@ function konfirmasiTransaksi() {
   }, data);
 }
 
-// ============ PIPELINE TRACKING KANBAN ============
-function loadPipeline(filter) {
-  runBackend('getTransaksiByPipeline', function(txList) {
-    const board = document.getElementById('pipelineBoard');
-    if (!board) return;
+// ============ RIWAYAT TRANSAKSI & STRUK ============
+let riwayatDataCache = [];
+let currentRiwayatFilter = 'Semua';
 
-    const stepMap = {};
-    (txList || []).forEach(tx => {
-      const activeStep = tx.pipeline.find(p => p.status === 'Aktif');
-      const stepName = activeStep ? activeStep.namaStep : 'Diterima';
-      if (!stepMap[stepName]) stepMap[stepName] = { icon: activeStep ? '📋' : '📥', cards: [] };
-      stepMap[stepName].cards.push(tx);
-    });
-
-    const allSteps = [];
-    const selfConfig = [{step:1,nama:'Diterima',icon:'📥'},{step:2,nama:'Washer',icon:'🫧'},{step:3,nama:'Dryer',icon:'♨️'}];
-    const fullConfig = [{step:1,nama:'Diterima',icon:'📥'},{step:2,nama:'Timbang & Sorting',icon:'⚖️'},{step:3,nama:'Cuci',icon:'🫧'},{step:4,nama:'Pengeringan',icon:'♨️'},{step:5,nama:'Setrika',icon:'👔'},{step:6,nama:'Lipat & Packing',icon:'📦'},{step:7,nama:'Siap Ambil',icon:'✅'}];
-    const configToUse = filter === 'SelfService' ? selfConfig : filter === 'FullService' ? fullConfig : [...selfConfig, ...fullConfig];
-
-    const seen = new Set();
-    configToUse.forEach(c => { if (!seen.has(c.nama)) { allSteps.push(c); seen.add(c.nama); } });
-
-    board.innerHTML = '';
-    if ((txList || []).length === 0 && allSteps.length === 0) {
-      board.innerHTML = '<div class="w-full text-center py-12 text-slate-400 text-xs">Belum ada transaksi aktif di pipeline.</div>';
-      return;
-    }
-
-    allSteps.forEach(col => {
-      const cards = stepMap[col.nama] ? stepMap[col.nama].cards : [];
-      const colDiv = document.createElement('div');
-      colDiv.className = 'pipeline-col';
-      let cardsHtml = '';
-      cards.forEach(tx => {
-        const tipeTag = tx.tipe === 'FullService'
-          ? '<span class="bg-red-100 text-red-800 text-[10px] font-extrabold px-2 py-0.5 rounded">Full Service</span>'
-          : '<span class="bg-blue-100 text-blue-800 text-[10px] font-extrabold px-2 py-0.5 rounded">Self Service</span>';
-        cardsHtml +=
-          `<div class="pipeline-card" onclick="openPipelineDetail('${tx.noNota}')">` +
-            `<div class="text-xs font-extrabold text-[#1E4648]">${tx.noNota}</div>` +
-            `<div class="text-sm font-bold text-slate-800 my-1">${tx.namaPelanggan}</div>` +
-            `<div class="text-xs text-slate-400">Rp ${tx.total.toLocaleString('id-ID')} · ${tx.petugas}</div>` +
-            `<div class="mt-2">${tipeTag}</div>` +
-          `</div>`;
-      });
-
-      colDiv.innerHTML =
-        '<div class="p-3 border-b border-slate-200 flex items-center gap-2">' +
-          `<span class="text-lg">${col.icon}</span>` +
-          `<span class="text-xs font-extrabold text-slate-800">${col.nama}</span>` +
-          `<span class="bg-[#1E4648] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full ml-auto">${cards.length}</span>` +
-        '</div>' +
-        '<div class="p-2.5 min-h-[100px] space-y-2">' + (cardsHtml || '<div class="text-center text-[11px] text-slate-300 py-6">Kosong</div>') + '</div>';
-      board.appendChild(colDiv);
-    });
-  }, filter);
+function loadRiwayatTransaksi() {
+  runBackend('getTransaksiList', function(txList) {
+    riwayatDataCache = txList || [];
+    renderRiwayatList();
+  }, 'Semua');
 }
 
-function openPipelineDetail(noNota) {
-  runBackend('getPipelineSteps', function(steps) {
-    runBackend('getTransaksiList', function(allTx) {
-      const tx = (allTx || []).find(t => t.noNota === noNota);
-      if (!tx) { showToast('⚠️ Transaksi tidak ditemukan', 'error'); return; }
-
-      const itemTags = tx.items.map(i => `<span class="bg-teal-50 text-[#1E4648] border border-teal-200 font-bold px-2 py-1 rounded-md text-[11px] mr-1 mb-1 inline-block">${i.layanan} x${i.qty}</span>`).join('');
-      const tipeTag = tx.tipe === 'FullService' ? '<span class="bg-red-100 text-red-800 text-xs font-bold px-2.5 py-0.5 rounded">Full Service</span>' : '<span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded">Self Service</span>';
-
-      let timelineHtml = '<ul class="timeline mt-3">';
-      const activeStep = (steps || []).find(s => s.status === 'Aktif');
-
-      (steps || []).forEach(s => {
-        let cls = '';
-        if (s.status === 'Selesai') cls = 'done';
-        else if (s.status === 'Aktif') cls = 'active';
-
-        const staffInfo = s.assignedStaff ? ' · 👨‍💼 ' + s.assignedStaff : '';
-        const timeInfo = s.waktuMulai ? '<br>Mulai: ' + s.waktuMulai : '';
-        const endInfo = s.waktuSelesai ? ' → Selesai: ' + s.waktuSelesai : '';
-
-        timelineHtml += `<li class="${cls}"><div class="t-dot"></div><div class="t-title">${s.namaStep} <span class="text-[11px] text-slate-400">(${s.status})</span></div>` +
-          `<div class="t-sub">${staffInfo}${timeInfo}${endInfo}</div></li>`;
-      });
-      timelineHtml += '</ul>';
-
-      if (activeStep) {
-        runBackend('getPipelineConfig', function(config) {
-          const stepConfig = (config || []).find(c => c.nama === activeStep.namaStep);
-          let staffSelect = '';
-          let mesinSelect = '';
-
-          if (stepConfig && stepConfig.needStaff) {
-            staffSelect = '<div class="mb-3"><label class="block text-xs font-bold text-slate-500 mb-1">Assign Staff untuk Step Ini</label><select id="pipeStaff" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648]"><option value="">— Pilih Staff —</option></select></div>';
-          }
-          if (stepConfig && stepConfig.needMesin) {
-            mesinSelect = '<div class="mb-3"><label class="block text-xs font-bold text-slate-500 mb-1">Pilih Mesin</label><select id="pipeMesin" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648]"><option value="">— Pilih Mesin —</option></select></div>';
-          }
-
-          const modalContent =
-            '<div class="text-left">' +
-              `<div class="text-base font-extrabold text-slate-900 mb-1">📋 ${noNota} ${tipeTag}</div>` +
-              `<div class="text-xs text-slate-500 mb-2"><strong>${tx.namaPelanggan}</strong> · ${tx.noHp || '-'} · ${tx.tanggal}</div>` +
-              `<div class="mb-3">${itemTags}</div>` +
-              `<div class="text-lg font-extrabold text-[#1E4648] mb-4">Total: Rp ${tx.total.toLocaleString('id-ID')}</div>` +
-              '<div class="text-xs font-bold text-slate-800 mb-2">📍 Pipeline Progress</div>' +
-              timelineHtml +
-              '<div class="mt-4 pt-3 border-t border-dashed border-slate-200">' +
-                `<div class="text-xs font-bold text-slate-800 mb-2">⏭️ Majukan: ${activeStep.namaStep} → Next</div>` +
-                staffSelect + mesinSelect +
-                '<div class="mb-3"><label class="block text-xs font-bold text-slate-500 mb-1">Catatan (Opsional)</label><input id="pipeCatatan" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648]" placeholder="Catatan proses"></div>' +
-                `<button class="w-full bg-[#1E4648] hover:bg-[#153334] text-white font-extrabold py-2.5 rounded-xl text-xs shadow-md transition active:scale-95" onclick="doAdvancePipeline('${noNota}')">✅ Selesaikan Step & Lanjut</button>` +
-              '</div>' +
-            '</div>';
-
-          openModal(modalContent);
-
-          if (stepConfig && stepConfig.needStaff) {
-            runBackend('getPegawaiList', function(pList) {
-              const sel = document.getElementById('pipeStaff');
-              if (sel) (pList || []).forEach(p => { const o = document.createElement('option'); o.value = p.nama; o.innerText = p.nama; sel.appendChild(o); });
-            });
-          }
-          if (stepConfig && stepConfig.needMesin) {
-            runBackend('getMesinList', function(mList) {
-              const sel = document.getElementById('pipeMesin');
-              if (sel) (mList || []).filter(m => m.status === 'Kosong').forEach(m => { const o = document.createElement('option'); o.value = m.id; o.innerText = m.nama + ' (' + m.tipe + ')'; sel.appendChild(o); });
-            });
-          }
-        }, tx.tipe);
-      } else {
-        openModal(
-          '<div class="text-left">' +
-            `<div class="text-base font-extrabold text-slate-900 mb-1">📋 ${noNota} ${tipeTag}</div>` +
-            `<div class="text-xs text-slate-500 mb-2"><strong>${tx.namaPelanggan}</strong> · ${tx.tanggal}</div>` +
-            `<div class="mb-3">${itemTags}</div>` +
-            `<div class="text-lg font-extrabold text-[#1E4648] mb-4">Total: Rp ${tx.total.toLocaleString('id-ID')}</div>` +
-            timelineHtml +
-            '<div class="mt-4 flex justify-end"><button class="bg-slate-100 text-slate-600 font-bold px-4 py-2 rounded-xl text-xs" onclick="closeModal()">Tutup</button></div>' +
-          '</div>'
-        );
-      }
-    }, 'Semua');
-  }, noNota);
+function filterRiwayat(filter, btnEl) {
+  currentRiwayatFilter = filter;
+  if (btnEl) {
+    document.querySelectorAll('#tab-riwayat .filter-btn').forEach(b => {
+      b.classList.remove('bg-[#1E4648]', 'text-white', 'shadow-sm');
+      b.classList.add('bg-slate-200', 'text-slate-700');
+    });
+    btnEl.classList.remove('bg-slate-200', 'text-slate-700');
+    btnEl.classList.add('bg-[#1E4648]', 'text-white', 'shadow-sm');
+  }
+  renderRiwayatList();
 }
 
-function doAdvancePipeline(noNota) {
-  const staff = document.getElementById('pipeStaff') ? document.getElementById('pipeStaff').value : '';
-  const mesin = document.getElementById('pipeMesin') ? document.getElementById('pipeMesin').value : '';
-  const catatan = document.getElementById('pipeCatatan') ? document.getElementById('pipeCatatan').value.trim() : '';
+function renderRiwayatList() {
+  const searchEl = document.getElementById('searchRiwayat');
+  const query = (searchEl ? searchEl.value : '').toLowerCase().trim();
+  const wrapper = document.getElementById('riwayatTableWrapper');
+  if (!wrapper) return;
 
-  runBackend('advancePipeline', function(res) {
-    if (res.success) {
-      showToast(res.message);
-      closeModal();
-      loadPipeline('Semua');
-    } else {
-      showToast('⚠️ ' + res.message, 'error');
+  let filtered = riwayatDataCache;
+  if (currentRiwayatFilter !== 'Semua') {
+    filtered = filtered.filter(t => t.tipe === currentRiwayatFilter);
+  }
+  if (query) {
+    filtered = filtered.filter(t => 
+      t.noNota.toLowerCase().includes(query) || 
+      (t.namaPelanggan && t.namaPelanggan.toLowerCase().includes(query)) ||
+      (t.noHp && t.noHp.includes(query))
+    );
+  }
+
+  if (filtered.length === 0) {
+    wrapper.innerHTML = '<div class="text-center py-12 text-slate-400 text-xs">Belum ada riwayat transaksi.</div>';
+    return;
+  }
+
+  let html = `
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+            <th class="py-3 px-4 text-left">No Nota & Tanggal</th>
+            <th class="py-3 px-4 text-left">Pelanggan</th>
+            <th class="py-3 px-4 text-left">Total (Rp)</th>
+            <th class="py-3 px-4 text-left">Tipe</th>
+            <th class="py-3 px-4 text-left">Status</th>
+            <th class="py-3 px-4 text-right">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  filtered.forEach(tx => {
+    const tipeBadge = tx.tipe === 'FullService'
+      ? '<span class="bg-red-100 text-red-800 text-[10px] font-extrabold px-2 py-0.5 rounded">Full Service</span>'
+      : '<span class="bg-blue-100 text-blue-800 text-[10px] font-extrabold px-2 py-0.5 rounded">Self Service</span>';
+
+    let statusBadge = '<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded">Diterima</span>';
+    if (tx.status === 'Selesai') {
+      statusBadge = '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">✅ Selesai</span>';
+    } else if (tx.status === 'Batal') {
+      statusBadge = '<span class="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded">🚫 Batal</span>';
     }
-  }, noNota, staff, mesin, catatan);
+
+    html += `
+      <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
+        <td class="py-3 px-4">
+          <div class="font-extrabold text-[#1E4648]">${tx.noNota}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">${tx.tanggal}</div>
+        </td>
+        <td class="py-3 px-4">
+          <div class="font-bold text-slate-800">${tx.namaPelanggan}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">${tx.noHp || '-'}</div>
+        </td>
+        <td class="py-3 px-4 font-extrabold text-slate-900">
+          Rp ${Number(tx.total).toLocaleString('id-ID')}
+        </td>
+        <td class="py-3 px-4">${tipeBadge}</td>
+        <td class="py-3 px-4">${statusBadge}</td>
+        <td class="py-3 px-4 text-right space-x-1">
+          <button class="bg-[#1E4648] text-white text-[11px] font-bold px-2.5 py-1 rounded-lg hover:bg-[#153334] transition" onclick="bukaDetailRiwayatModal('${tx.noNota}')">Detail & Struk</button>
+          ${tx.status !== 'Selesai' ? `<button class="bg-emerald-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg hover:bg-emerald-700 transition" onclick="updateStatusTransaksiUI('${tx.noNota}', 'Selesai')">Selesai</button>` : ''}
+        </td>
+      </tr>
+    `;
+  });
+
+  html += '</tbody></table></div>';
+  wrapper.innerHTML = html;
+}
+
+function updateStatusTransaksiUI(noNota, status) {
+  if (!confirm(`Tandai nota ${noNota} sebagai '${status}'?`)) return;
+  runBackend('updateStatus', function(res) {
+    showToast('Status diperbarui menjadi ' + status);
+    loadRiwayatTransaksi();
+  }, noNota, status);
+}
+
+function bukaDetailRiwayatModal(noNota) {
+  const tx = riwayatDataCache.find(t => t.noNota === noNota);
+  if (!tx) { showToast('⚠️ Data nota tidak ditemukan', 'error'); return; }
+
+  let itemRows = '';
+  (tx.items || []).forEach(i => {
+    itemRows += `
+      <div class="flex justify-between items-center py-1.5 border-b border-dashed border-slate-100 text-xs">
+        <div>
+          <div class="font-bold text-slate-800">${i.layanan}</div>
+          <div class="text-[10px] text-slate-400">Rp ${Number(i.hargaSatuan).toLocaleString('id-ID')} x ${i.qty}</div>
+        </div>
+        <div class="font-extrabold text-slate-800">Rp ${(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</div>
+      </div>
+    `;
+  });
+
+  openModal(
+    '<div class="text-left">' +
+      `<div class="text-base font-extrabold text-slate-900 mb-1 flex justify-between items-center"><span>🧾 Detail ${noNota}</span><span class="text-xs font-bold bg-teal-50 text-[#1E4648] px-2 py-0.5 rounded-full">${tx.tipe}</span></div>` +
+      `<div class="text-xs text-slate-500 mb-3">Pelanggan: <strong>${tx.namaPelanggan}</strong> (${tx.noHp || '-'})<br>Tanggal: ${tx.tanggal} · Petugas: ${tx.petugas}</div>` +
+      '<div class="bg-slate-50 p-3 rounded-xl mb-3 space-y-1">' + itemRows + '</div>' +
+      `<div class="flex justify-between items-center font-extrabold text-sm text-slate-900 mb-4"><span>TOTAL BAYAR</span><span class="text-[#1E4648] text-base">Rp ${Number(tx.total).toLocaleString('id-ID')}</span></div>` +
+      '<div class="flex gap-2 justify-end pt-2 border-t border-slate-100">' +
+        `<button class="bg-[#1E4648] text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5" onclick="cetakStrukDirect('${tx.noNota}')">🖨️ Cetak Struk</button>` +
+        '<button class="bg-slate-100 text-slate-600 font-bold px-4 py-2 rounded-xl text-xs" onclick="closeModal()">Tutup</button>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function cetakStrukDirect(noNota) {
+  const tx = riwayatDataCache.find(t => t.noNota === noNota);
+  if (!tx) return;
+
+  const receipt = document.getElementById('thermalReceipt');
+  if (!receipt) return;
+
+  let itemHtml = '';
+  (tx.items || []).forEach(i => {
+    itemHtml += `<div class="r-row"><span>${i.layanan} x${i.qty}</span><span>${(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</span></div>`;
+  });
+
+  receipt.innerHTML = `
+    <div class="r-header">
+      <div class="r-title">DUA SISI POS</div>
+      <div>Smart Laundry & Service</div>
+      <div>Telp/WA: 0812-XXXX-XXXX</div>
+    </div>
+    <div class="r-divider"></div>
+    <div class="r-row"><span>Nota:</span><span>${tx.noNota}</span></div>
+    <div class="r-row"><span>Tgl:</span><span>${tx.tanggal}</span></div>
+    <div class="r-row"><span>Pelanggan:</span><span>${tx.namaPelanggan}</span></div>
+    <div class="r-row"><span>Petugas:</span><span>${tx.petugas}</span></div>
+    <div class="r-divider"></div>
+    ${itemHtml}
+    <div class="r-divider"></div>
+    <div class="r-row" style="font-weight:bold; font-size:12px;"><span>TOTAL</span><span>Rp ${Number(tx.total).toLocaleString('id-ID')}</span></div>
+    <div class="r-divider"></div>
+    <div class="r-footer">
+      <div>Terima kasih atas kunjungan Anda!</div>
+      <div>Pakaian Bersih, Rapi & Wangi</div>
+    </div>
+  `;
+
+  document.body.classList.add('printing-receipt');
+  window.print();
+  setTimeout(() => document.body.classList.remove('printing-receipt'), 1000);
 }
 
 // ============ ABSENSI SHIFT ============

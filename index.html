@@ -99,8 +99,8 @@
             <button data-tab="transaksi" class="nav-item active w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition" onclick="switchTab('transaksi')">
               <i data-lucide="shopping-cart" class="w-4 h-4"></i> Transaksi Baru
             </button>
-            <button data-tab="pipeline" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-slate-300 hover:bg-white/10" onclick="switchTab('pipeline')">
-              <i data-lucide="kanban" class="w-4 h-4"></i> Pipeline Tracking
+            <button data-tab="riwayat" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-slate-300 hover:bg-white/10" onclick="switchTab('riwayat')">
+              <i data-lucide="history" class="w-4 h-4"></i> Riwayat Transaksi
             </button>
             <button data-tab="absensi" class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition text-slate-300 hover:bg-white/10" onclick="switchTab('absensi')">
               <i data-lucide="clock" class="w-4 h-4"></i> Absensi Shift
@@ -221,14 +221,20 @@
           </div>
         </div>
 
-        <!-- TAB PIPELINE -->
-        <div id="tab-pipeline" class="hidden space-y-4">
-          <div class="flex gap-2">
-            <button class="bg-[#1E4648] text-white font-extrabold px-3 py-1.5 rounded-full text-xs" onclick="loadPipeline('Semua')">Semua</button>
-            <button class="bg-slate-200 text-slate-700 font-extrabold px-3 py-1.5 rounded-full text-xs" onclick="loadPipeline('SelfService')">Self Service</button>
-            <button class="bg-slate-200 text-slate-700 font-extrabold px-3 py-1.5 rounded-full text-xs" onclick="loadPipeline('FullService')">Full Service</button>
+        <!-- TAB RIWAYAT TRANSAKSI -->
+        <div id="tab-riwayat" class="hidden space-y-4">
+          <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+            <div class="flex gap-2">
+              <button class="filter-btn active bg-[#1E4648] text-white font-extrabold px-3.5 py-1.5 rounded-full text-xs transition shadow-sm" onclick="filterRiwayat('Semua', this)">Semua</button>
+              <button class="filter-btn bg-slate-200 text-slate-700 font-extrabold px-3.5 py-1.5 rounded-full text-xs transition" onclick="filterRiwayat('SelfService', this)">Self Service</button>
+              <button class="filter-btn bg-slate-200 text-slate-700 font-extrabold px-3.5 py-1.5 rounded-full text-xs transition" onclick="filterRiwayat('FullService', this)">Full Service</button>
+            </div>
+            <div class="relative sm:max-w-xs w-full">
+              <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input id="searchRiwayat" type="text" placeholder="Cari No Nota / Pelanggan..." class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648] font-medium" oninput="renderRiwayatList()">
+            </div>
           </div>
-          <div id="pipelineBoard" class="pipeline-board"></div>
+          <div id="riwayatTableWrapper" class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm"></div>
         </div>
 
         <!-- TAB ABSENSI -->
