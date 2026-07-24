@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Minus, Trash2, User, X, Check, CreditCard } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, User, X, Check, CreditCard, Printer, Send, CheckCircle2, DollarSign } from 'lucide-react';
 import { LayananItem, CartItem, Pegawai, Transaksi } from '@/lib/types';
 import { runBackend } from '@/lib/api';
 import { addToPendingOutbox, saveLocalTxCache } from '@/lib/syncEngine';
@@ -24,13 +24,21 @@ export default function PosView() {
   const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [customer, setCustomer] = useState<{ nama: string; noHp: string }>({ nama: '', noHp: '' });
   
+  // Modals & State
   const [showCustModal, setShowCustModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lastCompletedTx, setLastCompletedTx] = useState<Transaksi | null>(null);
+
   const [pegawaiList, setPegawaiList] = useState<Pegawai[]>([]);
   const [selectedPetugas, setSelectedPetugas] = useState('');
   const [estimasi, setEstimasi] = useState('');
   const [custNamaInput, setCustNamaInput] = useState('');
   const [custNoHpInput, setCustNoHpInput] = useState('');
+  
+  // Payment Method & Cash Change calculation
+  const [metodeBayar, setMetodeBayar] = useState<'Tunai' | 'QRIS' | 'Transfer'>('Tunai');
+  const [uangDibayar, setUangDibayar] = useState<string>('');
 
   useEffect(() => {
     setLoading(true);
@@ -80,11 +88,15 @@ export default function PosView() {
   const clearCart = () => setCart({});
   const cartArray = Object.values(cart);
   const grandTotal = cartArray.reduce((acc, i) => acc + (i.qty * i.hargaSatuan), 0);
+  const numUangDibayar = Number(uangDibayar) || grandTotal;
+  const kembalian = Math.max(0, numUangDibayar - grandTotal);
 
   const handleProcessCheckout = () => {
     if (cartArray.length === 0) { alert('Keranjang masih kosong!'); return; }
     setCustNamaInput(customer.nama);
     setCustNoHpInput(customer.noHp);
+    setUangDibayar(grandTotal.toString());
+
     const defaultNames = pegawaiList.length > 0
       ? pegawaiList.map(p => p.nama + (p.jabatan ? ` (${p.jabatan})` : ''))
       : ['Siti Rahma (Kasir)', 'Budi Santoso (Operator)', 'Manager / Owner (Manager)'];
@@ -94,44 +106,159 @@ export default function PosView() {
 
   const handleConfirmSave = async () => {
     if (!custNamaInput.trim()) { alert('Nama pelanggan wajib diisi!'); return; }
+    if (metodeBayar === 'Tunai' && numUangDibayar < grandTotal) {
+      alert(`Uang dibayar kurang! Minimal Rp ${grandTotal.toLocaleString('id-ID')}`);
+      return;
+    }
+
     const payload = {
-      namaPelanggan: custNamaInput.trim(), noHp: custNoHpInput.trim(),
-      petugas: selectedPetugas || 'Kasir 1', tipe: mode, estimasi, items: cartArray, total: grandTotal
+      namaPelanggan: custNamaInput.trim(),
+      noHp: custNoHpInput.trim(),
+      petugas: selectedPetugas || 'Kasir 1',
+      tipe: mode,
+      estimasi: estimasi,
+      metodeBayar: metodeBayar,
+      uangDibayar: numUangDibayar,
+      kembalian: kembalian,
+      items: cartArray,
+      total: grandTotal
     };
+
+    let completedTxObj: Transaksi;
 
     if (navigator.onLine) {
       try {
         const res = await runBackend('simpanTransaksi', payload);
         if (res && res.success) {
-          alert(`Transaksi Berhasil! Nota: ${res.noNota}`);
-          const txObj: Transaksi = {
-            noNota: res.noNota, tanggal: new Date().toLocaleString('id-ID'),
-            namaPelanggan: payload.namaPelanggan, noHp: payload.noHp, petugas: payload.petugas,
-            tipe: payload.tipe, total: payload.total, status: 'Diterima', items: payload.items
+          completedTxObj = {
+            noNota: res.noNota,
+            tanggal: new Date().toLocaleString('id-ID'),
+            namaPelanggan: payload.namaPelanggan,
+            noHp: payload.noHp,
+            petugas: payload.petugas,
+            tipe: payload.tipe,
+            total: payload.total,
+            status: 'Diterima',
+            items: payload.items
           };
-          saveLocalTxCache(txObj);
-          setCart({}); setCustomer({ nama: '', noHp: '' }); setShowCheckoutModal(false);
+          saveLocalTxCache(completedTxObj);
+          setLastCompletedTx(completedTxObj);
+          setShowCheckoutModal(false);
+          setShowSuccessModal(true);
           return;
         }
       } catch (err) {}
     }
+
+    // Offline outbox fallback
     const offlineItem = addToPendingOutbox(payload);
-    const localTx: Transaksi = {
-      noNota: offlineItem.id, tanggal: new Date().toLocaleString('id-ID') + ' (Offline)',
-      namaPelanggan: payload.namaPelanggan, noHp: payload.noHp, petugas: payload.petugas,
-      tipe: payload.tipe, total: payload.total, status: 'Diterima', items: payload.items
+    completedTxObj = {
+      noNota: offlineItem.id,
+      tanggal: new Date().toLocaleString('id-ID') + ' (Offline)',
+      namaPelanggan: payload.namaPelanggan,
+      noHp: payload.noHp,
+      petugas: payload.petugas,
+      tipe: payload.tipe,
+      total: payload.total,
+      status: 'Diterima',
+      items: payload.items
     };
-    saveLocalTxCache(localTx);
-    alert(`Mode Offline: Transaksi disimpan lokal (${offlineItem.id}). Sinkron otomatis saat online.`);
-    setCart({}); setCustomer({ nama: '', noHp: '' }); setShowCheckoutModal(false);
+    saveLocalTxCache(completedTxObj);
+    setLastCompletedTx(completedTxObj);
+    setShowCheckoutModal(false);
+    setShowSuccessModal(true);
+  };
+
+  const handleFinishSuccess = () => {
+    setCart({});
+    setCustomer({ nama: '', noHp: '' });
+    setLastCompletedTx(null);
+    setShowSuccessModal(false);
+  };
+
+  const handlePrintReceipt = (tx: Transaksi) => {
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) return;
+
+    const itemsHtml = tx.items
+      .map(
+        (i) => `
+      <tr>
+        <td style="padding: 4px 0; text-align: left;">${i.layanan}<br/><span style="color:#666;">${i.qty} x Rp ${i.hargaSatuan.toLocaleString('id-ID')}</span></td>
+        <td style="padding: 4px 0; text-align: right; vertical-align: top;">Rp ${(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</td>
+      </tr>
+    `
+      )
+      .join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Struk ${tx.noNota}</title>
+          <style>
+            body { font-family: monospace; font-size: 12px; margin: 10px; color: #000; }
+            .header { text-align: center; margin-bottom: 12px; }
+            .header h2 { margin: 0; font-size: 16px; }
+            .header p { margin: 2px 0; font-size: 10px; }
+            .line { border-bottom: 1px dashed #000; margin: 8px 0; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            .total { font-weight: bold; font-size: 13px; text-align: right; margin-top: 8px; }
+            .footer { text-align: center; margin-top: 16px; font-size: 10px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>DUA SISI LAUNDRY</h2>
+            <p>Express & Coin Laundry</p>
+            <p>Nota: ${tx.noNota}</p>
+            <p>${tx.tanggal}</p>
+          </div>
+          <div class="line"></div>
+          <p>Pelanggan: <b>${tx.namaPelanggan}</b> ${tx.noHp ? `(${tx.noHp})` : ''}</p>
+          <div class="line"></div>
+          <table>${itemsHtml}</table>
+          <div class="line"></div>
+          <div class="total">TOTAL: Rp ${tx.total.toLocaleString('id-ID')}</div>
+          <div class="line"></div>
+          <div class="footer">
+            <p>Terima kasih atas kunjungan Anda!</p>
+            <p>Simpan nota ini sebagai bukti pengambilan.</p>
+          </div>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleWhatsAppStruk = (tx: Transaksi) => {
+    let rawPhone = (tx.noHp || '').replace(/[^0-9]/g, '');
+    if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
+    if (!rawPhone) {
+      alert('Nomor HP / WhatsApp pelanggan tidak tersedia.');
+      return;
+    }
+
+    const itemsStr = tx.items.map(i => `• ${i.layanan} (x${i.qty}) - Rp ${(i.qty * i.hargaSatuan).toLocaleString('id-ID')}`).join('\n');
+    const msg = `*HALO ${tx.namaPelanggan.toUpperCase()}, STRUK DUA SISI LAUNDRY*\n\n` +
+      `No Nota: *${tx.noNota}*\n` +
+      `Tanggal: ${tx.tanggal}\n` +
+      `Status: *${tx.status}*\n\n` +
+      `*Detail Layanan:*\n${itemsStr}\n\n` +
+      `*TOTAL: Rp ${tx.total.toLocaleString('id-ID')}*\n\n` +
+      `Terima kasih telah mencuci di Dua SiSi Laundry! 🙏`;
+
+    window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   return (
-    <div className="flex gap-0 h-[calc(100vh-56px)] overflow-hidden">
+    <div className="flex gap-0 h-[calc(100vh-56px)] overflow-hidden w-full">
       {/* LEFT: Catalog */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Category tabs + Search */}
-        <div className="px-5 py-3 bg-white border-b border-slate-200 flex items-center gap-4 flex-wrap">
+        <div className="px-4 py-3 bg-white border-b border-slate-200 flex items-center gap-4 flex-wrap">
           <div className="flex bg-slate-100 rounded-md p-0.5 gap-0.5">
             <button
               onClick={() => setMode('SelfService')}
@@ -169,7 +296,7 @@ export default function PosView() {
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
             {loading ? (
               Array.from({ length: 8 }).map((_, idx) => (
@@ -316,7 +443,7 @@ export default function PosView() {
       {/* Customer Modal */}
       {showCustModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-sm animate-pop-scale">
+          <div className="bg-white rounded-xl p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-semibold text-slate-800">Data Pelanggan</span>
               <button onClick={() => setShowCustModal(false)} className="p-1 rounded hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
@@ -342,7 +469,7 @@ export default function PosView() {
       {/* Checkout Modal */}
       {showCheckoutModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto animate-pop-scale">
+          <div className="bg-white rounded-xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-semibold text-slate-800">Proses Pembayaran</span>
               <button onClick={() => setShowCheckoutModal(false)} className="p-1 rounded hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
@@ -357,7 +484,7 @@ export default function PosView() {
                 </div>
               ))}
               <div className="flex justify-between font-bold text-sm text-slate-800 pt-1">
-                <span>Total</span>
+                <span>Total Tagihan</span>
                 <span className="text-[#1E4648]">Rp {grandTotal.toLocaleString('id-ID')}</span>
               </div>
             </div>
@@ -368,18 +495,67 @@ export default function PosView() {
                 <input type="text" value={custNamaInput} onChange={(e) => setCustNamaInput(e.target.value)} placeholder="Nama pelanggan" className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]" />
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-slate-500 mb-1">No HP</label>
+                <label className="block text-[11px] font-medium text-slate-500 mb-1">No HP / WhatsApp</label>
                 <input type="tel" value={custNoHpInput} onChange={(e) => setCustNoHpInput(e.target.value)} placeholder="08..." className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]" />
               </div>
+
+              {/* Metode Pembayaran */}
+              <div>
+                <label className="block text-[11px] font-medium text-slate-500 mb-1">Metode Pembayaran</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['Tunai', 'QRIS', 'Transfer'] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setMetodeBayar(m)}
+                      className={`py-2 rounded-md text-xs font-medium border transition ${
+                        metodeBayar === m
+                          ? 'border-[#1E4648] bg-teal-50 text-[#1E4648]'
+                          : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Cash Paid & Change */}
+              {metodeBayar === 'Tunai' && (
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-600 mb-1">Uang Diterima (Rp)</label>
+                    <input
+                      type="number"
+                      value={uangDibayar}
+                      onChange={(e) => setUangDibayar(e.target.value)}
+                      placeholder={grandTotal.toString()}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs font-bold outline-none focus:border-[#1E4648] bg-white"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold text-slate-700 pt-1 border-t border-slate-200">
+                    <span>Kembalian:</span>
+                    <span className="text-[#1E4648] font-bold text-sm">Rp {kembalian.toLocaleString('id-ID')}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-medium text-slate-500 mb-1">Petugas *</label>
-                  <input list="petugasDatalist" value={selectedPetugas} onChange={(e) => setSelectedPetugas(e.target.value)} placeholder="Cari petugas..." className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]" autoComplete="off" />
-                  <datalist id="petugasDatalist">
-                    {pegawaiList.map((p, idx) => (<option key={idx} value={`${p.nama}${p.jabatan ? ` (${p.jabatan})` : ''}`} />))}
-                    <option value="Siti Rahma (Kasir)" />
-                    <option value="Budi Santoso (Operator Laundry)" />
-                  </datalist>
+                  <label className="block text-[11px] font-medium text-slate-500 mb-1">Kasir / Petugas *</label>
+                  <select
+                    value={selectedPetugas}
+                    onChange={(e) => setSelectedPetugas(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white text-slate-800 font-medium"
+                  >
+                    {pegawaiList.map((p, idx) => (
+                      <option key={idx} value={`${p.nama}${p.jabatan ? ` (${p.jabatan})` : ''}`}>
+                        {p.nama} {p.jabatan ? `(${p.jabatan})` : ''}
+                      </option>
+                    ))}
+                    <option value="Siti Rahma (Kasir)">Siti Rahma (Kasir)</option>
+                    <option value="Budi Santoso (Operator)">Budi Santoso (Operator)</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[11px] font-medium text-slate-500 mb-1">Estimasi Selesai</label>
@@ -391,7 +567,68 @@ export default function PosView() {
             <div className="flex gap-2 mt-5 pt-3 border-t border-slate-100">
               <button onClick={() => setShowCheckoutModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-md text-xs">Batal</button>
               <button onClick={handleConfirmSave} className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-semibold py-2 rounded-md text-xs transition flex items-center justify-center gap-1">
-                <Check className="w-4 h-4" /> Konfirmasi & Simpan
+                <Check className="w-4 h-4" /> Bayar & Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PAYMENT SUCCESS CONFIRMATION MODAL */}
+      {showSuccessModal && lastCompletedTx && (
+        <div className="fixed inset-0 z-[600] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm text-center">
+            {/* Big Check Icon */}
+            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+              <CheckCircle2 className="w-7 h-7" />
+            </div>
+
+            <h3 className="text-base font-bold text-slate-800">Pembayaran Berhasil!</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Nota: <span className="font-semibold text-slate-800">{lastCompletedTx.noNota}</span></p>
+
+            {/* Receipt Summary Box */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 my-4 text-xs text-left space-y-1.5">
+              <div className="flex justify-between text-slate-600">
+                <span>Pelanggan:</span>
+                <span className="font-semibold text-slate-800">{lastCompletedTx.namaPelanggan}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Metode:</span>
+                <span className="font-semibold text-slate-800">{metodeBayar}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Total:</span>
+                <span className="font-bold text-[#1E4648]">Rp {lastCompletedTx.total.toLocaleString('id-ID')}</span>
+              </div>
+              {metodeBayar === 'Tunai' && (
+                <div className="flex justify-between text-slate-600 pt-1 border-t border-slate-200">
+                  <span>Kembalian:</span>
+                  <span className="font-bold text-slate-800">Rp {kembalian.toLocaleString('id-ID')}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Print & WA Action Buttons */}
+            <div className="space-y-2">
+              <button
+                onClick={() => handlePrintReceipt(lastCompletedTx)}
+                className="w-full bg-[#1E4648] hover:bg-[#153334] text-white font-medium py-2.5 rounded-md text-xs transition flex items-center justify-center gap-2"
+              >
+                <Printer className="w-4 h-4" /> Cetak Struk Thermal
+              </button>
+
+              <button
+                onClick={() => handleWhatsAppStruk(lastCompletedTx)}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-md text-xs transition flex items-center justify-center gap-2"
+              >
+                <Send className="w-4 h-4" /> Kirim Struk WhatsApp
+              </button>
+
+              <button
+                onClick={handleFinishSuccess}
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-md text-xs transition mt-2"
+              >
+                ➕ Transaksi Baru
               </button>
             </div>
           </div>
