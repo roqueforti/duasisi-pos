@@ -9,6 +9,10 @@
   --foreground: #0F172A;
 }
 
+body {
+  font-family: var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
