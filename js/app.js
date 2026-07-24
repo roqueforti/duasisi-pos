@@ -437,13 +437,34 @@ function prosesTransaksi() {
         '<div><label class="block text-[11px] font-bold text-slate-500 mb-1">Nama Pelanggan <span class="text-red-500">*</span></label><input id="cNamaPelanggan" value="' + (customerDraft.nama || '') + '" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648]" placeholder="Masukkan nama pelanggan"></div>' +
         '<div><label class="block text-[11px] font-bold text-slate-500 mb-1">No HP / WhatsApp</label><input id="cNoHp" type="tel" value="' + (customerDraft.noHp || '') + '" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648]" placeholder="08..."></div>' +
         '<div class="grid grid-cols-2 gap-3">' +
-          '<div><label class="block text-[11px] font-bold text-slate-500 mb-1">Nama Petugas <span class="text-red-500">*</span></label><input id="cNamaPetugas" value="Kasir 1" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648]" placeholder="Nama petugas"></div>' +
+          '<div><label class="block text-[11px] font-bold text-slate-500 mb-1">Nama Petugas <span class="text-red-500">*</span></label><select id="cNamaPetugas" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648] bg-white"><option value="">— Memuat Petugas... —</option></select></div>' +
           '<div><label class="block text-[11px] font-bold text-slate-500 mb-1">Estimasi Selesai</label><input id="cEstimasi" type="date" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648]"></div>' +
         '</div>' +
       '</div>' +
       '<div class="flex gap-2 mt-5 pt-3 border-t border-slate-100"><button class="bg-slate-100 text-slate-600 font-bold px-4 py-2.5 rounded-xl text-xs" onclick="closeModal()">← Kembali</button><button class="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-extrabold py-2.5 rounded-xl text-xs shadow-md transition active:scale-95" onclick="konfirmasiTransaksi()">✅ Konfirmasi & Simpan</button></div>' +
     '</div>'
   );
+
+  runBackend('getPegawaiList', function(pList) {
+    const sel = document.getElementById('cNamaPetugas');
+    if (!sel) return;
+    sel.innerHTML = '';
+
+    const list = pList && pList.length > 0 ? pList : [
+      { nama: 'Siti Rahma', jabatan: 'Kasir' },
+      { nama: 'Budi Santoso', jabatan: 'Operator Laundry' },
+      { nama: 'Manager / Owner', jabatan: 'Manager' }
+    ];
+
+    list.forEach((p, idx) => {
+      const o = document.createElement('option');
+      const val = p.nama;
+      o.value = val;
+      o.innerText = p.nama + (p.jabatan ? ' (' + p.jabatan + ')' : '');
+      if (idx === 0) o.selected = true;
+      sel.appendChild(o);
+    });
+  });
 }
 
 function konfirmasiTransaksi() {
