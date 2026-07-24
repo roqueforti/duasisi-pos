@@ -19,6 +19,7 @@ const defaultLayanan: LayananItem[] = [
 export default function PosView() {
   const [mode, setMode] = useState<'SelfService' | 'FullService'>('SelfService');
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
   const [layananList, setLayananList] = useState<LayananItem[]>(defaultLayanan);
   const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [customer, setCustomer] = useState<{ nama: string; noHp: string }>({ nama: '', noHp: '' });
@@ -33,11 +34,13 @@ export default function PosView() {
   const [custNoHpInput, setCustNoHpInput] = useState('');
 
   useEffect(() => {
+    setLoading(true);
     runBackend('getLayananList')
       .then((res) => {
         if (Array.isArray(res) && res.length > 0) setLayananList(res);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
 
     runBackend('getPegawaiList')
       .then((res) => {
@@ -206,7 +209,17 @@ export default function PosView() {
 
         {/* Product Cards Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
-          {filteredLayanan.map((item, idx) => {
+          {loading ? (
+            Array.from({ length: 8 }).map((_, idx) => (
+              <div key={idx} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm animate-pulse space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-slate-200" />
+                <div className="h-4 bg-slate-200 rounded-lg w-3/4" />
+                <div className="h-4 bg-slate-200 rounded-lg w-1/2" />
+                <div className="h-8 bg-slate-200 rounded-xl w-full mt-4" />
+              </div>
+            ))
+          ) : (
+            filteredLayanan.map((item, idx) => {
             const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
             return (
               <div
@@ -264,7 +277,8 @@ export default function PosView() {
                 </div>
               </div>
             );
-          })}
+          })
+        )}
         </div>
       </div>
 

@@ -194,10 +194,16 @@ export default function RiwayatView() {
 
       {/* Transactions Table */}
       <div className="bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-sm">
-        {filteredTx.length === 0 ? (
+        {loading ? (
+          <div className="p-4 space-y-3">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div key={idx} className="h-12 bg-slate-100 animate-pulse rounded-xl w-full" />
+            ))}
+          </div>
+        ) : filteredTx.length === 0 ? (
           <div className="text-center py-20 text-slate-400 text-xs">
             <FileText className="w-10 h-10 mx-auto mb-2 text-slate-300" />
-            <div className="font-bold">{loading ? 'Memuat data riwayat...' : 'Belum ada transaksi ditemukan.'}</div>
+            <div className="font-bold">Belum ada transaksi ditemukan.</div>
           </div>
         ) : (
           <div className="overflow-x-auto">
