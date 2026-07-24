@@ -7,6 +7,9 @@ import LoginModal from '@/components/LoginModal';
 import SplashScreen from '@/components/SplashScreen';
 import PosView from '@/components/PosView';
 import RiwayatView from '@/components/RiwayatView';
+import AbsensiView from '@/components/AbsensiView';
+import InventoryView from '@/components/InventoryView';
+import MesinView from '@/components/MesinView';
 import { UserRole } from '@/lib/types';
 
 export default function HomePage() {
@@ -58,11 +61,14 @@ export default function HomePage() {
             <main className="flex-1 overflow-y-auto bg-slate-50">
               {currentTab === 'transaksi' && <PosView />}
               {currentTab === 'riwayat' && <RiwayatView />}
-              {['absensi', 'inventory', 'mesin', 'pegawai', 'produk', 'rekap'].includes(currentTab) && (
+              {currentTab === 'absensi' && <AbsensiView />}
+              {currentTab === 'inventory' && <InventoryView />}
+              {currentTab === 'mesin' && <MesinView />}
+              {['pegawai', 'produk', 'rekap'].includes(currentTab) && (
                 <div className="p-8 text-center text-slate-400">
                   <div className="text-4xl mb-2">📊</div>
-                  <div className="text-sm font-bold text-slate-700">Fitur sedang dimuat...</div>
-                  <div className="text-xs text-slate-400 mt-1">Gunakan tab Transaksi & Riwayat</div>
+                  <div className="text-sm font-bold text-slate-700">Fitur Manager Sedang Di-load...</div>
+                  <div className="text-xs text-slate-400 mt-1">Khusus akun Manager/Owner</div>
                 </div>
               )}
             </main>
