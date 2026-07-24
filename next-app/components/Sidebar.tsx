@@ -81,13 +81,13 @@ export default function Sidebar({
               <img 
                 src="./assets/logo-emblem-white.svg" 
                 alt="Dua SiSi" 
-                className="h-8 w-8 mx-auto drop-shadow-md"
+                className="h-8 w-8 mx-auto drop-shadow-md brightness-0 invert"
               />
             ) : (
               <img 
                 src="./assets/logo-full-white.svg" 
                 alt="Dua SiSi Laundry Express & Coin" 
-                className="h-9 w-auto max-w-[160px] drop-shadow-md"
+                className="h-9 w-auto max-w-[160px] drop-shadow-md brightness-0 invert"
               />
             )}
           </div>
@@ -95,10 +95,10 @@ export default function Sidebar({
           <div className="flex items-center gap-1">
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="hidden md:flex text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition"
+              className="flex text-slate-300 hover:text-white p-2 rounded-xl bg-white/10 hover:bg-white/20 transition active:scale-95 border border-white/10"
               title={isCollapsed ? 'Expand Sidebar' : 'Minimize Sidebar'}
             >
-              {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+              {isCollapsed ? <PanelLeftOpen className="w-4 h-4 text-teal-300" /> : <PanelLeftClose className="w-4 h-4 text-teal-300" />}
             </button>
             <button 
               className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10"
