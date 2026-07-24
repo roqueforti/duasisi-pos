@@ -1085,12 +1085,18 @@ function openModal(html) {
   const m = document.getElementById('modalOverlay');
   const b = document.getElementById('modalBox');
   if (b) b.innerHTML = html;
-  if (m) m.classList.remove('hidden');
+  if (m) {
+    m.classList.remove('hidden');
+    m.classList.add('flex');
+  }
 }
 
 function closeModal() {
   const m = document.getElementById('modalOverlay');
-  if (m) m.classList.add('hidden');
+  if (m) {
+    m.classList.add('hidden');
+    m.classList.remove('flex');
+  }
 }
 
 function showToast(msg, type = 'success') {
