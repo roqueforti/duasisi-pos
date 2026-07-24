@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   title: "dua SiSi — Laundry Express & Coin POS",
   description: "Aplikasi POS Laundry Modern & Smart Management System",
   manifest: "/duasisi-pos/manifest.json",
+  icons: {
+    icon: "/duasisi-pos/assets/logo-emblem-teal.svg",
+    apple: "/duasisi-pos/assets/logo-emblem-teal.svg",
+  },
 };
 
 export default function RootLayout({
