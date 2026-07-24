@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 class ApiService {
   // Your Deployed Google Apps Script Web App URL
   static String gasWebAppUrl =
-      'https://script.google.com/macros/s/AKfycbxVfZcTiFhZqQIVjvxoIAtIJbpVJbVz8MWloZztbk3GIV50hNa2Fr0Lu50MHWoaSGM1Mw/exec';
+      'https://script.google.com/macros/s/AKfycbxnc_m6BqGoFKXXPnJLVT0QuJRJw0PXaKLmnjOfli2EWcpMtPosq2vJEGYNXkAo9cjKPQ/exec';
 
   /// Universal REST API invoker
   static Future<dynamic> callBackend(String action, [List<dynamic>? args]) async {

@@ -4,7 +4,7 @@
    ============================================================ */
 
 // Paste your deployed Google Apps Script Web App URL here
-let EXTERNAL_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxVfZcTiFhZqQIVjvxoIAtIJbpVJbVz8MWloZztbk3GIV50hNa2Fr0Lu50MHWoaSGM1Mw/exec';
+let EXTERNAL_GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxnc_m6BqGoFKXXPnJLVT0QuJRJw0PXaKLmnjOfli2EWcpMtPosq2vJEGYNXkAo9cjKPQ/exec';
 
 /**
  * Universal RPC Invoker
