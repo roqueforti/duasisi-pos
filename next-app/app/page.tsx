@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import LoginModal from '@/components/LoginModal';
+import SplashScreen from '@/components/SplashScreen';
 import PosView from '@/components/PosView';
 import RiwayatView from '@/components/RiwayatView';
 import { UserRole } from '@/lib/types';
 
 export default function HomePage() {
+  const [showSplash, setShowSplash] = useState<boolean>(true);
   const [currentRole, setCurrentRole] = useState<UserRole>('');
   const [currentTab, setCurrentTab] = useState<string>('transaksi');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -26,43 +28,47 @@ export default function HomePage() {
     setCurrentRole('');
   };
 
-  if (!currentRole) {
-    return <LoginModal onSuccess={handleLoginSuccess} />;
-  }
-
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-50 relative select-none">
-      {/* Sidebar Navigation */}
-      <Sidebar
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        currentRole={currentRole}
-        isSidebarOpen={isSidebarOpen}
-        setIsSidebarOpen={setIsSidebarOpen}
-        onLogout={handleLogout}
-      />
+    <>
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        <Navbar
-          currentTab={currentTab}
-          currentRole={currentRole}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-          onLogout={handleLogout}
-        />
+      {!currentRole ? (
+        <LoginModal onSuccess={handleLoginSuccess} />
+      ) : (
+        <div className="flex h-screen w-full overflow-hidden bg-slate-50 relative select-none">
+          {/* Sidebar Navigation */}
+          <Sidebar
+            currentTab={currentTab}
+            setCurrentTab={setCurrentTab}
+            currentRole={currentRole}
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
+            onLogout={handleLogout}
+          />
 
-        <main className="flex-1 overflow-y-auto bg-slate-50">
-          {currentTab === 'transaksi' && <PosView />}
-          {currentTab === 'riwayat' && <RiwayatView />}
-          {['absensi', 'inventory', 'mesin', 'pegawai', 'produk', 'rekap'].includes(currentTab) && (
-            <div className="p-8 text-center text-slate-400">
-              <div className="text-4xl mb-2">📊</div>
-              <div className="text-sm font-bold text-slate-700">Fitur sedang dimuat...</div>
-              <div className="text-xs text-slate-400 mt-1">Gunakan tab Transaksi & Riwayat</div>
-            </div>
-          )}
-        </main>
-      </div>
-    </div>
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+            <Navbar
+              currentTab={currentTab}
+              currentRole={currentRole}
+              onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+              onLogout={handleLogout}
+            />
+
+            <main className="flex-1 overflow-y-auto bg-slate-50">
+              {currentTab === 'transaksi' && <PosView />}
+              {currentTab === 'riwayat' && <RiwayatView />}
+              {['absensi', 'inventory', 'mesin', 'pegawai', 'produk', 'rekap'].includes(currentTab) && (
+                <div className="p-8 text-center text-slate-400">
+                  <div className="text-4xl mb-2">📊</div>
+                  <div className="text-sm font-bold text-slate-700">Fitur sedang dimuat...</div>
+                  <div className="text-xs text-slate-400 mt-1">Gunakan tab Transaksi & Riwayat</div>
+                </div>
+              )}
+            </main>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
