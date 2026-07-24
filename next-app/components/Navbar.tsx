@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Menu, LogOut, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Menu, LogOut, Wifi, WifiOff, RefreshCw, Download } from 'lucide-react';
 import { UserRole } from '@/lib/types';
 import { getPendingOutbox, syncOutboxToServer } from '@/lib/syncEngine';
 
@@ -15,12 +15,12 @@ interface NavbarProps {
 const tabTitles: Record<string, string> = {
   transaksi: 'Point of Sale (POS)',
   riwayat: 'Riwayat Transaksi',
-  absensi: 'Absensi Shift',
-  inventory: 'Inventory Stok',
-  mesin: 'Status Mesin',
+  absensi: 'Absensi Shift Presensi',
+  inventory: 'Inventory Stok Bahan',
+  mesin: 'Status Mesin Cuci & Dryer',
   pegawai: 'Pegawai & Kinerja',
   produk: 'Produk & Layanan',
-  rekap: 'Laporan Omzet',
+  rekap: 'Laporan Omzet & Analytics',
 };
 
 export default function Navbar({
@@ -33,6 +33,7 @@ export default function Navbar({
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const checkSyncState = async () => {
     const queue = getPendingOutbox();
@@ -43,7 +44,7 @@ export default function Navbar({
       setIsSyncing(false);
       setPendingCount(getPendingOutbox().length);
       if (res.syncedCount > 0) {
-        alert(`${res.syncedCount} transaksi offline berhasil disinkronkan!`);
+        alert(`${res.syncedCount} transaksi offline berhasil disinkronkan ke server!`);
       }
     }
   };
@@ -58,6 +59,14 @@ export default function Navbar({
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Catch PWA Install Prompt
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
     const updateClock = () => {
       const now = new Date();
       const wib = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
@@ -71,10 +80,23 @@ export default function Navbar({
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       clearInterval(interval);
       clearInterval(syncInterval);
     };
   }, []);
+
+  const handleInstallPWA = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      alert('Untuk menginstal PWA Dua SiSi POS:\n\n• Chrome/Edge: Klik titik tiga (⋮) → "Install DuaSiSi POS" atau "Add to Home Screen"\n• Safari iOS: Klik Share → "Add to Home Screen"');
+    }
+  };
 
   return (
     <header className="h-14 bg-white border-b border-slate-200 px-4 md:px-6 flex items-center justify-between shrink-0 z-30">
@@ -94,6 +116,16 @@ export default function Navbar({
       </div>
 
       <div className="flex items-center gap-2">
+        {/* PWA Install Button */}
+        <button
+          onClick={handleInstallPWA}
+          className="flex items-center gap-1.5 bg-[#1E4648] hover:bg-[#153334] text-white px-2.5 py-1 rounded-md text-[11px] font-medium transition"
+          title="Instal Aplikasi Dua SiSi POS ke HP/PC"
+        >
+          <Download className="w-3.5 h-3.5 text-teal-300" />
+          <span className="hidden sm:inline">Install PWA App</span>
+        </button>
+
         {/* Sync Status */}
         {pendingCount > 0 ? (
           <button
