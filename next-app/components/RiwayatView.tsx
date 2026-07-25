@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, Send, Eye, CheckCircle, RefreshCw, X, FileText, Plus, Calendar, User, CreditCard, Check, AlertTriangle, ShieldAlert, DollarSign } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend } from '@/lib/api';
-import { getLocalTxCache, saveLocalTxCache } from '@/lib/syncEngine';
 
 export default function RiwayatView() {
   const [filter, setFilter] = useState<'Semua' | 'SelfService' | 'FullService'>('Semua');
@@ -102,7 +101,6 @@ export default function RiwayatView() {
       items: payload.items
     };
 
-    saveLocalTxCache(newTxObj);
     setShowManualModal(false);
     setSavingManual(false);
     alert(`✅ Transaksi manual ${generatedNota} berhasil disimpan!`);
@@ -111,25 +109,16 @@ export default function RiwayatView() {
 
   const loadRiwayat = async () => {
     setLoading(true);
-    const localCached = getLocalTxCache();
-    
-    if (!navigator.onLine) {
-      setTxList(localCached);
-      setLoading(false);
-      return;
-    }
-
     try {
       const data = await runBackend<Transaksi[]>('getTransaksiList', 'Semua');
       if (Array.isArray(data)) {
-        const seen = new Set(data.map(t => t.noNota));
-        const unSyncedLocal = localCached.filter(t => !seen.has(t.noNota));
-        setTxList([...unSyncedLocal, ...data]);
+        setTxList(data);
       } else {
-        setTxList(localCached);
+        setTxList([]);
       }
     } catch (err) {
-      setTxList(localCached);
+      console.error('[Riwayat] Gagal mengambil data transaksi online:', err);
+      setTxList([]);
     } finally {
       setLoading(false);
     }

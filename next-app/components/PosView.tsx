@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { LayananItem, CartItem, Pegawai, Transaksi, KecepatanLayanan, ShiftKasir } from '@/lib/types';
 import { runBackend } from '@/lib/api';
-import { saveLocalTxCache } from '@/lib/syncEngine';
 
 const defaultLayanan: LayananItem[] = [
   { layanan: 'Cuci 7.5 Kg', hargaSatuan: 10000, tipe: 'SelfService', satuan: 'kg', icon: '🫧' },
@@ -261,7 +260,6 @@ export default function PosView() {
         items: payload.items
       };
 
-      saveLocalTxCache(completedTxObj);
       setLastCompletedTx(completedTxObj);
 
       // Update shift cash total if cash payment
@@ -278,7 +276,7 @@ export default function PosView() {
       setShowSuccessModal(true);
     } catch (err: any) {
       console.error('[POS] Simpan transaksi gagal:', err);
-      alert('Gagal menyimpan transaksi ke server. Menyelematkan data ke cache lokal.');
+      alert('Gagal menyimpan transaksi ke server online. Silakan periksa koneksi internet Anda dan coba lagi.');
     }
   };
 
