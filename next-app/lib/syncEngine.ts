@@ -70,7 +70,7 @@ export async function syncOutboxToServer(): Promise<{ syncedCount: number; error
   for (const item of queue) {
     try {
       const res = await runBackend('simpanTransaksi', item.payload);
-      if (res && res.success) {
+      if (res && (res.success || res.noNota)) {
         syncedCount++;
       } else {
         remainingQueue.push(item);

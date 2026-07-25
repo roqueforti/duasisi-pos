@@ -129,7 +129,7 @@ export default function PosView() {
     if (navigator.onLine) {
       try {
         const res = await runBackend('simpanTransaksi', payload);
-        if (res && res.success) {
+        if (res && (res.success || res.noNota)) {
           completedTxObj = {
             noNota: res.noNota,
             tanggal: new Date().toLocaleString('id-ID'),

@@ -407,7 +407,7 @@ function simpanTransaksi(data) {
   // Auto-create pipeline steps
   createPipelineForNota(noNota, tipe);
 
-  return { noNota: noNota, total: total, jumlahItem: data.items.length, tipe: tipe };
+  return { success: true, noNota: noNota, total: total, jumlahItem: data.items.length, tipe: tipe };
 }
 
 function simpanPelangganJikaBaru(nama, noHp) {
