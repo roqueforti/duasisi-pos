@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Plus, Minus, Trash2, User, X, Check, CreditCard, Printer, Send, CheckCircle2, DollarSign,
-  Zap, Tag, Clock, ShieldAlert, FileSpreadsheet, Lock, Unlock, TagIcon
+  Zap, Tag, Clock, ShieldAlert, FileSpreadsheet, Lock, Unlock, TagIcon, ShoppingCart, ArrowRight
 } from 'lucide-react';
 import { LayananItem, CartItem, Pegawai, Transaksi, KecepatanLayanan, ShiftKasir } from '@/lib/types';
 import { runBackend } from '@/lib/api';
@@ -28,6 +28,7 @@ export default function PosView() {
   const [layananList, setLayananList] = useState<LayananItem[]>(defaultLayanan);
   const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [customer, setCustomer] = useState<{ nama: string; noHp: string }>({ nama: '', noHp: '' });
+  const [showMobileCart, setShowMobileCart] = useState(false);
 
   // Kecepatan Layanan & Speed Multiplier (FR-POS-07)
   const [kecepatan, setKecepatan] = useState<KecepatanLayanan>('Reguler');
@@ -182,6 +183,7 @@ export default function PosView() {
   };
 
   const cartArray = Object.values(cart);
+  const totalCartItems = cartArray.reduce((acc, i) => acc + i.qty, 0);
   const subtotalCart = cartArray.reduce((acc, i) => acc + (i.qty * i.hargaSatuan), 0);
   const grandTotal = Math.max(0, subtotalCart - diskonApplied.nilai);
 
@@ -414,21 +416,21 @@ export default function PosView() {
       {/* LEFT: Catalog */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header Bar with Shift Indicator & Speed Selector */}
-        <div className="px-4 py-2.5 bg-white border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap">
+        <div className="px-3 py-2 sm:px-4 sm:py-2.5 bg-white border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">
           {/* Category Tabs */}
-          <div className="flex bg-slate-100 rounded-lg p-1 gap-1">
+          <div className="flex bg-slate-100 rounded-lg p-1 gap-1 shrink-0">
             <button
               onClick={() => setMode('SelfService')}
-              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${
-                mode === 'SelfService' ? 'bg-[#1E4648] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold transition ${
+                mode === 'SelfService' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Self Service
             </button>
             <button
               onClick={() => setMode('FullService')}
-              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${
-                mode === 'FullService' ? 'bg-[#1E4648] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold transition ${
+                mode === 'FullService' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Full Service
@@ -436,17 +438,17 @@ export default function PosView() {
           </div>
 
           {/* Kecepatan Layanan Selector (FR-POS-07) */}
-          <div className="flex items-center gap-1.5 bg-amber-50/80 border border-amber-200/80 px-2.5 py-1 rounded-lg">
+          <div className="flex items-center gap-1 bg-amber-50/80 border border-amber-200/80 px-2 py-1 rounded-lg text-xs flex-wrap">
             <Zap className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-            <span className="text-[11px] font-semibold text-amber-800">Kecepatan:</span>
+            <span className="text-[10px] sm:text-[11px] font-semibold text-amber-800">Speed:</span>
             <div className="flex gap-1">
               {(['Reguler', 'Express', 'Kilat'] as const).map((k) => (
                 <button
                   key={k}
                   onClick={() => setKecepatan(k)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-bold transition ${
+                  className={`px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition ${
                     kecepatan === k 
-                      ? 'bg-amber-600 text-white shadow-sm' 
+                      ? 'bg-amber-600 text-white shadow-xs' 
                       : 'text-amber-700 hover:bg-amber-100'
                   }`}
                 >
@@ -457,23 +459,23 @@ export default function PosView() {
           </div>
 
           {/* Shift Status Widget (FR-POS-02) */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {shiftAktif ? (
               <button
                 onClick={() => setShowTutupShiftModal(true)}
-                className="bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 px-3 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition"
+                className="bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1 transition"
                 title="Shift Berjalan — Klik untuk Tutup Shift Kasir"
               >
-                <Unlock className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Shift Aktif (Kas Awal: Rp {shiftAktif.kasAwal.toLocaleString('id-ID')})</span>
+                <Unlock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="truncate max-w-[140px] sm:max-w-none">Shift (Rp {shiftAktif.kasAwal.toLocaleString('id-ID')})</span>
               </button>
             ) : (
               <button
                 onClick={() => setShowBukaShiftModal(true)}
-                className="bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition animate-pulse"
+                className="bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold flex items-center gap-1 transition animate-pulse"
               >
-                <Lock className="w-3.5 h-3.5 text-rose-600" />
-                <span>Buka Shift Kasir</span>
+                <Lock className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <span>Buka Shift</span>
               </button>
             )}
           </div>
@@ -508,8 +510,8 @@ export default function PosView() {
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 lg:pb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
             {loading ? (
               Array.from({ length: 8 }).map((_, idx) => (
                 <div key={idx} className="bg-white rounded-lg border border-slate-200 p-4 animate-pulse space-y-3">
@@ -525,7 +527,7 @@ export default function PosView() {
                 return (
                   <div
                     key={idx}
-                    className={`bg-white rounded-lg border p-3.5 flex flex-col justify-between transition-all cursor-pointer relative ${
+                    className={`bg-white rounded-lg border p-3 flex flex-col justify-between transition-all cursor-pointer relative ${
                       qtyInCart > 0 ? 'border-[#1E4648] bg-teal-50/40 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:shadow-xs'
                     }`}
                     onClick={() => updateCart(item, 1)}
@@ -536,17 +538,17 @@ export default function PosView() {
                       </span>
                     )}
                     <div>
-                      <div className="w-9 h-9 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-lg mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-base mb-1.5">
                         {item.icon || '🧺'}
                       </div>
-                      <h3 className="font-semibold text-xs text-slate-800 leading-snug mb-1">{item.layanan}</h3>
+                      <h3 className="font-semibold text-xs text-slate-800 leading-snug mb-1 line-clamp-2">{item.layanan}</h3>
                       <div className="text-xs font-bold text-[#1E4648]">
                         Rp {effectivePrice.toLocaleString('id-ID')}
                         <span className="text-[10px] font-normal text-slate-400 ml-0.5">/{item.satuan || 'kg'}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 mt-3 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-1 mt-2.5 pt-2 border-t border-slate-100">
                       {qtyInCart > 0 ? (
                         <>
                           <button
@@ -580,8 +582,48 @@ export default function PosView() {
         </div>
       </div>
 
-      {/* RIGHT: Order Panel */}
-      <div className="w-[300px] sm:w-[320px] md:w-[340px] bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-hidden">
+      {/* Floating Sticky Bottom Bar on Mobile (< lg) */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#11292B] text-white px-4 py-3 flex items-center justify-between shadow-2xl border-t border-teal-800/80">
+        <div className="flex items-center gap-3 min-w-0" onClick={() => setShowMobileCart(true)}>
+          <div className="relative shrink-0">
+            <ShoppingCart className="w-5 h-5 text-teal-300" />
+            {totalCartItems > 0 && (
+              <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                {totalCartItems}
+              </span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold truncate">
+              {totalCartItems > 0 ? `Total: Rp ${grandTotal.toLocaleString('id-ID')}` : 'Keranjang Kosong'}
+            </div>
+            <div className="text-[10px] text-teal-200/90 truncate">
+              {totalCartItems > 0 ? `${totalCartItems} item dipilih` : 'Klik item di atas untuk menambah'}
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowMobileCart(true)}
+          disabled={totalCartItems === 0}
+          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 shrink-0 shadow-md"
+        >
+          <span>Keranjang & Bayar</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* RIGHT: Order Panel Backdrop & Responsive Drawer (< lg Drawer, >= lg Static Panel) */}
+      {showMobileCart && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[250] lg:hidden animate-fade-in"
+          onClick={() => setShowMobileCart(false)}
+        />
+      )}
+
+      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full lg:static lg:w-[340px] lg:z-auto border-l border-slate-200 shrink-0 overflow-hidden transition-all duration-300 ${
+        showMobileCart ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 lg:translate-y-0 lg:opacity-100 hidden lg:flex'
+      }`}>
         {/* Order Header */}
         <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -592,13 +634,22 @@ export default function PosView() {
               </span>
             )}
           </div>
-          <button
-            onClick={() => setShowCustModal(true)}
-            className="text-[11px] font-medium text-[#1E4648] bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-md flex items-center gap-1 hover:bg-teal-100 transition"
-          >
-            <User className="w-3 h-3" />
-            {customer.nama || 'Pilih Pelanggan'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCustModal(true)}
+              className="text-[11px] font-medium text-[#1E4648] bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-md flex items-center gap-1 hover:bg-teal-100 transition"
+            >
+              <User className="w-3 h-3" />
+              {customer.nama || 'Pilih Pelanggan'}
+            </button>
+            <button
+              onClick={() => setShowMobileCart(false)}
+              className="lg:hidden p-1 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100"
+              title="Tutup Keranjang"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Cart Items */}
