@@ -1,5 +1,7 @@
 export type UserRole = 'STAFF' | 'MANAGER' | '';
 
+export type KecepatanLayanan = 'Reguler' | 'Express' | 'Kilat';
+
 export interface LayananItem {
   layanan: string;
   hargaSatuan: number;
@@ -12,12 +14,14 @@ export interface CartItem {
   layanan: string;
   hargaSatuan: number;
   qty: number;
+  catatan?: string;
 }
 
 export interface TransaksiItem {
   layanan: string;
   qty: number;
   hargaSatuan: number;
+  catatan?: string;
 }
 
 export interface Transaksi {
@@ -27,9 +31,65 @@ export interface Transaksi {
   noHp?: string;
   petugas: string;
   tipe: 'SelfService' | 'FullService';
+  tingkatLayanan?: KecepatanLayanan;
+  subtotal?: number;
+  diskon?: number;
+  pajak?: number;
   total: number;
-  status: 'Diterima' | 'Selesai' | 'Batal';
+  nominalDP?: number;
+  sisaTagihan?: number;
+  metodeBayar?: 'Tunai' | 'QRIS' | 'Transfer' | 'Kartu' | 'Split';
+  status: 'Diterima' | 'Dicuci' | 'Dikeringkan' | 'Disetrika' | 'Siap Diambil' | 'Selesai' | 'Batal';
+  statusVoid?: 'None' | 'PendingApproval' | 'Approved' | 'Rejected';
+  alasanVoid?: string;
+  catatan?: string;
+  estimasiSelesai?: string;
+  idOutlet?: string;
   items: TransaksiItem[];
+}
+
+export interface ShiftKasir {
+  idShift: string;
+  idUser: string;
+  namaKasir: string;
+  kasAwal: number;
+  kasAkhir?: number;
+  totalOmzetTunai?: number;
+  selisihKas?: number;
+  status: 'Buka' | 'Tutup';
+  waktuBuka: string;
+  waktuTutup?: string;
+}
+
+export interface PromoVoucher {
+  idPromo: string;
+  kodeVoucher: string;
+  jenisDiskon: 'Persentase' | 'Nominal';
+  nilaiDiskon: number;
+  minTransaksi?: number;
+  periodeSelesai?: string;
+  kuota?: number;
+  statusAktif: boolean;
+}
+
+export interface Pelanggan {
+  idPelanggan: string;
+  nama: string;
+  noHp: string;
+  alamat?: string;
+  saldoPoin: number;
+  isBlacklist: boolean;
+  tanggalDaftar: string;
+}
+
+export interface AuditLog {
+  idLog: string;
+  idUser: string;
+  namaUser: string;
+  jenisAktivitas: string;
+  referensi?: string;
+  detail?: string;
+  waktu: string;
 }
 
 export interface Pegawai {
@@ -52,3 +112,4 @@ export interface BahanInventory {
   satuan: string;
   minStok: number;
 }
+

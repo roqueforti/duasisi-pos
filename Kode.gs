@@ -784,3 +784,57 @@ function hapusMasterShift(id) {
   }
   return false;
 }
+
+// ============================================================
+// VOID TRANSAKSI & AUDIT TRAIL (SRS-LNDRY-POS-001)
+// ============================================================
+const SHEET_AUDIT = "AuditLog";
+
+function addAuditLog(namaUser, jenisAktivitas, referensi, detail) {
+  let sh = SS.getSheetByName(SHEET_AUDIT);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_AUDIT);
+    sh.appendRow(["ID Log", "Waktu", "Pengguna", "Aktivitas", "Referensi", "Detail"]);
+  }
+  const idLog = "LOG-" + generateId();
+  const waktu = fmtWib(new Date());
+  sh.appendRow([idLog, waktu, namaUser || "System", jenisAktivitas || "Activity", referensi || "-", detail || "-"]);
+}
+
+function getAuditLogs() {
+  let sh = SS.getSheetByName(SHEET_AUDIT);
+  if (!sh) return [];
+  const data = sh.getDataRange().getValues(); data.shift();
+  return data.map(r => ({
+    idLog: r[0], waktu: r[1], namaUser: r[2], jenisAktivitas: r[3], referensi: r[4], detail: r[5]
+  })).reverse();
+}
+
+function ajukanVoidTransaksi(noNota, alasan, petugas) {
+  const sh = SS.getSheetByName(SHEET_TRANSAKSI);
+  if (!sh) return { success: false, message: "Sheet Transaksi tidak ada" };
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === noNota) {
+      sh.getRange(i + 1, 6).setValue("Pending Void (" + (alasan || "") + ")");
+      addAuditLog(petugas || "Kasir", "Pengajuan Void", noNota, alasan);
+      return { success: true, message: "Permohonan void berhasil dikirim" };
+    }
+  }
+  return { success: false, message: "Nota tidak ditemukan" };
+}
+
+function approveVoidTransaksi(noNota, isApproved, managerName) {
+  const sh = SS.getSheetByName(SHEET_TRANSAKSI);
+  if (!sh) return { success: false, message: "Sheet Transaksi tidak ada" };
+  const data = sh.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === noNota) {
+      const newStatus = isApproved ? "Batal" : "Diterima";
+      sh.getRange(i + 1, 6).setValue(newStatus);
+      addAuditLog(managerName || "Manager", isApproved ? "Approve Void" : "Reject Void", noNota, "Status: " + newStatus);
+      return { success: true, message: "Keputusan void berhasil disimpan (" + newStatus + ")" };
+    }
+  }
+  return { success: false, message: "Nota tidak ditemukan" };
+}
