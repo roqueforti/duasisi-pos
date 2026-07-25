@@ -214,7 +214,7 @@ function tambahLayanan(data) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   const id = generateId();
   sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe || "SelfService"]);
-  return { id: id };
+  return { success: true, id: id };
 }
 
 function updateLayanan(id, data) {
@@ -223,10 +223,10 @@ function updateLayanan(id, data) {
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
       sh.getRange(i + 1, 2, 1, 6).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe || rows[i][6]]]);
-      return true;
+      return { success: true };
     }
   }
-  return false;
+  return { success: false, message: "Layanan tidak ditemukan" };
 }
 
 function toggleAktifLayanan(id, aktifBaru) {
@@ -284,7 +284,7 @@ function tambahInventory(data) {
   const sh = SS.getSheetByName(SHEET_INVENTORY);
   const id = generateId();
   sh.appendRow([id, data.nama, data.stok, data.satuan, data.stokMinimum, new Date()]);
-  return { id: id };
+  return { success: true, id: id };
 }
 
 function updateStokInventory(id, perubahan) {
@@ -295,19 +295,19 @@ function updateStokInventory(id, perubahan) {
       const stokBaru = Math.max(0, Number(rows[i][2]) + Number(perubahan));
       sh.getRange(i + 1, 3).setValue(stokBaru);
       sh.getRange(i + 1, 6).setValue(new Date());
-      return { stokBaru: stokBaru };
+      return { success: true, stokBaru: stokBaru };
     }
   }
-  return null;
+  return { success: false, message: "Inventory tidak ditemukan" };
 }
 
 function hapusInventory(id) {
   const sh = SS.getSheetByName(SHEET_INVENTORY);
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] === id) { sh.deleteRow(i + 1); return true; }
+    if (rows[i][0] === id) { sh.deleteRow(i + 1); return { success: true }; }
   }
-  return false;
+  return { success: false };
 }
 
 // ============================================================
@@ -328,7 +328,7 @@ function tambahMesin(data) {
   const sh = SS.getSheetByName(SHEET_MESIN);
   const id = generateId();
   sh.appendRow([id, data.nama, data.tipe || "Washer", "Kosong", "", "", ""]);
-  return { id: id };
+  return { success: true, id: id };
 }
 
 function mulaiPakaiMesin(id, keterangan, estimasiSelesai) {
@@ -636,7 +636,7 @@ function tambahPegawai(data) {
   if (!sh) { sh = SS.insertSheet(SHEET_PEGAWAI); sh.appendRow(["ID", "Nama Pegawai", "No HP", "Jabatan", "Status", "Tanggal Bergabung"]); }
   const id = generateId();
   sh.appendRow([id, data.nama, data.noHp || "", data.jabatan || "Operator", "Aktif", new Date()]);
-  return { id: id };
+  return { success: true, id: id };
 }
 
 function hapusPegawai(id) {
@@ -765,7 +765,7 @@ function tambahMasterShift(data) {
   if (!sh) { sh = SS.insertSheet(SHEET_SHIFT); sh.appendRow(["ID", "Nama Shift", "Jam Masuk", "Jam Keluar", "Keterangan"]); }
   const id = generateId();
   sh.appendRow([id, data.nama, data.jamMasuk || "07:00", data.jamKeluar || "15:00", data.keterangan || ""]);
-  return { id: id };
+  return { success: true, id: id };
 }
 
 function hapusMasterShift(id) {
