@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, Send, Eye, CheckCircle, RefreshCw, X, FileText } from 'lucide-react';
+import { Search, Printer, Send, Eye, CheckCircle, RefreshCw, X, FileText, Plus, Calendar, User, CreditCard, Check } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend } from '@/lib/api';
-import { getLocalTxCache } from '@/lib/syncEngine';
+import { getLocalTxCache, saveLocalTxCache } from '@/lib/syncEngine';
 
 export default function RiwayatView() {
   const [filter, setFilter] = useState<'Semua' | 'SelfService' | 'FullService'>('Semua');
@@ -12,6 +12,104 @@ export default function RiwayatView() {
   const [txList, setTxList] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaksi | null>(null);
+
+  // State for Manual Transaction Modal
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [savingManual, setSavingManual] = useState(false);
+  const [manualNoNota, setManualNoNota] = useState('');
+  const [manualTanggal, setManualTanggal] = useState('');
+  const [manualNama, setManualNama] = useState('');
+  const [manualNoHp, setManualNoHp] = useState('');
+  const [manualTipe, setManualTipe] = useState<'SelfService' | 'FullService'>('SelfService');
+  const [manualLayanan, setManualLayanan] = useState('Layanan Manual / Paket');
+  const [manualQty, setManualQty] = useState('1');
+  const [manualHarga, setManualHarga] = useState('15000');
+  const [manualMetode, setManualMetode] = useState<'Tunai' | 'QRIS' | 'Transfer'>('Tunai');
+  const [manualStatus, setManualStatus] = useState<'Diterima' | 'Selesai'>('Selesai');
+  const [manualPetugas, setManualPetugas] = useState('Kasir');
+
+  const openManualModal = () => {
+    const now = new Date();
+    // Local ISO string format YYYY-MM-DDTHH:mm
+    const tzOffset = now.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
+    setManualTanggal(localISOTime);
+    setManualNoNota('');
+    setManualNama('');
+    setManualNoHp('');
+    setManualTipe('SelfService');
+    setManualLayanan('Cuci + Kering Express');
+    setManualQty('1');
+    setManualHarga('20000');
+    setManualMetode('Tunai');
+    setManualStatus('Selesai');
+    setManualPetugas('Siti Rahma (Kasir)');
+    setShowManualModal(true);
+  };
+
+  const handleSaveManualTx = async () => {
+    if (!manualNama.trim()) {
+      alert('Nama pelanggan wajib diisi!');
+      return;
+    }
+    const hargaNum = Number(manualHarga) || 0;
+    const qtyNum = Number(manualQty) || 1;
+    const grandTotal = hargaNum * qtyNum;
+
+    if (grandTotal <= 0) {
+      alert('Total nominal transaksi harus lebih dari 0!');
+      return;
+    }
+
+    setSavingManual(true);
+    const payload = {
+      noNota: manualNoNota.trim() || undefined,
+      tanggal: manualTanggal ? new Date(manualTanggal).toISOString() : new Date().toISOString(),
+      namaPelanggan: manualNama.trim(),
+      noHp: manualNoHp.trim(),
+      petugas: manualPetugas,
+      tipe: manualTipe,
+      status: manualStatus,
+      metodeBayar: manualMetode,
+      total: grandTotal,
+      items: [
+        {
+          layanan: manualLayanan.trim() || 'Layanan Manual',
+          qty: qtyNum,
+          hargaSatuan: hargaNum
+        }
+      ]
+    };
+
+    let generatedNota = manualNoNota.trim() || `MAN-${Date.now().toString().slice(-6)}`;
+
+    try {
+      const res = await runBackend('simpanTransaksi', payload);
+      if (res && res.noNota) {
+        generatedNota = res.noNota;
+      }
+    } catch (err) {
+      console.warn('[Manual Tx] Save to backend failed, saving locally:', err);
+    }
+
+    const newTxObj: Transaksi = {
+      noNota: generatedNota,
+      tanggal: manualTanggal ? new Date(manualTanggal).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'),
+      namaPelanggan: payload.namaPelanggan,
+      noHp: payload.noHp,
+      petugas: payload.petugas,
+      tipe: payload.tipe,
+      total: payload.total,
+      status: manualStatus,
+      items: payload.items
+    };
+
+    saveLocalTxCache(newTxObj);
+    setShowManualModal(false);
+    setSavingManual(false);
+    alert(`✅ Transaksi manual ${generatedNota} berhasil disimpan!`);
+    loadRiwayat();
+  };
 
   const loadRiwayat = async () => {
     setLoading(true);
@@ -163,7 +261,7 @@ export default function RiwayatView() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+        <div className="flex items-center gap-2 flex-1 min-w-[280px]">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -181,8 +279,17 @@ export default function RiwayatView() {
           </div>
 
           <button
+            onClick={openManualModal}
+            className="bg-[#1E4648] hover:bg-[#153334] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-sm shrink-0"
+            title="Input Transaksi Manual"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Input Transaksi Manual</span>
+          </button>
+
+          <button
             onClick={loadRiwayat}
-            className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition"
+            className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition shrink-0"
             title="Refresh Data"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -345,6 +452,203 @@ export default function RiwayatView() {
               </button>
               <button onClick={() => handleWhatsAppStruk(selectedTx)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 rounded-md text-xs flex items-center justify-center gap-1">
                 <Send className="w-3.5 h-3.5" /> Kirim WA
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Transaction Input Modal */}
+      {showManualModal && (
+        <div className="fixed inset-0 z-[500] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-5 w-full max-w-lg max-h-[92vh] overflow-y-auto space-y-4 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 text-[#1E4648] flex items-center justify-center font-bold text-sm">
+                  📝
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Input Transaksi Manual</h3>
+                  <p className="text-[11px] text-slate-500">Catat transaksi susulan / khusus ke database server online</p>
+                </div>
+              </div>
+              <button onClick={() => setShowManualModal(false)} className="p-1 rounded hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              {/* Tanggal & Waktu */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Tanggal & Waktu Transaksi</label>
+                <input
+                  type="datetime-local"
+                  value={manualTanggal}
+                  onChange={(e) => setManualTanggal(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] bg-slate-50"
+                />
+              </div>
+
+              {/* No Nota (Opsional) */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">No Nota (Kosongkan = Otomatis)</label>
+                <input
+                  type="text"
+                  value={manualNoNota}
+                  onChange={(e) => setManualNoNota(e.target.value)}
+                  placeholder="Contoh: MAN-001 / LDY-..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                />
+              </div>
+
+              {/* Nama Pelanggan */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Nama Pelanggan *</label>
+                <input
+                  type="text"
+                  value={manualNama}
+                  onChange={(e) => setManualNama(e.target.value)}
+                  placeholder="Nama pelanggan"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                />
+              </div>
+
+              {/* No HP */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">No HP / WhatsApp</label>
+                <input
+                  type="tel"
+                  value={manualNoHp}
+                  onChange={(e) => setManualNoHp(e.target.value)}
+                  placeholder="08..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                />
+              </div>
+
+              {/* Tipe Layanan */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Tipe Layanan</label>
+                <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-md">
+                  <button
+                    type="button"
+                    onClick={() => setManualTipe('SelfService')}
+                    className={`py-1.5 rounded text-xs font-semibold transition ${
+                      manualTipe === 'SelfService' ? 'bg-[#1E4648] text-white' : 'text-slate-600'
+                    }`}
+                  >
+                    Self Service
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setManualTipe('FullService')}
+                    className={`py-1.5 rounded text-xs font-semibold transition ${
+                      manualTipe === 'FullService' ? 'bg-[#1E4648] text-white' : 'text-slate-600'
+                    }`}
+                  >
+                    Full Service
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Nota */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Status Nota</label>
+                <select
+                  value={manualStatus}
+                  onChange={(e) => setManualStatus(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] bg-white font-medium text-slate-800"
+                >
+                  <option value="Selesai">🏁 Selesai (Langsung Lunas & Selesai)</option>
+                  <option value="Diterima">📥 Diterima (Proses Pengerjaan)</option>
+                </select>
+              </div>
+
+              {/* Nama Layanan / Deskripsi */}
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Deskripsi / Nama Layanan</label>
+                <input
+                  type="text"
+                  value={manualLayanan}
+                  onChange={(e) => setManualLayanan(e.target.value)}
+                  placeholder="Contoh: Cuci Komplit 7.5 Kg / Paket Karpet"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                />
+              </div>
+
+              {/* Jumlah & Harga Satuan */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Jumlah (Qty / Kg)</label>
+                <input
+                  type="number"
+                  value={manualQty}
+                  onChange={(e) => setManualQty(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Harga Satuan (Rp)</label>
+                <input
+                  type="number"
+                  value={manualHarga}
+                  onChange={(e) => setManualHarga(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                />
+              </div>
+
+              {/* Metode Pembayaran */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Metode Pembayaran</label>
+                <select
+                  value={manualMetode}
+                  onChange={(e) => setManualMetode(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] bg-white font-medium"
+                >
+                  <option value="Tunai">💵 Tunai</option>
+                  <option value="QRIS">📱 QRIS</option>
+                  <option value="Transfer">🏦 Transfer Bank</option>
+                </select>
+              </div>
+
+              {/* Petugas / Kasir */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Kasir / Petugas</label>
+                <input
+                  type="text"
+                  value={manualPetugas}
+                  onChange={(e) => setManualPetugas(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                />
+              </div>
+            </div>
+
+            {/* Total Ringkasan Box */}
+            <div className="bg-teal-50/60 border border-teal-200/80 rounded-lg p-3 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-semibold text-teal-800">Total Nominal Transaksi</span>
+                <p className="text-[11px] text-teal-600">{manualQty || 1} × Rp {(Number(manualHarga) || 0).toLocaleString('id-ID')}</p>
+              </div>
+              <div className="text-base font-extrabold text-[#1E4648]">
+                Rp {((Number(manualHarga) || 0) * (Number(manualQty) || 1)).toLocaleString('id-ID')}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <button
+                onClick={() => setShowManualModal(false)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-4 py-2.5 rounded-md text-xs transition"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveManualTx}
+                disabled={savingManual}
+                className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-2.5 rounded-md text-xs transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+              >
+                {savingManual ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                <span>Simpan Transaksi Manual</span>
               </button>
             </div>
           </div>

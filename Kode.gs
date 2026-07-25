@@ -390,24 +390,31 @@ function generateNoNota() {
 function simpanTransaksi(data) {
   const sh = SS.getSheetByName(SHEET_TRANSAKSI);
   const shD = SS.getSheetByName(SHEET_DETAIL);
-  const noNota = generateNoNota();
-  const tanggal = new Date();
-  const tipe = data.tipeLayanan || "SelfService";
+  const noNota = (data.noNota && !data.noNota.startsWith('OFF-')) ? data.noNota : generateNoNota();
+  const tanggal = data.tanggal ? new Date(data.tanggal) : new Date();
+  const tipe = data.tipe || data.tipeLayanan || "SelfService";
+  const status = data.status || "Diterima";
+  const petugas = data.petugas || data.namaPetugas || "Kasir";
 
   let total = 0;
-  data.items.forEach(item => {
-    const subtotal = item.qty * item.hargaSatuan;
-    total += subtotal;
-    shD.appendRow([noNota, item.layanan, item.qty, item.hargaSatuan, subtotal]);
-  });
+  if (Array.isArray(data.items) && data.items.length > 0) {
+    data.items.forEach(item => {
+      const subtotal = item.qty * item.hargaSatuan;
+      total += subtotal;
+      shD.appendRow([noNota, item.layanan, item.qty, item.hargaSatuan, subtotal]);
+    });
+  } else if (data.total) {
+    total = Number(data.total);
+    shD.appendRow([noNota, "Transaksi Manual", 1, total, total]);
+  }
 
-  sh.appendRow([noNota, tanggal, data.namaPelanggan, data.noHp, total, "Diterima", data.estimasiSelesai || "", data.namaPetugas || "Kasir", tipe]);
+  sh.appendRow([noNota, tanggal, data.namaPelanggan, data.noHp || "", total, status, data.estimasiSelesai || data.estimasi || "", petugas, tipe]);
   simpanPelangganJikaBaru(data.namaPelanggan, data.noHp);
 
   // Auto-create pipeline steps
   createPipelineForNota(noNota, tipe);
 
-  return { success: true, noNota: noNota, total: total, jumlahItem: data.items.length, tipe: tipe };
+  return { success: true, noNota: noNota, total: total, jumlahItem: data.items ? data.items.length : 1, tipe: tipe };
 }
 
 function simpanPelangganJikaBaru(nama, noHp) {

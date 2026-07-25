@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, Minus, Trash2, User, X, Check, CreditCard, Printer, Send, CheckCircle2, DollarSign } from 'lucide-react';
 import { LayananItem, CartItem, Pegawai, Transaksi } from '@/lib/types';
 import { runBackend } from '@/lib/api';
-import { addToPendingOutbox, saveLocalTxCache } from '@/lib/syncEngine';
+import { saveLocalTxCache } from '@/lib/syncEngine';
 
 const defaultLayanan: LayananItem[] = [
   { layanan: 'Cuci 7.5 Kg', hargaSatuan: 10000, tipe: 'SelfService', satuan: 'kg', icon: '🫧' },
@@ -28,7 +28,30 @@ export default function PosView() {
   const [showCustModal, setShowCustModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showCustomItemModal, setShowCustomItemModal] = useState(false);
   const [lastCompletedTx, setLastCompletedTx] = useState<Transaksi | null>(null);
+
+  // Custom Item Input State
+  const [customItemNama, setCustomItemNama] = useState('');
+  const [customItemHarga, setCustomItemHarga] = useState('');
+
+  const handleAddCustomItem = () => {
+    if (!customItemNama.trim()) { alert('Nama layanan kustom wajib diisi!'); return; }
+    const price = Number(customItemHarga);
+    if (isNaN(price) || price <= 0) { alert('Harga harus angka lebih dari 0!'); return; }
+
+    const customItem: LayananItem = {
+      layanan: customItemNama.trim(),
+      hargaSatuan: price,
+      tipe: mode,
+      satuan: 'item',
+      icon: '✨'
+    };
+    updateCart(customItem, 1);
+    setCustomItemNama('');
+    setCustomItemHarga('');
+    setShowCustomItemModal(false);
+  };
 
   const [pegawaiList, setPegawaiList] = useState<Pegawai[]>([]);
   const [selectedPetugas, setSelectedPetugas] = useState('');
@@ -124,49 +147,29 @@ export default function PosView() {
       total: grandTotal
     };
 
-    let completedTxObj: Transaksi;
-
-    if (navigator.onLine) {
-      try {
-        const res = await runBackend('simpanTransaksi', payload);
-        if (res && (res.success || res.noNota)) {
-          completedTxObj = {
-            noNota: res.noNota,
-            tanggal: new Date().toLocaleString('id-ID'),
-            namaPelanggan: payload.namaPelanggan,
-            noHp: payload.noHp,
-            petugas: payload.petugas,
-            tipe: payload.tipe,
-            total: payload.total,
-            status: 'Diterima',
-            items: payload.items
-          };
-          saveLocalTxCache(completedTxObj);
-          setLastCompletedTx(completedTxObj);
-          setShowCheckoutModal(false);
-          setShowSuccessModal(true);
-          return;
-        }
-      } catch (err) {}
+    try {
+      const res = await runBackend('simpanTransaksi', payload);
+      const noNotaGenerated = res?.noNota || `LDY-${Date.now().toString().slice(-6)}`;
+      
+      const completedTxObj: Transaksi = {
+        noNota: noNotaGenerated,
+        tanggal: new Date().toLocaleString('id-ID'),
+        namaPelanggan: payload.namaPelanggan,
+        noHp: payload.noHp,
+        petugas: payload.petugas,
+        tipe: payload.tipe,
+        total: payload.total,
+        status: 'Diterima',
+        items: payload.items
+      };
+      saveLocalTxCache(completedTxObj);
+      setLastCompletedTx(completedTxObj);
+      setShowCheckoutModal(false);
+      setShowSuccessModal(true);
+    } catch (err: any) {
+      console.error('[POS] Simpan transaksi gagal:', err);
+      alert('Gagal menyimpan transaksi ke server. Silakan periksa koneksi internet Anda dan coba lagi.');
     }
-
-    // Offline outbox fallback
-    const offlineItem = addToPendingOutbox(payload);
-    completedTxObj = {
-      noNota: offlineItem.id,
-      tanggal: new Date().toLocaleString('id-ID') + ' (Offline)',
-      namaPelanggan: payload.namaPelanggan,
-      noHp: payload.noHp,
-      petugas: payload.petugas,
-      tipe: payload.tipe,
-      total: payload.total,
-      status: 'Diterima',
-      items: payload.items
-    };
-    saveLocalTxCache(completedTxObj);
-    setLastCompletedTx(completedTxObj);
-    setShowCheckoutModal(false);
-    setShowSuccessModal(true);
   };
 
   const handleFinishSuccess = () => {
@@ -278,20 +281,31 @@ export default function PosView() {
             </button>
           </div>
 
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari layanan..."
-              className="w-full pl-9 pr-8 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+          <div className="relative flex-1 min-w-[200px] flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari layanan..."
+                className="w-full pl-9 pr-8 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowCustomItemModal(true)}
+              className="bg-teal-50 border border-teal-200 text-[#1E4648] hover:bg-teal-100 px-3 py-2 rounded-md text-xs font-semibold flex items-center gap-1 transition shrink-0"
+              title="Tambah Layanan / Item Manual"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Item Manual</span>
+            </button>
           </div>
         </div>
 
@@ -629,6 +643,58 @@ export default function PosView() {
                 className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-md text-xs transition mt-2"
               >
                 ➕ Transaksi Baru
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM ITEM / MANUAL INPUT MODAL */}
+      {showCustomItemModal && (
+        <div className="fixed inset-0 z-[550] bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-5 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-800">Tambah Layanan Manual</h3>
+              <button onClick={() => setShowCustomItemModal(false)} className="p-1 rounded hover:bg-slate-100">
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-4 text-xs">
+              <div>
+                <label className="block font-medium text-slate-600 mb-1">Nama Layanan / Barang *</label>
+                <input
+                  type="text"
+                  value={customItemNama}
+                  onChange={(e) => setCustomItemNama(e.target.value)}
+                  placeholder="Misal: Cuci Karpet Masjid 10m²"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-slate-600 mb-1">Harga Satuan (Rp) *</label>
+                <input
+                  type="number"
+                  value={customItemHarga}
+                  onChange={(e) => setCustomItemHarga(e.target.value)}
+                  placeholder="Misal: 150000"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowCustomItemModal(false)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-3 py-2 rounded-md text-xs"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleAddCustomItem}
+                className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-semibold py-2 rounded-md text-xs transition"
+              >
+                + Masukkan ke Keranjang
               </button>
             </div>
           </div>

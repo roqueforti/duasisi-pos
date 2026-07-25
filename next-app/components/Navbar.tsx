@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Menu, LogOut, Wifi, WifiOff, RefreshCw, Download } from 'lucide-react';
+import { Menu, LogOut, Wifi, WifiOff, Download } from 'lucide-react';
 import { UserRole } from '@/lib/types';
-import { getPendingOutbox, syncOutboxToServer } from '@/lib/syncEngine';
 
 interface NavbarProps {
   currentTab: string;
@@ -31,29 +30,12 @@ export default function Navbar({
 }: NavbarProps) {
   const [clockStr, setClockStr] = useState<string>('');
   const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [pendingCount, setPendingCount] = useState<number>(0);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-
-  const checkSyncState = async () => {
-    const queue = getPendingOutbox();
-    setPendingCount(queue.length);
-    if (navigator.onLine && queue.length > 0 && !isSyncing) {
-      setIsSyncing(true);
-      const res = await syncOutboxToServer();
-      setIsSyncing(false);
-      setPendingCount(getPendingOutbox().length);
-      if (res.syncedCount > 0) {
-        alert(`${res.syncedCount} transaksi offline berhasil disinkronkan ke server!`);
-      }
-    }
-  };
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
-    checkSyncState();
 
-    const handleOnline = () => { setIsOnline(true); checkSyncState(); };
+    const handleOnline = () => { setIsOnline(true); };
     const handleOffline = () => { setIsOnline(false); };
 
     window.addEventListener('online', handleOnline);
@@ -75,14 +57,12 @@ export default function Navbar({
 
     updateClock();
     const interval = setInterval(updateClock, 1000);
-    const syncInterval = setInterval(checkSyncState, 10000);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       clearInterval(interval);
-      clearInterval(syncInterval);
     };
   }, []);
 
@@ -126,16 +106,8 @@ export default function Navbar({
           <span className="hidden sm:inline">Install PWA App</span>
         </button>
 
-        {/* Sync Status */}
-        {pendingCount > 0 ? (
-          <button
-            onClick={checkSyncState}
-            className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 px-2.5 py-1 rounded-md text-[11px] font-medium transition hover:bg-amber-100"
-          >
-            <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{pendingCount} Pending</span>
-          </button>
-        ) : isOnline ? (
+        {/* Online Status */}
+        {isOnline ? (
           <div className="hidden sm:flex items-center gap-1.5 text-emerald-600 text-[11px] font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <Wifi className="w-3 h-3" />
