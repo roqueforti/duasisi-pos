@@ -36,8 +36,11 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] bg-slate-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl p-6 text-center max-w-xs w-full border border-slate-200 animate-fade-in">
+    <div 
+      className="fixed inset-0 z-[1000] bg-cover bg-center bg-no-repeat flex items-center justify-center p-4 transition-all duration-500"
+      style={{ backgroundImage: `linear-gradient(rgba(15, 30, 32, 0.72), rgba(15, 30, 32, 0.85)), url('./assets/bg-outlet.png')` }}
+    >
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl p-7 text-center max-w-sm w-full border border-white/40 shadow-2xl animate-fade-in">
         {/* Logo */}
         <div className="mb-5 flex items-center justify-center">
           <img 
