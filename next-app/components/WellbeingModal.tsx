@@ -78,20 +78,16 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
   const IconComp = affirmation.icon;
 
   return (
-    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-fade-in select-none">
-      <div className="relative bg-[#0F2426] border border-teal-500/30 text-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center overflow-hidden animate-scale-up">
-        {/* Glow Accent Circles */}
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-teal-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
-
+    <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4 bg-slate-950/90 animate-fade-in select-none">
+      <div className="relative bg-[#11292B] border border-slate-700 text-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center overflow-hidden animate-scale-up">
         {/* Role Badge */}
-        <div className="inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full border border-white/15 text-xs font-semibold text-teal-200 mb-5">
+        <div className="inline-flex items-center gap-1.5 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700 text-xs font-semibold text-teal-200 mb-5">
           <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
           <span>{label || (role === 'MANAGER' ? 'Manager / Owner' : 'Staff / Kasir')}</span>
         </div>
 
         {/* Dynamic Icon */}
-        <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-4 border ${affirmation.bgColor} shadow-lg animate-bounce-subtle`}>
+        <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-4 border ${affirmation.bgColor} shadow-md animate-bounce-subtle`}>
           <IconComp className={`w-8 h-8 ${affirmation.color}`} />
         </div>
 
@@ -104,7 +100,7 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
         </h3>
 
         {/* Positive Quote Text */}
-        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6 font-normal px-2 bg-white/5 py-3 rounded-2xl border border-white/5">
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6 font-normal px-3 py-3.5 rounded-xl bg-slate-900 border border-slate-800">
           "{affirmation.quote}"
         </p>
 

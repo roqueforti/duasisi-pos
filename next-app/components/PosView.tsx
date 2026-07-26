@@ -793,7 +793,7 @@ export default function PosView() {
 
       {/* Shift Buka Modal (FR-POS-02) */}
       {showBukaShiftModal && (
-        <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[600] bg-black/60 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm text-center">
             <div className="w-12 h-12 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center mx-auto mb-3">
               <Unlock className="w-6 h-6" />
@@ -826,7 +826,7 @@ export default function PosView() {
 
       {/* Shift Tutup Modal (FR-POS-29) */}
       {showTutupShiftModal && shiftAktif && (
-        <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[600] bg-black/60 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
               <h3 className="text-base font-bold text-slate-800">Tutup Shift Kasir (Rekonsiliasi)</h3>
