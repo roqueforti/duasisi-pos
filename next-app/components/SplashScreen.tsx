@@ -7,26 +7,26 @@ interface SplashScreenProps {
 }
 
 export default function SplashScreen({ onFinish }: SplashScreenProps) {
-  // Phase 1: 'drop' (water drop falling, transparent background)
-  // Phase 2: 'wave' (ripple wave expand, bg fill & Dua SiSi branding)
-  // Phase 3: 'exit' (smooth fade out)
-  const [phase, setPhase] = useState<'drop' | 'wave' | 'exit'>('drop');
+  // Phase 1: 'drop' (tetesan air jatuh di atas background transparan 100%)
+  // Phase 2: 'reveal' (background gelap menyapu lembut & logo Dua SiSi tampil)
+  // Phase 3: 'exit' (fade out ke layar login)
+  const [phase, setPhase] = useState<'drop' | 'reveal' | 'exit'>('drop');
 
   useEffect(() => {
-    // 0s - 1.0s: Water drop falls & ripples (100% transparent bg)
+    // 0s - 0.85s: Tetesan air & riak gelombang (100% transparan)
     const t1 = setTimeout(() => {
-      setPhase('wave');
-    }, 1000);
+      setPhase('reveal');
+    }, 850);
 
-    // 1.0s - 2.8s: Dua SiSi branding & wave fill
+    // 0.85s - 2.2s: Logo Dua SiSi & progress indicator
     const t2 = setTimeout(() => {
       setPhase('exit');
-    }, 2800);
+    }, 2200);
 
-    // 2.8s - 3.2s: Finish & unmount
+    // 2.2s - 2.5s: Selesai & unmount
     const t3 = setTimeout(() => {
       onFinish();
-    }, 3200);
+    }, 2500);
 
     return () => {
       clearTimeout(t1);
@@ -37,21 +37,21 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 
   return (
     <div
-      className={`fixed inset-0 z-[2000] flex items-center justify-center overflow-hidden transition-all duration-700 select-none ${
+      className={`fixed inset-0 z-[2000] flex items-center justify-center overflow-hidden transition-all duration-500 select-none ${
         phase === 'drop'
           ? 'bg-transparent'
-          : phase === 'wave'
-          ? 'bg-[#0A1719] text-white'
-          : 'bg-[#0A1719] opacity-0 pointer-events-none'
+          : phase === 'reveal'
+          ? 'bg-[#11292B] text-white'
+          : 'bg-[#11292B] opacity-0 pointer-events-none'
       }`}
     >
-      {/* PHASE 1: WATER DROP ANIMATION (Background is 100% Transparent) */}
+      {/* FASE 1: ANIMASI TETESAN AIR (Background Transparan 100%) */}
       {phase === 'drop' && (
         <div className="relative flex items-center justify-center w-full h-full">
-          {/* Falling Water Drop SVG */}
+          {/* Tetesan Air Organik */}
           <div className="animate-water-drop absolute">
             <svg
-              className="w-12 h-16 text-teal-400 drop-shadow-[0_10px_25px_rgba(45,212,191,0.8)]"
+              className="w-10 h-14 text-[#1E4648] filter drop-shadow-[0_4px_10px_rgba(0,0,0,0.15)]"
               viewBox="0 0 24 32"
               fill="currentColor"
             >
@@ -59,72 +59,69 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
             </svg>
           </div>
 
-          {/* Concentric Water Ripple Waves upon impact */}
+          {/* Gelombang Riak Air Halus */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-24 h-24 rounded-full border-2 border-teal-400/90 animate-ripple-1" />
-            <div className="w-24 h-24 rounded-full border-2 border-cyan-300/70 animate-ripple-2" />
-            <div className="w-24 h-24 rounded-full border-2 border-teal-200/50 animate-ripple-3" />
+            <div className="w-20 h-20 rounded-full border border-[#1E4648]/40 animate-ripple-soft-1" />
+            <div className="w-20 h-20 rounded-full border border-[#1E4648]/25 animate-ripple-soft-2" />
           </div>
         </div>
       )}
 
-      {/* PHASE 2 & 3: WAVE FILL & DUA SISI BRANDING */}
+      {/* FASE 2 & 3: BACKGROUND GELAP & LOGO DUA SISI */}
       {phase !== 'drop' && (
-        <div className="relative z-10 flex flex-col items-center justify-center text-center p-6 animate-fade-in-scale">
-          {/* Glowing Emblem Logo */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 bg-teal-500/20 blur-2xl rounded-full animate-pulse" />
+        <div className="relative z-10 flex flex-col items-center justify-center text-center p-6 animate-logo-reveal">
+          {/* Logo Brand Dua SiSi */}
+          <div className="mb-5">
             <img
               src="./assets/logo-full-white.svg"
               alt="Dua SiSi Laundry Express & Coin"
-              className="h-14 w-auto relative z-10 brightness-0 invert filter drop-shadow-[0_4px_16px_rgba(45,212,191,0.4)]"
+              className="h-12 w-auto brightness-0 invert opacity-95"
             />
           </div>
 
-          {/* Liquid Wave Progress Bar */}
-          <div className="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden mb-4 relative">
-            <div className="h-full bg-gradient-to-r from-teal-400 to-cyan-300 rounded-full animate-wave-progress" />
+          {/* Minimalist Progress Line */}
+          <div className="w-36 h-1 bg-white/10 rounded-full overflow-hidden mb-3 relative">
+            <div className="h-full bg-[#2DD4BF] rounded-full animate-line-progress" />
           </div>
 
-          {/* Loading Subtitle */}
-          <div className="text-xs font-medium text-teal-200/90 tracking-wide flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-ping" />
-            <span>Memuat Sistem Kasir Dua SiSi POS...</span>
+          {/* Subtitle */}
+          <div className="text-[11px] font-medium text-slate-300 tracking-wider uppercase opacity-80">
+            Express & Coin Laundry
           </div>
         </div>
       )}
 
-      {/* Embedded CSS Animations */}
+      {/* Embedded Styles */}
       <style jsx>{`
         @keyframes waterDrop {
           0% {
-            transform: translateY(-250px) scale(0.7);
+            transform: translateY(-200px) scale(0.7);
             opacity: 0;
           }
-          50% {
+          60% {
             opacity: 1;
           }
           85% {
-            transform: translateY(0) scale(1.1);
+            transform: translateY(0) scale(1.05);
           }
           100% {
-            transform: translateY(0) scale(0.9);
+            transform: translateY(0) scale(0.95);
             opacity: 0;
           }
         }
 
-        @keyframes ripple {
+        @keyframes rippleSoft {
           0% {
-            transform: scale(0.1);
-            opacity: 1;
+            transform: scale(0.2);
+            opacity: 0.8;
           }
           100% {
-            transform: scale(3.5);
+            transform: scale(3.2);
             opacity: 0;
           }
         }
 
-        @keyframes waveProgress {
+        @keyframes lineProgress {
           0% {
             width: 0%;
           }
@@ -133,9 +130,9 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
           }
         }
 
-        @keyframes fadeInScale {
+        @keyframes logoReveal {
           0% {
-            transform: scale(0.85);
+            transform: scale(0.94);
             opacity: 0;
           }
           100% {
@@ -145,28 +142,26 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
         }
 
         .animate-water-drop {
-          animation: waterDrop 0.85s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          animation: waterDrop 0.75s cubic-bezier(0.25, 1, 0.5, 1) forwards;
         }
 
-        .animate-ripple-1 {
-          animation: ripple 0.9s ease-out 0.6s forwards;
+        .animate-ripple-soft-1 {
+          animation: rippleSoft 0.8s ease-out 0.55s forwards;
         }
-        .animate-ripple-2 {
-          animation: ripple 0.9s ease-out 0.75s forwards;
-        }
-        .animate-ripple-3 {
-          animation: ripple 0.9s ease-out 0.9s forwards;
+        .animate-ripple-soft-2 {
+          animation: rippleSoft 0.8s ease-out 0.7s forwards;
         }
 
-        .animate-wave-progress {
-          animation: waveProgress 1.6s ease-in-out forwards;
+        .animate-line-progress {
+          animation: lineProgress 1.3s ease-in-out forwards;
         }
 
-        .animate-fade-in-scale {
-          animation: fadeInScale 0.6s ease-out forwards;
+        .animate-logo-reveal {
+          animation: logoReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
     </div>
   );
 }
+
 
