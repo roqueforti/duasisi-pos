@@ -4,20 +4,36 @@ import React, { useState, useEffect } from 'react';
 import { 
   Search, Plus, Minus, Trash2, User, X, Check, CreditCard, Printer, Send, CheckCircle2, DollarSign,
   Zap, Tag, Clock, ShieldAlert, FileSpreadsheet, Lock, Unlock, TagIcon, ShoppingCart, ArrowRight,
-  WashingMachine, Wind, Flame, Sparkles, Droplets, ShoppingBag, Shirt, Package
+  WashingMachine, Wind, Flame, Sparkles, Droplets, ShoppingBag, Shirt, Package, Coffee, CupSoda, Utensils
 } from 'lucide-react';
 import { LayananItem, CartItem, Pegawai, Transaksi, KecepatanLayanan, ShiftKasir } from '@/lib/types';
 import { runBackend } from '@/lib/api';
 
-function getLayananStyleConfig(name: string) {
+function getLayananStyleConfig(name: string, catFromItem?: string) {
   const lower = name.toLowerCase();
   
+  if (catFromItem === 'MakananMinuman' || lower.includes('kopi') || lower.includes('teh') || lower.includes('air mineral') || lower.includes('snack') || lower.includes('biskuit') || lower.includes('minum')) {
+    return {
+      Icon: Coffee,
+      bg: 'bg-amber-50 border-amber-200/80 text-amber-900',
+      badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
+      categoryGroup: 'Makanan & Minuman'
+    };
+  }
+  if (catFromItem === 'Layanan Tambahan' || lower.includes('dry clean') || lower.includes('sepatu') || lower.includes('noda') || lower.includes('treatment')) {
+    return {
+      Icon: Sparkles,
+      bg: 'bg-purple-50 border-purple-200/80 text-purple-800',
+      badgeColor: 'bg-purple-100 text-purple-900 border-purple-200',
+      categoryGroup: 'Layanan Tambahan'
+    };
+  }
   if (lower.includes('cuci + kering') || lower.includes('komplit')) {
     return {
       Icon: WashingMachine,
       bg: 'bg-teal-50 border-teal-200/80 text-[#1E4648]',
       badgeColor: 'bg-teal-100/90 text-[#1E4648] border-teal-200',
-      category: 'Layanan Utama'
+      categoryGroup: 'Layanan Utama'
     };
   }
   if (lower.includes('cuci')) {
@@ -25,7 +41,7 @@ function getLayananStyleConfig(name: string) {
       Icon: Droplets,
       bg: 'bg-sky-50 border-sky-200/80 text-sky-700',
       badgeColor: 'bg-sky-100/90 text-sky-800 border-sky-200',
-      category: 'Layanan Utama'
+      categoryGroup: 'Layanan Utama'
     };
   }
   if (lower.includes('kering') || lower.includes('pengering') || lower.includes('dry')) {
@@ -33,7 +49,7 @@ function getLayananStyleConfig(name: string) {
       Icon: Wind,
       bg: 'bg-amber-50 border-amber-200/80 text-amber-700',
       badgeColor: 'bg-amber-100/90 text-amber-800 border-amber-200',
-      category: 'Layanan Utama'
+      categoryGroup: 'Layanan Utama'
     };
   }
   if (lower.includes('setrika')) {
@@ -41,15 +57,15 @@ function getLayananStyleConfig(name: string) {
       Icon: Flame,
       bg: 'bg-orange-50 border-orange-200/80 text-orange-700',
       badgeColor: 'bg-orange-100/90 text-orange-800 border-orange-200',
-      category: 'Layanan Utama'
+      categoryGroup: 'Layanan Utama'
     };
   }
   if (lower.includes('deterjen') || lower.includes('softener')) {
     return {
-      Icon: Sparkles,
+      Icon: Package,
       bg: 'bg-rose-50 border-rose-200/80 text-rose-700',
       badgeColor: 'bg-rose-100/90 text-rose-800 border-rose-200',
-      category: 'Bahan & Perlengkapan'
+      categoryGroup: 'Produk Laundry'
     };
   }
   if (lower.includes('kresek') || lower.includes('plastik') || lower.includes('tas') || lower.includes('packing')) {
@@ -57,7 +73,7 @@ function getLayananStyleConfig(name: string) {
       Icon: ShoppingBag,
       bg: 'bg-emerald-50 border-emerald-200/80 text-emerald-700',
       badgeColor: 'bg-emerald-100/90 text-emerald-800 border-emerald-200',
-      category: 'Bahan & Perlengkapan'
+      categoryGroup: 'Produk Laundry'
     };
   }
   
@@ -65,26 +81,38 @@ function getLayananStyleConfig(name: string) {
     Icon: Shirt,
     bg: 'bg-indigo-50 border-indigo-200/80 text-indigo-700',
     badgeColor: 'bg-indigo-100/90 text-indigo-800 border-indigo-200',
-    category: 'Layanan Utama'
+    categoryGroup: 'Layanan Utama'
   };
 }
 
 const defaultLayanan: LayananItem[] = [
-  { layanan: 'Cuci 7.5 Kg', hargaSatuan: 10000, tipe: 'SelfService', satuan: 'kg', icon: '🫧' },
-  { layanan: 'Cuci + Kering 7.5 Kg (All-in)', hargaSatuan: 18000, tipe: 'SelfService', satuan: 'paket', icon: '🧺' },
-  { layanan: 'Deterjen Sachet', hargaSatuan: 1500, tipe: 'SelfService', satuan: 'pcs', icon: '🧴' },
-  { layanan: 'Softener', hargaSatuan: 1500, tipe: 'SelfService', satuan: 'pcs', icon: '🌸' },
-  { layanan: 'Cuci Komplit Reguler 7.5 Kg', hargaSatuan: 20000, tipe: 'FullService', satuan: 'paket', icon: '👔' },
-  { layanan: 'Cuci Komplit Kilat 7.5 Kg', hargaSatuan: 30000, tipe: 'FullService', satuan: 'paket', icon: '⚡' },
-  { layanan: 'Setrika Saja 7.5 Kg', hargaSatuan: 12000, tipe: 'FullService', satuan: 'kg', icon: '👔' },
-  { layanan: 'Dry Clean Jas / Gaun', hargaSatuan: 45000, tipe: 'FullService', satuan: 'pcs', icon: '🧥' },
-  { layanan: 'Cuci Sepatu Premium', hargaSatuan: 35000, tipe: 'FullService', satuan: 'pasang', icon: '👟' },
-  { layanan: 'Plastik Packing Laundry', hargaSatuan: 2000, tipe: 'SelfService', satuan: 'pcs', icon: '📦' }
+  // LAYANAN UTAMA
+  { layanan: 'Cuci 7.5 Kg', hargaSatuan: 10000, tipe: 'SelfService', satuan: 'kg', icon: '🫧', kategori: 'Layanan' },
+  { layanan: 'Cuci + Kering 7.5 Kg (All-in)', hargaSatuan: 18000, tipe: 'SelfService', satuan: 'paket', icon: '🧺', kategori: 'Layanan' },
+  { layanan: 'Cuci Komplit Reguler 7.5 Kg', hargaSatuan: 20000, tipe: 'FullService', satuan: 'paket', icon: '👔', kategori: 'Layanan' },
+  { layanan: 'Setrika Saja 7.5 Kg', hargaSatuan: 12000, tipe: 'FullService', satuan: 'kg', icon: '👔', kategori: 'Layanan' },
+  
+  // LAYANAN TAMBAHAN
+  { layanan: 'Dry Clean Jas / Gaun', hargaSatuan: 45000, tipe: 'FullService', satuan: 'pcs', icon: '🧥', kategori: 'Layanan Tambahan' },
+  { layanan: 'Cuci Sepatu Premium', hargaSatuan: 35000, tipe: 'FullService', satuan: 'pasang', icon: '👟', kategori: 'Layanan Tambahan' },
+  { layanan: 'Treatment Anti Noda Bandel', hargaSatuan: 15000, tipe: 'FullService', satuan: 'pcs', icon: '✨', kategori: 'Layanan Tambahan' },
+
+  // PRODUK LAUNDRY
+  { layanan: 'Deterjen Sachet', hargaSatuan: 1500, tipe: 'SelfService', satuan: 'pcs', icon: '🧴', kategori: 'Produk' },
+  { layanan: 'Softener Parfum', hargaSatuan: 1500, tipe: 'SelfService', satuan: 'pcs', icon: '🌸', kategori: 'Produk' },
+  { layanan: 'Plastik Packing Laundry', hargaSatuan: 2000, tipe: 'SelfService', satuan: 'pcs', icon: '📦', kategori: 'Produk' },
+
+  // MAKANAN & MINUMAN (F&B RETAIL)
+  { layanan: 'Air Mineral 600ml', hargaSatuan: 4000, tipe: 'SelfService', satuan: 'botol', icon: '💧', kategori: 'MakananMinuman' },
+  { layanan: 'Kopi Espresso Dua SiSi', hargaSatuan: 12000, tipe: 'SelfService', satuan: 'cup', icon: '☕', kategori: 'MakananMinuman' },
+  { layanan: 'Teh Manis Dingin', hargaSatuan: 5000, tipe: 'SelfService', satuan: 'cup', icon: '🧋', kategori: 'MakananMinuman' },
+  { layanan: 'Snack & Biskuit Outlet', hargaSatuan: 6000, tipe: 'SelfService', satuan: 'pcs', icon: '🍪', kategori: 'MakananMinuman' }
 ];
 
 export default function PosView() {
   const [mode, setMode] = useState<'SelfService' | 'FullService'>('SelfService');
   const [search, setSearch] = useState('');
+  const [selectedCategoryTab, setSelectedCategoryTab] = useState<'Semua' | 'Layanan' | 'Layanan Tambahan' | 'Produk' | 'MakananMinuman'>('Semua');
   const [loading, setLoading] = useState(true);
   const [layananList, setLayananList] = useState<LayananItem[]>(defaultLayanan);
   const [cart, setCart] = useState<Record<string, CartItem>>({});
@@ -199,9 +227,18 @@ export default function PosView() {
 
   const speedMultiplier = kecepatan === 'Express' ? 1.5 : kecepatan === 'Kilat' ? 2.0 : 1.0;
 
-  const filteredLayanan = (layananList || []).filter(l => 
-    l && l.tipe === mode && (l.layanan || '').toLowerCase().includes((search || '').toLowerCase().trim())
-  );
+  const filteredLayanan = (layananList || []).filter((item) => {
+    if (!item) return false;
+    const matchesMode = item.tipe === mode || item.kategori === 'Produk' || item.kategori === 'MakananMinuman';
+    const matchesSearch = (item.layanan || '').toLowerCase().includes((search || '').toLowerCase().trim());
+
+    if (selectedCategoryTab === 'Semua') {
+      return matchesMode && matchesSearch;
+    }
+
+    const itemCat = item.kategori || (getLayananStyleConfig(item.layanan, item.kategori).categoryGroup === 'Layanan Utama' ? 'Layanan' : 'Produk');
+    return matchesMode && matchesSearch && itemCat === selectedCategoryTab;
+  });
 
   const updateCart = (item: LayananItem, delta: number) => {
     setCart((prev) => {
@@ -554,7 +591,7 @@ export default function PosView() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari layanan laundry..."
+              placeholder="Cari layanan, produk, makanan, minuman..."
               className="w-full pl-9 pr-8 py-1.5 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white"
             />
             {search && (
@@ -572,6 +609,34 @@ export default function PosView() {
             <Plus className="w-3.5 h-3.5" />
             <span>Item Manual</span>
           </button>
+        </div>
+
+        {/* Category Filter Tabs Bar */}
+        <div className="px-4 py-2 bg-white border-b border-slate-200 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {[
+            { id: 'Semua', label: 'Semua', icon: Tag },
+            { id: 'Layanan', label: 'Layanan Utama', icon: WashingMachine },
+            { id: 'Layanan Tambahan', label: 'Layanan Tambahan', icon: Sparkles },
+            { id: 'Produk', label: 'Produk Laundry', icon: Package },
+            { id: 'MakananMinuman', label: 'Makanan & Minuman', icon: Coffee },
+          ].map((tab) => {
+            const TabIcon = tab.icon;
+            const isActive = selectedCategoryTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setSelectedCategoryTab(tab.id as any)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 select-none ${
+                  isActive
+                    ? 'bg-[#1E4648] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                }`}
+              >
+                <TabIcon className={`w-3.5 h-3.5 ${isActive ? 'text-teal-300' : 'text-slate-500'}`} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Product Grid */}
@@ -690,12 +755,14 @@ export default function PosView() {
                   );
                 };
 
-                const mainServices = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan).category === 'Layanan Utama');
-                const addOnProducts = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan).category === 'Bahan & Perlengkapan');
+                const mainServices = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan, item.kategori).categoryGroup === 'Layanan Utama');
+                const extraServices = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan, item.kategori).categoryGroup === 'Layanan Tambahan');
+                const laundryProducts = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan, item.kategori).categoryGroup === 'Produk Laundry');
+                const fnbProducts = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan, item.kategori).categoryGroup === 'Makanan & Minuman');
 
                 return (
-                  <div className="col-span-full space-y-5">
-                    {/* Section 1: Layanan Utama */}
+                  <div className="col-span-full space-y-6">
+                    {/* Group 1: Layanan Utama */}
                     {mainServices.length > 0 && (
                       <div>
                         <div className="flex items-center gap-2 mb-3 px-0.5">
@@ -713,20 +780,56 @@ export default function PosView() {
                       </div>
                     )}
 
-                    {/* Section 2: Bahan & Perlengkapan Tambahan */}
-                    {addOnProducts.length > 0 && (
-                      <div className="pt-2">
+                    {/* Group 2: Layanan Tambahan */}
+                    {extraServices.length > 0 && (
+                      <div className="pt-1">
                         <div className="flex items-center gap-2 mb-3 px-0.5">
-                          <span className="w-2 h-2 rounded-full bg-rose-500" />
-                          <h2 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
-                            Produk & Bahan Tambahan
+                          <span className="w-2 h-2 rounded-full bg-purple-600" />
+                          <h2 className="text-xs font-extrabold text-purple-900 uppercase tracking-wider">
+                            Layanan Tambahan & Special Care
                           </h2>
-                          <span className="text-[10px] font-bold bg-rose-100 text-rose-800 px-2 py-0.2 rounded-full border border-rose-200">
-                            {addOnProducts.length}
+                          <span className="text-[10px] font-bold bg-purple-100 text-purple-900 px-2 py-0.2 rounded-full border border-purple-200">
+                            {extraServices.length}
                           </span>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
-                          {addOnProducts.map((item, idx) => renderCard(item, idx + 100))}
+                          {extraServices.map((item, idx) => renderCard(item, idx + 200))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Group 3: Produk Laundry */}
+                    {laundryProducts.length > 0 && (
+                      <div className="pt-1">
+                        <div className="flex items-center gap-2 mb-3 px-0.5">
+                          <span className="w-2 h-2 rounded-full bg-rose-500" />
+                          <h2 className="text-xs font-extrabold text-rose-900 uppercase tracking-wider">
+                            Produk Laundry & Packing
+                          </h2>
+                          <span className="text-[10px] font-bold bg-rose-100 text-rose-800 px-2 py-0.2 rounded-full border border-rose-200">
+                            {laundryProducts.length}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
+                          {laundryProducts.map((item, idx) => renderCard(item, idx + 400))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Group 4: Makanan & Minuman */}
+                    {fnbProducts.length > 0 && (
+                      <div className="pt-1">
+                        <div className="flex items-center gap-2 mb-3 px-0.5">
+                          <span className="w-2 h-2 rounded-full bg-amber-600" />
+                          <h2 className="text-xs font-extrabold text-amber-900 uppercase tracking-wider">
+                            Makanan & Minuman (F&B Retail)
+                          </h2>
+                          <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.2 rounded-full border border-amber-200">
+                            {fnbProducts.length}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
+                          {fnbProducts.map((item, idx) => renderCard(item, idx + 600))}
                         </div>
                       </div>
                     )}
