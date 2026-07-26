@@ -13,8 +13,8 @@ export const metadata: Metadata = {
   description: "Aplikasi POS Laundry Modern & Smart Management System",
   manifest: "/duasisi-pos/manifest.json",
   icons: {
-    icon: "/duasisi-pos/assets/logo-emblem-teal.svg",
-    apple: "/duasisi-pos/assets/logo-emblem-teal.svg",
+    icon: "/duasisi-pos/assets/icon-192.svg",
+    apple: "/duasisi-pos/assets/icon-512.svg",
   },
 };
 
