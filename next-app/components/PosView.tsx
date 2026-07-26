@@ -299,12 +299,13 @@ export default function PosView() {
       .catch(() => {});
   }, []);
 
-  const handleBukaShift = () => {
+  const handleBukaShift = async () => {
     const val = Number(kasAwalInput) || 0;
+    const kasirNama = selectedPetugas || 'Siti Rahma (Kasir)';
     const newShift: ShiftKasir = {
       idShift: `SHF-${Date.now().toString().slice(-6)}`,
       idUser: 'KASIR-01',
-      namaKasir: selectedPetugas || 'Siti Rahma (Kasir)',
+      namaKasir: kasirNama,
       kasAwal: val,
       status: 'Buka',
       waktuBuka: new Date().toLocaleString('id-ID')
@@ -312,11 +313,16 @@ export default function PosView() {
     setShiftAktif(newShift);
     localStorage.setItem('duasisi_shift_aktif', JSON.stringify(newShift));
     setShowBukaShiftModal(false);
+
+    // Auto sync Clock In Presensi to backend
+    try {
+      await runBackend('clockInPegawai', kasirNama, 'Shift Kasir POS', `Buka Shift Saldo Kas Awal Rp ${val.toLocaleString('id-ID')}`);
+    } catch (err) {}
   };
 
-  const handleTutupShift = () => {
+  const handleTutupShift = async () => {
     if (!shiftAktif) return;
-    const fisik = Number(kasAkhirFisik) || 0;
+    const fisik = Number(kasAkhirFisik) || (shiftAktif.kasAwal + (shiftAktif.totalOmzetTunai || 0));
     const totalOmzet = shiftAktif.totalOmzetTunai || 0;
     const ekspektasiKas = shiftAktif.kasAwal + totalOmzet;
     const selisih = fisik - ekspektasiKas;
@@ -331,7 +337,13 @@ export default function PosView() {
     localStorage.removeItem('duasisi_shift_aktif');
     setShiftAktif(null);
     setShowTutupShiftModal(false);
-    alert(`Shift ditutup. Kas Fisik: Rp ${fisik.toLocaleString('id-ID')} | Selisih: Rp ${selisih.toLocaleString('id-ID')}`);
+
+    // Auto sync Clock Out Presensi to backend
+    try {
+      await runBackend('clockOutPegawai', shiftAktif.namaKasir, `Tutup Shift Kas Fisik Rp ${fisik.toLocaleString('id-ID')} | Selisih Rp ${selisih.toLocaleString('id-ID')}`);
+    } catch (err) {}
+
+    alert(`✅ Shift Kasir & Clock Out Presensi Selesai!\nKas Fisik: Rp ${fisik.toLocaleString('id-ID')} | Selisih: Rp ${selisih.toLocaleString('id-ID')}`);
     setShowBukaShiftModal(true);
   };
 
@@ -1259,51 +1271,111 @@ export default function PosView() {
         </div>
       )}
 
-      {/* Shift Tutup Modal (FR-POS-29) */}
+      {/* Shift Tutup Modal (FR-POS-29) — Integrated with Staff Clock In / Clock Out Presensi */}
       {showTutupShiftModal && shiftAktif && (
         <div className="fixed inset-0 z-[600] bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-              <h3 className="text-base font-bold text-slate-800">Tutup Shift Kasir (Rekonsiliasi)</h3>
-              <button onClick={() => setShowTutupShiftModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl animate-scale-up">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Tutup Shift & Clock Out Presensi</h3>
+                <p className="text-[11px] text-slate-500">Rekonsiliasi kas laci & pencatatan jam kerja staf</p>
+              </div>
+              <button onClick={() => setShowTutupShiftModal(false)} className="p-1 rounded-lg hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
             </div>
             
-            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2 text-xs mb-4">
-              <div className="flex justify-between text-slate-600">
-                <span>Waktu Buka Shift:</span>
-                <span className="font-semibold">{shiftAktif.waktuBuka}</span>
+            {/* Section 1: Staff Clock In & Clock Out Presensi */}
+            <div className="bg-teal-50/70 p-3 rounded-xl border border-teal-200/80 space-y-2 text-xs mb-4">
+              <div className="flex items-center justify-between font-bold text-[#1E4648] border-b border-teal-200/60 pb-1.5">
+                <span className="flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-teal-700" />
+                  Staf / Petugas Kasir:
+                </span>
+                <span className="text-sm font-extrabold">{shiftAktif.namaKasir}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
+                <div>
+                  <span className="block text-[10px] text-slate-400 font-semibold uppercase">⏰ Jam Clock In (Masuk)</span>
+                  <span className="font-bold text-slate-800">{shiftAktif.waktuBuka}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] text-slate-400 font-semibold uppercase">🏁 Jam Clock Out (Keluar)</span>
+                  <span className="font-bold text-emerald-700">{new Date().toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Cash Reconciliation (Kas Laci) */}
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2 text-xs mb-4">
+              <div className="font-bold text-slate-800 border-b border-slate-200/80 pb-1 flex items-center justify-between">
+                <span>💵 Rekonsiliasi Kas Laci</span>
+                <span className="text-[10px] text-slate-400 font-medium">Shift ID: {shiftAktif.idShift}</span>
               </div>
               <div className="flex justify-between text-slate-600">
-                <span>Saldo Kas Awal:</span>
+                <span>Saldo Modal Kas Awal:</span>
                 <span className="font-semibold">Rp {shiftAktif.kasAwal.toLocaleString('id-ID')}</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Total Omzet Tunai Shift Ini:</span>
-                <span className="font-bold text-emerald-700">Rp {(shiftAktif.totalOmzetTunai || 0).toLocaleString('id-ID')}</span>
+                <span className="font-bold text-emerald-700">+Rp {(shiftAktif.totalOmzetTunai || 0).toLocaleString('id-ID')}</span>
               </div>
-              <div className="flex justify-between font-bold text-slate-800 text-sm pt-1 border-t border-slate-200">
+              <div className="flex justify-between font-bold text-slate-800 text-sm pt-2 border-t border-slate-200">
                 <span>Ekspektasi Kas Fisik:</span>
-                <span className="text-[#1E4648]">Rp {(shiftAktif.kasAwal + (shiftAktif.totalOmzetTunai || 0)).toLocaleString('id-ID')}</span>
+                <span className="text-[#1E4648] text-base">Rp {(shiftAktif.kasAwal + (shiftAktif.totalOmzetTunai || 0)).toLocaleString('id-ID')}</span>
               </div>
             </div>
 
+            {/* Section 3: Kas Fisik Akhir & Dynamic Difference Indicator */}
             <div className="space-y-3 mb-5 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Kas Fisik Akhir di Laci (Rp) *</label>
+                <label className="block font-bold text-slate-700 mb-1">Hitung Kas Fisik Akhir di Laci (Rp) *</label>
                 <input
                   type="number"
                   value={kasAkhirFisik}
                   onChange={(e) => setKasAkhirFisik(e.target.value)}
                   placeholder={(shiftAktif.kasAwal + (shiftAktif.totalOmzetTunai || 0)).toString()}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold outline-none focus:border-[#1E4648]"
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm font-extrabold outline-none focus:border-[#1E4648] bg-white font-mono"
                 />
               </div>
+
+              {/* Dynamic Status / Selisih Badge */}
+              {(() => {
+                const ekspektasi = shiftAktif.kasAwal + (shiftAktif.totalOmzetTunai || 0);
+                const inputFisik = Number(kasAkhirFisik) || ekspektasi;
+                const selisih = inputFisik - ekspektasi;
+
+                if (selisih === 0) {
+                  return (
+                    <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-lg p-2 text-xs flex items-center justify-between font-bold">
+                      <span>✅ Status Kas Fisik:</span>
+                      <span>PAS (Selisih Rp 0)</span>
+                    </div>
+                  );
+                } else if (selisih < 0) {
+                  return (
+                    <div className="bg-rose-50 border border-rose-300 text-rose-800 rounded-lg p-2 text-xs flex items-center justify-between font-bold">
+                      <span>⚠️ Status Kas Fisik:</span>
+                      <span>KURANG -Rp {Math.abs(selisih).toLocaleString('id-ID')}</span>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="bg-amber-50 border border-amber-300 text-amber-900 rounded-lg p-2 text-xs flex items-center justify-between font-bold">
+                      <span>ℹ️ Status Kas Fisik:</span>
+                      <span>LEBIH +Rp {selisih.toLocaleString('id-ID')}</span>
+                    </div>
+                  );
+                }
+              })()}
             </div>
 
             <div className="flex gap-2">
-              <button onClick={() => setShowTutupShiftModal(false)} className="bg-slate-100 text-slate-600 px-4 py-2.5 rounded-lg text-xs font-semibold">Batal</button>
-              <button onClick={handleTutupShift} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 rounded-lg text-xs transition">
-                Selesaikan & Tutup Shift
+              <button onClick={() => setShowTutupShiftModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2.5 rounded-lg text-xs font-bold transition">
+                Batal
+              </button>
+              <button onClick={handleTutupShift} className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-2.5 rounded-lg text-xs transition shadow-md flex items-center justify-center gap-1.5">
+                <span>Selesaikan Shift & Clock Out</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
