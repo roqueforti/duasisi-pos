@@ -109,6 +109,29 @@ export default function RekapView() {
   const layananTerlaris = data?.layananTerlaris || [];
   const maxOmzetHarian = Math.max(...omzetHarian.map(o => o.omzet), 100000);
 
+  const handleRunSeeder6Bulan = async () => {
+    if (!confirm('Generate ~300-500 data sampel transaksi acak selama 6 bulan terakhir ke database Google Sheets?')) return;
+    setLoading(true);
+    try {
+      const res = await runBackend<any>('seedData6Bulan');
+      if (res && res.success) {
+        alert(`✅ ${res.message}`);
+        // Set date range filter to last 6 months
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        setStartDate(sixMonthsAgo.toISOString().substring(0, 10));
+        setEndDate(new Date().toISOString().substring(0, 10));
+        loadLaporan();
+      } else {
+        alert('Gagal meng-generate data seeder.');
+      }
+    } catch (err) {
+      alert('Gagal terhubung ke server seeder.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="p-3 md:p-4 space-y-4 w-full">
       {/* Header & Main Navigation Tabs */}
@@ -176,6 +199,15 @@ export default function RekapView() {
             className="bg-[#1E4648] hover:bg-[#153334] text-white font-semibold px-3 py-1.5 rounded-md text-xs transition flex items-center gap-1.5 shadow-xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Filter
+          </button>
+
+          <button
+            onClick={handleRunSeeder6Bulan}
+            disabled={loading}
+            className="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs transition flex items-center gap-1.5 shadow-xs"
+            title="Generate 300+ sampel data transaksi acak selama 6 bulan terakhir"
+          >
+            <Award className="w-3.5 h-3.5" /> Seeder 6 Bulan
           </button>
 
           <button

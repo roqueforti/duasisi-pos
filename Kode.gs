@@ -838,3 +838,99 @@ function approveVoidTransaksi(noNota, isApproved, managerName) {
   }
   return { success: false, message: "Nota tidak ditemukan" };
 }
+
+// ============================================================
+// DATA SEEDER 6 BULAN (SRS-LNDRY-POS-001)
+// ============================================================
+function seedData6Bulan() {
+  setupSheets();
+  
+  let shT = SS.getSheetByName(SHEET_TRANSAKSI);
+  let shD = SS.getSheetByName(SHEET_DETAIL);
+
+  const pelangganList = [
+    { nama: "Anisa Wijaya", hp: "081234567890" },
+    { nama: "Rudi Hermawan", hp: "081398765432" },
+    { nama: "Dian Sastro", hp: "085712345678" },
+    { nama: "Eko Prasetyo", hp: "081908765432" },
+    { nama: "Dewi Lestari", hp: "082134567890" },
+    { nama: "Bayu Pratama", hp: "083898765432" },
+    { nama: "Maya Indah", hp: "087812345678" },
+    { nama: "Hendra Kurniawan", hp: "085608765432" },
+    { nama: "Rina Kusuma", hp: "081534567890" },
+    { nama: "Agus Setiawan", hp: "082298765432" }
+  ];
+
+  pelangganList.forEach(p => {
+    simpanPelangganJikaBaru(p.nama, p.hp);
+  });
+
+  const layananPool = [
+    { nama: "Cuci 7.5 Kg", harga: 10000, tipe: "SelfService" },
+    { nama: "Cuci + Kering 7.5 Kg", harga: 18000, tipe: "SelfService" },
+    { nama: "Deterjen Sachet", harga: 1500, tipe: "SelfService" },
+    { nama: "Softener Pouch", harga: 1500, tipe: "SelfService" },
+    { nama: "Cuci Komplit Reguler 7.5 Kg", harga: 20000, tipe: "FullService" },
+    { nama: "Cuci Komplit Kilat 7.5 Kg", harga: 30000, tipe: "FullService" },
+    { nama: "Setrika Saja 7.5 Kg", harga: 12000, tipe: "FullService" },
+    { nama: "Cuci Bed Cover Jumbo", harga: 35000, tipe: "FullService" },
+    { nama: "Cuci Sepatu Premium", harga: 35000, tipe: "FullService" },
+    { nama: "Dry Clean Jas", harga: 45000, tipe: "FullService" }
+  ];
+
+  const petugasList = ["Siti Rahma", "Budi Santoso", "Kasir Utama"];
+  const now = new Date();
+  let counter = 1000;
+  let totalSeeded = 0;
+
+  // Loop back 180 days (6 months)
+  for (let dayOffset = 180; dayOffset >= 0; dayOffset--) {
+    const txDate = new Date(now.getTime() - (dayOffset * 24 * 60 * 60 * 1000));
+    // Generate 2 to 5 random transactions per day
+    const txPerDay = Math.floor(Math.random() * 4) + 2;
+
+    for (let i = 0; i < txPerDay; i++) {
+      counter++;
+      const noNota = "LDY-" + txDate.getFullYear().toString().slice(-2) + 
+        ("0" + (txDate.getMonth() + 1)).slice(-2) + 
+        ("0" + txDate.getDate()).slice(-2) + "-" + counter;
+
+      const cust = pelangganList[Math.floor(Math.random() * pelangganList.length)];
+      const pet = petugasList[Math.floor(Math.random() * petugasList.length)];
+      
+      const numItems = Math.floor(Math.random() * 3) + 1;
+      let totalNota = 0;
+      let primaryTipe = "FullService";
+
+      for (let k = 0; k < numItems; k++) {
+        const item = layananPool[Math.floor(Math.random() * layananPool.length)];
+        const qty = Math.floor(Math.random() * 2) + 1;
+        const subtotal = item.harga * qty;
+        totalNota += subtotal;
+        primaryTipe = item.tipe;
+
+        shD.appendRow([noNota, item.nama, qty, item.harga, subtotal]);
+      }
+
+      const status = dayOffset < 2 ? (Math.random() > 0.5 ? "Siap Ambil" : "Diterima") : "Selesai";
+      const estimasiStr = fmtWib(new Date(txDate.getTime() + (24 * 60 * 60 * 1000)), "yyyy-MM-dd");
+
+      shT.appendRow([
+        noNota,
+        fmtWib(txDate),
+        cust.nama,
+        cust.hp,
+        totalNota,
+        status,
+        estimasiStr,
+        pet,
+        primaryTipe
+      ]);
+
+      totalSeeded++;
+    }
+  }
+
+  addAuditLog("System Seeder", "Data Seeding 6 Bulan", "6 Bulan Data", `Berhasil membuat ${totalSeeded} sampel transaksi.`);
+  return { success: true, count: totalSeeded, message: `Berhasil meng-generate ${totalSeeded} transaksi seeder 6 bulan!` };
+}
