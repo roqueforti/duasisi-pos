@@ -19,13 +19,39 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
     setLoading(true);
     setErrorMsg('');
     try {
-      const res = await runBackend<{ success: boolean; transaksi?: Transaksi; message?: string }>('getTransaksiByNota', noNota);
+      let res = await runBackend<{ success?: boolean; error?: boolean; transaksi?: Transaksi; message?: string }>('getTransaksiByNota', noNota);
+      
+      // Fallback untuk deployment Apps Script lama yang belum di-update versi kodenya
+      if (res && (res.error || !res.success) && res.message && res.message.includes('tidak ditemukan')) {
+        const allTx = await runBackend<Transaksi[]>('getTransaksiList');
+        if (Array.isArray(allTx)) {
+          const found = allTx.find(t => t.noNota === noNota);
+          if (found) {
+            setTx(found);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       if (res && res.success && res.transaksi) {
         setTx(res.transaksi);
       } else {
         setErrorMsg(res?.message || 'Nota transaksi tidak ditemukan atau telah dihapus.');
       }
     } catch (err: any) {
+      // Fallback sekunder melalui getTransaksiList jika API error
+      try {
+        const allTx = await runBackend<Transaksi[]>('getTransaksiList');
+        if (Array.isArray(allTx)) {
+          const found = allTx.find(t => t.noNota === noNota);
+          if (found) {
+            setTx(found);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (e) {}
       setErrorMsg('Gagal memverifikasi nota dari server database.');
     } finally {
       setLoading(false);
