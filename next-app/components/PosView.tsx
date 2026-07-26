@@ -164,9 +164,16 @@ export default function PosView() {
     isRepeatOrder?: boolean;
     terakhirOrder?: string;
   }>({ found: false });
+  const [custLookupMatches, setCustLookupMatches] = useState<Array<{
+    nama: string;
+    noHp: string;
+    totalOrder: number;
+    totalSpend: number;
+    terakhirOrder: string;
+  }>>([]);
 
   const handlePhoneAutoLookup = async (inputHp: string, target: 'inputModal' | 'checkoutModal') => {
-    const cleanHp = inputHp.replace(/[^0-9]/g, '');
+    const cleanQuery = inputHp.replace(/[^0-9]/g, '');
     
     if (target === 'inputModal') {
       setCustomer(prev => ({ ...prev, noHp: inputHp }));
@@ -174,65 +181,88 @@ export default function PosView() {
       setCustNoHpInput(inputHp);
     }
 
-    if (cleanHp.length < 4) {
+    if (cleanQuery.length < 3) {
       setCustLookupState({ found: false });
+      setCustLookupMatches([]);
       return;
     }
 
-    // 1. Instant check in local cache
+    // 1. Instant check in local cache (match by full string or last digits)
+    let localMatches: any[] = [];
     try {
       const cachedStr = localStorage.getItem('duasisi_cust_cache') || '{}';
       const cache = JSON.parse(cachedStr);
-      if (cache[cleanHp]) {
-        const cachedItem = cache[cleanHp];
-        if (target === 'inputModal') {
-          setCustomer(prev => ({ ...prev, nama: cachedItem.nama }));
-        } else {
-          setCustNamaInput(cachedItem.nama);
+      for (let hpKey in cache) {
+        if (hpKey === cleanQuery || hpKey.endsWith(cleanQuery) || hpKey.includes(cleanQuery)) {
+          localMatches.push({
+            noHp: hpKey,
+            nama: cache[hpKey].nama,
+            totalOrder: cache[hpKey].totalOrder || 1,
+            totalSpend: cache[hpKey].totalSpend || 0,
+            terakhirOrder: cache[hpKey].terakhirOrder || ''
+          });
         }
-        setCustLookupState({
-          found: true,
-          nama: cachedItem.nama,
-          totalOrder: cachedItem.totalOrder || 1,
-          totalSpend: cachedItem.totalSpend || 0,
-          isRepeatOrder: true,
-          terakhirOrder: cachedItem.terakhirOrder || ''
-        });
       }
     } catch (err) {}
 
-    // 2. Query Google Apps Script Backend
+    if (localMatches.length > 0) {
+      const best = localMatches[0];
+      if (target === 'inputModal') {
+        setCustomer(prev => ({ ...prev, nama: best.nama, noHp: best.noHp }));
+      } else {
+        setCustNamaInput(best.nama);
+        setCustNoHpInput(best.noHp);
+      }
+      setCustLookupState({
+        found: true,
+        nama: best.nama,
+        totalOrder: best.totalOrder,
+        totalSpend: best.totalSpend,
+        isRepeatOrder: true,
+        terakhirOrder: best.terakhirOrder
+      });
+      setCustLookupMatches(localMatches);
+    }
+
+    // 2. Query Google Apps Script Backend for live 4-digit match
     try {
-      const res = await runBackend('cariPelangganByHp', cleanHp);
-      if (res && res.found) {
+      const res = await runBackend('cariPelangganByHp', cleanQuery);
+      if (res && res.found && res.matches && res.matches.length > 0) {
+        const best = res.bestMatch || res.matches[0];
         if (target === 'inputModal') {
-          setCustomer(prev => ({ ...prev, nama: res.nama }));
+          setCustomer(prev => ({ ...prev, nama: best.nama, noHp: best.noHp }));
         } else {
-          setCustNamaInput(res.nama);
+          setCustNamaInput(best.nama);
+          setCustNoHpInput(best.noHp);
         }
         setCustLookupState({
           found: true,
-          nama: res.nama,
-          totalOrder: res.totalOrder,
-          totalSpend: res.totalSpend,
-          isRepeatOrder: res.isRepeatOrder,
-          terakhirOrder: res.terakhirOrder
+          nama: best.nama,
+          totalOrder: best.totalOrder,
+          totalSpend: best.totalSpend,
+          isRepeatOrder: best.isRepeatOrder,
+          terakhirOrder: best.terakhirOrder
         });
+        setCustLookupMatches(res.matches);
 
-        // Save to local cache for instant offline lookup
+        // Update local cache
         try {
           const cachedStr = localStorage.getItem('duasisi_cust_cache') || '{}';
           const cache = JSON.parse(cachedStr);
-          cache[cleanHp] = {
-            nama: res.nama,
-            totalOrder: res.totalOrder,
-            totalSpend: res.totalSpend,
-            terakhirOrder: res.terakhirOrder
-          };
+          res.matches.forEach((m: any) => {
+            const k = m.cleanHp || m.noHp;
+            cache[k] = {
+              nama: m.nama,
+              totalOrder: m.totalOrder,
+              totalSpend: m.totalSpend,
+              terakhirOrder: m.terakhirOrder
+            };
+          });
           localStorage.setItem('duasisi_cust_cache', JSON.stringify(cache));
         } catch (err) {}
-      } else {
+      } else if (localMatches.length === 0) {
         setCustLookupState({ found: false });
+        setCustLookupMatches([]);
       }
     } catch (err) {}
   };
@@ -1135,6 +1165,40 @@ export default function PosView() {
                 />
               </div>
 
+              {/* Multiple Match Quick Selection Dropdown (4 Digit Terakhir) */}
+              {custLookupMatches.length > 1 && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 space-y-1.5 text-xs animate-fade-in">
+                  <div className="font-bold text-[#1E4648] text-[11px] flex items-center justify-between">
+                    <span>👥 Match {custLookupMatches.length} Pelanggan (4 Digit Terakhir):</span>
+                  </div>
+                  <div className="max-h-28 overflow-y-auto space-y-1">
+                    {custLookupMatches.map((m, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setCustomer({ nama: m.nama, noHp: m.noHp });
+                          setCustNamaInput(m.nama);
+                          setCustNoHpInput(m.noHp);
+                          setCustLookupState({
+                            found: true,
+                            nama: m.nama,
+                            totalOrder: m.totalOrder,
+                            totalSpend: m.totalSpend,
+                            isRepeatOrder: true,
+                            terakhirOrder: m.terakhirOrder
+                          });
+                        }}
+                        className="w-full text-left px-2.5 py-1.5 bg-white hover:bg-teal-50 hover:border-teal-300 border border-slate-200 rounded-md text-[11px] flex justify-between items-center transition shadow-2xs"
+                      >
+                        <span className="font-bold text-slate-800">{m.nama}</span>
+                        <span className="text-slate-500 font-mono text-[10px]">{m.noHp}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Repeat Order Badge Notification */}
               {custLookupState.found ? (
                 <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-lg p-2.5 text-xs flex items-center justify-between animate-fade-in shadow-2xs">
@@ -1146,7 +1210,7 @@ export default function PosView() {
                     Rp {(custLookupState.totalSpend || 0).toLocaleString('id-ID')}
                   </div>
                 </div>
-              ) : customer.noHp.length >= 4 ? (
+              ) : customer.noHp.length >= 3 ? (
                 <div className="bg-sky-50 border border-sky-200 text-sky-800 rounded-lg p-2 text-xs flex items-center gap-1.5 animate-fade-in">
                   <span>🆕</span>
                   <span className="font-semibold text-[11px]">Pelanggan Baru — Otomatis tersimpan ke Database</span>
@@ -1304,6 +1368,40 @@ export default function PosView() {
                   </div>
                 </div>
 
+                {/* Multiple Match Quick Selection Dropdown (4 Digit Terakhir) */}
+                {custLookupMatches.length > 1 && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 space-y-1.5 text-xs animate-fade-in">
+                    <div className="font-bold text-[#1E4648] text-[11px] flex items-center justify-between">
+                      <span>👥 Match {custLookupMatches.length} Pelanggan (4 Digit Terakhir):</span>
+                    </div>
+                    <div className="max-h-28 overflow-y-auto space-y-1">
+                      {custLookupMatches.map((m, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setCustomer({ nama: m.nama, noHp: m.noHp });
+                            setCustNamaInput(m.nama);
+                            setCustNoHpInput(m.noHp);
+                            setCustLookupState({
+                              found: true,
+                              nama: m.nama,
+                              totalOrder: m.totalOrder,
+                              totalSpend: m.totalSpend,
+                              isRepeatOrder: true,
+                              terakhirOrder: m.terakhirOrder
+                            });
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 bg-white hover:bg-teal-50 hover:border-teal-300 border border-slate-200 rounded-md text-[11px] flex justify-between items-center transition shadow-2xs"
+                        >
+                          <span className="font-bold text-slate-800">{m.nama}</span>
+                          <span className="text-slate-500 font-mono text-[10px]">{m.noHp}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Repeat Order Badge in Checkout */}
                 {custLookupState.found ? (
                   <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-lg p-2 text-xs flex items-center justify-between animate-fade-in shadow-2xs">
@@ -1315,7 +1413,7 @@ export default function PosView() {
                       Total Rp {(custLookupState.totalSpend || 0).toLocaleString('id-ID')}
                     </div>
                   </div>
-                ) : custNoHpInput.length >= 4 ? (
+                ) : custNoHpInput.length >= 3 ? (
                   <div className="bg-sky-50 border border-sky-200 text-sky-800 rounded-lg p-2 text-xs flex items-center gap-1.5 animate-fade-in">
                     <span>🆕</span>
                     <span className="font-semibold text-[11px]">Pelanggan Baru — Otomatis tersimpan ke Database</span>

@@ -508,61 +508,84 @@ function simpanPelangganJikaBaru(nama, noHp, alamat) {
 
 function cariPelangganByHp(noHp) {
   if (!noHp) return { found: false, message: "Nomor HP kosong" };
-  const cleanHp = normalizePhone(noHp);
-  if (cleanHp.length < 4) return { found: false, message: "Nomor HP minimal 4 digit" };
+  const cleanQuery = normalizePhone(noHp);
+  if (cleanQuery.length < 3) return { found: false, message: "Minimal 3 digit" };
 
-  // 1. Search in SHEET_PELANGGAN
-  const shP = SS.getSheetByName(SHEET_PELANGGAN);
-  const pData = shP ? shP.getDataRange().getValues() : [];
-  pData.shift(); // remove header
-
-  let matchedCust = null;
-  for (let i = 0; i < pData.length; i++) {
-    if (normalizePhone(pData[i][1]) === cleanHp) {
-      matchedCust = {
-        nama: pData[i][0],
-        noHp: pData[i][1],
-        alamat: pData[i][2] || ""
-      };
-      break;
-    }
-  }
-
-  // 2. Count stats from SHEET_TRANSAKSI
+  // 1. Fetch transactions data for stats aggregation
   const shT = SS.getSheetByName(SHEET_TRANSAKSI);
   const tData = shT ? shT.getDataRange().getValues() : [];
   tData.shift();
 
-  let totalOrder = 0;
-  let totalSpend = 0;
-  let terakhirOrder = "";
-
+  const statsMap = {};
   tData.forEach(r => {
-    const rowHp = normalizePhone(r[3]);
-    if (rowHp === cleanHp) {
-      totalOrder++;
-      totalSpend += (Number(r[4]) || 0);
-      terakhirOrder = r[1] ? fmtWib(r[1]) : terakhirOrder;
-      if (!matchedCust && r[2]) {
-        matchedCust = { nama: r[2], noHp: r[3], alamat: "" };
-      }
+    const hp = normalizePhone(r[3]);
+    if (hp) {
+      if (!statsMap[hp]) statsMap[hp] = { count: 0, spend: 0, lastDate: "", nama: r[2] };
+      statsMap[hp].count++;
+      statsMap[hp].spend += (Number(r[4]) || 0);
+      statsMap[hp].lastDate = r[1] ? fmtWib(r[1]) : statsMap[hp].lastDate;
     }
   });
 
-  if (matchedCust) {
+  // 2. Fetch master pelanggan data
+  const shP = SS.getSheetByName(SHEET_PELANGGAN);
+  const pData = shP ? shP.getDataRange().getValues() : [];
+  pData.shift();
+
+  let matches = [];
+  const seenHp = {};
+
+  pData.forEach(r => {
+    const fullHp = normalizePhone(r[1]);
+    const nama = r[0];
+    const alamat = r[2] || "";
+
+    if (!fullHp) return;
+
+    // Match if exact match OR fullHp ends with cleanQuery (e.g. 4 digit terakhir) OR contains query
+    if (fullHp === cleanQuery || fullHp.endsWith(cleanQuery) || fullHp.includes(cleanQuery)) {
+      seenHp[fullHp] = true;
+      const st = statsMap[fullHp] || { count: 0, spend: 0, lastDate: "" };
+      matches.push({
+        nama: nama,
+        noHp: r[1],
+        cleanHp: fullHp,
+        alamat: alamat,
+        totalOrder: st.count,
+        totalSpend: st.spend,
+        isRepeatOrder: st.count > 0,
+        terakhirOrder: st.lastDate
+      });
+    }
+  });
+
+  // Also check transactions history if not present in Pelanggan sheet
+  for (let hp in statsMap) {
+    if (!seenHp[hp] && (hp === cleanQuery || hp.endsWith(cleanQuery) || hp.includes(cleanQuery))) {
+      const st = statsMap[hp];
+      matches.push({
+        nama: st.nama || "Pelanggan",
+        noHp: hp,
+        cleanHp: hp,
+        alamat: "",
+        totalOrder: st.count,
+        totalSpend: st.spend,
+        isRepeatOrder: st.count > 0,
+        terakhirOrder: st.lastDate
+      });
+    }
+  }
+
+  if (matches.length > 0) {
     return {
       found: true,
-      nama: matchedCust.nama,
-      noHp: matchedCust.noHp,
-      alamat: matchedCust.alamat,
-      totalOrder: totalOrder,
-      totalSpend: totalSpend,
-      isRepeatOrder: totalOrder > 0,
-      terakhirOrder: terakhirOrder
+      count: matches.length,
+      bestMatch: matches[0],
+      matches: matches
     };
   }
 
-  return { found: false, isRepeatOrder: false, totalOrder: 0, totalSpend: 0 };
+  return { found: false, count: 0, matches: [] };
 }
 
 function getDaftarPelanggan() {
