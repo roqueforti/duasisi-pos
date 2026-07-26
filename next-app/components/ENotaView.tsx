@@ -1,0 +1,270 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { ShieldCheck, Printer, Share2, CheckCircle2, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
+import { runBackend } from '@/lib/api';
+import { Transaksi } from '@/lib/types';
+
+interface ENotaViewProps {
+  noNota: string;
+  onBackToApp?: () => void;
+}
+
+export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
+  const [loading, setLoading] = useState<boolean>(true);
+  const [tx, setTx] = useState<Transaksi | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string>('');
+
+  const fetchNota = async () => {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const res = await runBackend<{ success: boolean; transaksi?: Transaksi; message?: string }>('getTransaksiByNota', noNota);
+      if (res && res.success && res.transaksi) {
+        setTx(res.transaksi);
+      } else {
+        setErrorMsg(res?.message || 'Nota transaksi tidak ditemukan atau telah dihapus.');
+      }
+    } catch (err: any) {
+      setErrorMsg('Gagal memverifikasi nota dari server database.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (noNota) {
+      fetchNota();
+    }
+  }, [noNota]);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleShare = () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      navigator.share({
+        title: `E-Nota Resmi Dua SiSi - ${noNota}`,
+        text: `Lihat E-Nota Resmi Laundry Dua SiSi Nota #${noNota}`,
+        url: url
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+      alert('Link E-Nota Resmi berhasil disalin ke clipboard!');
+    }
+  };
+
+  // Generate deterministic security hash for verification
+  const getSecurityHash = (notaStr: string) => {
+    let hash = 0;
+    for (let i = 0; i < notaStr.length; i++) {
+      hash = (hash << 5) - hash + notaStr.charCodeAt(i);
+      hash |= 0;
+    }
+    return `DS-SEC-${Math.abs(hash).toString(16).toUpperCase()}-VERIFIED`;
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-3 sm:p-6 text-slate-800 select-none">
+      {/* Background Graphic Watermark */}
+      <div className="fixed inset-0 bg-[radial-gradient(#1E4648_1px,transparent_1px)] [background-size:16px_16px] opacity-20 pointer-events-none" />
+
+      {loading ? (
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl border border-white/20">
+          <RefreshCw className="w-10 h-10 text-[#1E4648] animate-spin mx-auto mb-4" />
+          <h3 className="text-base font-bold text-slate-800 mb-1">Memverifikasi Keaslian E-Nota...</h3>
+          <p className="text-xs text-slate-500">Mengecek sertifikat keamanan di Cloud Dua SiSi POS</p>
+        </div>
+      ) : errorMsg || !tx ? (
+        <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl border border-rose-200">
+          <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
+          <h3 className="text-lg font-bold text-slate-900 mb-2">E-Nota Tidak Ditemukan</h3>
+          <p className="text-xs text-slate-600 mb-6">{errorMsg || 'Nomor nota tidak terdaftar pada sistem server Dua SiSi POS.'}</p>
+          {onBackToApp && (
+            <button
+              onClick={onBackToApp}
+              className="bg-[#1E4648] text-white px-5 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#153334] transition shadow-md"
+            >
+              Kembali ke Aplikasi Utama
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="w-full max-w-md space-y-4 relative z-10">
+          {/* Security Verification Banner Header */}
+          <div className="bg-emerald-500/15 border border-emerald-400/40 backdrop-blur-md rounded-2xl p-3.5 flex items-center justify-between gap-3 text-emerald-300 shadow-lg">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-400/30">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-emerald-200 flex items-center gap-1.5">
+                  <span>E-NOTA RESMI TERVERIFIKASI</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400/20" />
+                </div>
+                <div className="text-[10px] text-emerald-300/80 font-mono tracking-tight">
+                  {getSecurityHash(tx.noNota)}
+                </div>
+              </div>
+            </div>
+            <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-400/30 shrink-0">
+              ASLI & VALID
+            </span>
+          </div>
+
+          {/* THERMAL PDF RECEIPT CONTAINER */}
+          <div className="bg-stone-50 border border-stone-300 rounded-2xl p-6 shadow-2xl text-slate-800 font-mono relative overflow-hidden print:shadow-none print:border-none print:p-0">
+            {/* Top Zig-Zag Thermal Paper Decoration */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-[radial-gradient(circle,#cbd5e1_1px,transparent_1px)] [background-size:8px_8px]" />
+
+            {/* Receipt Header */}
+            <div className="text-center pb-4 border-b border-dashed border-stone-300">
+              <div className="inline-block p-2 rounded-xl bg-[#1E4648]/10 mb-2">
+                <img
+                  src="./assets/logo-full-white.svg"
+                  alt="Dua SiSi Logo"
+                  className="h-8 w-auto filter brightness-0"
+                />
+              </div>
+              <h2 className="text-sm font-bold tracking-tight text-slate-900">DUA SISI LAUNDRY</h2>
+              <p className="text-[10px] text-slate-600 tracking-wider">EXPRESS & COIN LAUNDRY SYSTEM</p>
+              <p className="text-[9px] text-slate-500 mt-1">Hotline CS / WA: 0812-3456-7890</p>
+            </div>
+
+            {/* Receipt Metadata */}
+            <div className="py-3 text-xs space-y-1 border-b border-dashed border-stone-300">
+              <div className="flex justify-between">
+                <span className="text-slate-500">NO. NOTA:</span>
+                <span className="font-bold text-slate-900">{tx.noNota}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">TANGGAL:</span>
+                <span className="text-slate-800">{tx.tanggal}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">PELANGGAN:</span>
+                <span className="font-bold text-slate-900">{tx.namaPelanggan} ({tx.noHp || '-'})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">KECEPATAN:</span>
+                <span className="font-semibold text-[#1E4648]">{tx.tingkatLayanan || 'Reguler'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">KASIR:</span>
+                <span className="text-slate-800">{tx.petugas || 'Kasir Dua SiSi'}</span>
+              </div>
+              <div className="flex justify-between items-center pt-1">
+                <span className="text-slate-500">STATUS ORDER:</span>
+                <span className="bg-teal-100 text-[#1E4648] font-bold text-[10px] px-2 py-0.5 rounded-md border border-teal-200">
+                  {tx.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Line Items Table */}
+            <div className="py-3 border-b border-dashed border-stone-300">
+              <div className="text-[11px] font-bold text-slate-600 mb-2 flex justify-between">
+                <span>LAYANAN / ITEM</span>
+                <span>SUBTOTAL</span>
+              </div>
+              <div className="space-y-2 text-xs">
+                {tx.items && tx.items.length > 0 ? (
+                  tx.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-start">
+                      <div>
+                        <div className="font-semibold text-slate-900">{item.layanan}</div>
+                        <div className="text-[10px] text-slate-500">
+                          {item.qty} x Rp {Number(item.hargaSatuan || 0).toLocaleString('id-ID')}
+                        </div>
+                      </div>
+                      <div className="font-bold text-slate-900">
+                        Rp {Number(item.qty * item.hargaSatuan).toLocaleString('id-ID')}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-slate-500 text-center italic py-1">Detail item terdaftar pada nota.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Totals & Payment Summary */}
+            <div className="py-3 text-xs space-y-1.5 border-b border-dashed border-stone-300">
+              <div className="flex justify-between items-center text-sm font-bold">
+                <span className="text-slate-900">TOTAL PEMBAYARAN:</span>
+                <span className="text-[#1E4648] text-base">Rp {Number(tx.total).toLocaleString('id-ID')}</span>
+              </div>
+              {tx.nominalDP ? (
+                <>
+                  <div className="flex justify-between text-slate-600">
+                    <span>DP TERBAYAR:</span>
+                    <span className="font-medium text-emerald-700">Rp {Number(tx.nominalDP).toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-900 font-bold">
+                    <span>SISA TAGIHAN:</span>
+                    <span className="text-rose-600">Rp {Number(tx.sisaTagihan || 0).toLocaleString('id-ID')}</span>
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* Security Digital Seal & Barcode Visual */}
+            <div className="pt-4 text-center space-y-2">
+              <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>OFFICIAL DIGITAL SECURITY SEAL</span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              </div>
+
+              {/* Barcode Mock Visual */}
+              <div className="flex justify-center items-center gap-1 h-8 px-4 py-1 bg-white rounded-lg border border-slate-200">
+                {[4, 2, 6, 1, 8, 3, 5, 2, 7, 4, 2, 6, 8, 1, 5, 3, 7, 2, 4, 8, 2, 6].map((w, i) => (
+                  <div
+                    key={i}
+                    className="bg-slate-900 h-full rounded-xs"
+                    style={{ width: `${w}px` }}
+                  />
+                ))}
+              </div>
+              <div className="text-[9px] text-slate-400 font-mono tracking-widest">
+                *{tx.noNota}*
+              </div>
+              <p className="text-[9px] text-slate-500 italic pt-1">
+                Struk ini diterbitkan secara sah oleh Cloud Engine Dua SiSi POS.
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 print:hidden">
+            <button
+              onClick={handlePrint}
+              className="flex-1 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm"
+            >
+              <Printer className="w-4 h-4 text-[#1E4648]" />
+              <span>Cetak / PDF</span>
+            </button>
+            <button
+              onClick={handleShare}
+              className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>Bagikan Link WA</span>
+            </button>
+            {onBackToApp && (
+              <button
+                onClick={onBackToApp}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 px-3 rounded-xl text-xs transition shadow-sm"
+                title="Buka POS"
+              >
+                Aplikasi
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

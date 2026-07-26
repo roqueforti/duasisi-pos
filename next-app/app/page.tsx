@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import LoginModal from '@/components/LoginModal';
@@ -13,6 +13,7 @@ import MesinView from '@/components/MesinView';
 import PegawaiView from '@/components/PegawaiView';
 import ProdukView from '@/components/ProdukView';
 import RekapView from '@/components/RekapView';
+import ENotaView from '@/components/ENotaView';
 import { UserRole } from '@/lib/types';
 
 export default function HomePage() {
@@ -21,6 +22,17 @@ export default function HomePage() {
   const [currentRole, setCurrentRole] = useState<UserRole>('');
   const [currentTab, setCurrentTab] = useState<string>('transaksi');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [publicNotaParam, setPublicNotaParam] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const nota = params.get('nota');
+      if (nota) {
+        setPublicNotaParam(nota);
+      }
+    }
+  }, []);
 
   const handleLoginSuccess = (role: UserRole, label: string) => {
     setPendingRole({ role, label });
@@ -44,6 +56,20 @@ export default function HomePage() {
     setPendingRole(null);
     setShowSplash(false);
   };
+
+  if (publicNotaParam) {
+    return (
+      <ENotaView
+        noNota={publicNotaParam}
+        onBackToApp={() => {
+          setPublicNotaParam(null);
+          if (typeof window !== 'undefined') {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <>

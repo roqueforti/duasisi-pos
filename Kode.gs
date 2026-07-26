@@ -554,6 +554,13 @@ function getTransaksiList(statusFilter) {
   return result.reverse();
 }
 
+function getTransaksiByNota(noNota) {
+  const all = getTransaksiList();
+  const found = all.find(t => t.noNota === noNota);
+  if (!found) return { success: false, message: "Nota " + noNota + " tidak ditemukan di sistem." };
+  return { success: true, transaksi: found };
+}
+
 function getTransaksiByPipeline(tipeFilter) {
   const allTx = getTransaksiList();
   let filtered = allTx.filter(t => t.status !== "Selesai");

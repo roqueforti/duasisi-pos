@@ -397,6 +397,9 @@ export default function PosView() {
       return;
     }
 
+    const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : 'https://roqueforti.github.io/duasisi-pos/';
+    const notaUrl = `${baseUrl}?nota=${encodeURIComponent(tx.noNota)}`;
+
     const itemsStr = tx.items.map(i => `• ${i.layanan} (x${i.qty}) - Rp ${(i.qty * i.hargaSatuan).toLocaleString('id-ID')}`).join('\n');
     const msg = `*HALO ${tx.namaPelanggan.toUpperCase()}, STRUK DUA SISI LAUNDRY*\n\n` +
       `No Nota: *${tx.noNota}*\n` +
@@ -406,7 +409,8 @@ export default function PosView() {
       `*Detail Layanan:*\n${itemsStr}\n\n` +
       `*TOTAL: Rp ${tx.total.toLocaleString('id-ID')}*\n` +
       (tx.nominalDP ? `*DP Terbayar: Rp ${tx.nominalDP.toLocaleString('id-ID')}*\n*Sisa Tagihan: Rp ${(tx.sisaTagihan || 0).toLocaleString('id-ID')}*\n` : '') +
-      `\nTerima kasih telah mencuci di Dua SiSi Laundry! 🙏`;
+      `\n📄 *Lihat E-Nota Resmi (Anti-Pemalsuan & Cetak PDF):*\n${notaUrl}\n\n` +
+      `Terima kasih telah mencuci di Dua SiSi Laundry! 🙏`;
 
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
