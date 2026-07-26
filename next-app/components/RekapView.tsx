@@ -123,10 +123,10 @@ export default function RekapView() {
         setEndDate(new Date().toISOString().substring(0, 10));
         loadLaporan();
       } else {
-        alert('Gagal meng-generate data seeder.');
+        alert(res?.message || 'Gagal meng-generate data seeder. Pastikan Apps Script sudah di-deploy ulang versi terbaru.');
       }
-    } catch (err) {
-      alert('Gagal terhubung ke server seeder.');
+    } catch (err: any) {
+      alert(`Gagal terhubung ke server seeder: ${err?.message || 'Timeout/Koneksi terputus'}`);
     } finally {
       setLoading(false);
     }

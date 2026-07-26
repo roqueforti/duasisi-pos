@@ -840,7 +840,7 @@ function approveVoidTransaksi(noNota, isApproved, managerName) {
 }
 
 // ============================================================
-// DATA SEEDER 6 BULAN (SRS-LNDRY-POS-001)
+// DATA SEEDER 6 BULAN (SRS-LNDRY-POS-001) - Super Fast Batch Insertion
 // ============================================================
 function seedData6Bulan() {
   setupSheets();
@@ -881,13 +881,15 @@ function seedData6Bulan() {
   const petugasList = ["Siti Rahma", "Budi Santoso", "Kasir Utama"];
   const now = new Date();
   let counter = 1000;
-  let totalSeeded = 0;
+  
+  const batchTransaksi = [];
+  const batchDetail = [];
 
   // Loop back 180 days (6 months)
   for (let dayOffset = 180; dayOffset >= 0; dayOffset--) {
     const txDate = new Date(now.getTime() - (dayOffset * 24 * 60 * 60 * 1000));
-    // Generate 2 to 5 random transactions per day
-    const txPerDay = Math.floor(Math.random() * 4) + 2;
+    // Generate 2 to 4 random transactions per day
+    const txPerDay = Math.floor(Math.random() * 3) + 2;
 
     for (let i = 0; i < txPerDay; i++) {
       counter++;
@@ -898,7 +900,7 @@ function seedData6Bulan() {
       const cust = pelangganList[Math.floor(Math.random() * pelangganList.length)];
       const pet = petugasList[Math.floor(Math.random() * petugasList.length)];
       
-      const numItems = Math.floor(Math.random() * 3) + 1;
+      const numItems = Math.floor(Math.random() * 2) + 1;
       let totalNota = 0;
       let primaryTipe = "FullService";
 
@@ -909,13 +911,13 @@ function seedData6Bulan() {
         totalNota += subtotal;
         primaryTipe = item.tipe;
 
-        shD.appendRow([noNota, item.nama, qty, item.harga, subtotal]);
+        batchDetail.push([noNota, item.nama, qty, item.harga, subtotal]);
       }
 
       const status = dayOffset < 2 ? (Math.random() > 0.5 ? "Siap Ambil" : "Diterima") : "Selesai";
       const estimasiStr = fmtWib(new Date(txDate.getTime() + (24 * 60 * 60 * 1000)), "yyyy-MM-dd");
 
-      shT.appendRow([
+      batchTransaksi.push([
         noNota,
         fmtWib(txDate),
         cust.nama,
@@ -926,11 +928,17 @@ function seedData6Bulan() {
         pet,
         primaryTipe
       ]);
-
-      totalSeeded++;
     }
   }
 
-  addAuditLog("System Seeder", "Data Seeding 6 Bulan", "6 Bulan Data", `Berhasil membuat ${totalSeeded} sampel transaksi.`);
-  return { success: true, count: totalSeeded, message: `Berhasil meng-generate ${totalSeeded} transaksi seeder 6 bulan!` };
+  // Fast Batch Append with setValues
+  if (batchDetail.length > 0) {
+    shD.getRange(shD.getLastRow() + 1, 1, batchDetail.length, 5).setValues(batchDetail);
+  }
+  if (batchTransaksi.length > 0) {
+    shT.getRange(shT.getLastRow() + 1, 1, batchTransaksi.length, 9).setValues(batchTransaksi);
+  }
+
+  addAuditLog("System Seeder", "Data Seeding 6 Bulan", "6 Bulan Data", `Berhasil membuat ${batchTransaksi.length} sampel transaksi.`);
+  return { success: true, count: batchTransaksi.length, message: `Berhasil meng-generate ${batchTransaksi.length} transaksi seeder 6 bulan!` };
 }
