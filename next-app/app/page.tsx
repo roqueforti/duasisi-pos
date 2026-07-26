@@ -16,27 +16,38 @@ import RekapView from '@/components/RekapView';
 import { UserRole } from '@/lib/types';
 
 export default function HomePage() {
-  const [showSplash, setShowSplash] = useState<boolean>(true);
+  const [showSplash, setShowSplash] = useState<boolean>(false);
+  const [pendingRole, setPendingRole] = useState<{ role: UserRole; label: string } | null>(null);
   const [currentRole, setCurrentRole] = useState<UserRole>('');
   const [currentTab, setCurrentTab] = useState<string>('transaksi');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
   const handleLoginSuccess = (role: UserRole, label: string) => {
-    setCurrentRole(role);
-    if (role === 'MANAGER') {
-      setCurrentTab('riwayat');
-    } else {
-      setCurrentTab('transaksi');
+    setPendingRole({ role, label });
+    setShowSplash(true);
+  };
+
+  const handleSplashFinish = () => {
+    if (pendingRole) {
+      setCurrentRole(pendingRole.role);
+      if (pendingRole.role === 'MANAGER') {
+        setCurrentTab('riwayat');
+      } else {
+        setCurrentTab('transaksi');
+      }
     }
+    setShowSplash(false);
   };
 
   const handleLogout = () => {
     setCurrentRole('');
+    setPendingRole(null);
+    setShowSplash(false);
   };
 
   return (
     <>
-      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
 
       {!currentRole ? (
         <LoginModal onSuccess={handleLoginSuccess} />
