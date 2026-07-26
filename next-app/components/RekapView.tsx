@@ -30,8 +30,14 @@ interface LaporanResponse {
 }
 
 export default function RekapView() {
-  const todayStr = new Date().toISOString().substring(0, 10);
-  const [startDate, setStartDate] = useState(todayStr);
+  const todayObj = new Date();
+  const todayStr = todayObj.toISOString().substring(0, 10);
+  
+  const sixMonthsAgoObj = new Date();
+  sixMonthsAgoObj.setMonth(sixMonthsAgoObj.getMonth() - 6);
+  const sixMonthsAgoStr = sixMonthsAgoObj.toISOString().substring(0, 10);
+
+  const [startDate, setStartDate] = useState(sixMonthsAgoStr);
   const [endDate, setEndDate] = useState(todayStr);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<LaporanResponse | null>(null);
@@ -116,12 +122,14 @@ export default function RekapView() {
       const res = await runBackend<any>('seedData6Bulan');
       if (res && res.success) {
         alert(`✅ ${res.message}`);
-        // Set date range filter to last 6 months
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-        setStartDate(sixMonthsAgo.toISOString().substring(0, 10));
-        setEndDate(new Date().toISOString().substring(0, 10));
-        loadLaporan();
+        const startStr = sixMonthsAgo.toISOString().substring(0, 10);
+        const endStr = new Date().toISOString().substring(0, 10);
+        setStartDate(startStr);
+        setEndDate(endStr);
+        const resLap = await runBackend<LaporanResponse>('getLaporanRange', startStr, endStr);
+        if (resLap && resLap.ringkasan) setData(resLap);
       } else {
         alert(res?.message || 'Gagal meng-generate data seeder. Pastikan Apps Script sudah di-deploy ulang versi terbaru.');
       }
