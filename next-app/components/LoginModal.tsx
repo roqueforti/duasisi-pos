@@ -97,16 +97,6 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
             </div>
           )}
         </div>
-
-        {/* Info PIN Box */}
-        <div className="text-[11px] text-white/70 leading-relaxed bg-white/5 p-3 rounded-xl border border-white/10 text-left">
-          <div className="font-semibold text-teal-300 mb-1 flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5" /> Default Access PIN:
-          </div>
-          • Staff / Kasir: <code className="font-bold text-white bg-white/15 px-1.5 py-0.5 rounded">1234</code>
-          <br />
-          • Manager / Owner: <code className="font-bold text-white bg-white/15 px-1.5 py-0.5 rounded">8888</code>
-        </div>
       </div>
     </div>
   );
