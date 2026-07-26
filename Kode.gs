@@ -464,11 +464,144 @@ function simpanTransaksi(data) {
   return { success: true, noNota: noNota, total: total, jumlahItem: data.items ? data.items.length : 1, tipe: tipe };
 }
 
-function simpanPelangganJikaBaru(nama, noHp) {
+// ============================================================
+// PELANGGAN ENGINE (UNIQUE BY NO HP & REPEAT ORDER ANALYTICS)
+// ============================================================
+
+function normalizePhone(hp) {
+  if (!hp) return "";
+  let clean = String(hp).replace(/[^0-9]/g, "");
+  if (clean.startsWith("62")) clean = "0" + clean.substring(2);
+  return clean;
+}
+
+function simpanPelangganJikaBaru(nama, noHp, alamat) {
+  if (!noHp) return;
+  const cleanHp = normalizePhone(noHp);
   const shP = SS.getSheetByName(SHEET_PELANGGAN);
+  if (!shP) return;
+
   const data = shP.getDataRange().getValues();
-  const exists = data.some(r => r[1] === noHp);
-  if (!exists && noHp) shP.appendRow([nama, noHp, ""]);
+  let foundRowIdx = -1;
+
+  for (let i = 1; i < data.length; i++) {
+    const rowHp = normalizePhone(data[i][1]);
+    if (rowHp === cleanHp) {
+      foundRowIdx = i + 1;
+      break;
+    }
+  }
+
+  if (foundRowIdx > 0) {
+    // Update existing customer name if provided
+    if (nama && nama.trim()) {
+      shP.getRange(foundRowIdx, 1).setValue(nama.trim());
+    }
+    if (alamat && alamat.trim()) {
+      shP.getRange(foundRowIdx, 3).setValue(alamat.trim());
+    }
+  } else {
+    // Insert new customer record
+    shP.appendRow([nama ? nama.trim() : "Pelanggan", cleanHp, alamat || ""]);
+  }
+}
+
+function cariPelangganByHp(noHp) {
+  if (!noHp) return { found: false, message: "Nomor HP kosong" };
+  const cleanHp = normalizePhone(noHp);
+  if (cleanHp.length < 4) return { found: false, message: "Nomor HP minimal 4 digit" };
+
+  // 1. Search in SHEET_PELANGGAN
+  const shP = SS.getSheetByName(SHEET_PELANGGAN);
+  const pData = shP ? shP.getDataRange().getValues() : [];
+  pData.shift(); // remove header
+
+  let matchedCust = null;
+  for (let i = 0; i < pData.length; i++) {
+    if (normalizePhone(pData[i][1]) === cleanHp) {
+      matchedCust = {
+        nama: pData[i][0],
+        noHp: pData[i][1],
+        alamat: pData[i][2] || ""
+      };
+      break;
+    }
+  }
+
+  // 2. Count stats from SHEET_TRANSAKSI
+  const shT = SS.getSheetByName(SHEET_TRANSAKSI);
+  const tData = shT ? shT.getDataRange().getValues() : [];
+  tData.shift();
+
+  let totalOrder = 0;
+  let totalSpend = 0;
+  let terakhirOrder = "";
+
+  tData.forEach(r => {
+    const rowHp = normalizePhone(r[3]);
+    if (rowHp === cleanHp) {
+      totalOrder++;
+      totalSpend += (Number(r[4]) || 0);
+      terakhirOrder = r[1] ? fmtWib(r[1]) : terakhirOrder;
+      if (!matchedCust && r[2]) {
+        matchedCust = { nama: r[2], noHp: r[3], alamat: "" };
+      }
+    }
+  });
+
+  if (matchedCust) {
+    return {
+      found: true,
+      nama: matchedCust.nama,
+      noHp: matchedCust.noHp,
+      alamat: matchedCust.alamat,
+      totalOrder: totalOrder,
+      totalSpend: totalSpend,
+      isRepeatOrder: totalOrder > 0,
+      terakhirOrder: terakhirOrder
+    };
+  }
+
+  return { found: false, isRepeatOrder: false, totalOrder: 0, totalSpend: 0 };
+}
+
+function getDaftarPelanggan() {
+  const shP = SS.getSheetByName(SHEET_PELANGGAN);
+  if (!shP) return [];
+  const pData = shP.getDataRange().getValues();
+  pData.shift();
+
+  const shT = SS.getSheetByName(SHEET_TRANSAKSI);
+  const tData = shT ? shT.getDataRange().getValues() : [];
+  tData.shift();
+
+  // Aggregate stats per phone number
+  const statsMap = {};
+  tData.forEach(r => {
+    const cleanHp = normalizePhone(r[3]);
+    if (cleanHp) {
+      if (!statsMap[cleanHp]) {
+        statsMap[cleanHp] = { count: 0, spend: 0, lastDate: "" };
+      }
+      statsMap[cleanHp].count++;
+      statsMap[cleanHp].spend += (Number(r[4]) || 0);
+      statsMap[cleanHp].lastDate = r[1] ? fmtWib(r[1]) : statsMap[cleanHp].lastDate;
+    }
+  });
+
+  return pData.map(r => {
+    const hp = normalizePhone(r[1]);
+    const st = statsMap[hp] || { count: 0, spend: 0, lastDate: "" };
+    return {
+      nama: r[0],
+      noHp: r[1],
+      alamat: r[2] || "",
+      totalOrder: st.count,
+      totalSpend: st.spend,
+      isRepeatOrder: st.count > 1,
+      terakhirOrder: st.lastDate
+    };
+  });
 }
 
 // ============================================================

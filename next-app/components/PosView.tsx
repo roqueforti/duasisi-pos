@@ -156,6 +156,86 @@ export default function PosView() {
   const [estimasi, setEstimasi] = useState('');
   const [custNamaInput, setCustNamaInput] = useState('');
   const [custNoHpInput, setCustNoHpInput] = useState('');
+  const [custLookupState, setCustLookupState] = useState<{
+    found: boolean;
+    nama?: string;
+    totalOrder?: number;
+    totalSpend?: number;
+    isRepeatOrder?: boolean;
+    terakhirOrder?: string;
+  }>({ found: false });
+
+  const handlePhoneAutoLookup = async (inputHp: string, target: 'inputModal' | 'checkoutModal') => {
+    const cleanHp = inputHp.replace(/[^0-9]/g, '');
+    
+    if (target === 'inputModal') {
+      setCustomer(prev => ({ ...prev, noHp: inputHp }));
+    } else {
+      setCustNoHpInput(inputHp);
+    }
+
+    if (cleanHp.length < 4) {
+      setCustLookupState({ found: false });
+      return;
+    }
+
+    // 1. Instant check in local cache
+    try {
+      const cachedStr = localStorage.getItem('duasisi_cust_cache') || '{}';
+      const cache = JSON.parse(cachedStr);
+      if (cache[cleanHp]) {
+        const cachedItem = cache[cleanHp];
+        if (target === 'inputModal') {
+          setCustomer(prev => ({ ...prev, nama: cachedItem.nama }));
+        } else {
+          setCustNamaInput(cachedItem.nama);
+        }
+        setCustLookupState({
+          found: true,
+          nama: cachedItem.nama,
+          totalOrder: cachedItem.totalOrder || 1,
+          totalSpend: cachedItem.totalSpend || 0,
+          isRepeatOrder: true,
+          terakhirOrder: cachedItem.terakhirOrder || ''
+        });
+      }
+    } catch (err) {}
+
+    // 2. Query Google Apps Script Backend
+    try {
+      const res = await runBackend('cariPelangganByHp', cleanHp);
+      if (res && res.found) {
+        if (target === 'inputModal') {
+          setCustomer(prev => ({ ...prev, nama: res.nama }));
+        } else {
+          setCustNamaInput(res.nama);
+        }
+        setCustLookupState({
+          found: true,
+          nama: res.nama,
+          totalOrder: res.totalOrder,
+          totalSpend: res.totalSpend,
+          isRepeatOrder: res.isRepeatOrder,
+          terakhirOrder: res.terakhirOrder
+        });
+
+        // Save to local cache for instant offline lookup
+        try {
+          const cachedStr = localStorage.getItem('duasisi_cust_cache') || '{}';
+          const cache = JSON.parse(cachedStr);
+          cache[cleanHp] = {
+            nama: res.nama,
+            totalOrder: res.totalOrder,
+            totalSpend: res.totalSpend,
+            terakhirOrder: res.terakhirOrder
+          };
+          localStorage.setItem('duasisi_cust_cache', JSON.stringify(cache));
+        } catch (err) {}
+      } else {
+        setCustLookupState({ found: false });
+      }
+    } catch (err) {}
+  };
 
   useEffect(() => {
     // Check saved shift in localStorage
@@ -1025,22 +1105,58 @@ export default function PosView() {
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-semibold text-slate-800">Data Pelanggan</span>
+              <div className="flex items-center gap-1.5">
+                <User className="w-4 h-4 text-[#1E4648]" />
+                <span className="text-sm font-bold text-slate-800">Data Pelanggan</span>
+              </div>
               <button onClick={() => setShowCustModal(false)} className="p-1 rounded hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
             </div>
+
             <div className="space-y-3 mb-4">
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Nama</label>
-                <input type="text" value={customer.nama} onChange={(e) => setCustomer({ ...customer, nama: e.target.value })} placeholder="Nama pelanggan" className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]" />
+                <label className="block text-xs font-semibold text-slate-700 mb-1">No HP / WhatsApp (Unik) *</label>
+                <input 
+                  type="tel" 
+                  value={customer.noHp} 
+                  onChange={(e) => handlePhoneAutoLookup(e.target.value, 'inputModal')} 
+                  placeholder="08... (Auto Read Nama)" 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648] font-mono font-medium" 
+                />
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">No HP / WhatsApp</label>
-                <input type="tel" value={customer.noHp} onChange={(e) => setCustomer({ ...customer, noHp: e.target.value })} placeholder="08..." className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]" />
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Nama Pelanggan *</label>
+                <input 
+                  type="text" 
+                  value={customer.nama} 
+                  onChange={(e) => setCustomer({ ...customer, nama: e.target.value })} 
+                  placeholder="Masukkan nama pelanggan" 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648]" 
+                />
               </div>
+
+              {/* Repeat Order Badge Notification */}
+              {custLookupState.found ? (
+                <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-lg p-2.5 text-xs flex items-center justify-between animate-fade-in shadow-2xs">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <span className="text-sm">🔁</span>
+                    <span>Repeat Order ({custLookupState.totalOrder || 1}x Transaksi)</span>
+                  </div>
+                  <div className="text-[10px] font-semibold text-emerald-700">
+                    Rp {(custLookupState.totalSpend || 0).toLocaleString('id-ID')}
+                  </div>
+                </div>
+              ) : customer.noHp.length >= 4 ? (
+                <div className="bg-sky-50 border border-sky-200 text-sky-800 rounded-lg p-2 text-xs flex items-center gap-1.5 animate-fade-in">
+                  <span>🆕</span>
+                  <span className="font-semibold text-[11px]">Pelanggan Baru — Otomatis tersimpan ke Database</span>
+                </div>
+              ) : null}
             </div>
+
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowCustModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-md text-xs">Batal</button>
-              <button onClick={() => setShowCustModal(false)} className="bg-[#1E4648] hover:bg-[#153334] text-white font-medium px-4 py-2 rounded-md text-xs">Simpan</button>
+              <button onClick={() => setShowCustModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-4 py-2 rounded-lg text-xs">Batal</button>
+              <button onClick={() => setShowCustModal(false)} className="bg-[#1E4648] hover:bg-[#153334] text-white font-semibold px-4 py-2 rounded-lg text-xs">Simpan Data</button>
             </div>
           </div>
         </div>
@@ -1164,15 +1280,47 @@ export default function PosView() {
             </div>
 
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-500 mb-1">Nama Pelanggan *</label>
-                  <input type="text" value={custNamaInput} onChange={(e) => setCustNamaInput(e.target.value)} placeholder="Nama" className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]" />
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">No HP / WhatsApp (Unik) *</label>
+                    <input 
+                      type="tel" 
+                      value={custNoHpInput} 
+                      onChange={(e) => handlePhoneAutoLookup(e.target.value, 'checkoutModal')} 
+                      placeholder="08..." 
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648] font-mono font-medium" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Nama Pelanggan *</label>
+                    <input 
+                      type="text" 
+                      value={custNamaInput} 
+                      onChange={(e) => setCustNamaInput(e.target.value)} 
+                      placeholder="Nama" 
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648]" 
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-500 mb-1">No HP / WhatsApp</label>
-                  <input type="tel" value={custNoHpInput} onChange={(e) => setCustNoHpInput(e.target.value)} placeholder="08..." className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]" />
-                </div>
+
+                {/* Repeat Order Badge in Checkout */}
+                {custLookupState.found ? (
+                  <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-lg p-2 text-xs flex items-center justify-between animate-fade-in shadow-2xs">
+                    <div className="flex items-center gap-1 font-bold">
+                      <span className="text-xs">🔁</span>
+                      <span>Repeat Order ({custLookupState.totalOrder || 1}x Order)</span>
+                    </div>
+                    <div className="text-[10px] font-semibold text-emerald-700">
+                      Total Rp {(custLookupState.totalSpend || 0).toLocaleString('id-ID')}
+                    </div>
+                  </div>
+                ) : custNoHpInput.length >= 4 ? (
+                  <div className="bg-sky-50 border border-sky-200 text-sky-800 rounded-lg p-2 text-xs flex items-center gap-1.5 animate-fade-in">
+                    <span>🆕</span>
+                    <span className="font-semibold text-[11px]">Pelanggan Baru — Otomatis tersimpan ke Database</span>
+                  </div>
+                ) : null}
               </div>
 
               {/* Opsi DP / Uang Muka (FR-POS-14) */}
