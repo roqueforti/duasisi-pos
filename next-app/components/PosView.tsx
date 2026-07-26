@@ -528,53 +528,106 @@ export default function PosView() {
               filteredLayanan.map((item, idx) => {
                 const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
                 const effectivePrice = Math.round(item.hargaSatuan * speedMultiplier);
+                
+                // Parse specifications for clean visual UX badging
+                const weightMatch = item.layanan.match(/(\d+([.,]\d+)?\s*Kg)/i);
+                const durationMatch = item.layanan.match(/(\d+\s*(Mnt|Menit|Min))/i);
+                const packMatch = item.layanan.match(/(Sachet|Pouch|Porsi|Pcs|Jumbo|Premium)/i);
+                
+                const weight = weightMatch ? weightMatch[1] : null;
+                const duration = durationMatch ? durationMatch[1] : null;
+                const pack = packMatch ? packMatch[1] : null;
+
                 return (
                   <div
                     key={idx}
-                    className={`bg-white rounded-lg border p-3 flex flex-col justify-between transition-all cursor-pointer relative ${
-                      qtyInCart > 0 ? 'border-[#1E4648] bg-teal-50/40 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:shadow-xs'
+                    className={`bg-white rounded-xl border p-3 flex flex-col justify-between transition-all cursor-pointer relative select-none ${
+                      qtyInCart > 0 
+                        ? 'border-2 border-[#1E4648] bg-teal-50/60 shadow-md ring-2 ring-[#1E4648]/10' 
+                        : 'border-slate-200 hover:border-teal-600/40 hover:shadow-md'
                     }`}
                     onClick={() => updateCart(item, 1)}
                   >
+                    {/* Quantity Badge Top Right */}
                     {qtyInCart > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-[#1E4648] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-xs">
-                        {qtyInCart}
+                      <span className="absolute -top-2 -right-2 bg-[#1E4648] text-white text-[11px] font-extrabold px-2 py-0.5 rounded-full shadow-md animate-scale-up border border-white flex items-center gap-0.5">
+                        <Check className="w-3 h-3 text-teal-300" />
+                        <span>{qtyInCart}x</span>
                       </span>
                     )}
+
                     <div>
-                      <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-base mb-1.5">
-                        {item.icon || '🧺'}
+                      {/* Top Header Row: Icon & Badges */}
+                      <div className="flex items-start justify-between gap-1.5 mb-2">
+                        <div className="w-9 h-9 rounded-lg bg-[#1E4648]/10 border border-[#1E4648]/15 flex items-center justify-center text-lg shrink-0">
+                          {item.icon || '🧺'}
+                        </div>
+
+                        {/* Specification Pills */}
+                        <div className="flex flex-wrap justify-end gap-1">
+                          {weight && (
+                            <span className="bg-teal-100 text-[#1E4648] font-bold text-[10px] px-1.5 py-0.5 rounded-md border border-teal-200">
+                              {weight}
+                            </span>
+                          )}
+                          {duration && (
+                            <span className="bg-amber-100 text-amber-800 font-bold text-[10px] px-1.5 py-0.5 rounded-md border border-amber-200">
+                              {duration}
+                            </span>
+                          )}
+                          {pack && (
+                            <span className="bg-slate-100 text-slate-700 font-semibold text-[10px] px-1.5 py-0.5 rounded-md border border-slate-200">
+                              {pack}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <h3 className="font-semibold text-xs text-slate-800 leading-snug mb-1 line-clamp-2">{item.layanan}</h3>
-                      <div className="text-xs font-bold text-[#1E4648]">
-                        Rp {effectivePrice.toLocaleString('id-ID')}
-                        <span className="text-[10px] font-normal text-slate-400 ml-0.5">/{item.satuan || 'kg'}</span>
+
+                      {/* Product Title */}
+                      <h3 className="font-bold text-xs sm:text-sm text-slate-800 leading-snug mb-1.5 line-clamp-2">
+                        {item.layanan}
+                      </h3>
+
+                      {/* Price Section */}
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xs sm:text-sm font-extrabold text-[#1E4648]">
+                          Rp {effectivePrice.toLocaleString('id-ID')}
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-400">
+                          /{item.satuan || 'paket'}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 mt-2.5 pt-2 border-t border-slate-100">
+                    {/* Bottom Action Controls */}
+                    <div className="mt-3 pt-2 border-t border-slate-100">
                       {qtyInCart > 0 ? (
-                        <>
+                        <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-teal-200 shadow-xs">
                           <button
                             onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
-                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium py-1.5 rounded-md text-xs flex items-center justify-center transition"
+                            className="w-7 h-7 bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 font-bold rounded-md flex items-center justify-center transition active:scale-95"
+                            title="Kurangi Qty"
                           >
                             <Minus className="w-3.5 h-3.5" />
                           </button>
-                          <span className="px-2 text-xs font-bold text-slate-800">{qtyInCart}</span>
+                          <span className="flex-1 text-center text-xs font-extrabold text-[#1E4648]">
+                            {qtyInCart}
+                          </span>
                           <button
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                            className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-medium py-1.5 rounded-md text-xs flex items-center justify-center transition"
+                            className="w-7 h-7 bg-[#1E4648] hover:bg-[#153334] text-white font-bold rounded-md flex items-center justify-center transition active:scale-95"
+                            title="Tambah Qty"
                           >
                             <Plus className="w-3.5 h-3.5" />
                           </button>
-                        </>
+                        </div>
                       ) : (
                         <button
                           onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                          className="w-full bg-slate-50 hover:bg-[#1E4648] text-slate-600 hover:text-white font-medium py-1 rounded-md text-xs transition flex items-center justify-center gap-1"
+                          className="w-full bg-slate-100 hover:bg-[#1E4648] text-slate-700 hover:text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1.5 active:scale-98"
                         >
-                          <Plus className="w-3 h-3" /> Tambah
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Tambah</span>
                         </button>
                       )}
                     </div>
