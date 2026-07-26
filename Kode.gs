@@ -27,7 +27,23 @@ function getWibTimeZone() { return TIMEZONE_WIB; }
 function generateId() { return Utilities.getUuid().substring(0, 8); }
 
 function fmtWib(date, pattern) {
-  return Utilities.formatDate(new Date(date), TIMEZONE_WIB, pattern || "dd/MM/yyyy HH:mm 'WIB'");
+  if (!date) return "";
+  let d;
+  if (typeof date === "string") {
+    const parts = date.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (parts) {
+      const timeParts = date.match(/(\d{2}):(\d{2})/);
+      const hh = timeParts ? parseInt(timeParts[1], 10) : 0;
+      const mm = timeParts ? parseInt(timeParts[2], 10) : 0;
+      d = new Date(parseInt(parts[3], 10), parseInt(parts[2], 10) - 1, parseInt(parts[1], 10), hh, mm);
+    } else {
+      d = new Date(date);
+    }
+  } else {
+    d = new Date(date);
+  }
+  if (isNaN(d.getTime())) return String(date);
+  return Utilities.formatDate(d, TIMEZONE_WIB, pattern || "dd/MM/yyyy HH:mm 'WIB'");
 }
 
 function verifikasiPin(pin) {
@@ -919,7 +935,7 @@ function seedData6Bulan() {
 
       batchTransaksi.push([
         noNota,
-        fmtWib(txDate),
+        txDate,
         cust.nama,
         cust.hp,
         totalNota,
@@ -941,4 +957,18 @@ function seedData6Bulan() {
 
   addAuditLog("System Seeder", "Data Seeding 6 Bulan", "6 Bulan Data", `Berhasil membuat ${batchTransaksi.length} sampel transaksi.`);
   return { success: true, count: batchTransaksi.length, message: `Berhasil meng-generate ${batchTransaksi.length} transaksi seeder 6 bulan!` };
+}
+
+function resetAndSeed6Bulan() {
+  let shT = SS.getSheetByName(SHEET_TRANSAKSI);
+  let shD = SS.getSheetByName(SHEET_DETAIL);
+  if (shT) {
+    shT.clear();
+    shT.appendRow(["No Nota", "Tanggal", "Nama Pelanggan", "No HP", "Total", "Status", "Estimasi Selesai", "Petugas", "Tipe"]);
+  }
+  if (shD) {
+    shD.clear();
+    shD.appendRow(["No Nota", "Layanan", "Qty", "Harga Satuan", "Subtotal"]);
+  }
+  return seedData6Bulan();
 }

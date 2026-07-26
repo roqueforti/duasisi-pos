@@ -116,10 +116,10 @@ export default function RekapView() {
   const maxOmzetHarian = Math.max(...omzetHarian.map(o => o.omzet), 100000);
 
   const handleRunSeeder6Bulan = async () => {
-    if (!confirm('Generate ~300-500 data sampel transaksi acak selama 6 bulan terakhir ke database Google Sheets?')) return;
+    if (!confirm('Generate ~300-500 data sampel transaksi acak selama 6 bulan terakhir ke database Google Sheets? (Data transaksi lama akan di-reset).')) return;
     setLoading(true);
     try {
-      const res = await runBackend<any>('seedData6Bulan');
+      const res = await runBackend<any>('resetAndSeed6Bulan');
       if (res && res.success) {
         alert(`✅ ${res.message}`);
         const sixMonthsAgo = new Date();
