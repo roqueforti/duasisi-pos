@@ -3,10 +3,71 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Plus, Minus, Trash2, User, X, Check, CreditCard, Printer, Send, CheckCircle2, DollarSign,
-  Zap, Tag, Clock, ShieldAlert, FileSpreadsheet, Lock, Unlock, TagIcon, ShoppingCart, ArrowRight
+  Zap, Tag, Clock, ShieldAlert, FileSpreadsheet, Lock, Unlock, TagIcon, ShoppingCart, ArrowRight,
+  WashingMachine, Wind, Flame, Sparkles, Droplets, ShoppingBag, Shirt, Package
 } from 'lucide-react';
 import { LayananItem, CartItem, Pegawai, Transaksi, KecepatanLayanan, ShiftKasir } from '@/lib/types';
 import { runBackend } from '@/lib/api';
+
+function getLayananStyleConfig(name: string) {
+  const lower = name.toLowerCase();
+  
+  if (lower.includes('cuci + kering') || lower.includes('komplit')) {
+    return {
+      Icon: WashingMachine,
+      bg: 'bg-teal-50 border-teal-200/80 text-[#1E4648]',
+      badgeColor: 'bg-teal-100/90 text-[#1E4648] border-teal-200',
+      category: 'Layanan Utama'
+    };
+  }
+  if (lower.includes('cuci')) {
+    return {
+      Icon: Droplets,
+      bg: 'bg-sky-50 border-sky-200/80 text-sky-700',
+      badgeColor: 'bg-sky-100/90 text-sky-800 border-sky-200',
+      category: 'Layanan Utama'
+    };
+  }
+  if (lower.includes('kering') || lower.includes('pengering') || lower.includes('dry')) {
+    return {
+      Icon: Wind,
+      bg: 'bg-amber-50 border-amber-200/80 text-amber-700',
+      badgeColor: 'bg-amber-100/90 text-amber-800 border-amber-200',
+      category: 'Layanan Utama'
+    };
+  }
+  if (lower.includes('setrika')) {
+    return {
+      Icon: Flame,
+      bg: 'bg-orange-50 border-orange-200/80 text-orange-700',
+      badgeColor: 'bg-orange-100/90 text-orange-800 border-orange-200',
+      category: 'Layanan Utama'
+    };
+  }
+  if (lower.includes('deterjen') || lower.includes('softener')) {
+    return {
+      Icon: Sparkles,
+      bg: 'bg-rose-50 border-rose-200/80 text-rose-700',
+      badgeColor: 'bg-rose-100/90 text-rose-800 border-rose-200',
+      category: 'Bahan & Perlengkapan'
+    };
+  }
+  if (lower.includes('kresek') || lower.includes('plastik') || lower.includes('tas') || lower.includes('packing')) {
+    return {
+      Icon: ShoppingBag,
+      bg: 'bg-emerald-50 border-emerald-200/80 text-emerald-700',
+      badgeColor: 'bg-emerald-100/90 text-emerald-800 border-emerald-200',
+      category: 'Bahan & Perlengkapan'
+    };
+  }
+  
+  return {
+    Icon: Shirt,
+    bg: 'bg-indigo-50 border-indigo-200/80 text-indigo-700',
+    badgeColor: 'bg-indigo-100/90 text-indigo-800 border-indigo-200',
+    category: 'Layanan Utama'
+  };
+}
 
 const defaultLayanan: LayananItem[] = [
   { layanan: 'Cuci 7.5 Kg', hargaSatuan: 10000, tipe: 'SelfService', satuan: 'kg', icon: '🫧' },
@@ -518,122 +579,160 @@ export default function PosView() {
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
             {loading ? (
               Array.from({ length: 8 }).map((_, idx) => (
-                <div key={idx} className="bg-white rounded-lg border border-slate-200 p-4 animate-pulse space-y-3">
+                <div key={idx} className="bg-white rounded-xl border border-slate-200 p-4 animate-pulse space-y-3">
                   <div className="w-10 h-10 rounded-lg bg-slate-100" />
                   <div className="h-3.5 bg-slate-100 rounded w-3/4" />
                   <div className="h-3 bg-slate-100 rounded w-1/2" />
                 </div>
               ))
             ) : (
-              filteredLayanan.map((item, idx) => {
-                const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
-                const effectivePrice = Math.round(item.hargaSatuan * speedMultiplier);
-                
-                // Parse specifications for clean visual UX badging
-                const weightMatch = item.layanan.match(/(\d+([.,]\d+)?\s*Kg)/i);
-                const durationMatch = item.layanan.match(/(\d+\s*(Mnt|Menit|Min))/i);
-                const packMatch = item.layanan.match(/(Sachet|Pouch|Porsi|Pcs|Jumbo|Premium)/i);
-                
-                const weight = weightMatch ? weightMatch[1] : null;
-                const duration = durationMatch ? durationMatch[1] : null;
-                const pack = packMatch ? packMatch[1] : null;
+              (() => {
+                const renderCard = (item: LayananItem, idx: number) => {
+                  const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
+                  const effectivePrice = Math.round(item.hargaSatuan * speedMultiplier);
+                  const styleCfg = getLayananStyleConfig(item.layanan);
+                  const IconComp = styleCfg.Icon;
 
-                return (
-                  <div
-                    key={idx}
-                    className={`bg-white rounded-xl border p-3 flex flex-col justify-between transition-all cursor-pointer relative select-none ${
-                      qtyInCart > 0 
-                        ? 'border-2 border-[#1E4648] bg-teal-50/60 shadow-md ring-2 ring-[#1E4648]/10' 
-                        : 'border-slate-200 hover:border-teal-600/40 hover:shadow-md'
-                    }`}
-                    onClick={() => updateCart(item, 1)}
-                  >
-                    {/* Quantity Badge Top Right */}
-                    {qtyInCart > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-[#1E4648] text-white text-[11px] font-extrabold px-2 py-0.5 rounded-full shadow-md animate-scale-up border border-white flex items-center gap-0.5">
-                        <Check className="w-3 h-3 text-teal-300" />
-                        <span>{qtyInCart}x</span>
-                      </span>
-                    )}
+                  // Parse & combine specifications cleanly
+                  const weightMatch = item.layanan.match(/(\d+([.,]\d+)?\s*Kg)/i);
+                  const durationMatch = item.layanan.match(/(\d+\s*(Mnt|Menit|Min))/i);
+                  const packMatch = item.layanan.match(/(Sachet|Pouch|Porsi|Pcs|Jumbo|Premium)/i);
 
-                    <div>
-                      {/* Top Header Row: Icon & Badges */}
-                      <div className="flex items-start justify-between gap-1.5 mb-2">
-                        <div className="w-9 h-9 rounded-lg bg-[#1E4648]/10 border border-[#1E4648]/15 flex items-center justify-center text-lg shrink-0">
-                          {item.icon || '🧺'}
-                        </div>
+                  const specParts: string[] = [];
+                  if (weightMatch) specParts.push(weightMatch[1]);
+                  if (durationMatch) specParts.push(durationMatch[1]);
+                  if (packMatch && !weightMatch && !durationMatch) specParts.push(packMatch[1]);
 
-                        {/* Specification Pills */}
-                        <div className="flex flex-wrap justify-end gap-1">
-                          {weight && (
-                            <span className="bg-teal-100 text-[#1E4648] font-bold text-[10px] px-1.5 py-0.5 rounded-md border border-teal-200">
-                              {weight}
-                            </span>
-                          )}
-                          {duration && (
-                            <span className="bg-amber-100 text-amber-800 font-bold text-[10px] px-1.5 py-0.5 rounded-md border border-amber-200">
-                              {duration}
-                            </span>
-                          )}
-                          {pack && (
-                            <span className="bg-slate-100 text-slate-700 font-semibold text-[10px] px-1.5 py-0.5 rounded-md border border-slate-200">
-                              {pack}
+                  const combinedSpec = specParts.join(' • ');
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`bg-white rounded-xl border p-3.5 flex flex-col justify-between transition-all duration-200 cursor-pointer relative select-none hover:-translate-y-0.5 hover:shadow-md ${
+                        qtyInCart > 0 
+                          ? 'border-2 border-[#1E4648] bg-teal-50/50 shadow-md ring-2 ring-[#1E4648]/10' 
+                          : 'border-slate-200/90 shadow-2xs hover:border-[#1E4648]/40'
+                      }`}
+                      onClick={() => updateCart(item, 1)}
+                    >
+                      {/* Active Quantity Badge Top Right */}
+                      {qtyInCart > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-[#1E4648] text-white text-[11px] font-extrabold px-2 py-0.5 rounded-full shadow-md animate-scale-up border border-white flex items-center gap-0.5 z-10">
+                          <Check className="w-3 h-3 text-teal-300" />
+                          <span>{qtyInCart}x</span>
+                        </span>
+                      )}
+
+                      <div>
+                        {/* Top Header Row: Color-Coded Vector Icon & Combined Spec Badge */}
+                        <div className="flex items-start justify-between gap-1.5 mb-2.5">
+                          <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs ${styleCfg.bg}`}>
+                            <IconComp className="w-5 h-5" />
+                          </div>
+
+                          {/* Combined Unified Spec Pill */}
+                          {combinedSpec && (
+                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${styleCfg.badgeColor}`}>
+                              {combinedSpec}
                             </span>
                           )}
                         </div>
-                      </div>
 
-                      {/* Product Title */}
-                      <h3 className="font-bold text-xs sm:text-sm text-slate-800 leading-snug mb-1.5 line-clamp-2">
-                        {item.layanan}
-                      </h3>
+                        {/* Product Title */}
+                        <h3 className="font-bold text-xs sm:text-sm text-slate-800 leading-snug mb-1 line-clamp-2">
+                          {item.layanan}
+                        </h3>
 
-                      {/* Price Section */}
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-xs sm:text-sm font-extrabold text-[#1E4648]">
-                          Rp {effectivePrice.toLocaleString('id-ID')}
-                        </span>
-                        <span className="text-[10px] font-medium text-slate-400">
-                          /{item.satuan || 'paket'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Bottom Action Controls */}
-                    <div className="mt-3 pt-2 border-t border-slate-100">
-                      {qtyInCart > 0 ? (
-                        <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-teal-200 shadow-xs">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
-                            className="w-7 h-7 bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 font-bold rounded-md flex items-center justify-center transition active:scale-95"
-                            title="Kurangi Qty"
-                          >
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <span className="flex-1 text-center text-xs font-extrabold text-[#1E4648]">
-                            {qtyInCart}
+                        {/* Prominent Price & Subdued Unit */}
+                        <div className="flex items-baseline gap-1 mt-1.5">
+                          <span className="text-sm sm:text-base font-black text-[#1E4648] tracking-tight">
+                            Rp {effectivePrice.toLocaleString('id-ID')}
                           </span>
+                          <span className="text-[11px] font-medium text-slate-400">
+                            /{item.satuan || 'paket'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Bottom Action Controls */}
+                      <div className="mt-3.5 pt-2.5 border-t border-slate-100">
+                        {qtyInCart > 0 ? (
+                          <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-teal-200 shadow-2xs">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
+                              className="w-7 h-7 bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 font-bold rounded-md flex items-center justify-center transition active:scale-95"
+                              title="Kurangi Qty"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="flex-1 text-center text-xs font-extrabold text-[#1E4648]">
+                              {qtyInCart}
+                            </span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
+                              className="w-7 h-7 bg-[#1E4648] hover:bg-[#153334] text-white font-bold rounded-md flex items-center justify-center transition active:scale-95"
+                              title="Tambah Qty"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
                           <button
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                            className="w-7 h-7 bg-[#1E4648] hover:bg-[#153334] text-white font-bold rounded-md flex items-center justify-center transition active:scale-95"
-                            title="Tambah Qty"
+                            className="w-full bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-all shadow-2xs hover:shadow-md flex items-center justify-center gap-1.5 active:scale-97"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5 text-teal-300" />
+                            <span>Tambah</span>
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                          className="w-full bg-slate-100 hover:bg-[#1E4648] text-slate-700 hover:text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1.5 active:scale-98"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>+ Tambah</span>
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
+                  );
+                };
+
+                const mainServices = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan).category === 'Layanan Utama');
+                const addOnProducts = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan).category === 'Bahan & Perlengkapan');
+
+                return (
+                  <div className="col-span-full space-y-5">
+                    {/* Section 1: Layanan Utama */}
+                    {mainServices.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-3 px-0.5">
+                          <span className="w-2 h-2 rounded-full bg-[#1E4648]" />
+                          <h2 className="text-xs font-extrabold text-[#1E4648] uppercase tracking-wider">
+                            Layanan Laundry Utama
+                          </h2>
+                          <span className="text-[10px] font-bold bg-teal-100 text-[#1E4648] px-2 py-0.2 rounded-full border border-teal-200">
+                            {mainServices.length}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
+                          {mainServices.map((item, idx) => renderCard(item, idx))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Section 2: Bahan & Perlengkapan Tambahan */}
+                    {addOnProducts.length > 0 && (
+                      <div className="pt-2">
+                        <div className="flex items-center gap-2 mb-3 px-0.5">
+                          <span className="w-2 h-2 rounded-full bg-rose-500" />
+                          <h2 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                            Produk & Bahan Tambahan
+                          </h2>
+                          <span className="text-[10px] font-bold bg-rose-100 text-rose-800 px-2 py-0.2 rounded-full border border-rose-200">
+                            {addOnProducts.length}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
+                          {addOnProducts.map((item, idx) => renderCard(item, idx + 100))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
-              })
+              })()
             )}
           </div>
         </div>
