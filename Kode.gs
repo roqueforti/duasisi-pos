@@ -63,6 +63,33 @@ function doGet(e) {
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
+// ============ SECURITY & SANITIZATION ENGINE (ANTI-SQL/FORMULA INJECTION) ============
+function sanitizeValue(val) {
+  if (typeof val === 'string') {
+    let s = val;
+    // 1. Prevent Formula / Command Injection in Google Sheets (=, +, -, @)
+    if (s.length > 0 && ('=+-@').indexOf(s.charAt(0)) !== -1) {
+      s = "'" + s;
+    }
+    // 2. Strip dangerous HTML script tags and null bytes
+    s = s.replace(/\0/g, '').replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    return s;
+  }
+  if (Array.isArray(val)) {
+    return val.map(sanitizeValue);
+  }
+  if (val !== null && typeof val === 'object') {
+    let cleanObj = {};
+    for (let k in val) {
+      if (Object.prototype.hasOwnProperty.call(val, k)) {
+        cleanObj[sanitizeValue(k)] = sanitizeValue(val[k]);
+      }
+    }
+    return cleanObj;
+  }
+  return val;
+}
+
 // ============ REST API ROUTER FOR EXTERNAL FRONTEND (GitHub Pages / Vercel PWA) ============
 function doPost(e) {
   let result = null;
@@ -71,8 +98,12 @@ function doPost(e) {
     if (e && e.postData && e.postData.contents) {
       request = JSON.parse(e.postData.contents);
     }
-    const action = request.action;
-    const args = request.args || [];
+    const rawAction = request.action;
+    const rawArgs = request.args || [];
+
+    // Sanitize action & arguments against SQL / Method Injection
+    const action = typeof rawAction === 'string' ? rawAction.replace(/[^a-zA-Z0-9_]/g, '') : '';
+    const args = Array.isArray(rawArgs) ? rawArgs.map(sanitizeValue) : [];
 
     const targetFn = (typeof globalThis !== 'undefined' && typeof globalThis[action] === 'function') 
       ? globalThis[action] 

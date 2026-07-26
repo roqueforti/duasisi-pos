@@ -26,6 +26,10 @@ export default function RootLayout({
   return (
     <html lang="id">
       <head>
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content="default-src 'self' https://script.google.com https://script.googleusercontent.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; frame-src 'self';"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
