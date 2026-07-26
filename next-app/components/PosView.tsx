@@ -119,8 +119,7 @@ export default function PosView() {
   const [customer, setCustomer] = useState<{ nama: string; noHp: string }>({ nama: '', noHp: '' });
   const [showMobileCart, setShowMobileCart] = useState(false);
 
-  // Kecepatan Layanan & Speed Multiplier (FR-POS-07)
-  const [kecepatan, setKecepatan] = useState<KecepatanLayanan>('Reguler');
+
 
   // Promo / Voucher (FR-POS-09)
   const [kodePromoInput, setKodePromoInput] = useState('');
@@ -347,8 +346,6 @@ export default function PosView() {
     setShowBukaShiftModal(true);
   };
 
-  const speedMultiplier = kecepatan === 'Express' ? 1.5 : kecepatan === 'Kilat' ? 2.0 : 1.0;
-
   const filteredLayanan = (layananList || []).filter((item) => {
     if (!item) return false;
     const matchesMode = item.tipe === mode || item.kategori === 'Produk' || item.kategori === 'MakananMinuman';
@@ -365,7 +362,7 @@ export default function PosView() {
   const updateCart = (item: LayananItem, delta: number) => {
     setCart((prev) => {
       const copy = { ...prev };
-      const adjustedPrice = Math.round(item.hargaSatuan * speedMultiplier);
+      const adjustedPrice = item.hargaSatuan;
       const currentQty = copy[item.layanan] ? copy[item.layanan].qty : 0;
       const nextQty = currentQty + delta;
       if (nextQty <= 0) {
@@ -424,11 +421,9 @@ export default function PosView() {
       : ['Siti Rahma (Kasir)', 'Budi Santoso (Operator)', 'Manager / Owner (Manager)'];
     if (!selectedPetugas && defaultNames.length > 0) setSelectedPetugas(defaultNames[0]);
 
-    // Auto calculate SLA estimation date
+    // Auto calculate SLA estimation date (24 hours default)
     const now = new Date();
-    if (kecepatan === 'Kilat') now.setHours(now.getHours() + 6);
-    else if (kecepatan === 'Express') now.setHours(now.getHours() + 24);
-    else now.setHours(now.getHours() + 48);
+    now.setHours(now.getHours() + 24);
     setEstimasi(now.toISOString().slice(0, 10));
 
     setShowCheckoutModal(true);
@@ -446,7 +441,6 @@ export default function PosView() {
       noHp: custNoHpInput.trim(),
       petugas: selectedPetugas || 'Kasir 1',
       tipe: mode,
-      tingkatLayanan: kecepatan,
       subtotal: subtotalCart,
       diskon: diskonApplied.nilai,
       total: grandTotal,
@@ -469,7 +463,6 @@ export default function PosView() {
         noHp: payload.noHp,
         petugas: payload.petugas,
         tipe: payload.tipe,
-        tingkatLayanan: payload.tingkatLayanan,
         subtotal: subtotalCart,
         diskon: diskonApplied.nilai,
         total: payload.total,
@@ -661,26 +654,7 @@ export default function PosView() {
             </button>
           </div>
 
-          {/* Kecepatan Layanan Selector (FR-POS-07) */}
-          <div className="flex items-center gap-1 bg-amber-50/80 border border-amber-200/80 px-2 py-1 rounded-lg text-xs flex-wrap">
-            <Zap className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-            <span className="text-[10px] sm:text-[11px] font-semibold text-amber-800">Speed:</span>
-            <div className="flex gap-1">
-              {(['Reguler', 'Express', 'Kilat'] as const).map((k) => (
-                <button
-                  key={k}
-                  onClick={() => setKecepatan(k)}
-                  className={`px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition ${
-                    kecepatan === k 
-                      ? 'bg-amber-600 text-white shadow-xs' 
-                      : 'text-amber-700 hover:bg-amber-100'
-                  }`}
-                >
-                  {k} {k === 'Express' ? '(+50%)' : k === 'Kilat' ? '(+100%)' : ''}
-                </button>
-              ))}
-            </div>
-          </div>
+
 
           {/* Shift Status Widget (FR-POS-02) */}
           <div className="flex items-center gap-2 shrink-0">
@@ -776,7 +750,7 @@ export default function PosView() {
               (() => {
                 const renderCard = (item: LayananItem, idx: number) => {
                   const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
-                  const effectivePrice = Math.round(item.hargaSatuan * speedMultiplier);
+                  const effectivePrice = item.hargaSatuan;
                   const styleCfg = getLayananStyleConfig(item.layanan);
                   const IconComp = styleCfg.Icon;
 
@@ -1009,11 +983,6 @@ export default function PosView() {
         <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <h2 className="text-sm font-bold text-slate-800">Keranjang Order</h2>
-            {kecepatan !== 'Reguler' && (
-              <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded">
-                {kecepatan}
-              </span>
-            )}
           </div>
           <div className="flex items-center gap-2">
             <button
