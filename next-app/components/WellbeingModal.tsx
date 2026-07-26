@@ -105,14 +105,14 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
         </p>
 
         {/* Progress Line */}
-        <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mb-6 relative">
-          <div className="h-full bg-gradient-to-r from-teal-400 to-emerald-400 rounded-full animate-wellbeing-progress" />
+        <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden mb-6 relative">
+          <div className="h-full bg-[#2DD4BF] rounded-full animate-wellbeing-progress" />
         </div>
 
         {/* Action Button */}
         <button
           onClick={onFinish}
-          className="w-full bg-gradient-to-r from-[#1E4648] to-[#153334] hover:from-[#153334] hover:to-[#0D2122] text-white font-bold py-3 px-6 rounded-2xl text-xs sm:text-sm transition flex items-center justify-center gap-2 border border-teal-400/30 shadow-lg active:scale-98"
+          className="w-full bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-3 px-6 rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 border border-teal-400/30 shadow-md active:scale-98"
         >
           <span>Siap Bertugas & Melayani 🚀</span>
           <ArrowRight className="w-4 h-4 text-teal-300" />

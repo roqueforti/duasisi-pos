@@ -37,12 +37,8 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 
   return (
     <div
-      className={`fixed inset-0 z-[2000] flex items-center justify-center overflow-hidden transition-all duration-500 select-none ${
-        phase === 'drop'
-          ? 'bg-transparent'
-          : phase === 'reveal'
-          ? 'bg-[#11292B] text-white'
-          : 'bg-[#11292B] opacity-0 pointer-events-none'
+      className={`fixed inset-0 z-[2000] flex items-center justify-center overflow-hidden transition-all duration-500 select-none bg-[#11292B] text-white ${
+        phase === 'exit' ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
       {/* FASE 1: ANIMASI TETESAN AIR (Background Transparan 100%) */}
