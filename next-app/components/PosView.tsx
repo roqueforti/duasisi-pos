@@ -76,6 +76,8 @@ export default function PosView() {
   // Modals
   const [showCustModal, setShowCustModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [completedOrderData, setCompletedOrderData] = useState<any>(null);
   const [showBukaShiftModal, setShowBukaShiftModal] = useState(false);
   const [showTutupShiftModal, setShowTutupShiftModal] = useState(false);
   const [showCustomItemModal, setShowCustomItemModal] = useState(false);
@@ -785,28 +787,6 @@ export default function PosView() {
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-amber-500 focus:bg-white transition"
                 />
               </div>
-
-              {/* Opsi Struk & WA */}
-              <div className="pt-2 border-t border-slate-100 space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={cetakStrukBT}
-                    onChange={(e) => setCetakStrukBT(e.target.checked)}
-                    className="w-4 h-4 accent-amber-500 rounded"
-                  />
-                  <span>🖨️ Cetak Struk Thermal Bluetooth</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={kirimENotaWA}
-                    onChange={(e) => setKirimENotaWA(e.target.checked)}
-                    className="w-4 h-4 accent-amber-500 rounded"
-                  />
-                  <span>📱 Kirim Link E-Nota via WhatsApp Pelanggan</span>
-                </label>
-              </div>
             </div>
 
             {/* Action Buttons */}
@@ -823,30 +803,144 @@ export default function PosView() {
                 onClick={() => {
                   const custName = customer.nama || 'Pelanggan Umum';
                   const kasir = namaKasirInput || 'Kasir 1';
-                  
-                  alert(
-                    `✅ PEMBAYARAN SUKSES!\n\n` +
-                    `• Staff Input: ${kasir}\n` +
-                    `• Pelanggan: ${custName} (${customer.noHp || 'No HP -'})\n` +
-                    `• Metode Bayar: ${metodeBayar}\n` +
-                    `• Total: Rp ${grandTotal.toLocaleString('id-ID')}\n` +
-                    (metodeBayar === 'Tunai' && Number(uangBayarInput) > grandTotal 
-                      ? `• Kembalian: Rp ${(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}\n` 
-                      : '') +
-                    (cetakStrukBT ? `\n🖨️ Mengirim cetak struk ke Thermal Printer Bluetooth...` : '') +
-                    (kirimENotaWA ? `\n📱 Menyiapkan E-Nota WhatsApp untuk ${custName}...` : '')
-                  );
+                  const total = grandTotal;
+                  const bayar = Number(uangBayarInput) || total;
+                  const returnChange = Math.max(0, bayar - total);
 
-                  clearCart();
-                  setCatatanOrderInput('');
-                  setUangBayarInput('');
+                  setCompletedOrderData({
+                    trxId: `TRX-${Date.now().toString().slice(-6)}`,
+                    kasir,
+                    pelanggan: custName,
+                    noHp: customer.noHp || '-',
+                    metodeBayar,
+                    total,
+                    uangBayar: bayar,
+                    kembalian: returnChange,
+                    items: [...cartArray],
+                    catatan: catatanOrderInput,
+                    waktu: new Date().toLocaleTimeString('id-ID')
+                  });
+
                   setShowCheckoutModal(false);
+                  setShowSuccessModal(true);
                 }} 
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl text-xs sm:text-sm transition shadow-xs flex items-center justify-center gap-1.5"
               >
                 <span>Selesaikan Pembayaran</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* POST-PAYMENT SUCCESS & RECEIPT OPTIONS MODAL (Shows AFTER completing payment!) */}
+      {showSuccessModal && completedOrderData && (
+        <div className="fixed inset-0 z-[600] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-md border border-slate-100 shadow-2xl my-auto animate-scale-in">
+            {/* Header Success Banner */}
+            <div className="text-center pb-4 mb-4 border-b border-slate-100">
+              <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-2.5 shadow-inner">
+                <Receipt className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800">Pembayaran Berhasil!</h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">Order {completedOrderData.trxId} telah sukses diproses</p>
+            </div>
+
+            {/* Order Details Summary Box */}
+            <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-3.5 space-y-2 text-xs mb-5">
+              <div className="flex justify-between text-slate-600">
+                <span>Staff Kasir:</span>
+                <span className="font-bold text-slate-800">{completedOrderData.kasir}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Pelanggan:</span>
+                <span className="font-bold text-slate-800">{completedOrderData.pelanggan} ({completedOrderData.noHp})</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Metode Pembayaran:</span>
+                <span className="font-bold text-slate-800">{completedOrderData.metodeBayar}</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Total Tagihan:</span>
+                <span className="font-extrabold text-slate-900">Rp {completedOrderData.total.toLocaleString('id-ID')}</span>
+              </div>
+              {completedOrderData.metodeBayar === 'Tunai' && completedOrderData.kembalian > 0 && (
+                <div className="flex justify-between text-emerald-700 font-bold pt-1 border-t border-slate-200/60">
+                  <span>Kembalian:</span>
+                  <span className="font-black text-sm">Rp {completedOrderData.kembalian.toLocaleString('id-ID')}</span>
+                </div>
+              )}
+            </div>
+
+            {/* RECEIPT & E-NOTA OPTIONS (The exact requested post-payment checkboxes & actions!) */}
+            <div className="space-y-3 pt-1 mb-6 border-t border-slate-100">
+              <div className="text-xs font-bold text-slate-800 mb-2">Pilih Opsi Cetak Struk & E-Nota:</div>
+
+              <label className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-2xl cursor-pointer transition">
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={cetakStrukBT}
+                    onChange={(e) => setCetakStrukBT(e.target.checked)}
+                    className="w-4 h-4 accent-[#2d4d38] rounded"
+                  />
+                  <span className="text-xs font-bold text-slate-800">🖨️ Cetak Struk Thermal Bluetooth</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => alert(`🖨️ Mengirim perintah cetak struk Thermal Bluetooth untuk Order ${completedOrderData.trxId}...`)}
+                  className="text-[11px] font-bold text-[#2d4d38] hover:underline"
+                >
+                  Cetak
+                </button>
+              </label>
+
+              <label className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-2xl cursor-pointer transition">
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={kirimENotaWA}
+                    onChange={(e) => setKirimENotaWA(e.target.checked)}
+                    className="w-4 h-4 accent-[#2d4d38] rounded"
+                  />
+                  <span className="text-xs font-bold text-slate-800">📱 Kirim Link E-Nota via WhatsApp</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const phone = completedOrderData.noHp.replace(/^0/, '62').replace(/\D/g, '');
+                    const waUrl = `https://wa.me/${phone || ''}?text=${encodeURIComponent(`Halo Kak ${completedOrderData.pelanggan}, ini E-Nota pembayaran transaksi laundry Dua SiSi POS #${completedOrderData.trxId} sebesar Rp ${completedOrderData.total.toLocaleString('id-ID')}. Terima kasih!`)}`;
+                    window.open(waUrl, '_blank');
+                  }}
+                  className="text-[11px] font-bold text-emerald-600 hover:underline"
+                >
+                  Kirim WA
+                </button>
+              </label>
+
+              <button
+                type="button"
+                onClick={() => alert(`🏷️ Mencetak 2 lembar Label Tag Laundry untuk ${completedOrderData.pelanggan}...`)}
+                className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-2xl transition flex items-center justify-center gap-1.5"
+              >
+                <span>🏷️ Cetak Label Tag Laundry</span>
+              </button>
+            </div>
+
+            {/* Primary Close & New Order Button */}
+            <button
+              type="button"
+              onClick={() => {
+                clearCart();
+                setCatatanOrderInput('');
+                setUangBayarInput('');
+                setShowSuccessModal(false);
+                setCompletedOrderData(null);
+              }}
+              className="w-full bg-[#2d4d38] hover:bg-[#213b2a] text-white font-bold py-3 rounded-2xl text-xs sm:text-sm transition shadow-md flex items-center justify-center gap-2"
+            >
+              <span>Tutup & Transaksi Baru</span>
+            </button>
           </div>
         </div>
       )}
