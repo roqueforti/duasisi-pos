@@ -549,48 +549,50 @@ export default function PosView() {
   };
 
   return (
-    <div className="flex gap-0 h-[calc(100vh-56px)] overflow-hidden w-full">
+    <div className="flex gap-0 h-[calc(100vh-56px)] overflow-hidden w-full bg-slate-50">
       {/* LEFT: Catalog */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header Bar with Shift Indicator & Speed Selector */}
-        <div className="px-3 py-2 sm:px-4 sm:py-2.5 bg-white border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">
-          {/* Category Tabs */}
-          <div className="flex bg-slate-100 rounded-lg p-1 gap-1 shrink-0">
+        <div className="px-4 py-2.5 bg-white border-b border-slate-200/80 flex items-center justify-between gap-3 flex-wrap">
+          {/* Service Mode Segmented Control */}
+          <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 shrink-0">
             <button
               onClick={() => setMode('SelfService')}
-              className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold transition ${
-                mode === 'SelfService' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                mode === 'SelfService'
+                  ? 'bg-[#1E4648] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Self Service
             </button>
             <button
               onClick={() => setMode('FullService')}
-              className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-md text-[11px] sm:text-xs font-semibold transition ${
-                mode === 'FullService' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                mode === 'FullService'
+                  ? 'bg-[#1E4648] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Full Service
             </button>
           </div>
 
-
-
-          {/* Shift Status Widget (FR-POS-02) */}
+          {/* Shift Status Widget */}
           <div className="flex items-center gap-2 shrink-0">
             {shiftAktif ? (
               <button
                 onClick={() => setShowTutupShiftModal(true)}
-                className="bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1 transition"
+                className="bg-emerald-50/80 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition"
                 title="Shift Berjalan — Klik untuk Tutup Shift Kasir"
               >
                 <Unlock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="truncate max-w-[140px] sm:max-w-none">Shift (Rp {shiftAktif.kasAwal.toLocaleString('id-ID')})</span>
+                <span className="truncate">Shift Aktif (Rp {shiftAktif.kasAwal.toLocaleString('id-ID')})</span>
               </button>
             ) : (
               <button
                 onClick={() => setShowBukaShiftModal(true)}
-                className="bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold flex items-center gap-1 transition animate-pulse"
+                className="bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
               >
                 <Lock className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                 <span>Buka Shift</span>
@@ -600,15 +602,15 @@ export default function PosView() {
         </div>
 
         {/* Search Bar & Manual Add */}
-        <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+        <div className="px-4 py-2.5 bg-white border-b border-slate-200/80 flex items-center gap-3">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari layanan, produk, makanan, minuman..."
-              className="w-full pl-9 pr-8 py-1.5 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white"
+              placeholder="Cari layanan, produk laundry, makanan..."
+              className="w-full pl-10 pr-8 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648] bg-slate-50/50 focus:bg-white transition"
             />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -619,7 +621,7 @@ export default function PosView() {
 
           <button
             onClick={() => setShowCustomItemModal(true)}
-            className="bg-teal-50 border border-teal-200 text-[#1E4648] hover:bg-teal-100 px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shrink-0"
+            className="bg-slate-100 border border-slate-200 text-slate-700 hover:bg-[#1E4648] hover:text-white hover:border-[#1E4648] px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition shrink-0"
             title="Tambah Layanan / Item Manual"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -627,8 +629,8 @@ export default function PosView() {
           </button>
         </div>
 
-        {/* Category Filter Tabs Bar */}
-        <div className="px-4 py-2 bg-white border-b border-slate-200 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        {/* Category Filter Bar */}
+        <div className="px-4 py-2 bg-white border-b border-slate-200/80 flex items-center gap-2 overflow-x-auto no-scrollbar">
           {[
             { id: 'Semua', label: 'Semua', icon: Tag },
             { id: 'Layanan', label: 'Layanan Utama', icon: WashingMachine },
@@ -642,13 +644,13 @@ export default function PosView() {
               <button
                 key={tab.id}
                 onClick={() => setSelectedCategoryTab(tab.id as any)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 select-none ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shrink-0 border ${
                   isActive
-                    ? 'bg-[#1E4648] text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                    ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-2xs'
+                    : 'bg-slate-50 text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
-                <TabIcon className={`w-3.5 h-3.5 ${isActive ? 'text-teal-300' : 'text-slate-500'}`} />
+                <TabIcon className={`w-3.5 h-3.5 ${isActive ? 'text-teal-300' : 'text-slate-400'}`} />
                 <span>{tab.label}</span>
               </button>
             );
@@ -656,8 +658,8 @@ export default function PosView() {
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
+        <div className="flex-1 overflow-y-auto p-4 pb-20 md:pb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
             {loading ? (
               Array.from({ length: 8 }).map((_, idx) => (
                 <div key={idx} className="bg-white rounded-xl border border-slate-200 p-4 animate-pulse space-y-3">
@@ -674,7 +676,7 @@ export default function PosView() {
                   const styleCfg = getLayananStyleConfig(item.layanan);
                   const IconComp = styleCfg.Icon;
 
-                  // Parse & combine specifications cleanly
+                  // Parse specifications
                   const weightMatch = item.layanan.match(/(\d+([.,]\d+)?\s*Kg)/i);
                   const durationMatch = item.layanan.match(/(\d+\s*(Mnt|Menit|Min))/i);
                   const packMatch = item.layanan.match(/(Sachet|Pouch|Porsi|Pcs|Jumbo|Premium)/i);
@@ -689,80 +691,79 @@ export default function PosView() {
                   return (
                     <div
                       key={idx}
-                      className={`bg-white rounded-xl border p-3.5 flex flex-col justify-between transition-all duration-200 cursor-pointer relative select-none hover:-translate-y-0.5 hover:shadow-md ${
+                      className={`bg-white rounded-xl border p-3.5 flex flex-col justify-between transition-all duration-150 cursor-pointer relative select-none hover:shadow-sm ${
                         qtyInCart > 0 
-                          ? 'border-2 border-[#1E4648] bg-teal-50/50 shadow-md ring-2 ring-[#1E4648]/10' 
-                          : 'border-slate-200/90 shadow-2xs hover:border-[#1E4648]/40'
+                          ? 'border-[#1E4648] bg-teal-50/20 ring-1 ring-[#1E4648]/20' 
+                          : 'border-slate-200/80 hover:border-slate-300'
                       }`}
                       onClick={() => updateCart(item, 1)}
                     >
-                      {/* Active Quantity Badge Top Right */}
+                      {/* Active Quantity Badge */}
                       {qtyInCart > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-[#1E4648] text-white text-[11px] font-extrabold px-2 py-0.5 rounded-full shadow-md animate-scale-up border border-white flex items-center gap-0.5 z-10">
+                        <span className="absolute -top-2 -right-2 bg-[#1E4648] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs border border-white flex items-center gap-0.5 z-10">
                           <Check className="w-3 h-3 text-teal-300" />
                           <span>{qtyInCart}x</span>
                         </span>
                       )}
 
                       <div>
-                        {/* Top Header Row: Color-Coded Vector Icon & Combined Spec Badge */}
-                        <div className="flex items-start justify-between gap-1.5 mb-2.5">
-                          <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs ${styleCfg.bg}`}>
-                            <IconComp className="w-5 h-5" />
+                        {/* Top Row: Clean Icon & Spec Badge */}
+                        <div className="flex items-center justify-between gap-1.5 mb-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                            <IconComp className="w-4 h-4 text-[#1E4648]" />
                           </div>
 
-                          {/* Combined Unified Spec Pill */}
                           {combinedSpec && (
-                            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${styleCfg.badgeColor}`}>
+                            <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 shrink-0">
                               {combinedSpec}
                             </span>
                           )}
                         </div>
 
                         {/* Product Title */}
-                        <h3 className="font-bold text-xs sm:text-sm text-slate-800 leading-snug mb-1 line-clamp-2">
+                        <h3 className="font-semibold text-xs sm:text-sm text-slate-800 leading-snug mb-1.5 line-clamp-2">
                           {item.layanan}
                         </h3>
 
-                        {/* Prominent Price & Subdued Unit */}
-                        <div className="flex items-baseline gap-1 mt-1.5">
-                          <span className="text-sm sm:text-base font-black text-[#1E4648] tracking-tight">
+                        {/* Price */}
+                        <div className="flex items-baseline gap-1 mt-1">
+                          <span className="text-sm font-bold text-[#1E4648] tracking-tight">
                             Rp {effectivePrice.toLocaleString('id-ID')}
                           </span>
-                          <span className="text-[11px] font-medium text-slate-400">
+                          <span className="text-[10px] text-slate-400 font-normal">
                             /{item.satuan || 'paket'}
                           </span>
                         </div>
                       </div>
 
-                      {/* Bottom Action Controls */}
-                      <div className="mt-3.5 pt-2.5 border-t border-slate-100">
+                      {/* Bottom Controls */}
+                      <div className="mt-3 pt-2.5 border-t border-slate-100">
                         {qtyInCart > 0 ? (
-                          <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-teal-200 shadow-2xs">
+                          <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-teal-200">
                             <button
                               onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
-                              className="w-7 h-7 bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 font-bold rounded-md flex items-center justify-center transition active:scale-95"
+                              className="w-6 h-6 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 font-bold rounded-md flex items-center justify-center transition"
                               title="Kurangi Qty"
                             >
-                              <Minus className="w-3.5 h-3.5" />
+                              <Minus className="w-3 h-3" />
                             </button>
-                            <span className="flex-1 text-center text-xs font-extrabold text-[#1E4648]">
+                            <span className="flex-1 text-center text-xs font-bold text-[#1E4648]">
                               {qtyInCart}
                             </span>
                             <button
                               onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                              className="w-7 h-7 bg-[#1E4648] hover:bg-[#153334] text-white font-bold rounded-md flex items-center justify-center transition active:scale-95 shadow-2xs"
+                              className="w-6 h-6 bg-[#1E4648] text-white font-bold rounded-md flex items-center justify-center transition"
                               title="Tambah Qty"
                             >
-                              <Plus className="w-3.5 h-3.5" />
+                              <Plus className="w-3 h-3" />
                             </button>
                           </div>
                         ) : (
                           <button
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                            className="w-full bg-slate-100 hover:bg-[#1E4648] text-slate-700 hover:text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1 active:scale-95 group/btn"
+                            className="w-full bg-slate-50 hover:bg-[#1E4648] text-slate-600 hover:text-white border border-slate-200/80 font-medium py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1"
                           >
-                            <Plus className="w-3.5 h-3.5 text-slate-500 group-hover/btn:text-white" />
+                            <Plus className="w-3 h-3" />
                             <span>Pilih</span>
                           </button>
                         )}
@@ -771,26 +772,68 @@ export default function PosView() {
                   );
                 };
 
-                const mainServices = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan, item.kategori).categoryGroup === 'Layanan Utama');
-                const extraServices = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan, item.kategori).categoryGroup === 'Layanan Tambahan');
-                const laundryProducts = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan, item.kategori).categoryGroup === 'Produk Laundry');
-                const fnbProducts = filteredLayanan.filter(item => getLayananStyleConfig(item.layanan, item.kategori).categoryGroup === 'Makanan & Minuman');
+                const filterLower = search.toLowerCase().trim();
+                const filteredAll = (layananList || []).filter((i) => i.layanan.toLowerCase().includes(filterLower));
+
+                const mainServices = filteredAll.filter(
+                  (i) => i.kategori === 'Layanan' || (!i.kategori && getLayananStyleConfig(i.layanan).categoryGroup === 'Layanan Utama')
+                );
+                const extraServices = filteredAll.filter(
+                  (i) => i.kategori === 'Layanan Tambahan' || (!i.kategori && getLayananStyleConfig(i.layanan).categoryGroup === 'Layanan Tambahan')
+                );
+                const laundryProducts = filteredAll.filter(
+                  (i) => i.kategori === 'Produk' || (!i.kategori && getLayananStyleConfig(i.layanan).categoryGroup === 'Produk Laundry')
+                );
+                const fnbProducts = filteredAll.filter(
+                  (i) => i.kategori === 'MakananMinuman' || (!i.kategori && getLayananStyleConfig(i.layanan).categoryGroup === 'Makanan & Minuman')
+                );
+
+                if (selectedCategoryTab !== 'Semua') {
+                  const tabFiltered = (layananList || []).filter((i) => {
+                    const matchSearch = i.layanan.toLowerCase().includes(filterLower);
+                    let matchTab = false;
+                    if (selectedCategoryTab === 'Layanan') {
+                      matchTab = i.kategori === 'Layanan' || (!i.kategori && getLayananStyleConfig(i.layanan).categoryGroup === 'Layanan Utama');
+                    } else if (selectedCategoryTab === 'Layanan Tambahan') {
+                      matchTab = i.kategori === 'Layanan Tambahan' || (!i.kategori && getLayananStyleConfig(i.layanan).categoryGroup === 'Layanan Tambahan');
+                    } else if (selectedCategoryTab === 'Produk') {
+                      matchTab = i.kategori === 'Produk' || (!i.kategori && getLayananStyleConfig(i.layanan).categoryGroup === 'Produk Laundry');
+                    } else if (selectedCategoryTab === 'MakananMinuman') {
+                      matchTab = i.kategori === 'MakananMinuman' || (!i.kategori && getLayananStyleConfig(i.layanan).categoryGroup === 'Makanan & Minuman');
+                    }
+                    return matchSearch && matchTab;
+                  });
+
+                  if (tabFiltered.length === 0) {
+                    return (
+                      <div className="col-span-full text-center py-12 text-slate-400 text-xs">
+                        Tidak ada item ditemukan untuk kategori ini.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="col-span-full grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                      {tabFiltered.map((item, idx) => renderCard(item, idx))}
+                    </div>
+                  );
+                }
 
                 return (
-                  <div className="col-span-full space-y-6">
+                  <div className="col-span-full space-y-5">
                     {/* Group 1: Layanan Utama */}
                     {mainServices.length > 0 && (
                       <div>
-                        <div className="flex items-center gap-2 mb-3 px-0.5">
-                          <span className="w-2 h-2 rounded-full bg-[#1E4648]" />
-                          <h2 className="text-xs font-extrabold text-[#1E4648] uppercase tracking-wider">
+                        <div className="flex items-center gap-2 mb-2.5 px-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#1E4648]" />
+                          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                             Layanan Laundry Utama
                           </h2>
-                          <span className="text-[10px] font-bold bg-teal-100 text-[#1E4648] px-2 py-0.2 rounded-full border border-teal-200">
+                          <span className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.2 rounded-full">
                             {mainServices.length}
                           </span>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                           {mainServices.map((item, idx) => renderCard(item, idx))}
                         </div>
                       </div>
@@ -799,16 +842,16 @@ export default function PosView() {
                     {/* Group 2: Layanan Tambahan */}
                     {extraServices.length > 0 && (
                       <div className="pt-1">
-                        <div className="flex items-center gap-2 mb-3 px-0.5">
-                          <span className="w-2 h-2 rounded-full bg-purple-600" />
-                          <h2 className="text-xs font-extrabold text-purple-900 uppercase tracking-wider">
+                        <div className="flex items-center gap-2 mb-2.5 px-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                             Layanan Tambahan & Special Care
                           </h2>
-                          <span className="text-[10px] font-bold bg-purple-100 text-purple-900 px-2 py-0.2 rounded-full border border-purple-200">
+                          <span className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.2 rounded-full">
                             {extraServices.length}
                           </span>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                           {extraServices.map((item, idx) => renderCard(item, idx + 200))}
                         </div>
                       </div>
@@ -817,16 +860,16 @@ export default function PosView() {
                     {/* Group 3: Produk Laundry */}
                     {laundryProducts.length > 0 && (
                       <div className="pt-1">
-                        <div className="flex items-center gap-2 mb-3 px-0.5">
-                          <span className="w-2 h-2 rounded-full bg-rose-500" />
-                          <h2 className="text-xs font-extrabold text-rose-900 uppercase tracking-wider">
+                        <div className="flex items-center gap-2 mb-2.5 px-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                             Produk Laundry & Packing
                           </h2>
-                          <span className="text-[10px] font-bold bg-rose-100 text-rose-800 px-2 py-0.2 rounded-full border border-rose-200">
+                          <span className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.2 rounded-full">
                             {laundryProducts.length}
                           </span>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                           {laundryProducts.map((item, idx) => renderCard(item, idx + 400))}
                         </div>
                       </div>
@@ -835,16 +878,16 @@ export default function PosView() {
                     {/* Group 4: Makanan & Minuman */}
                     {fnbProducts.length > 0 && (
                       <div className="pt-1">
-                        <div className="flex items-center gap-2 mb-3 px-0.5">
-                          <span className="w-2 h-2 rounded-full bg-amber-600" />
-                          <h2 className="text-xs font-extrabold text-amber-900 uppercase tracking-wider">
+                        <div className="flex items-center gap-2 mb-2.5 px-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                             Makanan & Minuman (F&B Retail)
                           </h2>
-                          <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.2 rounded-full border border-amber-200">
+                          <span className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.2 rounded-full">
                             {fnbProducts.length}
                           </span>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                           {fnbProducts.map((item, idx) => renderCard(item, idx + 600))}
                         </div>
                       </div>
@@ -858,12 +901,12 @@ export default function PosView() {
       </div>
 
       {/* Floating Sticky Bottom Bar on Mobile (< md) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#11292B] text-white px-4 py-3 flex items-center justify-between shadow-2xl border-t border-teal-800/80">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#1E4648] text-white px-4 py-3 flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-3 min-w-0" onClick={() => setShowMobileCart(true)}>
           <div className="relative shrink-0">
-            <ShoppingCart className="w-5 h-5 text-teal-300" />
+            <ShoppingCart className="w-5 h-5 text-teal-200" />
             {totalCartItems > 0 && (
-              <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+              <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
                 {totalCartItems}
               </span>
             )}
@@ -881,7 +924,7 @@ export default function PosView() {
         <button
           onClick={() => setShowMobileCart(true)}
           disabled={totalCartItems === 0}
-          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 shrink-0 shadow-md"
+          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white text-xs font-bold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 shrink-0"
         >
           <span>Keranjang & Bayar</span>
           <ArrowRight className="w-3.5 h-3.5" />
@@ -891,30 +934,28 @@ export default function PosView() {
       {/* RIGHT: Order Panel Backdrop & Responsive Drawer (< md Drawer, >= md Static Panel) */}
       {showMobileCart && (
         <div 
-          className="fixed inset-0 bg-black/60 z-[250] md:hidden animate-fade-in"
+          className="fixed inset-0 bg-slate-900/50 z-[250] md:hidden animate-fade-in"
           onClick={() => setShowMobileCart(false)}
         />
       )}
 
-      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[320px] lg:w-[340px] md:z-auto border-l border-slate-200 shrink-0 overflow-hidden transition-all duration-300 ${
+      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[320px] lg:w-[340px] md:z-auto border-l border-slate-200/80 shrink-0 overflow-hidden transition-all duration-200 ${
         showMobileCart ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 md:translate-y-0 md:opacity-100 hidden md:flex'
       }`}>
         {/* Order Header */}
-        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <h2 className="text-sm font-bold text-slate-800">Keranjang Order</h2>
-          </div>
+        <div className="px-4 py-3 border-b border-slate-200/80 flex items-center justify-between bg-white">
+          <h2 className="text-sm font-bold text-slate-800">Keranjang Order</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowCustModal(true)}
-              className="text-[11px] font-medium text-[#1E4648] bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-md flex items-center gap-1 hover:bg-teal-100 transition"
+              className="text-xs font-medium text-[#1E4648] bg-slate-100 border border-slate-200/80 px-2.5 py-1 rounded-lg flex items-center gap-1.5 hover:bg-slate-200/60 transition"
             >
-              <User className="w-3 h-3" />
-              {customer.nama || 'Pilih Pelanggan'}
+              <User className="w-3.5 h-3.5 text-slate-500" />
+              <span>{customer.nama || 'Pilih Pelanggan'}</span>
             </button>
             <button
               onClick={() => setShowMobileCart(false)}
-              className="lg:hidden p-1 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100"
+              className="md:hidden p-1 text-slate-400 hover:text-slate-700 rounded-md hover:bg-slate-100"
               title="Tutup Keranjang"
             >
               <X className="w-5 h-5" />
@@ -926,14 +967,16 @@ export default function PosView() {
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {cartArray.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 py-12">
-              <div className="text-3xl mb-2">🧺</div>
-              <div className="text-xs font-medium text-slate-500">Keranjang kosong</div>
+              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-2">
+                <ShoppingCart className="w-6 h-6 text-slate-400" />
+              </div>
+              <div className="text-xs font-semibold text-slate-600">Keranjang kosong</div>
               <div className="text-[11px] text-slate-400 mt-0.5">Pilih layanan di sebelah kiri</div>
             </div>
           ) : (
             <div className="space-y-2">
               {cartArray.map((item, idx) => (
-                <div key={idx} className="p-2.5 bg-slate-50 rounded-lg border border-slate-100 space-y-1">
+                <div key={idx} className="p-3 bg-slate-50/70 rounded-xl border border-slate-200/70 space-y-1.5">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 pr-2">
                       <div className="font-semibold text-xs text-slate-800">{item.layanan}</div>
@@ -957,7 +1000,7 @@ export default function PosView() {
                       }));
                     }}
                     placeholder="Catatan item (noda/luntur...)"
-                    className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-[11px] outline-none focus:border-[#1E4648]"
+                    className="w-full px-2.5 py-1 bg-white border border-slate-200/80 rounded-lg text-[11px] outline-none focus:border-[#1E4648]"
                   />
                 </div>
               ))}
@@ -965,73 +1008,72 @@ export default function PosView() {
           )}
         </div>
 
-        {/* Promo Code & Voucher Section (FR-POS-09) */}
-        <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/50">
+        {/* Promo Code Section */}
+        <div className="px-4 py-2.5 border-t border-slate-200/80 bg-slate-50/40">
           <div className="flex items-center gap-1.5">
-            <TagIcon className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <TagIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <input
               type="text"
               value={kodePromoInput}
               onChange={(e) => setKodePromoInput(e.target.value)}
-              placeholder="Kode Voucher (LAUNDRYMEMBER)"
-              className="flex-1 px-2 py-1 text-xs border border-slate-200 rounded bg-white outline-none focus:border-[#1E4648] uppercase"
+              placeholder="Kode voucher promo..."
+              className="flex-1 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-white outline-none focus:border-[#1E4648] uppercase font-medium placeholder:normal-case"
             />
             <button
               onClick={handleApplyPromo}
-              className="px-2.5 py-1 bg-[#1E4648] hover:bg-[#153334] text-white text-xs font-semibold rounded transition shrink-0"
+              className="px-3 py-1.5 bg-[#1E4648] hover:bg-[#153334] text-white text-xs font-semibold rounded-lg transition shrink-0"
             >
-              Pasang
+              Gunakan
             </button>
           </div>
           {diskonApplied.nilai > 0 && (
-            <div className="flex justify-between items-center text-xs text-emerald-700 font-semibold mt-1">
-              <span>Promo {diskonApplied.kode}</span>
+            <div className="flex justify-between items-center text-xs text-emerald-700 font-semibold mt-1.5 px-0.5">
+              <span>Voucher ({diskonApplied.kode})</span>
               <span>-Rp {diskonApplied.nilai.toLocaleString('id-ID')}</span>
             </div>
           )}
         </div>
 
-        {/* Total & Buttons */}
-        <div className="px-4 py-3 border-t border-slate-200 space-y-2.5 bg-white">
+        {/* Total & Checkout */}
+        <div className="px-4 py-3.5 border-t border-slate-200/80 space-y-3 bg-white">
           <div className="space-y-1 text-xs text-slate-500">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span>Rp {subtotalCart.toLocaleString('id-ID')}</span>
+              <span className="font-medium text-slate-700">Rp {subtotalCart.toLocaleString('id-ID')}</span>
             </div>
             {diskonApplied.nilai > 0 && (
               <div className="flex justify-between text-emerald-600 font-medium">
-                <span>Diskon Promo</span>
+                <span>Diskon Voucher</span>
                 <span>-Rp {diskonApplied.nilai.toLocaleString('id-ID')}</span>
               </div>
             )}
           </div>
-          <div className="flex justify-between items-center text-sm font-bold text-slate-800 pt-2 border-t border-slate-200">
+          <div className="flex justify-between items-center text-sm font-bold text-slate-800 pt-2 border-t border-slate-100">
             <span>Total Tagihan</span>
-            <span className="text-base text-[#1E4648]">Rp {grandTotal.toLocaleString('id-ID')}</span>
+            <span className="text-base font-extrabold text-[#1E4648]">Rp {grandTotal.toLocaleString('id-ID')}</span>
           </div>
 
           <div className="flex gap-2 pt-1">
             <button
               onClick={clearCart}
               disabled={cartArray.length === 0}
-              className="p-2.5 bg-slate-100 hover:bg-red-50 hover:text-red-500 text-slate-500 rounded-md transition disabled:opacity-30"
-              title="Hapus semua"
+              className="p-3 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-500 rounded-xl transition disabled:opacity-30 border border-slate-200/80"
+              title="Kosongkan keranjang"
             >
               <Trash2 className="w-4 h-4" />
             </button>
             <button
               onClick={handleProcessCheckout}
               disabled={cartArray.length === 0}
-              className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-semibold py-2.5 rounded-md text-xs transition flex items-center justify-center gap-1.5 disabled:opacity-30 shadow-xs"
+              className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-3 rounded-xl text-xs transition flex items-center justify-center gap-2 disabled:opacity-40 shadow-xs"
             >
               <CreditCard className="w-4 h-4" />
-              Proses Bayar Rp {grandTotal.toLocaleString('id-ID')}
+              <span>Proses Bayar Rp {grandTotal.toLocaleString('id-ID')}</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Customer Modal */}
       {showCustModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl p-5 w-full max-w-sm">

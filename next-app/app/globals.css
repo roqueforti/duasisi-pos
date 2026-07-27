@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -9,15 +10,27 @@
   --foreground: #0F172A;
 }
 
-/* Enforce Inter Font Globally */
-* {
-  font-family: var(--font-inter), 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+/* Enforce Google Font Inter Globally on All Elements & Form Controls */
+*,
+*::before,
+*::after,
+html,
+body,
+input,
+button,
+select,
+textarea,
+optgroup,
+option {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 body {
-  font-family: var(--font-inter), 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   background-color: var(--background);
   color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Clean Scrollbar */
@@ -29,16 +42,16 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #E2E8F0;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #CBD5E1;
 }
 
 /* Login Modal Background */
 .bg-outlet-login {
-  background-image: linear-gradient(rgba(10, 23, 25, 0.78), rgba(10, 23, 25, 0.90)), url('/assets/bg-outlet.jpeg');
+  background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.92)), url('/assets/bg-outlet.jpeg');
   background-size: cover;
   background-position: center;
 }
@@ -49,95 +62,28 @@ body {
   to { opacity: 1; }
 }
 .animate-fade-in {
-  animation: fadeIn 0.2s ease forwards;
+  animation: fadeIn 0.15s ease forwards;
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-slide-up {
-  animation: slideUp 0.2s ease forwards;
+  animation: slideUp 0.15s ease forwards;
 }
 
 @keyframes popScale {
-  0% { transform: scale(0.92); opacity: 0; }
+  0% { transform: scale(0.97); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
 .animate-pop-scale {
-  animation: popScale 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes waterDrop {
-  0% {
-    transform: translateY(-200px) scale(0.7);
-    opacity: 0;
-  }
-  60% {
-    opacity: 1;
-  }
-  85% {
-    transform: translateY(0) scale(1.05);
-  }
-  100% {
-    transform: translateY(0) scale(0.95);
-    opacity: 0;
-  }
-}
-.animate-water-drop {
-  animation: waterDrop 0.75s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-}
-
-@keyframes rippleSoft {
-  0% {
-    transform: scale(0.2);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(3.2);
-    opacity: 0;
-  }
-}
-.animate-ripple-soft-1 {
-  animation: rippleSoft 0.8s ease-out 0.55s forwards;
-}
-.animate-ripple-soft-2 {
-  animation: rippleSoft 0.8s ease-out 0.7s forwards;
-}
-
-@keyframes lineProgress {
-  0% {
-    width: 0%;
-  }
-  100% {
-    width: 100%;
-  }
-}
-.animate-line-progress {
-  animation: lineProgress 1.3s ease-in-out forwards;
-}
-
-@keyframes logoReveal {
-  0% {
-    transform: scale(0.94);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-.animate-logo-reveal {
-  animation: logoReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animation-delay-1500 {
-  animation-delay: 1.5s;
+  animation: popScale 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* System Print Document Styles */
 .print-receipt-body {
-  font-family: var(--font-inter), 'Inter', sans-serif !important;
+  font-family: 'Inter', sans-serif !important;
   font-size: 12px;
   margin: 10px;
   color: #000;
@@ -203,7 +149,7 @@ body {
 }
 
 .print-tag-body {
-  font-family: var(--font-inter), 'Inter', sans-serif !important;
+  font-family: 'Inter', sans-serif !important;
   font-size: 12px;
   margin: 10px;
 }
