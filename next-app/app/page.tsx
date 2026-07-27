@@ -14,11 +14,12 @@ import ProdukView from '@/components/ProdukView';
 import RekapView from '@/components/RekapView';
 import ENotaView from '@/components/ENotaView';
 import PelangganView from '@/components/PelangganView';
+import DashboardView from '@/components/DashboardView';
 import { UserRole } from '@/lib/types';
 
 export default function HomePage() {
   const [currentRole, setCurrentRole] = useState<UserRole>('');
-  const [currentTab, setCurrentTab] = useState<string>('transaksi');
+  const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [publicNotaParam, setPublicNotaParam] = useState<string | null>(null);
 
@@ -34,11 +35,7 @@ export default function HomePage() {
 
   const handleLoginSuccess = (role: UserRole, label: string) => {
     setCurrentRole(role);
-    if (role === 'MANAGER') {
-      setCurrentTab('riwayat');
-    } else {
-      setCurrentTab('transaksi');
-    }
+    setCurrentTab('dashboard');
   };
 
   const handleLogout = () => {
@@ -85,6 +82,7 @@ export default function HomePage() {
             />
 
             <main className="flex-1 overflow-y-auto bg-slate-50">
+              {currentTab === 'dashboard' && <DashboardView currentRole={currentRole} />}
               {currentTab === 'transaksi' && <PosView />}
               {currentTab === 'riwayat' && <RiwayatView />}
               {currentTab === 'absensi' && <AbsensiView />}

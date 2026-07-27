@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { UserRole } from '@/lib/types';
 import { 
+  LayoutDashboard,
   ShoppingCart, 
   History, 
   Clock, 
@@ -145,6 +146,12 @@ export default function Sidebar({
             </div>
           )}
           
+          <button className={navClass('dashboard')} onClick={() => handleNavClick('dashboard')} title="Dashboard Utama">
+            <LayoutDashboard className={`w-[18px] h-[18px] shrink-0 ${iconClass('dashboard')}`} />
+            {!isCollapsed && <span>Dashboard Utama</span>}
+            {!isCollapsed && currentTab === 'dashboard' && <ChevronRight className="w-3.5 h-3.5 ml-auto text-slate-400" />}
+          </button>
+
           {currentRole !== 'MANAGER' && (
             <button className={navClass('transaksi')} onClick={() => handleNavClick('transaksi')} title="POS Kasir">
               <ShoppingCart className={`w-[18px] h-[18px] shrink-0 ${iconClass('transaksi')}`} />
