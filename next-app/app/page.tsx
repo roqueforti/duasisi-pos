@@ -4,8 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import LoginModal from '@/components/LoginModal';
-import SplashScreen from '@/components/SplashScreen';
-import WellbeingModal from '@/components/WellbeingModal';
 import PosView from '@/components/PosView';
 import RiwayatView from '@/components/RiwayatView';
 import AbsensiView from '@/components/AbsensiView';
@@ -18,9 +16,6 @@ import ENotaView from '@/components/ENotaView';
 import { UserRole } from '@/lib/types';
 
 export default function HomePage() {
-  const [showSplash, setShowSplash] = useState<boolean>(true);
-  const [showWellbeing, setShowWellbeing] = useState<boolean>(false);
-  const [pendingRole, setPendingRole] = useState<{ role: UserRole; label: string } | null>(null);
   const [currentRole, setCurrentRole] = useState<UserRole>('');
   const [currentTab, setCurrentTab] = useState<string>('transaksi');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -37,27 +32,16 @@ export default function HomePage() {
   }, []);
 
   const handleLoginSuccess = (role: UserRole, label: string) => {
-    setPendingRole({ role, label });
-    setShowWellbeing(true);
-  };
-
-  const handleWellbeingFinish = () => {
-    if (pendingRole) {
-      setCurrentRole(pendingRole.role);
-      if (pendingRole.role === 'MANAGER') {
-        setCurrentTab('riwayat');
-      } else {
-        setCurrentTab('transaksi');
-      }
+    setCurrentRole(role);
+    if (role === 'MANAGER') {
+      setCurrentTab('riwayat');
+    } else {
+      setCurrentTab('transaksi');
     }
-    setShowWellbeing(false);
   };
 
   const handleLogout = () => {
     setCurrentRole('');
-    setPendingRole(null);
-    setShowWellbeing(false);
-    setShowSplash(false);
   };
 
   if (publicNotaParam) {
@@ -76,16 +60,6 @@ export default function HomePage() {
 
   return (
     <>
-      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
-
-      {showWellbeing && pendingRole && (
-        <WellbeingModal
-          role={pendingRole.role}
-          label={pendingRole.label}
-          onFinish={handleWellbeingFinish}
-        />
-      )}
-
       {!currentRole ? (
         <LoginModal onSuccess={handleLoginSuccess} />
       ) : (
