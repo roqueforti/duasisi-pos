@@ -81,9 +81,9 @@ export default function Sidebar({
         {isCollapsed ? (
           <div className="flex flex-col items-center gap-3 py-4 px-2 border-b border-slate-100">
             <img 
-              src="./assets/logo-emblem-teal.svg" 
+              src="./assets/Asset 5.svg" 
               alt="Dua SiSi" 
-              className="h-7 w-7"
+              className="h-8 w-8"
             />
             <button
               onClick={() => setIsCollapsed(false)}
@@ -96,9 +96,9 @@ export default function Sidebar({
         ) : (
           <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100">
             <img 
-              src="./assets/logo-full-teal.svg" 
+              src="./assets/Asset 5.svg" 
               alt="Dua SiSi Laundry Express & Coin" 
-              className="h-7 w-auto"
+              className="h-9 w-auto object-contain max-w-[140px]"
             />
             <div className="flex items-center gap-1">
               <button
