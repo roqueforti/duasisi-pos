@@ -17,7 +17,8 @@ import {
   Package,
   Coffee,
   Receipt,
-  CreditCard
+  CreditCard,
+  ArrowRight
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir } from '@/lib/types';
 
@@ -70,6 +71,7 @@ export default function PosView() {
   const [showBukaShiftModal, setShowBukaShiftModal] = useState(false);
   const [showTutupShiftModal, setShowTutupShiftModal] = useState(false);
   const [showCustomItemModal, setShowCustomItemModal] = useState(false);
+  const [showMobileCart, setShowMobileCart] = useState(false);
 
   // Shift & Kas
   const [shiftAktif, setShiftAktif] = useState<ShiftKasir | null>({
@@ -121,6 +123,7 @@ export default function PosView() {
   };
 
   const cartArray = Object.values(cart);
+  const totalCartItems = cartArray.reduce((acc, curr) => acc + curr.qty, 0);
   const subtotalCart = cartArray.reduce((acc, curr) => acc + (curr.qty * curr.hargaSatuan), 0);
   const grandTotal = Math.max(0, subtotalCart - diskonApplied.nilai);
 
@@ -362,21 +365,71 @@ export default function PosView() {
         </div>
       </div>
 
-      {/* RIGHT: Cart / Order Panel (Matches RestroBit Order #20 layout!) */}
-      <div className="bg-white flex flex-col w-full md:w-[340px] lg:w-[360px] border border-slate-200/80 rounded-2xl shrink-0 overflow-hidden shadow-2xs">
+      {/* Floating Sticky Bottom Bar on Mobile (< 768px: 320px, 375px, 425px) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#1E4648] text-white px-3.5 py-2.5 flex items-center justify-between shadow-2xl border-t border-teal-800">
+        <div className="flex items-center gap-2.5 min-w-0" onClick={() => setShowMobileCart(true)}>
+          <div className="relative shrink-0">
+            <ShoppingCart className="w-5 h-5 text-teal-300" />
+            {totalCartItems > 0 && (
+              <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-bold w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-2xs">
+                {totalCartItems}
+              </span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold truncate">
+              {totalCartItems > 0 ? `Total: Rp ${grandTotal.toLocaleString('id-ID')}` : 'Keranjang Kosong'}
+            </div>
+            <div className="text-[10px] text-teal-200/90 truncate">
+              {totalCartItems > 0 ? `${totalCartItems} item dipilih` : 'Klik item di atas untuk memilih'}
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowMobileCart(true)}
+          disabled={totalCartItems === 0}
+          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1 shrink-0 shadow-2xs"
+        >
+          <span>Lihat Order</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Mobile Drawer Backdrop */}
+      {showMobileCart && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 z-[250] md:hidden animate-fade-in backdrop-blur-xs"
+          onClick={() => setShowMobileCart(false)}
+        />
+      )}
+
+      {/* RIGHT: Order Panel (Static on >= 768px, Slide-Up Drawer on < 768px) */}
+      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[300px] lg:w-[340px] xl:w-[360px] md:z-auto border border-slate-200/80 rounded-2xl shrink-0 overflow-hidden shadow-2xs transition-all duration-200 ${
+        showMobileCart ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 md:translate-y-0 md:opacity-100 hidden md:flex'
+      }`}>
         {/* Header: Order # & Customer Select */}
-        <div className="p-4 border-b border-slate-100 bg-white flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-white flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-4 h-4 text-amber-500" />
             <h2 className="text-sm font-bold text-slate-800">Order #20</h2>
           </div>
-          <button
-            onClick={() => setShowCustModal(true)}
-            className="text-xs font-semibold text-[#1E4648] bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl flex items-center gap-1.5 hover:bg-slate-100 transition"
-          >
-            <User className="w-3.5 h-3.5 text-slate-500" />
-            <span>{customer.nama || 'Pilih Pelanggan'}</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setShowCustModal(true)}
+              className="text-xs font-semibold text-[#1E4648] bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-xl flex items-center gap-1 hover:bg-slate-100 transition"
+            >
+              <User className="w-3.5 h-3.5 text-slate-500" />
+              <span className="truncate max-w-[100px] sm:max-w-[120px]">{customer.nama || 'Pilih Pelanggan'}</span>
+            </button>
+            <button
+              onClick={() => setShowMobileCart(false)}
+              className="md:hidden p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+              title="Tutup Keranjang"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Cart Items List */}
