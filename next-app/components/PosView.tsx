@@ -740,9 +740,9 @@ export default function PosView() {
             )}
           </div>
 
-          <div className="flex justify-between items-center text-sm font-black text-slate-900 pt-2 border-t border-slate-100">
-            <span>Total Tagihan :</span>
-            <span className="text-lg font-black text-slate-900">Rp {grandTotal.toLocaleString('id-ID')}</span>
+          <div className="bg-slate-900 text-white rounded-2xl p-3.5 flex justify-between items-center shadow-inner my-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Total Tagihan</span>
+            <span className="text-lg font-black text-emerald-400">Rp {grandTotal.toLocaleString('id-ID')}</span>
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -904,8 +904,10 @@ export default function PosView() {
                       <button
                         type="button"
                         onClick={() => setTipeLayanan('SelfService')}
-                        className={`py-2 px-2.5 rounded-xl font-bold border transition text-center text-[11px] ${
-                          tipeLayanan === 'SelfService' ? 'bg-[#2d4d38] text-white border-[#2d4d38]' : 'bg-slate-50 text-slate-700 border-slate-200'
+                        className={`py-2 px-2.5 rounded-xl font-bold transition text-center text-[11px] border ${
+                          tipeLayanan === 'SelfService' 
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs' 
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
                         Self Service (Cuci Sendiri)
@@ -913,8 +915,10 @@ export default function PosView() {
                       <button
                         type="button"
                         onClick={() => setTipeLayanan('FullService')}
-                        className={`py-2 px-2.5 rounded-xl font-bold border transition text-center text-[11px] ${
-                          tipeLayanan === 'FullService' ? 'bg-[#2d4d38] text-white border-[#2d4d38]' : 'bg-slate-50 text-slate-700 border-slate-200'
+                        className={`py-2 px-2.5 rounded-xl font-bold transition text-center text-[11px] border ${
+                          tipeLayanan === 'FullService' 
+                            ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs' 
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
                         Full Service (Terima Beres)
@@ -988,7 +992,9 @@ export default function PosView() {
                             type="button"
                             onClick={() => setMetodeBayar(m.id as any)}
                             className={`py-2 px-2 rounded-xl text-xs font-bold transition border text-center ${
-                              metodeBayar === m.id ? 'bg-[#2d4d38] text-white border-[#2d4d38]' : 'bg-slate-50 text-slate-700 border-slate-200'
+                              metodeBayar === m.id 
+                                ? 'bg-[#0f172a] text-white border-[#0f172a] shadow-xs' 
+                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                             }`}
                           >
                             {m.label}
@@ -997,9 +1003,9 @@ export default function PosView() {
                       </div>
                     </div>
 
-                    {/* Conditional Tunai Input & Kembalian */}
+                    {/* Conditional Tunai Input, Uang Kurang Warning, & Kembalian */}
                     {metodeBayar === 'Tunai' ? (
-                      <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-2">
+                      <div className="bg-[#f8fafc] border-2 border-slate-300 rounded-2xl p-3.5 space-y-2.5 shadow-2xs">
                         <div className="flex justify-between items-center gap-2">
                           <label className="font-bold text-slate-800">Jumlah Uang Diterima (Rp):</label>
                           <input
@@ -1007,26 +1013,40 @@ export default function PosView() {
                             value={uangBayarInput}
                             onChange={(e) => setUangBayarInput(e.target.value)}
                             placeholder={grandTotal.toString()}
-                            className="w-32 px-3 py-1.5 bg-white border border-emerald-300 rounded-xl font-bold outline-none text-right focus:ring-2 focus:ring-emerald-500"
+                            className="w-36 px-3 py-1.5 bg-white border-2 border-slate-300 rounded-xl font-extrabold text-[#0f172a] outline-none text-right focus:border-[#0f172a]"
                           />
                         </div>
 
                         <div className="flex gap-1.5 overflow-x-auto">
-                          <button type="button" onClick={() => setUangBayarInput(grandTotal.toString())} className="px-2 py-1 bg-white border border-emerald-300 rounded-lg font-bold text-emerald-800 text-[10px]">
+                          <button type="button" onClick={() => setUangBayarInput(grandTotal.toString())} className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-bold rounded-lg text-[10px] shadow-2xs">
                             Uang Pas (Rp {grandTotal.toLocaleString('id-ID')})
                           </button>
-                          <button type="button" onClick={() => setUangBayarInput('50000')} className="px-2 py-1 bg-white border border-emerald-300 rounded-lg font-bold text-emerald-800 text-[10px]">
+                          <button type="button" onClick={() => setUangBayarInput('50000')} className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-bold rounded-lg text-[10px] shadow-2xs">
                             Rp 50.000
                           </button>
-                          <button type="button" onClick={() => setUangBayarInput('100000')} className="px-2 py-1 bg-white border border-emerald-300 rounded-lg font-bold text-emerald-800 text-[10px]">
+                          <button type="button" onClick={() => setUangBayarInput('100000')} className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-bold rounded-lg text-[10px] shadow-2xs">
                             Rp 100.000
                           </button>
                         </div>
 
+                        {/* State 1: Uang Kurang Warning (Red Alert) */}
+                        {Number(uangBayarInput) > 0 && Number(uangBayarInput) < grandTotal && (
+                          <div className="flex justify-between items-center text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-xl">
+                            <span className="flex items-center gap-1.5">
+                              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                              <span>Uang Kurang:</span>
+                            </span>
+                            <span className="text-sm font-black text-rose-600">
+                              -Rp {(grandTotal - Number(uangBayarInput)).toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* State 2: Kembalian Normal (Emerald Box) */}
                         {Number(uangBayarInput) >= grandTotal && (
-                          <div className="flex justify-between items-center text-xs font-bold text-emerald-800 pt-1.5 border-t border-emerald-200">
+                          <div className="flex justify-between items-center text-xs font-bold text-emerald-800 bg-emerald-50/90 border border-emerald-300 p-2.5 rounded-xl">
                             <span>Kembalian:</span>
-                            <span className="text-base font-black">
+                            <span className="text-base font-black text-emerald-700">
                               Rp {(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}
                             </span>
                           </div>
