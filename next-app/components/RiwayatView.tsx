@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, Send, Eye, CheckCircle, RefreshCw, X, FileText, Plus, Calendar, User, CreditCard, Check, AlertTriangle, ShieldAlert, DollarSign } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend } from '@/lib/api';
+import PrinterModal from '@/components/PrinterModal';
 
 export default function RiwayatView() {
   const [filter, setFilter] = useState<'Semua' | 'SelfService' | 'FullService'>('Semua');
@@ -11,6 +12,10 @@ export default function RiwayatView() {
   const [txList, setTxList] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaksi | null>(null);
+
+  // Bluetooth Thermal Printer Modal State
+  const [isPrinterModalOpen, setIsPrinterModalOpen] = useState<boolean>(false);
+  const [txForPrintModal, setTxForPrintModal] = useState<Transaksi | null>(null);
 
   // State for Void Request Modal (FR-POS-24)
   const [showVoidModal, setShowVoidModal] = useState(false);
@@ -220,60 +225,8 @@ export default function RiwayatView() {
   };
 
   const handlePrintReceipt = (tx: Transaksi) => {
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) return;
-
-    const itemsHtml = tx.items
-      .map(
-        (i) => `
-      <tr>
-        <td style="padding: 4px 0; text-align: left;">${i.layanan}<br/><span style="color:#666;">${i.qty} x Rp ${i.hargaSatuan.toLocaleString('id-ID')}</span></td>
-        <td style="padding: 4px 0; text-align: right; vertical-align: top;">Rp ${(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</td>
-      </tr>
-    `
-      )
-      .join('');
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Struk ${tx.noNota}</title>
-          <style>
-            body { font-family: monospace; font-size: 12px; margin: 10px; color: #000; }
-            .header { text-align: center; margin-bottom: 12px; }
-            .header h2 { margin: 0; font-size: 16px; }
-            .header p { margin: 2px 0; font-size: 10px; }
-            .line { border-bottom: 1px dashed #000; margin: 8px 0; }
-            table { width: 100%; border-collapse: collapse; font-size: 11px; }
-            .total { font-weight: bold; font-size: 13px; text-align: right; margin-top: 8px; }
-            .footer { text-align: center; margin-top: 16px; font-size: 10px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h2>DUA SISI LAUNDRY</h2>
-            <p>Express & Coin Laundry</p>
-            <p>Nota: ${tx.noNota}</p>
-            <p>${tx.tanggal}</p>
-          </div>
-          <div class="line"></div>
-          <p>Pelanggan: <b>${tx.namaPelanggan}</b> ${tx.noHp ? `(${tx.noHp})` : ''}</p>
-          <div class="line"></div>
-          <table>${itemsHtml}</table>
-          <div class="line"></div>
-          <div class="total">TOTAL: Rp ${tx.total.toLocaleString('id-ID')}</div>
-          <div class="line"></div>
-          <div class="footer">
-            <p>Terima kasih atas kunjungan Anda!</p>
-            <p>Simpan nota ini sebagai bukti pengambilan.</p>
-          </div>
-          <script>
-            window.onload = function() { window.print(); window.close(); }
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    setTxForPrintModal(tx);
+    setIsPrinterModalOpen(true);
   };
 
   const filteredTx = (txList || []).filter((t) => {
@@ -818,6 +771,13 @@ export default function RiwayatView() {
           </div>
         </div>
       )}
+      {/* Printer Modal */}
+      <PrinterModal
+        isOpen={isPrinterModalOpen}
+        onClose={() => setIsPrinterModalOpen(false)}
+        tx={txForPrintModal}
+        printType="struk"
+      />
     </div>
   );
 }

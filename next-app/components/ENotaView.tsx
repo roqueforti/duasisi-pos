@@ -130,7 +130,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
                   <span>E-NOTA RESMI TERVERIFIKASI</span>
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400/20" />
                 </div>
-                <div className="text-[10px] text-emerald-300/80 font-mono tracking-tight">
+                <div className="text-[10px] text-emerald-300/80 font-sans tracking-tight">
                   {getSecurityHash(tx.noNota)}
                 </div>
               </div>
@@ -141,7 +141,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
           </div>
 
           {/* THERMAL PDF RECEIPT CONTAINER */}
-          <div className="bg-stone-50 border border-stone-300 rounded-2xl p-6 shadow-2xl text-slate-800 font-mono relative overflow-hidden print:shadow-none print:border-none print:p-0">
+          <div className="bg-stone-50 border border-stone-300 rounded-2xl p-6 shadow-2xl text-slate-800 font-sans relative overflow-hidden print:shadow-none print:border-none print:p-0">
             {/* Top Zig-Zag Thermal Paper Decoration */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-[radial-gradient(circle,#cbd5e1_1px,transparent_1px)] [background-size:8px_8px]" />
 
@@ -250,11 +250,13 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
                   <div
                     key={i}
                     className="bg-slate-900 h-full rounded-xs"
-                    style={{ width: `${w}px` }}
+                    ref={(el) => {
+                      if (el) el.style.width = `${w}px`;
+                    }}
                   />
                 ))}
               </div>
-              <div className="text-[9px] text-slate-400 font-mono tracking-widest">
+              <div className="text-[9px] text-slate-400 font-sans tracking-widest">
                 *{tx.noNota}*
               </div>
               <p className="text-[9px] text-slate-500 italic pt-1">

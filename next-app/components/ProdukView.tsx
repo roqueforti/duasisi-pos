@@ -277,7 +277,7 @@ export default function ProdukView() {
               <tbody className="divide-y divide-slate-100">
                 {promoList.map((prm) => (
                   <tr key={prm.idPromo} className="hover:bg-slate-50 transition">
-                    <td className="py-3 px-4 font-bold font-mono text-[#1E4648] text-sm">{prm.kodeVoucher}</td>
+                    <td className="py-3 px-4 font-bold font-sans text-[#1E4648] text-sm">{prm.kodeVoucher}</td>
                     <td className="py-3 px-4 text-slate-600">{prm.jenisDiskon}</td>
                     <td className="py-3 px-4 font-bold text-emerald-700">Rp {prm.nilaiDiskon.toLocaleString('id-ID')}</td>
                     <td className="py-3 px-4 text-slate-600">Rp {(prm.minTransaksi || 0).toLocaleString('id-ID')}</td>
@@ -377,7 +377,7 @@ export default function ProdukView() {
             <div className="space-y-3 text-xs mb-4">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Kode Voucher *</label>
-                <input type="text" value={kodePromo} onChange={(e) => setKodePromo(e.target.value)} placeholder="LAUNDRYMEMBER" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] uppercase font-mono font-bold" />
+                <input type="text" value={kodePromo} onChange={(e) => setKodePromo(e.target.value)} placeholder="LAUNDRYMEMBER" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] uppercase font-sans font-bold" />
               </div>
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Nilai Potongan Diskon (Rp) *</label>

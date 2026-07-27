@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { LayananItem, CartItem, Pegawai, Transaksi, KecepatanLayanan, ShiftKasir } from '@/lib/types';
 import { runBackend } from '@/lib/api';
+import PrinterModal, { PrintType } from '@/components/PrinterModal';
 
 function getLayananStyleConfig(name: string, catFromItem?: string) {
   const lower = name.toLowerCase();
@@ -138,6 +139,11 @@ export default function PosView() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showCustomItemModal, setShowCustomItemModal] = useState(false);
   const [lastCompletedTx, setLastCompletedTx] = useState<Transaksi | null>(null);
+
+  // Bluetooth Thermal Printer Modal State
+  const [isPrinterModalOpen, setIsPrinterModalOpen] = useState<boolean>(false);
+  const [printTypeForModal, setPrintTypeForModal] = useState<PrintType>('struk');
+  const [txForModal, setTxForModal] = useState<Transaksi | null>(null);
 
   // Custom Item Input State
   const [customItemNama, setCustomItemNama] = useState('');
@@ -505,101 +511,15 @@ export default function PosView() {
   };
 
   const handlePrintReceipt = (tx: Transaksi) => {
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) return;
-
-    const itemsHtml = tx.items
-      .map(
-        (i) => `
-      <tr>
-        <td style="padding: 4px 0; text-align: left;">
-          ${i.layanan}<br/>
-          <span style="color:#666;">${i.qty} x Rp ${i.hargaSatuan.toLocaleString('id-ID')}</span>
-          ${i.catatan ? `<br/><small style="color:#e11d48;">Catatan: ${i.catatan}</small>` : ''}
-        </td>
-        <td style="padding: 4px 0; text-align: right; vertical-align: top;">Rp ${(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</td>
-      </tr>
-    `
-      )
-      .join('');
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Struk ${tx.noNota}</title>
-          <style>
-            body { font-family: monospace; font-size: 12px; margin: 10px; color: #000; }
-            .header { text-align: center; margin-bottom: 12px; }
-            .header h2 { margin: 0; font-size: 16px; }
-            .header p { margin: 2px 0; font-size: 10px; }
-            .line { border-bottom: 1px dashed #000; margin: 8px 0; }
-            table { width: 100%; border-collapse: collapse; font-size: 11px; }
-            .total { font-weight: bold; font-size: 13px; text-align: right; margin-top: 8px; }
-            .footer { text-align: center; margin-top: 16px; font-size: 10px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h2>DUA SISI LAUNDRY</h2>
-            <p>Express & Coin Laundry</p>
-            <p>Nota: ${tx.noNota}</p>
-            <p>${tx.tanggal}</p>
-            <p>Kecepatan: <b>${tx.tingkatLayanan || 'Reguler'}</b></p>
-          </div>
-          <div class="line"></div>
-          <p>Pelanggan: <b>${tx.namaPelanggan}</b> ${tx.noHp ? `(${tx.noHp})` : ''}</p>
-          <div class="line"></div>
-          <table>${itemsHtml}</table>
-          <div class="line"></div>
-          ${tx.diskon ? `<div style="text-align:right;">Diskon: -Rp ${tx.diskon.toLocaleString('id-ID')}</div>` : ''}
-          <div class="total">TOTAL: Rp ${tx.total.toLocaleString('id-ID')}</div>
-          ${tx.nominalDP ? `<div style="text-align:right; font-weight:bold;">DP Paid: Rp ${tx.nominalDP.toLocaleString('id-ID')}</div><div style="text-align:right; color:#e11d48; font-weight:bold;">Sisa Tagihan: Rp ${(tx.sisaTagihan || 0).toLocaleString('id-ID')}</div>` : ''}
-          <div class="line"></div>
-          <div class="footer">
-            <p>Terima kasih atas kunjungan Anda!</p>
-            <p>Simpan nota ini sebagai bukti pengambilan.</p>
-          </div>
-          <script>
-            window.onload = function() { window.print(); window.close(); }
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    setTxForModal(tx);
+    setPrintTypeForModal('struk');
+    setIsPrinterModalOpen(true);
   };
 
   const handlePrintItemTag = (tx: Transaksi) => {
-    const printWindow = window.open('', '_blank', 'width=350,height=400');
-    if (!printWindow) return;
-
-    const tagsHtml = tx.items.map((item, idx) => `
-      <div style="border: 2px solid #000; padding: 10px; margin-bottom: 15px; border-radius: 8px; page-break-after: always;">
-        <div style="text-align:center; font-weight:bold; font-size:16px;">DUA SISI LAUNDRY TAG</div>
-        <div style="text-align:center; font-size:11px; margin-bottom:8px;">ORDER TAG #${idx + 1} OF ${tx.items.length}</div>
-        <hr style="border:1px dashed #000;"/>
-        <div style="font-size:14px; font-weight:bold; margin-top:6px;">NOTA: ${tx.noNota}</div>
-        <div style="font-size:14px; font-weight:bold;">NAMA: ${tx.namaPelanggan.toUpperCase()}</div>
-        <div style="font-size:12px; margin-top:4px;">ITEM: <b>${item.layanan}</b> (Qty: ${item.qty})</div>
-        <div style="font-size:12px; color:#c53030; font-weight:bold; margin-top:4px;">PROSES: ${tx.tingkatLayanan || 'Reguler'}</div>
-        ${tx.catatan ? `<div style="font-size:11px; margin-top:4px; font-style:italic;">CATATAN: ${tx.catatan}</div>` : ''}
-        <hr style="border:1px dashed #000; margin-top:8px;"/>
-        <div style="text-align:center; font-size:10px; margin-top:4px;">TGL MASUK: ${tx.tanggal}</div>
-      </div>
-    `).join('');
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Tag Cucian - ${tx.noNota}</title>
-          <style>body { font-family: sans-serif; font-size: 12px; margin: 10px; }</style>
-        </head>
-        <body>
-          ${tagsHtml}
-          <script>window.onload = function() { window.print(); window.close(); }</script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    setTxForModal(tx);
+    setPrintTypeForModal('label');
+    setIsPrinterModalOpen(true);
   };
 
   const handleWhatsAppStruk = (tx: Transaksi) => {
@@ -736,7 +656,7 @@ export default function PosView() {
         </div>
 
         {/* Product Grid */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 lg:pb-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3">
             {loading ? (
               Array.from({ length: 8 }).map((_, idx) => (
@@ -831,7 +751,7 @@ export default function PosView() {
                             </span>
                             <button
                               onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                              className="w-7 h-7 bg-[#1E4648] hover:bg-[#153334] text-white font-bold rounded-md flex items-center justify-center transition active:scale-95"
+                              className="w-7 h-7 bg-[#1E4648] hover:bg-[#153334] text-white font-bold rounded-md flex items-center justify-center transition active:scale-95 shadow-2xs"
                               title="Tambah Qty"
                             >
                               <Plus className="w-3.5 h-3.5" />
@@ -840,10 +760,10 @@ export default function PosView() {
                         ) : (
                           <button
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                            className="w-full bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-all shadow-2xs hover:shadow-md flex items-center justify-center gap-1.5 active:scale-97"
+                            className="w-full bg-slate-100 hover:bg-[#1E4648] text-slate-700 hover:text-white font-bold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1 active:scale-95 group/btn"
                           >
-                            <Plus className="w-3.5 h-3.5 text-teal-300" />
-                            <span>Tambah</span>
+                            <Plus className="w-3.5 h-3.5 text-slate-500 group-hover/btn:text-white" />
+                            <span>Pilih</span>
                           </button>
                         )}
                       </div>
@@ -937,8 +857,8 @@ export default function PosView() {
         </div>
       </div>
 
-      {/* Floating Sticky Bottom Bar on Mobile (< lg) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#11292B] text-white px-4 py-3 flex items-center justify-between shadow-2xl border-t border-teal-800/80">
+      {/* Floating Sticky Bottom Bar on Mobile (< md) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#11292B] text-white px-4 py-3 flex items-center justify-between shadow-2xl border-t border-teal-800/80">
         <div className="flex items-center gap-3 min-w-0" onClick={() => setShowMobileCart(true)}>
           <div className="relative shrink-0">
             <ShoppingCart className="w-5 h-5 text-teal-300" />
@@ -968,16 +888,16 @@ export default function PosView() {
         </button>
       </div>
 
-      {/* RIGHT: Order Panel Backdrop & Responsive Drawer (< lg Drawer, >= lg Static Panel) */}
+      {/* RIGHT: Order Panel Backdrop & Responsive Drawer (< md Drawer, >= md Static Panel) */}
       {showMobileCart && (
         <div 
-          className="fixed inset-0 bg-black/60 z-[250] lg:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/60 z-[250] md:hidden animate-fade-in"
           onClick={() => setShowMobileCart(false)}
         />
       )}
 
-      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full lg:static lg:w-[340px] lg:z-auto border-l border-slate-200 shrink-0 overflow-hidden transition-all duration-300 ${
-        showMobileCart ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 lg:translate-y-0 lg:opacity-100 hidden lg:flex'
+      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[320px] lg:w-[340px] md:z-auto border-l border-slate-200 shrink-0 overflow-hidden transition-all duration-300 ${
+        showMobileCart ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 md:translate-y-0 md:opacity-100 hidden md:flex'
       }`}>
         {/* Order Header */}
         <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
@@ -1131,7 +1051,7 @@ export default function PosView() {
                   value={customer.noHp} 
                   onChange={(e) => handlePhoneAutoLookup(e.target.value, 'inputModal')} 
                   placeholder="08... (Auto Read Nama)" 
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648] font-mono font-medium" 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648] font-sans font-medium" 
                 />
               </div>
 
@@ -1173,7 +1093,7 @@ export default function PosView() {
                         className="w-full text-left px-2.5 py-1.5 bg-white hover:bg-teal-50 hover:border-teal-300 border border-slate-200 rounded-md text-[11px] flex justify-between items-center transition shadow-2xs"
                       >
                         <span className="font-bold text-slate-800">{m.nama}</span>
-                        <span className="text-slate-500 font-mono text-[10px]">{m.noHp}</span>
+                        <span className="text-slate-500 font-sans text-[10px]">{m.noHp}</span>
                       </button>
                     ))}
                   </div>
@@ -1303,7 +1223,7 @@ export default function PosView() {
                   value={kasAkhirFisik}
                   onChange={(e) => setKasAkhirFisik(e.target.value)}
                   placeholder={(shiftAktif.kasAwal + (shiftAktif.totalOmzetTunai || 0)).toString()}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm font-extrabold outline-none focus:border-[#1E4648] bg-white font-mono"
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm font-extrabold outline-none focus:border-[#1E4648] bg-white font-sans"
                 />
               </div>
 
@@ -1394,7 +1314,7 @@ export default function PosView() {
                       value={custNoHpInput} 
                       onChange={(e) => handlePhoneAutoLookup(e.target.value, 'checkoutModal')} 
                       placeholder="08..." 
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648] font-mono font-medium" 
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648] font-sans font-medium" 
                     />
                   </div>
                   <div>
@@ -1436,7 +1356,7 @@ export default function PosView() {
                           className="w-full text-left px-2.5 py-1.5 bg-white hover:bg-teal-50 hover:border-teal-300 border border-slate-200 rounded-md text-[11px] flex justify-between items-center transition shadow-2xs"
                         >
                           <span className="font-bold text-slate-800">{m.nama}</span>
-                          <span className="text-slate-500 font-mono text-[10px]">{m.noHp}</span>
+                          <span className="text-slate-500 font-sans text-[10px]">{m.noHp}</span>
                         </button>
                       ))}
                     </div>
@@ -1704,6 +1624,13 @@ export default function PosView() {
           </div>
         </div>
       )}
+      {/* Printer Modal for Struk & Label */}
+      <PrinterModal
+        isOpen={isPrinterModalOpen}
+        onClose={() => setIsPrinterModalOpen(false)}
+        tx={txForModal}
+        printType={printTypeForModal}
+      />
     </div>
   );
 }

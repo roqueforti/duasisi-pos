@@ -283,7 +283,9 @@ export default function RekapView() {
                       <div className="flex-1 bg-slate-100 h-5 rounded-md overflow-hidden relative">
                         <div 
                           className="bg-[#1E4648] h-full rounded-md transition-all duration-500" 
-                          style={{ width: `${Math.max(pct, 5)}%` }} 
+                          ref={(el) => {
+                            if (el) el.style.width = `${Math.max(pct, 5)}%`;
+                          }} 
                         />
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white drop-shadow-xs">
                           Rp {item.omzet.toLocaleString('id-ID')}
@@ -467,7 +469,7 @@ export default function RekapView() {
                       <td className="py-2.5 px-4 text-slate-500">{log.waktu}</td>
                       <td className="py-2.5 px-4 font-semibold text-slate-800">{log.namaUser}</td>
                       <td className="py-2.5 px-4 text-slate-700">{log.jenisAktivitas}</td>
-                      <td className="py-2.5 px-4 font-mono text-slate-500">{log.referensi || '-'}</td>
+                      <td className="py-2.5 px-4 text-slate-500">{log.referensi || '-'}</td>
                     </tr>
                   ))
                 )}

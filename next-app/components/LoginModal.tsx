@@ -55,8 +55,7 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
 
   return (
     <div 
-      className="fixed inset-0 z-[1000] bg-cover bg-center bg-no-repeat flex items-center justify-center p-4 transition-all duration-500"
-      style={{ backgroundImage: `linear-gradient(rgba(10, 23, 25, 0.78), rgba(10, 23, 25, 0.90)), url('./assets/bg-outlet.jpeg')` }}
+      className="fixed inset-0 z-[1000] bg-outlet-login flex items-center justify-center p-4 transition-all duration-500"
     >
       <div className="bg-[#11292B] rounded-2xl p-8 text-center max-w-sm w-full border border-slate-700 shadow-2xl text-white">
         {/* Logo Header */}
@@ -89,7 +88,7 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
             maxLength={4}
             autoFocus
             disabled={loading}
-            className="w-full text-center text-3xl font-bold tracking-[14px] py-3.5 px-4 bg-slate-900 text-white placeholder-slate-500 border border-slate-700 rounded-xl outline-none focus:border-teal-400 focus:bg-slate-950 transition-all shadow-inner font-mono"
+            className="w-full text-center text-3xl font-bold tracking-[14px] py-3.5 px-4 bg-slate-900 text-white placeholder-slate-500 border border-slate-700 rounded-xl outline-none focus:border-teal-400 focus:bg-slate-950 transition-all shadow-inner font-sans"
           />
           {loading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-teal-400">
