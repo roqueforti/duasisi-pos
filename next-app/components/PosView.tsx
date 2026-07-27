@@ -538,27 +538,40 @@ export default function PosView() {
       {/* Checkout Modal */}
       {showCheckoutModal && (
         <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-slate-100 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-bold text-slate-800">Proses Pembayaran Order</span>
-              <button onClick={() => setShowCheckoutModal(false)} className="p-1 rounded hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
+          <div className="bg-white rounded-3xl p-6 sm:p-7 w-full max-w-md border border-slate-100 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base font-bold text-slate-800">Proses Pembayaran Order</h3>
+              <button 
+                onClick={() => setShowCheckoutModal(false)} 
+                className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="bg-slate-50 rounded-xl p-3.5 mb-4 space-y-2 text-xs border border-slate-200/80">
-              {cartArray.map((i, idx) => (
-                <div key={idx} className="flex justify-between border-b border-slate-200/60 pb-1.5 last:border-0">
-                  <span className="text-slate-700 font-medium">{i.layanan} ×{i.qty}</span>
-                  <span className="font-bold text-[#1E4648]">Rp {(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</span>
-                </div>
-              ))}
-              <div className="flex justify-between font-black text-sm text-slate-900 pt-2 border-t border-slate-200">
-                <span>Total Tagihan</span>
-                <span className="text-amber-600">Rp {grandTotal.toLocaleString('id-ID')}</span>
+            {/* Order Items & Total Summary Box (Exact screenshot styling!) */}
+            <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 mb-6 space-y-3">
+              <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                {cartArray.map((i, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-xs sm:text-sm">
+                    <span className="text-slate-700 font-medium">{i.layanan} ×{i.qty}</span>
+                    <span className="font-bold text-slate-800">Rp {(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-3 border-t border-slate-200/80 flex justify-between items-center">
+                <span className="text-sm font-bold text-slate-900">Total Tagihan</span>
+                <span className="text-base font-black text-amber-600">Rp {grandTotal.toLocaleString('id-ID')}</span>
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <button onClick={() => setShowCheckoutModal(false)} className="bg-slate-100 text-slate-600 px-4 py-2.5 rounded-xl text-xs font-bold">
+            {/* Action Buttons (Exact screenshot rounded pill style!) */}
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowCheckoutModal(false)} 
+                className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl text-xs transition shrink-0"
+              >
                 Batal
               </button>
               <button 
@@ -567,9 +580,9 @@ export default function PosView() {
                   clearCart();
                   setShowCheckoutModal(false);
                 }} 
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-sm"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl text-xs sm:text-sm transition shadow-xs flex items-center justify-center gap-1.5"
               >
-                Selesaikan Pembayaran
+                <span>Selesaikan Pembayaran</span>
               </button>
             </div>
           </div>
