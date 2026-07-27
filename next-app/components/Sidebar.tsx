@@ -52,15 +52,15 @@ export default function Sidebar({
 
   const navClass = (tabKey: string) => {
     const isActive = currentTab === tabKey;
-    return `w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'} rounded-lg text-[13px] font-medium transition-colors ${
+    return `w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'} rounded-xl text-xs font-semibold transition-colors ${
       isActive 
-        ? 'bg-white/15 text-white font-semibold' 
-        : 'text-slate-400 hover:bg-white/8 hover:text-slate-200'
+        ? 'bg-slate-100 text-slate-900 font-bold shadow-2xs' 
+        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
     }`;
   };
 
   const iconClass = (tabKey: string) => {
-    return currentTab === tabKey ? 'text-white' : 'text-slate-400';
+    return currentTab === tabKey ? 'text-[#1E4648]' : 'text-slate-400';
   };
 
   return (
@@ -68,48 +68,48 @@ export default function Sidebar({
       {/* Mobile & Tablet Backdrop (< 1024px) */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-[150] lg:hidden"
+          className="fixed inset-0 bg-slate-900/40 z-[150] lg:hidden backdrop-blur-xs"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      <aside className={`bg-[#11292B] text-white flex flex-col shrink-0 z-[200] fixed lg:static inset-y-0 left-0 transition-all duration-200 overflow-y-auto ${
+      <aside className={`bg-white text-slate-800 border-r border-slate-200/80 flex flex-col shrink-0 z-[200] fixed lg:static inset-y-0 left-0 transition-all duration-200 overflow-y-auto ${
         isCollapsed ? 'lg:w-[64px]' : 'lg:w-60'
       } ${isSidebarOpen ? 'w-60 translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         
         {/* Header Logo & Minimize */}
         {isCollapsed ? (
-          <div className="flex flex-col items-center gap-3 py-4 px-2 border-b border-white/8">
+          <div className="flex flex-col items-center gap-3 py-4 px-2 border-b border-slate-100">
             <img 
-              src="./assets/logo-emblem-white.svg" 
+              src="./assets/logo-emblem-teal.svg" 
               alt="Dua SiSi" 
-              className="h-7 w-7 brightness-0 invert"
+              className="h-7 w-7"
             />
             <button
               onClick={() => setIsCollapsed(false)}
-              className="hidden lg:flex text-slate-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition"
+              className="hidden lg:flex text-slate-400 hover:text-slate-800 p-1 rounded-md hover:bg-slate-100 transition"
               title="Expand Sidebar"
             >
               <PanelLeftOpen className="w-4 h-4" />
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between px-4 py-4 border-b border-white/8">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100">
             <img 
-              src="./assets/logo-full-white.svg" 
+              src="./assets/logo-full-teal.svg" 
               alt="Dua SiSi Laundry Express & Coin" 
-              className="h-7 w-auto brightness-0 invert"
+              className="h-7 w-auto"
             />
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setIsCollapsed(true)}
-                className="hidden lg:flex text-slate-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition"
+                className="hidden lg:flex text-slate-400 hover:text-slate-800 p-1 rounded-md hover:bg-slate-100 transition"
                 title="Minimize Sidebar"
               >
                 <PanelLeftClose className="w-4 h-4" />
               </button>
               <button 
-                className="lg:hidden text-slate-400 hover:text-white p-1"
+                className="lg:hidden text-slate-400 hover:text-slate-800 p-1"
                 onClick={() => setIsSidebarOpen(false)}
               >
                 <X className="w-5 h-5" />
@@ -118,30 +118,30 @@ export default function Sidebar({
           </div>
         )}
 
-        {/* User Info */}
-        <div className={`px-3 py-3 border-b border-white/8 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${
-            currentRole === 'MANAGER' ? 'bg-amber-600' : 'bg-teal-600'
+        {/* User Info Badge */}
+        <div className={`px-3.5 py-3 border-b border-slate-100 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs ${
+            currentRole === 'MANAGER' ? 'bg-amber-600' : 'bg-[#1E4648]'
           }`}>
             {currentRole === 'MANAGER' ? 'M' : 'S'}
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-white truncate">
+              <div className="text-xs font-bold text-slate-800 truncate">
                 {currentRole === 'MANAGER' ? 'Manager' : 'Kasir 1'}
               </div>
-              <div className="text-[10px] text-slate-400">
-                {currentRole === 'MANAGER' ? 'Owner' : 'Staff On Duty'}
+              <div className="text-[11px] text-slate-400 font-medium">
+                {currentRole === 'MANAGER' ? 'Owner / Manager' : 'Staff On Duty'}
               </div>
             </div>
           )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-2.5 py-3 space-y-1">
+        {/* Navigation Menu */}
+        <nav className="flex-1 px-3 py-3 space-y-1">
           {!isCollapsed && (
-            <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">
-              Menu
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
+              Menu Utama
             </div>
           )}
           
@@ -149,20 +149,20 @@ export default function Sidebar({
             <button className={navClass('transaksi')} onClick={() => handleNavClick('transaksi')} title="POS Kasir">
               <ShoppingCart className={`w-[18px] h-[18px] shrink-0 ${iconClass('transaksi')}`} />
               {!isCollapsed && <span>POS Kasir</span>}
-              {!isCollapsed && currentTab === 'transaksi' && <ChevronRight className="w-3.5 h-3.5 ml-auto text-slate-500" />}
+              {!isCollapsed && currentTab === 'transaksi' && <ChevronRight className="w-3.5 h-3.5 ml-auto text-slate-400" />}
             </button>
           )}
           <button className={navClass('riwayat')} onClick={() => handleNavClick('riwayat')} title="Riwayat">
             <History className={`w-[18px] h-[18px] shrink-0 ${iconClass('riwayat')}`} />
-            {!isCollapsed && <span>Riwayat</span>}
+            {!isCollapsed && <span>Riwayat Transaksi</span>}
           </button>
           <button className={navClass('absensi')} onClick={() => handleNavClick('absensi')} title="Absensi">
             <Clock className={`w-[18px] h-[18px] shrink-0 ${iconClass('absensi')}`} />
-            {!isCollapsed && <span>Absensi</span>}
+            {!isCollapsed && <span>Absensi Staf</span>}
           </button>
           <button className={navClass('inventory')} onClick={() => handleNavClick('inventory')} title="Inventory">
             <Package className={`w-[18px] h-[18px] shrink-0 ${iconClass('inventory')}`} />
-            {!isCollapsed && <span>Inventory</span>}
+            {!isCollapsed && <span>Stok Inventory</span>}
           </button>
           <button className={navClass('mesin')} onClick={() => handleNavClick('mesin')} title="Status Mesin">
             <Cpu className={`w-[18px] h-[18px] shrink-0 ${iconClass('mesin')}`} />
@@ -172,35 +172,35 @@ export default function Sidebar({
           {currentRole === 'MANAGER' && (
             <>
               {!isCollapsed && (
-                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-3 mt-4 mb-2">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mt-4 mb-1.5">
                   Manajemen
                 </div>
               )}
               <button className={navClass('pegawai')} onClick={() => handleNavClick('pegawai')} title="Pegawai">
                 <Users className={`w-[18px] h-[18px] shrink-0 ${iconClass('pegawai')}`} />
-                {!isCollapsed && <span>Pegawai</span>}
+                {!isCollapsed && <span>Data Pegawai</span>}
               </button>
               <button className={navClass('produk')} onClick={() => handleNavClick('produk')} title="Produk">
                 <Tag className={`w-[18px] h-[18px] shrink-0 ${iconClass('produk')}`} />
-                {!isCollapsed && <span>Produk</span>}
+                {!isCollapsed && <span>Manajemen Produk</span>}
               </button>
               <button className={navClass('rekap')} onClick={() => handleNavClick('rekap')} title="Laporan">
                 <BarChart3 className={`w-[18px] h-[18px] shrink-0 ${iconClass('rekap')}`} />
-                {!isCollapsed && <span>Laporan</span>}
+                {!isCollapsed && <span>Laporan Rekap</span>}
               </button>
             </>
           )}
         </nav>
 
         {/* Logout */}
-        <div className="px-2.5 py-3 border-t border-white/8">
+        <div className="px-3 py-3 border-t border-slate-100">
           <button 
             onClick={onLogout}
             title="Keluar Sesi"
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'} rounded-lg text-[13px] font-medium text-slate-400 hover:text-red-400 hover:bg-white/5 transition-colors`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'} rounded-xl text-xs font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors`}
           >
-            <LogOut className="w-[18px] h-[18px] shrink-0 text-red-400" />
-            {!isCollapsed && <span>Keluar</span>}
+            <LogOut className="w-[18px] h-[18px] shrink-0 text-rose-500" />
+            {!isCollapsed && <span>Keluar Sesi</span>}
           </button>
         </div>
       </aside>
