@@ -231,7 +231,6 @@ export default function ProdukView() {
                   layananList.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50 transition">
                       <td className="py-3 px-4 font-semibold text-slate-800 flex items-center gap-2">
-                        <span className="text-base">{item.icon || '🧺'}</span>
                         <span>{item.nama}</span>
                       </td>
                       <td className="py-3 px-4">

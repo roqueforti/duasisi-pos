@@ -281,7 +281,7 @@ export default function PosView() {
     setShowSuccessModal(false);
     setShowPreviewStrukModal(false);
     setCompletedOrderData(null);
-    setToastMsg(`✅ Transaksi #${trxId} berhasil disimpan! Siap terima order berikutnya.`);
+    setToastMsg(`Transaksi #${trxId} berhasil disimpan! Siap terima order berikutnya.`);
   };
 
   return (
@@ -880,7 +880,7 @@ export default function PosView() {
                       tipeLayanan === 'SelfService' ? 'bg-[#2d4d38] text-white border-[#2d4d38]' : 'bg-slate-50 text-slate-700 border-slate-200'
                     }`}
                   >
-                    🌀 Self Service (Cuci Sendiri)
+                    Self Service (Cuci Sendiri)
                   </button>
                   <button
                     type="button"
@@ -889,7 +889,7 @@ export default function PosView() {
                       tipeLayanan === 'FullService' ? 'bg-[#2d4d38] text-white border-[#2d4d38]' : 'bg-slate-50 text-slate-700 border-slate-200'
                     }`}
                   >
-                    🧺 Full Service (Terima Beres)
+                    Full Service (Terima Beres)
                   </button>
                 </div>
               </div>
@@ -936,7 +936,7 @@ export default function PosView() {
 
             <div className="flex gap-3 pt-3 border-t border-slate-100 shrink-0">
               <button onClick={() => setShowDetailTransaksiModal(false)} className="px-5 py-3 bg-slate-100 text-slate-600 font-bold rounded-2xl text-xs">
-                ← Kembali
+                Kembali
               </button>
               <button 
                 onClick={() => {
@@ -945,7 +945,8 @@ export default function PosView() {
                 }} 
                 className="flex-1 bg-[#2d4d38] text-white font-bold py-3 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md"
               >
-                <span>Lanjut ke Pembayaran →</span>
+                <span>Lanjut ke Pembayaran</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -973,10 +974,10 @@ export default function PosView() {
                 <label className="block font-bold text-slate-700 mb-1.5">Metode Pembayaran *</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
-                    { id: 'Tunai', label: '💵 Tunai' },
-                    { id: 'QRIS', label: '📱 QRIS' },
-                    { id: 'Transfer', label: '🏦 Transfer' },
-                    { id: 'Debit', label: '💳 Debit/Kartu' },
+                    { id: 'Tunai', label: 'Tunai' },
+                    { id: 'QRIS', label: 'QRIS' },
+                    { id: 'Transfer', label: 'Transfer Bank' },
+                    { id: 'Debit', label: 'Debit / Kartu' },
                   ].map((m) => (
                     <button
                       key={m.id}
@@ -1042,7 +1043,7 @@ export default function PosView() {
                     type="button"
                     onClick={() => {
                       setQrisStatus('SUCCESS');
-                      alert('✅ Pembayaran QRIS / Non-Tunai Terverifikasi Berhasil!');
+                      alert('Pembayaran QRIS / Non-Tunai Terverifikasi Berhasil!');
                     }}
                     className="px-4 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition"
                   >
@@ -1224,7 +1225,7 @@ export default function PosView() {
             {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 shrink-0 mt-3">
               <button
-                onClick={() => alert(`🖨️ Mengirim cetak struk format ${paperSize} ke Thermal Printer...`)}
+                onClick={() => alert(`Mengirim cetak struk format ${paperSize} ke Thermal Printer...`)}
                 className="bg-[#2d4d38] hover:bg-[#213b2a] text-white font-bold py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-xs"
               >
                 <Printer className="w-4 h-4" />

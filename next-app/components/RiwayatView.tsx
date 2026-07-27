@@ -191,11 +191,11 @@ export default function RiwayatView() {
       return;
     }
 
-    const msg = `*NOTIFIKASI LAUNDRY SIAP DIAMBIL 🧺*\n\n` +
+    const msg = `*NOTIFIKASI LAUNDRY SIAP DIAMBIL*\n\n` +
       `Halo Sdr/i *${tx.namaPelanggan.toUpperCase()}*,\n` +
       `Cucian Anda dengan No Nota *${tx.noNota}* sudah *SIAP DIAMBIL* di outlet Dua SiSi Laundry.\n\n` +
       (tx.sisaTagihan ? `Sisa tagihan yang harus dilunasi: *Rp ${tx.sisaTagihan.toLocaleString('id-ID')}*\n\n` : '') +
-      `Silakan datang ke outlet dengan membawa nota atau bukti pesan ini. Terima kasih! 🙏`;
+      `Silakan datang ke outlet dengan membawa nota atau bukti pesan ini. Terima kasih!`;
 
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
@@ -218,8 +218,8 @@ export default function RiwayatView() {
       `Status: *${tx.status}*\n\n` +
       `*Detail Layanan:*\n${itemsStr}\n\n` +
       `*TOTAL: Rp ${tx.total.toLocaleString('id-ID')}*\n\n` +
-      `📄 *Lihat E-Nota Resmi (Anti-Pemalsuan & Cetak PDF):*\n${notaUrl}\n\n` +
-      `Terima kasih telah mencuci di Dua SiSi Laundry! 🙏`;
+      `*Lihat E-Nota Resmi (Anti-Pemalsuan & Cetak PDF):*\n${notaUrl}\n\n` +
+      `Terima kasih telah mencuci di Dua SiSi Laundry!`;
 
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
@@ -673,8 +673,8 @@ export default function RiwayatView() {
                   onChange={(e) => setManualStatus(e.target.value as any)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] bg-white font-medium text-slate-800"
                 >
-                  <option value="Selesai">🏁 Selesai (Langsung Lunas & Selesai)</option>
-                  <option value="Diterima">📥 Diterima (Proses Pengerjaan)</option>
+                  <option value="Selesai">Selesai (Langsung Lunas & Selesai)</option>
+                  <option value="Diterima">Diterima (Proses Pengerjaan)</option>
                 </select>
               </div>
 
@@ -719,9 +719,9 @@ export default function RiwayatView() {
                   onChange={(e) => setManualMetode(e.target.value as any)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] bg-white font-medium"
                 >
-                  <option value="Tunai">💵 Tunai</option>
-                  <option value="QRIS">📱 QRIS</option>
-                  <option value="Transfer">🏦 Transfer Bank</option>
+                  <option value="Tunai">Tunai</option>
+                  <option value="QRIS">QRIS</option>
+                  <option value="Transfer">Transfer Bank</option>
                 </select>
               </div>
 

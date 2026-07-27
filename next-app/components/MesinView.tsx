@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Cpu, Plus, RefreshCw, Play, CheckCircle2, Wrench, Trash2, Clock } from 'lucide-react';
+import { Cpu, Plus, RefreshCw, Play, CheckCircle2, Wrench, Trash2, Clock, WashingMachine, Flame } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 
 interface MesinItem {
@@ -162,7 +162,7 @@ export default function MesinView() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <span>{m.tipe === 'Washer' ? '🫧' : '♨️'}</span>
+                      <span>{m.tipe === 'Washer' ? <WashingMachine className="w-4 h-4 text-[#2d4d38]" /> : <Flame className="w-4 h-4 text-amber-600" />}</span>
                       <span>{m.nama}</span>
                     </span>
                     <span

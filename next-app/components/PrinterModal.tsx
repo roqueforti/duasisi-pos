@@ -347,12 +347,12 @@ export default function PrinterModal({
               {deviceInfo.connected ? (
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Terhubung 🟢
+                  Terhubung
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-200 text-slate-600">
                   <span className="w-2 h-2 rounded-full bg-slate-400" />
-                  Belum Terhubung 🔴
+                  Belum Terhubung
                 </span>
               )}
             </div>

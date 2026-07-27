@@ -16,7 +16,7 @@ const AFFIRMATIONS = [
     icon: Sparkles,
     color: 'text-[#1E4648]',
     iconBg: 'bg-teal-50 border-teal-200 text-[#1E4648]',
-    title: 'Semangat Kerja Hari Ini! 🌟',
+    title: 'Semangat Kerja Hari Ini!',
     quote: 'Pelayanan ramah dan senyumanmu hari ini membawa keberkahan serta kepuasan utama bagi setiap pelanggan Dua SiSi.'
   },
   {
@@ -24,7 +24,7 @@ const AFFIRMATIONS = [
     icon: Heart,
     color: 'text-rose-600',
     iconBg: 'bg-rose-50 border-rose-200 text-rose-600',
-    title: 'Terima Kasih Atas Dedikasimu 💖',
+    title: 'Terima Kasih Atas Dedikasimu',
     quote: 'Ketelitian dan kebersihan laundry yang kamu selesaikan adalah alasan utama pelanggan selalu mempercayai layanan kita.'
   },
   {
@@ -32,7 +32,7 @@ const AFFIRMATIONS = [
     icon: Coffee,
     color: 'text-emerald-600',
     iconBg: 'bg-emerald-50 border-emerald-200 text-emerald-600',
-    title: 'Jaga Kesehatan & Wellbeing ☕',
+    title: 'Jaga Kesehatan & Wellbeing',
     quote: 'Jangan lupa minum air putih yang cukup, istirahat sejenak di sela tugas, dan jaga selalu energi kebaikanmu!'
   },
   {
@@ -40,7 +40,7 @@ const AFFIRMATIONS = [
     icon: Sun,
     color: 'text-amber-600',
     iconBg: 'bg-amber-50 border-amber-200 text-amber-600',
-    title: 'Hari Baru, Energi Positif ☀️',
+    title: 'Hari Baru, Energi Positif',
     quote: 'Setiap lembar pakaian bersih yang kamu kerjakan adalah bukti profesionalisme tinggi dan hasil kerja terbaikmu.'
   },
   {
@@ -48,7 +48,7 @@ const AFFIRMATIONS = [
     icon: Smile,
     color: 'text-teal-700',
     iconBg: 'bg-teal-50 border-teal-200 text-teal-700',
-    title: 'Suasana Kerja Bahagia 🌿',
+    title: 'Suasana Kerja Bahagia',
     quote: 'Bekerja dengan rasa bahagia dan ikhlas akan membuat waktu berjalan cepat dan hasil kerjamu bernilai sangat tinggi.'
   },
   {
@@ -56,7 +56,7 @@ const AFFIRMATIONS = [
     icon: Zap,
     color: 'text-indigo-600',
     iconBg: 'bg-indigo-50 border-indigo-200 text-indigo-600',
-    title: 'Kekuatan Tim Dua SiSi ⚡',
+    title: 'Kekuatan Tim Dua SiSi',
     quote: 'Kerjasama yang hangat dan saling mendukung antar staf membuat pekerjaan terasa lebih ringan dan menyenangkan.'
   }
 ];
@@ -81,13 +81,13 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
     // Time-based greeting
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) {
-      setGreeting({ main: 'Selamat Pagi ☀️', sub: 'Semoga pagi ini penuh keberkahan & semangat baru!' });
+      setGreeting({ main: 'Selamat Pagi', sub: 'Semoga pagi ini penuh keberkahan & semangat baru!' });
     } else if (hour >= 12 && hour < 15) {
-      setGreeting({ main: 'Selamat Siang 🌤️', sub: 'Tetap jaga kebugaran & tunjukkan performa terbaikmu!' });
+      setGreeting({ main: 'Selamat Siang', sub: 'Tetap jaga kebugaran & tunjukkan performa terbaikmu!' });
     } else if (hour >= 15 && hour < 18) {
-      setGreeting({ main: 'Selamat Sore 🌅', sub: 'Terima kasih atas kerja keras dan dedikasimu hari ini!' });
+      setGreeting({ main: 'Selamat Sore', sub: 'Terima kasih atas kerja keras dan dedikasimu hari ini!' });
     } else {
-      setGreeting({ main: 'Selamat Malam 🌙', sub: 'Tetap teliti, utamakan kenyamanan & keselamatan bertugas.' });
+      setGreeting({ main: 'Selamat Malam', sub: 'Tetap teliti, utamakan kenyamanan & keselamatan bertugas.' });
     }
   }, []);
 
