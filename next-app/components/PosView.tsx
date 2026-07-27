@@ -857,66 +857,151 @@ export default function PosView() {
         </div>
       </div>
 
-      {/* STEP 3: MODAL "Pilih Pelanggan" */}
+      {/* STEP 3: MODAL "Pilih Pelanggan" (Repeat Order & 4-Digit Lookup Flow) */}
       {showCustModal && (
         <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
           <div className="bg-white rounded-3xl p-5 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col max-h-[85vh]">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <User className="w-5 h-5 text-[#2d4d38]" />
-                <h3 className="text-sm font-bold text-slate-800">Pilih Pelanggan</h3>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Pilih / Cari Pelanggan</h3>
+                  <p className="text-[10px] text-slate-500">Ketik 4 digit terakhir No. HP atau nama pelanggan</p>
+                </div>
               </div>
               <button onClick={() => setShowCustModal(false)} className="p-1 rounded hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
             </div>
 
-            {/* Search Bar */}
-            <div className="py-3">
+            {/* Search Input Bar */}
+            <div className="py-2.5">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={searchCust}
                   onChange={(e) => setSearchCust(e.target.value)}
-                  placeholder="Cari Nama / No. HP Pelanggan..."
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#2d4d38]"
+                  placeholder="Ketik 4 digit terakhir (misal: 7890) / Nama..."
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#2d4d38] font-semibold"
                 />
               </div>
             </div>
 
-            {/* Customer List */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-1">
-              {customerList
-                .filter(c => c.nama.toLowerCase().includes(searchCust.toLowerCase()) || c.noHp.includes(searchCust))
-                .map((c, idx) => (
-                  <div 
-                    key={idx}
-                    onClick={() => {
-                      setCustomer(c);
-                      setShowCustModal(false);
-                    }}
-                    className="p-3 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 rounded-2xl cursor-pointer transition flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="text-xs font-bold text-slate-800">{c.nama}</div>
-                      <div className="text-[11px] text-slate-500">{c.noHp} {c.alamat ? `• ${c.alamat}` : ''}</div>
+            {/* Customer Lookup Logic */}
+            {(() => {
+              const query = searchCust.trim();
+              const cleanQ = query.replace(/[^0-9]/g, '');
+
+              const filtered = customerList.filter((c) => {
+                if (!query) return true;
+                const cleanHp = c.noHp.replace(/[^0-9]/g, '');
+                if (cleanQ.length >= 3 && cleanHp.endsWith(cleanQ)) return true;
+                if (cleanQ.length >= 3 && cleanHp.includes(cleanQ)) return true;
+                return c.nama.toLowerCase().includes(query.toLowerCase());
+              });
+
+              const maskHp = (hp: string) => {
+                const norm = hp.replace(/[^0-9]/g, '');
+                if (norm.length >= 10) {
+                  return `${norm.substring(0, 4)}*****${norm.substring(norm.length - 4)}`;
+                }
+                return hp;
+              };
+
+              return (
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-1">
+                  {/* Case 0: Search query entered but 0 results found */}
+                  {query && filtered.length === 0 && (
+                    <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl text-center space-y-2">
+                      <div className="text-xs font-bold text-amber-900">
+                        Tidak ditemukan kecocokan untuk "{query}"
+                      </div>
+                      <p className="text-[11px] text-amber-700">
+                        Nomor HP atau nama belum terdaftar di database. Silakan input sebagai Pelanggan Baru.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setShowAddCustForm(true);
+                          if (cleanQ.length >= 8) setNewCustNoHp(cleanQ);
+                          else if (!isNaN(Number(query))) setNewCustNoHp(query);
+                          else setNewCustNama(query);
+                        }}
+                        className="px-3 py-1.5 bg-[#2d4d38] text-white text-xs font-bold rounded-xl shadow-2xs hover:bg-[#213b2a]"
+                      >
+                        + Input Pelanggan Baru
+                      </button>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                      {c.memberStatus || 'Pelanggan'}
-                    </span>
-                  </div>
-                ))}
-            </div>
+                  )}
+
+                  {/* Case 1: Exactly 1 result found (Requires Kasir Name Confirmation) */}
+                  {query && filtered.length === 1 && (
+                    <div className="p-3 bg-emerald-50 border-2 border-emerald-300 rounded-2xl space-y-2">
+                      <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                        Ditemukan 1 Kecocokan — Mohon Cocokkan Nama Pelanggan:
+                      </div>
+                      <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-emerald-200">
+                        <div>
+                          <div className="text-xs font-extrabold text-slate-900">{filtered[0].nama}</div>
+                          <div className="text-[11px] font-mono text-slate-500">{maskHp(filtered[0].noHp)}</div>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                          {filtered[0].memberStatus || 'Pelanggan'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setCustomer(filtered[0]);
+                          setShowCustModal(false);
+                        }}
+                        className="w-full py-2 bg-[#2d4d38] hover:bg-[#213b2a] text-white text-xs font-bold rounded-xl shadow-2xs flex items-center justify-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                        <span>Konfirmasi & Gunakan Data Ini</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Case 2: >1 results found or default list (Show Masked Phone List & Count Header) */}
+                  {(filtered.length > 1 || !query) && (
+                    <>
+                      {query && (
+                        <div className="text-[11px] font-bold text-slate-600 px-1 py-1">
+                          Ditemukan {filtered.length} kecocokan untuk "{query}" (Tanyakan nama ke pelanggan):
+                        </div>
+                      )}
+                      {filtered.map((c, idx) => (
+                        <div 
+                          key={idx}
+                          onClick={() => {
+                            setCustomer(c);
+                            setShowCustModal(false);
+                          }}
+                          className="p-3 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 rounded-2xl cursor-pointer transition flex items-center justify-between"
+                        >
+                          <div>
+                            <div className="text-xs font-bold text-slate-800">{c.nama}</div>
+                            <div className="text-[11px] font-mono text-slate-500">{maskHp(c.noHp)} {c.alamat ? `• ${c.alamat}` : ''}</div>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                            {c.memberStatus || 'Pelanggan'}
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Add New Customer Toggle Form */}
             {showAddCustForm ? (
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 mt-2">
                 <div className="text-xs font-bold text-slate-800">Form Pelanggan Baru</div>
-                <input type="text" value={newCustNama} onChange={(e) => setNewCustNama(e.target.value)} placeholder="Nama Lengkap *" className="w-full p-2 border border-slate-200 rounded-xl text-xs" />
-                <input type="tel" value={newCustNoHp} onChange={(e) => setNewCustNoHp(e.target.value)} placeholder="No. HP / WhatsApp *" className="w-full p-2 border border-slate-200 rounded-xl text-xs" />
-                <input type="text" value={newCustAlamat} onChange={(e) => setNewCustAlamat(e.target.value)} placeholder="Alamat (Opsional)" className="w-full p-2 border border-slate-200 rounded-xl text-xs" />
+                <input type="text" value={newCustNama} onChange={(e) => setNewCustNama(e.target.value)} placeholder="Nama Lengkap Pelanggan *" className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold" />
+                <input type="tel" value={newCustNoHp} onChange={(e) => setNewCustNoHp(e.target.value)} placeholder="No. HP / WhatsApp Lengkap *" className="w-full p-2 border border-slate-200 rounded-xl text-xs font-mono font-bold" />
+                <input type="text" value={newCustAlamat} onChange={(e) => setNewCustAlamat(e.target.value)} placeholder="Alamat (Opsional)" className="w-full p-2 border border-slate-200 rounded-xl text-xs font-semibold" />
                 <div className="flex gap-2 pt-1">
                   <button onClick={() => setShowAddCustForm(false)} className="px-3 py-1.5 bg-slate-200 text-xs font-bold rounded-xl">Batal</button>
-                  <button onClick={handleAddNewCustomer} className="flex-1 bg-[#2d4d38] text-white text-xs font-bold py-1.5 rounded-xl">Simpan & Pilih</button>
+                  <button onClick={handleAddNewCustomer} className="flex-1 bg-[#2d4d38] text-white text-xs font-bold py-1.5 rounded-xl">Simpan & Pilih Pelanggan</button>
                 </div>
               </div>
             ) : (
@@ -925,13 +1010,13 @@ export default function PosView() {
                 className="w-full py-2.5 border-2 border-dashed border-[#2d4d38]/40 text-[#2d4d38] font-bold text-xs rounded-2xl hover:bg-emerald-50/50 transition mt-2 flex items-center justify-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Pelanggan Baru</span>
+                <span>+ Input Pelanggan Baru</span>
               </button>
             )}
 
             <div className="pt-3 mt-3 border-t border-slate-100 flex gap-2">
               <button onClick={() => setShowCustModal(false)} className="w-full py-2.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-xl">
-                Batal
+                Tutup
               </button>
             </div>
           </div>

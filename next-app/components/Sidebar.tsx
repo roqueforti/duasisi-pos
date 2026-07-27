@@ -160,6 +160,10 @@ export default function Sidebar({
             <Clock className={`w-[18px] h-[18px] shrink-0 ${iconClass('absensi')}`} />
             {!isCollapsed && <span>Absensi Staf</span>}
           </button>
+          <button className={navClass('pelanggan')} onClick={() => handleNavClick('pelanggan')} title="Data Pelanggan">
+            <Users className={`w-[18px] h-[18px] shrink-0 ${iconClass('pelanggan')}`} />
+            {!isCollapsed && <span>Data Pelanggan</span>}
+          </button>
           <button className={navClass('inventory')} onClick={() => handleNavClick('inventory')} title="Inventory">
             <Package className={`w-[18px] h-[18px] shrink-0 ${iconClass('inventory')}`} />
             {!isCollapsed && <span>Stok Inventory</span>}

@@ -13,6 +13,7 @@ import PegawaiView from '@/components/PegawaiView';
 import ProdukView from '@/components/ProdukView';
 import RekapView from '@/components/RekapView';
 import ENotaView from '@/components/ENotaView';
+import PelangganView from '@/components/PelangganView';
 import { UserRole } from '@/lib/types';
 
 export default function HomePage() {
@@ -87,6 +88,7 @@ export default function HomePage() {
               {currentTab === 'transaksi' && <PosView />}
               {currentTab === 'riwayat' && <RiwayatView />}
               {currentTab === 'absensi' && <AbsensiView />}
+              {currentTab === 'pelanggan' && <PelangganView />}
               {currentTab === 'inventory' && <InventoryView />}
               {currentTab === 'mesin' && <MesinView />}
               {currentTab === 'pegawai' && <PegawaiView />}
