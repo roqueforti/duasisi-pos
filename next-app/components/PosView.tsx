@@ -16,7 +16,8 @@ import {
   WashingMachine,
   Package,
   Coffee,
-  Receipt
+  Receipt,
+  CreditCard
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir } from '@/lib/types';
 
@@ -467,34 +468,24 @@ export default function PosView() {
             <span className="text-lg font-black text-slate-900">Rp {grandTotal.toLocaleString('id-ID')}</span>
           </div>
 
-          {/* Action Buttons (Matches RestroBit bottom button layout!) */}
-          <div className="space-y-2 pt-2">
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-2">
             <button
-              onClick={() => alert('Order disimpan sebagai Draft')}
+              onClick={clearCart}
               disabled={cartArray.length === 0}
-              className="w-full bg-[#11292B] hover:bg-[#0c1f20] text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 disabled:opacity-40"
+              className="p-3 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-500 rounded-xl transition disabled:opacity-40 border border-slate-200/80"
+              title="Kosongkan keranjang"
             >
-              <Receipt className="w-4 h-4" />
-              <span>Simpan Draft / KOT</span>
+              <Trash2 className="w-4 h-4" />
             </button>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={handleProcessCheckout}
-                disabled={cartArray.length === 0}
-                className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1 disabled:opacity-40 shadow-2xs"
-              >
-                <span>Bayar Cash</span>
-              </button>
-
-              <button
-                onClick={handleProcessCheckout}
-                disabled={cartArray.length === 0}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1 disabled:opacity-40 shadow-2xs"
-              >
-                <span>Bayar & Cetak</span>
-              </button>
-            </div>
+            <button
+              onClick={handleProcessCheckout}
+              disabled={cartArray.length === 0}
+              className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-3 rounded-xl text-xs transition flex items-center justify-center gap-2 disabled:opacity-40 shadow-xs"
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>Proses Bayar Rp {grandTotal.toLocaleString('id-ID')}</span>
+            </button>
           </div>
         </div>
       </div>
