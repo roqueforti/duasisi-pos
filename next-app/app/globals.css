@@ -49,11 +49,11 @@ body {
   background: #CBD5E1;
 }
 
-/* Login Modal Background */
+/* Login Modal Background Utility */
 .bg-outlet-login {
-  background-image: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.92)), url('/assets/bg-outlet.jpeg');
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
 }
 
 /* Animations */
