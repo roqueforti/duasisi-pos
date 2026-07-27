@@ -280,72 +280,72 @@ export default function PosView() {
                   <div
                     key={idx}
                     onClick={() => updateCart(item, 1)}
-                    className={`bg-white rounded-2xl border p-3 flex flex-col justify-between transition-all duration-200 cursor-pointer relative select-none hover:-translate-y-1 hover:shadow-lg ${
+                    className={`aspect-square bg-white rounded-2xl border p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-200 cursor-pointer relative select-none hover:-translate-y-0.5 hover:shadow-md ${
                       qtyInCart > 0 
                         ? 'border-[#2d4d38] ring-2 ring-[#2d4d38]/20 bg-[#2d4d38]/[0.02]' 
                         : 'border-slate-200/80 shadow-2xs hover:border-slate-300'
                     }`}
                   >
-                    {/* Top Rounded Container for Image/Icon (Matches Sajiwa UI) */}
-                    <div className="bg-slate-100/80 rounded-xl h-28 sm:h-32 flex items-center justify-center relative overflow-hidden mb-3 group">
+                    {/* Top Container for Image/Icon (1:1 Ratio Compact Fit) */}
+                    <div className="bg-slate-100/80 rounded-xl flex-1 min-h-0 flex items-center justify-center relative overflow-hidden mb-1.5 group p-1">
                       {/* Status Badge Top-Left */}
-                      <span className={`absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs z-10 ${
+                      <span className={`absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-2xs z-10 ${
                         idx % 3 === 0 
                           ? 'bg-amber-500 text-white' 
                           : 'bg-[#2d4d38] text-white'
                       }`}>
-                        {idx % 3 === 0 ? 'Best Seller' : 'Available'}
+                        {idx % 3 === 0 ? 'Best' : 'Ready'}
                       </span>
 
                       {/* Qty Badge Top-Right */}
                       {qtyInCart > 0 && (
-                        <span className="absolute top-2.5 right-2.5 bg-[#2d4d38] text-white text-[11px] font-extrabold w-6 h-6 rounded-full flex items-center justify-center shadow-md z-10 animate-scale-in">
+                        <span className="absolute top-1.5 right-1.5 bg-[#2d4d38] text-white text-[10px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-xs z-10">
                           {qtyInCart}
                         </span>
                       )}
 
                       {/* Circular Centered Icon Container */}
-                      <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white shadow-md border-2 border-slate-100/90 flex items-center justify-center text-[#2d4d38] group-hover:scale-110 transition duration-200">
-                        <IconComp className="w-7 h-7 sm:w-8 sm:h-8 text-[#2d4d38]" />
+                      <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white shadow-xs border border-slate-100 flex items-center justify-center text-[#2d4d38] group-hover:scale-105 transition duration-200">
+                        <IconComp className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d4d38]" />
                       </div>
                     </div>
 
-                    {/* Product Name */}
-                    <h3 className="font-bold text-xs sm:text-sm text-slate-800 leading-snug line-clamp-2 min-h-[36px] text-left mb-2">
+                    {/* Product Name (Smaller & Compact) */}
+                    <h3 className="font-bold text-[10px] sm:text-[11px] text-slate-800 leading-tight line-clamp-2 text-left mb-1">
                       {item.layanan}
                     </h3>
 
-                    {/* Price & Action Button Bottom Row (Sajiwa Layout) */}
-                    <div className="flex items-end justify-between pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                    {/* Price & Action Button Bottom Row (Sajiwa 1:1 Layout) */}
+                    <div className="flex items-end justify-between pt-1 border-t border-slate-100 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <div className="text-left">
-                        <span className="text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">Harga</span>
-                        <span className="text-xs sm:text-sm font-extrabold text-slate-900">
+                        <span className="text-[8px] sm:text-[9px] text-slate-400 font-bold block uppercase tracking-wider leading-none mb-0.5">Harga</span>
+                        <span className="text-[10px] sm:text-xs font-extrabold text-slate-900 leading-tight">
                           Rp {effectivePrice.toLocaleString('id-ID')}
                         </span>
                       </div>
 
                       {qtyInCart > 0 ? (
-                        <div className="flex items-center gap-1 bg-[#2d4d38] text-white p-1 rounded-xl shadow-2xs">
+                        <div className="flex items-center gap-0.5 bg-[#2d4d38] text-white p-0.5 rounded-lg shadow-2xs">
                           <button
                             onClick={() => updateCart(item, -1)}
-                            className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg flex items-center justify-center transition"
+                            className="w-4 h-4 bg-white/20 hover:bg-white/30 text-white font-bold rounded flex items-center justify-center transition"
                           >
-                            <Minus className="w-3 h-3" />
+                            <Minus className="w-2.5 h-2.5" />
                           </button>
-                          <span className="text-xs font-bold px-1.5">{qtyInCart}</span>
+                          <span className="text-[10px] font-bold px-1">{qtyInCart}</span>
                           <button
                             onClick={() => updateCart(item, 1)}
-                            className="w-5 h-5 bg-white/20 hover:bg-white/30 text-white font-bold rounded-lg flex items-center justify-center transition"
+                            className="w-4 h-4 bg-white/20 hover:bg-white/30 text-white font-bold rounded flex items-center justify-center transition"
                           >
-                            <Plus className="w-3 h-3" />
+                            <Plus className="w-2.5 h-2.5" />
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={() => updateCart(item, 1)}
-                          className="bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 font-bold px-2.5 sm:px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 transition shadow-2xs hover:border-slate-300"
+                          className="bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 font-bold px-1.5 sm:px-2 py-0.5 rounded-lg text-[9px] sm:text-[10px] flex items-center gap-0.5 transition shadow-2xs hover:border-slate-300"
                         >
-                          <ShoppingCart className="w-3.5 h-3.5 text-slate-500" />
+                          <ShoppingCart className="w-3 h-3 text-slate-500" />
                           <span>Pilih</span>
                         </button>
                       )}
