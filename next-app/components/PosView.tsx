@@ -65,6 +65,14 @@ export default function PosView() {
   const [customer, setCustomer] = useState<CustomerState>({ nama: '', noHp: '' });
   const [diskonApplied, setDiskonApplied] = useState<{ kode: string; nilai: number }>({ kode: '', nilai: 0 });
 
+  // Detailed Checkout Form State
+  const [namaKasirInput, setNamaKasirInput] = useState('Kasir 1');
+  const [metodeBayar, setMetodeBayar] = useState<'Tunai' | 'QRIS' | 'Transfer' | 'Debit'>('Tunai');
+  const [uangBayarInput, setUangBayarInput] = useState<string>('');
+  const [catatanOrderInput, setCatatanOrderInput] = useState<string>('');
+  const [cetakStrukBT, setCetakStrukBT] = useState<boolean>(true);
+  const [kirimENotaWA, setKirimENotaWA] = useState<boolean>(false);
+
   // Modals
   const [showCustModal, setShowCustModal] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -588,12 +596,16 @@ export default function PosView() {
         </div>
       )}
 
-      {/* Checkout Modal */}
+      {/* Detailed Payment Confirmation Modal */}
       {showCheckoutModal && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-7 w-full max-w-md border border-slate-100 shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-bold text-slate-800">Proses Pembayaran Order</h3>
+        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg border border-slate-100 shadow-2xl my-auto max-h-[92vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 shrink-0">
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Konfirmasi & Pembayaran Order</h3>
+                <p className="text-[11px] text-slate-400 font-medium">Lengkapi data transaksi kasir & pembayaran</p>
+              </div>
               <button 
                 onClick={() => setShowCheckoutModal(false)} 
                 className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
@@ -602,35 +614,218 @@ export default function PosView() {
               </button>
             </div>
 
-            {/* Order Items & Total Summary Box (Exact screenshot styling!) */}
-            <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 mb-6 space-y-3">
-              <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
-                {cartArray.map((i, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-xs sm:text-sm">
-                    <span className="text-slate-700 font-medium">{i.layanan} ×{i.qty}</span>
-                    <span className="font-bold text-slate-800">Rp {(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</span>
-                  </div>
-                ))}
+            {/* Scrollable Form Content */}
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+              {/* Order Items & Total Summary Box */}
+              <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-3.5 space-y-2.5">
+                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                  {cartArray.map((i, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-xs">
+                      <span className="text-slate-700 font-medium">{i.layanan} ×{i.qty}</span>
+                      <span className="font-bold text-slate-800">Rp {(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-2 border-t border-slate-200/80 flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-900">Total Tagihan</span>
+                  <span className="text-base font-black text-amber-600">Rp {grandTotal.toLocaleString('id-ID')}</span>
+                </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-200/80 flex justify-between items-center">
-                <span className="text-sm font-bold text-slate-900">Total Tagihan</span>
-                <span className="text-base font-black text-amber-600">Rp {grandTotal.toLocaleString('id-ID')}</span>
+              {/* 1. Staff / Kasir Input */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Staff Kasir yang Input *
+                  </label>
+                  <input 
+                    type="text" 
+                    value={namaKasirInput} 
+                    onChange={(e) => setNamaKasirInput(e.target.value)} 
+                    placeholder="Nama Kasir" 
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-amber-500 focus:bg-white transition" 
+                  />
+                </div>
+
+                {/* 2. Customer Name & Phone */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Nama Pelanggan *
+                  </label>
+                  <input 
+                    type="text" 
+                    value={customer.nama} 
+                    onChange={(e) => setCustomer({ ...customer, nama: e.target.value })} 
+                    placeholder="Masukkan nama pelanggan" 
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-amber-500 focus:bg-white transition" 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  No HP / WhatsApp Pelanggan *
+                </label>
+                <input 
+                  type="tel" 
+                  value={customer.noHp} 
+                  onChange={(e) => setCustomer({ ...customer, noHp: e.target.value })} 
+                  placeholder="08..." 
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-amber-500 focus:bg-white transition" 
+                />
+              </div>
+
+              {/* 3. Payment Method (Pembayaran Via Apa) */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                  Pembayaran Via (Metode Pembayaran) *
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'Tunai', label: '💵 Tunai' },
+                    { id: 'QRIS', label: '📱 QRIS' },
+                    { id: 'Transfer', label: '🏦 Transfer' },
+                    { id: 'Debit', label: '💳 Kartu/Debit' },
+                  ].map((method) => {
+                    const isSel = metodeBayar === method.id;
+                    return (
+                      <button
+                        key={method.id}
+                        type="button"
+                        onClick={() => setMetodeBayar(method.id as any)}
+                        className={`py-2 px-2 rounded-xl text-xs font-bold transition border text-center ${
+                          isSel
+                            ? 'bg-amber-500 text-white border-amber-500 shadow-2xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {method.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Conditional Cash Calculation */}
+              {metodeBayar === 'Tunai' && (
+                <div className="p-3 bg-amber-50/50 border border-amber-200/80 rounded-2xl space-y-2">
+                  <div className="flex justify-between items-center gap-2">
+                    <label className="text-[11px] font-bold text-slate-800">Nominal Uang Bayar (Rp):</label>
+                    <input
+                      type="number"
+                      value={uangBayarInput}
+                      onChange={(e) => setUangBayarInput(e.target.value)}
+                      placeholder={grandTotal.toString()}
+                      className="w-32 px-3 py-1.5 bg-white border border-amber-300 rounded-xl text-xs font-bold outline-none text-right focus:ring-2 focus:ring-amber-400"
+                    />
+                  </div>
+
+                  {/* Quick Cash Buttons */}
+                  <div className="flex gap-1.5 pt-1 overflow-x-auto">
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput(grandTotal.toString())}
+                      className="px-2.5 py-1 bg-white border border-amber-300 rounded-lg text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition"
+                    >
+                      Uang Pas (Rp {grandTotal.toLocaleString('id-ID')})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput('50000')}
+                      className="px-2.5 py-1 bg-white border border-amber-300 rounded-lg text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition"
+                    >
+                      Rp 50.000
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput('100000')}
+                      className="px-2.5 py-1 bg-white border border-amber-300 rounded-lg text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition"
+                    >
+                      Rp 100.000
+                    </button>
+                  </div>
+
+                  {/* Real-time Kembalian */}
+                  {Number(uangBayarInput) >= grandTotal && (
+                    <div className="flex justify-between items-center text-xs font-bold text-emerald-700 pt-1 border-t border-amber-200/60">
+                      <span>Kembalian:</span>
+                      <span className="text-sm font-black">
+                        Rp {(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Catatan Transaksi */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Catatan Order / Spesial Instruksi (Opsional)
+                </label>
+                <input
+                  type="text"
+                  value={catatanOrderInput}
+                  onChange={(e) => setCatatanOrderInput(e.target.value)}
+                  placeholder="Contoh: Jangan terlalu panas saat setrika, jemput jam 5 sore"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:border-amber-500 focus:bg-white transition"
+                />
+              </div>
+
+              {/* Opsi Struk & WA */}
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={cetakStrukBT}
+                    onChange={(e) => setCetakStrukBT(e.target.checked)}
+                    className="w-4 h-4 accent-amber-500 rounded"
+                  />
+                  <span>🖨️ Cetak Struk Thermal Bluetooth</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={kirimENotaWA}
+                    onChange={(e) => setKirimENotaWA(e.target.checked)}
+                    className="w-4 h-4 accent-amber-500 rounded"
+                  />
+                  <span>📱 Kirim Link E-Nota via WhatsApp Pelanggan</span>
+                </label>
               </div>
             </div>
 
-            {/* Action Buttons (Exact screenshot rounded pill style!) */}
-            <div className="flex gap-3">
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4 mt-2 border-t border-slate-100 shrink-0">
               <button 
+                type="button"
                 onClick={() => setShowCheckoutModal(false)} 
                 className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl text-xs transition shrink-0"
               >
                 Batal
               </button>
               <button 
+                type="button"
                 onClick={() => {
-                  alert('Pembayaran sukses diselesaikan!');
+                  const custName = customer.nama || 'Pelanggan Umum';
+                  const kasir = namaKasirInput || 'Kasir 1';
+                  
+                  alert(
+                    `✅ PEMBAYARAN SUKSES!\n\n` +
+                    `• Staff Input: ${kasir}\n` +
+                    `• Pelanggan: ${custName} (${customer.noHp || 'No HP -'})\n` +
+                    `• Metode Bayar: ${metodeBayar}\n` +
+                    `• Total: Rp ${grandTotal.toLocaleString('id-ID')}\n` +
+                    (metodeBayar === 'Tunai' && Number(uangBayarInput) > grandTotal 
+                      ? `• Kembalian: Rp ${(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}\n` 
+                      : '') +
+                    (cetakStrukBT ? `\n🖨️ Mengirim cetak struk ke Thermal Printer Bluetooth...` : '') +
+                    (kirimENotaWA ? `\n📱 Menyiapkan E-Nota WhatsApp untuk ${custName}...` : '')
+                  );
+
                   clearCart();
+                  setCatatanOrderInput('');
+                  setUangBayarInput('');
                   setShowCheckoutModal(false);
                 }} 
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl text-xs sm:text-sm transition shadow-xs flex items-center justify-center gap-1.5"
