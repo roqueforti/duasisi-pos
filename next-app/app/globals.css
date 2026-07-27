@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -10,7 +10,7 @@
   --foreground: #0F172A;
 }
 
-/* Enforce Google Font Inter Globally on All Elements & Form Controls */
+/* Enforce Google Font Plus Jakarta Sans (Sajiwa POS Font) Globally */
 *,
 *::before,
 *::after,
@@ -22,11 +22,11 @@ select,
 textarea,
 optgroup,
 option {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   background-color: var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
