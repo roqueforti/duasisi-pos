@@ -269,7 +269,7 @@ export default function PosView() {
                   <div
                     key={idx}
                     onClick={() => updateCart(item, 1)}
-                    className={`bg-white rounded-2xl border p-4 flex flex-col items-center justify-between text-center transition-all duration-200 cursor-pointer relative select-none hover:-translate-y-0.5 hover:shadow-md ${
+                    className={`aspect-square bg-white rounded-2xl border p-2.5 sm:p-3 flex flex-col items-center justify-between text-center transition-all duration-200 cursor-pointer relative select-none hover:-translate-y-0.5 hover:shadow-md ${
                       qtyInCart > 0 
                         ? 'border-amber-500 bg-amber-50/20 ring-2 ring-amber-500/20' 
                         : 'border-slate-200/80 shadow-2xs hover:border-slate-300'
@@ -277,40 +277,40 @@ export default function PosView() {
                   >
                     {/* Qty Badge Top Right */}
                     {qtyInCart > 0 && (
-                      <span className="absolute top-2.5 right-2.5 bg-amber-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-2xs">
+                      <span className="absolute top-2 right-2 bg-amber-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-2xs z-10">
                         {qtyInCart}
                       </span>
                     )}
 
-                    {/* Centered Circular Icon Container (Like reference image!) */}
-                    <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mb-3 shadow-inner text-[#1E4648]">
-                      <IconComp className="w-8 h-8 text-[#1E4648]" />
+                    {/* Centered Circular Icon Container (Aspect-Square 1:1 Optimized) */}
+                    <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 shadow-inner text-[#1E4648] mt-0.5">
+                      <IconComp className="w-5 h-5 sm:w-6 sm:h-6 text-[#1E4648]" />
                     </div>
 
                     {/* Product Name */}
-                    <h3 className="font-bold text-xs sm:text-sm text-slate-800 leading-snug mb-1 line-clamp-2">
+                    <h3 className="font-bold text-[11px] sm:text-xs text-slate-800 leading-tight line-clamp-2 px-0.5 my-auto">
                       {item.layanan}
                     </h3>
 
                     {/* Price */}
-                    <div className="text-xs sm:text-sm font-extrabold text-amber-600 mb-3">
+                    <div className="text-[11px] sm:text-xs font-extrabold text-amber-600 mb-1">
                       Rp {effectivePrice.toLocaleString('id-ID')}
                     </div>
 
                     {/* Bottom Action: Stepper or Plus Button */}
-                    <div className="w-full pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                    <div className="w-full pt-1 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
                       {qtyInCart > 0 ? (
-                        <div className="flex items-center justify-between bg-slate-50 p-1 rounded-xl border border-amber-200">
+                        <div className="flex items-center justify-between bg-slate-50 p-0.5 rounded-xl border border-amber-200">
                           <button
                             onClick={() => updateCart(item, -1)}
-                            className="w-6 h-6 bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-700 font-bold rounded-lg flex items-center justify-center border border-slate-200 transition"
+                            className="w-5 h-5 bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-700 font-bold rounded-lg flex items-center justify-center border border-slate-200 transition"
                           >
                             <Minus className="w-3 h-3" />
                           </button>
-                          <span className="text-xs font-bold text-slate-800">{qtyInCart}</span>
+                          <span className="text-[11px] font-bold text-slate-800 px-1">{qtyInCart}</span>
                           <button
                             onClick={() => updateCart(item, 1)}
-                            className="w-6 h-6 bg-amber-500 text-white font-bold rounded-lg flex items-center justify-center hover:bg-amber-600 transition"
+                            className="w-5 h-5 bg-amber-500 text-white font-bold rounded-lg flex items-center justify-center hover:bg-amber-600 transition"
                           >
                             <Plus className="w-3 h-3" />
                           </button>
@@ -318,9 +318,9 @@ export default function PosView() {
                       ) : (
                         <button
                           onClick={() => updateCart(item, 1)}
-                          className="w-full bg-slate-50 hover:bg-amber-500 text-slate-700 hover:text-white border border-slate-200/80 font-bold py-1.5 rounded-xl text-xs transition flex items-center justify-center gap-1"
+                          className="w-full bg-slate-50 hover:bg-amber-500 text-slate-700 hover:text-white border border-slate-200/80 font-bold py-1 rounded-xl text-[11px] transition flex items-center justify-center gap-1"
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Plus className="w-3 h-3" />
                           <span>Pilih</span>
                         </button>
                       )}
