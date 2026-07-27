@@ -1,0 +1,11 @@
+{
+  "name": "duasisi-pos",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix next-app run dev",
+    "build": "npm --prefix next-app run build",
+    "start": "npm --prefix next-app run start",
+    "install:app": "npm --prefix next-app install"
+  }
+}
