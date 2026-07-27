@@ -86,17 +86,10 @@ export default function ProdukView() {
   };
 
   const handleSave = async () => {
-    if (!nama.trim()) { alert('Nama layanan wajib diisi!'); return; }
+    if (!nama.trim() || !harga.trim()) { alert('Nama dan harga wajib diisi!'); return; }
+    const payload = { nama: nama.trim(), harga: Number(harga) || 0, satuan, icon, tipe };
     setLoading(true);
     try {
-      const payload = {
-        nama: nama.trim(),
-        harga: Number(harga) || 0,
-        satuan: satuan.trim(),
-        icon: icon.trim() || '🧺',
-        tipe: tipe
-      };
-
       if (editingId) {
         await runBackend('updateLayanan', editingId, payload);
       } else {
@@ -105,24 +98,23 @@ export default function ProdukView() {
       setShowModal(false);
       loadProduk();
     } catch (err) {
-      alert('Gagal menyimpan produk');
+      alert('Gagal menyimpan layanan');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleAktif = async (id: string, currentAktif: string) => {
-    const isY = currentAktif === 'Y';
+  const handleToggleAktif = async (id: string, isY: boolean) => {
     try {
       await runBackend('toggleAktifLayanan', id, !isY);
       loadProduk();
     } catch (err) {
-      alert('Gagal mengubah status aktif');
+      alert('Gagal mengubah status');
     }
   };
 
-  const handleDelete = async (id: string, namaLayanan: string) => {
-    if (!confirm(`Hapus layanan ${namaLayanan}?`)) return;
+  const handleHapusLayanan = async (id: string) => {
+    if (!confirm('Yakin ingin menghapus layanan ini?')) return;
     try {
       await runBackend('hapusLayanan', id);
       loadProduk();
@@ -131,20 +123,33 @@ export default function ProdukView() {
     }
   };
 
-  const handleSavePromo = () => {
+  const handleSavePromo = async () => {
     if (!kodePromo.trim()) { alert('Kode promo wajib diisi!'); return; }
-    const newPrm: PromoVoucher = {
-      idPromo: `PRM-${Date.now().toString().slice(-4)}`,
+    const payload = {
       kodeVoucher: kodePromo.trim().toUpperCase(),
       jenisDiskon: 'Nominal',
       nilaiDiskon: Number(nilaiDiskon) || 5000,
-      minTransaksi: Number(minTx) || 0,
-      statusAktif: true
+      minTransaksi: Number(minTx) || 0
     };
-    setPromoList(prev => [newPrm, ...prev]);
-    setShowPromoModal(false);
-    setKodePromo('');
-    alert(`Promo ${newPrm.kodeVoucher} berhasil ditambahkan!`);
+    try {
+      await runBackend('tambahPromo', payload);
+      setShowPromoModal(false);
+      setKodePromo('');
+      loadProduk();
+      alert(`Promo ${payload.kodeVoucher} berhasil ditambahkan ke database!`);
+    } catch (err) {
+      alert('Gagal menyimpan promo ke backend');
+    }
+  };
+
+  const handleHapusPromo = async (id: string) => {
+    if (!confirm('Yakin hapus voucher promo ini?')) return;
+    try {
+      await runBackend('hapusPromo', id);
+      loadProduk();
+    } catch (err) {
+      alert('Gagal menghapus promo');
+    }
   };
 
   return (
@@ -248,8 +253,8 @@ export default function ProdukView() {
                       </td>
                       <td className="py-3 px-4 text-right space-x-1">
                         <button onClick={() => handleOpenEdit(item)} className="p-1 text-slate-500 hover:text-slate-800"><Edit3 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => handleToggleAktif(item.id, item.aktif)} className="p-1 text-amber-600 hover:text-amber-800"><RotateCcw className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => handleDelete(item.id, item.nama)} className="p-1 text-rose-500 hover:text-rose-700"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')} className="p-1 text-amber-600 hover:text-amber-800"><RotateCcw className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleHapusLayanan(item.id)} className="p-1 text-rose-500 hover:text-rose-700"><Trash2 className="w-3.5 h-3.5" /></button>
                       </td>
                     </tr>
                   ))
@@ -271,6 +276,7 @@ export default function ProdukView() {
                   <th className="py-3 px-4">Nilai Potongan</th>
                   <th className="py-3 px-4">Min. Transaksi</th>
                   <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -284,6 +290,11 @@ export default function ProdukView() {
                       <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold">
                         Berlaku
                       </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <button onClick={() => handleHapusPromo(prm.idPromo)} className="p-1 text-rose-500 hover:text-rose-700" title="Hapus Promo">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}

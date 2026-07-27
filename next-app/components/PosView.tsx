@@ -31,6 +31,7 @@ import {
   Edit3
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir } from '@/lib/types';
+import { runBackend } from '@/lib/api';
 
 interface CustomerState {
   nama: string;
@@ -112,6 +113,11 @@ export default function PosView() {
     { nama: 'Siti Rahma', noHp: '085712345678', memberStatus: 'Regular', alamat: 'Jl. Mawar No. 45' },
     { nama: 'Agus Wijaya', noHp: '082198765432', memberStatus: 'Member Silver', alamat: 'Griya Asri B3/10' },
   ]);
+  const [staffList, setStaffList] = useState<{ id: string; nama: string; jabatan?: string }[]>([
+    { id: '1', nama: 'Kasir 1 (Shift Pagi)' },
+    { id: '2', nama: 'Kasir 2 (Shift Siang)' },
+    { id: '3', nama: 'Admin Utama' },
+  ]);
 
   const [showDetailTransaksiModal, setShowDetailTransaksiModal] = useState<boolean>(false);
   const [showKonfirmasiBayarModal, setShowKonfirmasiBayarModal] = useState<boolean>(false);
@@ -141,6 +147,50 @@ export default function PosView() {
     hargaSatuan: '',
     kategori: 'Layanan' as LayananItem['kategori']
   });
+
+  // Fetch Master Data from Google Sheets Backend on Mount
+  useEffect(() => {
+    // 1. Fetch Layanan Catalog
+    runBackend<any[]>('getLayananListAll')
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: LayananItem[] = data.map((item) => ({
+            layanan: item.nama,
+            hargaSatuan: Number(item.harga),
+            tipe: item.tipe || 'SelfService',
+            satuan: item.satuan || 'paket',
+            kategori: item.tipe === 'FullService' ? 'Layanan Tambahan' : 'Layanan',
+          }));
+          setLayananList(mapped);
+        }
+      })
+      .catch((err) => console.warn('Using default layanan fallback:', err));
+
+    // 2. Fetch Customers List
+    runBackend<any[]>('getDaftarPelanggan')
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: CustomerState[] = data.map((c) => ({
+            nama: c.nama,
+            noHp: c.noHp,
+            alamat: c.alamat,
+            memberStatus: c.isRepeatOrder ? 'Member Regular' : 'Pelanggan Baru',
+          }));
+          setCustomerList(mapped);
+        }
+      })
+      .catch((err) => console.warn('Using default customers fallback:', err));
+
+    // 3. Fetch Staff Pegawai List
+    runBackend<any[]>('getPegawaiList')
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setStaffList(data);
+          if (data[0]?.nama) setNamaKasirInput(data[0].nama);
+        }
+      })
+      .catch((err) => console.warn('Using default staff fallback:', err));
+  }, []);
 
   // Calculate totals
   const cartArray = Object.values(cart);
@@ -189,19 +239,30 @@ export default function PosView() {
     setVoucherMsg(null);
   };
 
-  // Voucher Application
-  const handleApplyVoucher = () => {
+  // Voucher Application (Connected to Backend Promo Database)
+  const handleApplyVoucher = async () => {
     const code = voucherInput.trim().toUpperCase();
     if (!code) {
       setVoucherMsg({ type: 'error', text: 'Masukkan kode voucher terlebih dahulu' });
       return;
     }
-    if (code === 'HEMAT10' || code === 'DUASISI') {
-      const pot = Math.round(subtotalCart * 0.1);
-      setDiskonApplied({ kode: code, nilai: pot });
-      setVoucherMsg({ type: 'success', text: `Voucher ${code} terpasang (Diskon 10% - Rp ${pot.toLocaleString('id-ID')})` });
-    } else {
-      setVoucherMsg({ type: 'error', text: 'Kode voucher tidak valid' });
+    try {
+      const res = await runBackend<{ valid: boolean; kode?: string; nilai?: number; message?: string }>('validasiVoucher', code, subtotalCart);
+      if (res.valid && res.nilai !== undefined) {
+        setDiskonApplied({ kode: code, nilai: res.nilai });
+        setVoucherMsg({ type: 'success', text: `Voucher ${code} terpasang (Diskon - Rp ${res.nilai.toLocaleString('id-ID')})` });
+      } else {
+        setVoucherMsg({ type: 'error', text: res.message || 'Kode voucher tidak valid' });
+      }
+    } catch {
+      // Fallback local check
+      if (code === 'HEMAT10' || code === 'DUASISI') {
+        const pot = Math.round(subtotalCart * 0.1);
+        setDiskonApplied({ kode: code, nilai: pot });
+        setVoucherMsg({ type: 'success', text: `Voucher ${code} terpasang (Diskon 10% - Rp ${pot.toLocaleString('id-ID')})` });
+      } else {
+        setVoucherMsg({ type: 'error', text: 'Kode voucher tidak valid' });
+      }
     }
   };
 
@@ -220,8 +281,8 @@ export default function PosView() {
     setShowTambahItemModal(false);
   };
 
-  // Step 3: Handle Add New Customer Sub-Form
-  const handleAddNewCustomer = () => {
+  // Step 3: Handle Add New Customer Sub-Form & Save to Google Sheets
+  const handleAddNewCustomer = async () => {
     if (!newCustNama.trim() || !newCustNoHp.trim()) {
       alert('Nama dan No. HP Pelanggan wajib diisi!');
       return;
@@ -230,8 +291,13 @@ export default function PosView() {
       nama: newCustNama.trim(),
       noHp: newCustNoHp.trim(),
       alamat: newCustAlamat.trim() || undefined,
-      memberStatus: 'Baru'
+      memberStatus: 'Pelanggan Baru'
     };
+    try {
+      await runBackend('simpanPelangganJikaBaru', newCustNama.trim(), newCustNoHp.trim(), newCustAlamat.trim());
+    } catch (e) {
+      console.warn('Backend save customer error:', e);
+    }
     setCustomerList([newEntry, ...customerList]);
     setCustomer(newEntry);
     setShowAddCustForm(false);
@@ -241,14 +307,39 @@ export default function PosView() {
     setShowCustModal(false);
   };
 
-  // Step 5: Confirm Payment & Complete Transaction
-  const handleConfirmPayment = () => {
-    const trxId = `TRX-${Date.now().toString().slice(-6)}`;
+  // Step 5: Confirm Payment & Save Transaction Directly to Google Sheets Backend
+  const handleConfirmPayment = async () => {
     const kasir = namaKasirInput || 'Kasir 1';
     const custName = customer.nama || 'Pelanggan Umum';
     const total = grandTotal;
     const bayar = Number(uangBayarInput) || total;
     const returnChange = Math.max(0, bayar - total);
+
+    // Save transaction to Google Sheets (SHEET_TRANSAKSI & SHEET_DETAIL)
+    let trxId = `TRX-${Date.now().toString().slice(-6)}`;
+    try {
+      const payload = {
+        namaPelanggan: custName,
+        noHp: customer.noHp || '',
+        total,
+        status: 'Selesai',
+        kasir,
+        tipeLayanan,
+        metodeBayar,
+        estimasiSelesai,
+        items: cartArray.map((i) => ({
+          layanan: i.layanan,
+          qty: i.qty,
+          hargaSatuan: i.hargaSatuan
+        }))
+      };
+      const backendRes = await runBackend<{ success: boolean; noNota: string }>('simpanTransaksi', payload);
+      if (backendRes && backendRes.noNota) {
+        trxId = backendRes.noNota;
+      }
+    } catch (err) {
+      console.warn('Failed to save to backend, using local invoice fallback:', err);
+    }
 
     const summary = {
       trxId,
@@ -268,7 +359,7 @@ export default function PosView() {
     };
 
     setCompletedOrderData(summary);
-    setShowKonfirmasiBayarModal(false);
+    setShowDetailTransaksiModal(false);
     setShowSuccessModal(true);
   };
 
@@ -878,10 +969,11 @@ export default function PosView() {
                       onChange={(e) => setNamaKasirInput(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold outline-none focus:border-[#2d4d38]"
                     >
-                      <option value="Kasir 1">Kasir 1 (Shift Pagi)</option>
-                      <option value="Kasir 2">Kasir 2 (Shift Siang)</option>
-                      <option value="Kasir 3">Kasir 3 (Shift Malam)</option>
-                      <option value="Admin Utama">Admin Utama</option>
+                      {staffList.map((s) => (
+                        <option key={s.id || s.nama} value={s.nama}>
+                          {s.nama} {s.jabatan ? `(${s.jabatan})` : ''}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -1101,7 +1193,12 @@ export default function PosView() {
               <button 
                 type="button"
                 onClick={handleConfirmPayment}
-                className="flex-1 bg-[#2d4d38] hover:bg-[#213b2a] text-white font-bold py-3 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition"
+                disabled={metodeBayar === 'Tunai' && Number(uangBayarInput) > 0 && Number(uangBayarInput) < grandTotal}
+                className={`flex-1 font-bold py-3 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition ${
+                  metodeBayar === 'Tunai' && Number(uangBayarInput) > 0 && Number(uangBayarInput) < grandTotal
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                    : 'bg-[#2d4d38] hover:bg-[#213b2a] text-white'
+                }`}
               >
                 <span>Konfirmasi & Selesaikan Bayar</span>
                 <CheckCircle2 className="w-4 h-4" />

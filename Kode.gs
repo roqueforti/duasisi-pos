@@ -15,6 +15,7 @@ const SHEET_PEGAWAI   = "Pegawai";
 const SHEET_ABSENSI   = "Absensi";
 const SHEET_SHIFT     = "MasterShift";
 const SHEET_PIPELINE  = "Pipeline";
+const SHEET_PROMO     = "Promo";
 const TIMEZONE_WIB    = "Asia/Jakarta";
 
 // PIN HAK AKSES PERAN
@@ -429,19 +430,29 @@ function hapusMesin(id) {
 // ============================================================
 function generateNoNota() {
   const sh = SS.getSheetByName(SHEET_TRANSAKSI);
-  const lastRow = sh.getLastRow();
   const today = fmtWib(new Date(), "yyMMdd");
-  return "LDY-" + today + "-" + String(lastRow).padStart(4, "0");
+  if (!sh) return "LDY-" + today + "-0001";
+  const rows = sh.getDataRange().getValues();
+  let maxCounter = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const nota = String(rows[i][0]);
+    if (nota.startsWith("LDY-" + today)) {
+      const parts = nota.split("-");
+      const num = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(num) && num > maxCounter) maxCounter = num;
+    }
+  }
+  return "LDY-" + today + "-" + String(maxCounter + 1).padStart(4, "0");
 }
 
 function simpanTransaksi(data) {
   const sh = SS.getSheetByName(SHEET_TRANSAKSI);
   const shD = SS.getSheetByName(SHEET_DETAIL);
-  const noNota = (data.noNota && !data.noNota.startsWith('OFF-')) ? data.noNota : generateNoNota();
+  const noNota = (data.noNota && !data.noNota.startsWith('OFF-') && !data.noNota.startsWith('TRX-')) ? data.noNota : generateNoNota();
   const tanggal = data.tanggal ? new Date(data.tanggal) : new Date();
   const tipe = data.tipe || data.tipeLayanan || "SelfService";
-  const status = data.status || "Diterima";
-  const petugas = data.petugas || data.namaPetugas || "Kasir";
+  const status = data.status || "Selesai";
+  const petugas = data.petugas || data.kasir || data.namaPetugas || "Kasir";
 
   let total = 0;
   if (Array.isArray(data.items) && data.items.length > 0) {
@@ -455,13 +466,85 @@ function simpanTransaksi(data) {
     shD.appendRow([noNota, "Transaksi Manual", 1, total, total]);
   }
 
-  sh.appendRow([noNota, tanggal, data.namaPelanggan, data.noHp || "", total, status, data.estimasiSelesai || data.estimasi || "", petugas, tipe]);
-  simpanPelangganJikaBaru(data.namaPelanggan, data.noHp);
+  sh.appendRow([noNota, tanggal, data.namaPelanggan || data.pelanggan || "Pelanggan Umum", data.noHp || "", total, status, data.estimasiSelesai || data.estimasi || "", petugas, tipe]);
+  simpanPelangganJikaBaru(data.namaPelanggan || data.pelanggan, data.noHp);
 
   // Auto-create pipeline steps
   createPipelineForNota(noNota, tipe);
+  addAuditLog(petugas, "Transaksi Baru", noNota, "Total Rp " + total.toLocaleString('id-ID') + " (" + (data.metodeBayar || "Tunai") + ")");
 
   return { success: true, noNota: noNota, total: total, jumlahItem: data.items ? data.items.length : 1, tipe: tipe };
+}
+
+function pelunasanDP(noNota, nominal, metode) {
+  const sh = SS.getSheetByName(SHEET_TRANSAKSI);
+  if (!sh) return { success: false, message: "Sheet Transaksi tidak ditemukan." };
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === noNota) {
+      sh.getRange(i + 1, 6).setValue("Selesai");
+      addAuditLog("Kasir", "Pelunasan Nota", noNota, "Pelunasan Rp " + Number(nominal).toLocaleString('id-ID') + " via " + (metode || "Tunai"));
+      return { success: true, message: "Pelunasan nota " + noNota + " berhasil disimpan!" };
+    }
+  }
+  return { success: false, message: "Nota " + noNota + " tidak ditemukan." };
+}
+
+// ============================================================
+// PROMO & VOUCHER ENGINE
+// ============================================================
+function getPromoList() {
+  let sh = SS.getSheetByName(SHEET_PROMO);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_PROMO);
+    sh.appendRow(["ID", "Kode Voucher", "Jenis Diskon", "Nilai Diskon", "Min Transaksi", "Status"]);
+    sh.appendRow([generateId(), "HEMAT10", "Persen", 10, 50000, "Aktif"]);
+    sh.appendRow([generateId(), "DUASISI", "Nominal", 5000, 30000, "Aktif"]);
+  }
+  const data = sh.getDataRange().getValues(); data.shift();
+  return data.map(r => ({
+    idPromo: r[0], kodeVoucher: r[1], jenisDiskon: r[2], nilaiDiskon: Number(r[3]), minTransaksi: Number(r[4]), statusAktif: r[5] === "Aktif"
+  }));
+}
+
+function tambahPromo(data) {
+  let sh = SS.getSheetByName(SHEET_PROMO);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_PROMO);
+    sh.appendRow(["ID", "Kode Voucher", "Jenis Diskon", "Nilai Diskon", "Min Transaksi", "Status"]);
+  }
+  const id = generateId();
+  const kode = String(data.kodeVoucher).trim().toUpperCase();
+  sh.appendRow([id, kode, data.jenisDiskon || "Nominal", Number(data.nilaiDiskon) || 0, Number(data.minTransaksi) || 0, "Aktif"]);
+  return { success: true, idPromo: id };
+}
+
+function hapusPromo(id) {
+  const sh = SS.getSheetByName(SHEET_PROMO);
+  if (!sh) return { success: false };
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) { sh.deleteRow(i + 1); return { success: true }; }
+  }
+  return { success: false };
+}
+
+function validasiVoucher(kodeInput, subtotal) {
+  if (!kodeInput) return { valid: false, message: "Kode voucher kosong" };
+  const code = String(kodeInput).trim().toUpperCase();
+  const list = getPromoList();
+  const found = list.find(p => p.kodeVoucher === code && p.statusAktif);
+  if (!found) return { valid: false, message: "Kode voucher tidak valid / tidak aktif" };
+  if (Number(subtotal) < found.minTransaksi) {
+    return { valid: false, message: "Minimal transaksi Rp " + found.minTransaksi.toLocaleString('id-ID') };
+  }
+  let nilaiDiskon = 0;
+  if (found.jenisDiskon === "Persen") {
+    nilaiDiskon = Math.round(Number(subtotal) * (found.nilaiDiskon / 100));
+  } else {
+    nilaiDiskon = found.nilaiDiskon;
+  }
+  return { valid: true, kode: code, nilai: nilaiDiskon, message: "Voucher " + code + " berhasil dipasang!" };
 }
 
 // ============================================================
