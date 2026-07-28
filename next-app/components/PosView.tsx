@@ -54,17 +54,28 @@ const defaultLayanan: LayananItem[] = [
   { layanan: 'Kopi Hitam / Teh Warm', hargaSatuan: 4000, tipe: 'SelfService', satuan: 'cangkir', kategori: 'MakananMinuman' },
 ];
 
-function getLayananStyleConfig(name: string) {
-  if (name.includes('Softener') || name.includes('Deterjen') || name.includes('Kresek')) {
-    return { Icon: Package };
+function getLayananStyleConfig(item: LayananItem) {
+  const name = item.layanan;
+  const kategori = item.kategori;
+
+  // Icon
+  let Icon = WashingMachine;
+  if (name.includes('Softener') || name.includes('Deterjen') || name.includes('Kresek')) Icon = Package;
+  else if (name.includes('Air') || name.includes('Kopi') || name.includes('Teh')) Icon = Coffee;
+  else if (name.includes('Setrika') || name.includes('Express') || name.includes('Setrika')) Icon = Sparkles;
+
+  // Color scheme per category
+  if (kategori === 'MakananMinuman') {
+    return { Icon, iconBg: 'bg-orange-100', iconColor: 'text-orange-600', accent: 'border-l-orange-400', badge: 'bg-orange-100 text-orange-700' };
   }
-  if (name.includes('Air') || name.includes('Kopi') || name.includes('Teh')) {
-    return { Icon: Coffee };
+  if (kategori === 'Produk') {
+    return { Icon, iconBg: 'bg-sky-100', iconColor: 'text-sky-600', accent: 'border-l-sky-400', badge: 'bg-sky-100 text-sky-700' };
   }
-  if (name.includes('Setrika') || name.includes('Express')) {
-    return { Icon: Sparkles };
+  if (kategori === 'Layanan Tambahan') {
+    return { Icon, iconBg: 'bg-violet-100', iconColor: 'text-violet-600', accent: 'border-l-violet-400', badge: 'bg-violet-100 text-violet-700' };
   }
-  return { Icon: WashingMachine };
+  // Default: Layanan Utama
+  return { Icon, iconBg: 'bg-teal-100', iconColor: 'text-[#1E4648]', accent: 'border-l-[#1E4648]', badge: 'bg-teal-100 text-teal-800' };
 }
 
 export default function PosView() {
@@ -463,96 +474,79 @@ export default function PosView() {
 
         {/* STEP 1: Product Cards Grid (Aspect Square 1:1, Compact Font, Tap -> Cart / Double Tap -> Note Modal) */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-2.5">
             {(() => {
               const renderCard = (item: LayananItem, idx: number) => {
                 const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
-                const effectivePrice = item.hargaSatuan;
-                const styleCfg = getLayananStyleConfig(item.layanan);
-                const IconComp = styleCfg.Icon;
+                const { Icon, iconBg, iconColor, accent, badge } = getLayananStyleConfig(item);
+                const isBest = idx % 3 === 0;
 
                 return (
                   <div
                     key={idx}
                     onClick={() => updateCart(item, 1)}
                     onDoubleClick={() => openItemDetailModal(item)}
-                    className={`aspect-square bg-white rounded-2xl border p-2 sm:p-2.5 flex flex-col justify-between transition-all duration-200 cursor-pointer relative select-none hover:-translate-y-0.5 hover:shadow-md ${
-                      qtyInCart > 0 
-                        ? 'border-[#2d4d38] ring-2 ring-[#2d4d38]/20 bg-[#2d4d38]/[0.02]' 
-                        : 'border-slate-200/80 shadow-2xs hover:border-slate-300'
+                    className={`bg-white rounded-xl border-l-4 border border-slate-200/80 ${accent} p-3 flex flex-col gap-2 transition-all duration-150 cursor-pointer select-none hover:shadow-md hover:-translate-y-0.5 ${
+                      qtyInCart > 0
+                        ? 'ring-2 ring-[#2d4d38]/25 border-[#2d4d38] bg-[#2d4d38]/[0.02]'
+                        : 'shadow-2xs'
                     }`}
                   >
-                    {/* Top Container for Image/Icon */}
-                    <div className="bg-slate-100/80 rounded-xl flex-1 min-h-0 flex items-center justify-center relative overflow-hidden mb-1.5 group p-1">
-                      {/* Status Badge Top-Left */}
-                      <span className={`absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-2xs z-10 ${
-                        idx % 3 === 0 ? 'bg-amber-500 text-white' : 'bg-[#2d4d38] text-white'
-                      }`}>
-                        {idx % 3 === 0 ? 'Best' : 'Ready'}
-                      </span>
-
-                      {/* Qty Badge Top-Right */}
-                      {qtyInCart > 0 && (
-                        <span className="absolute top-1.5 right-1.5 bg-[#2d4d38] text-white text-[10px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-xs z-10">
-                          {qtyInCart}
-                        </span>
-                      )}
-
-                      {/* Circular Centered Icon */}
-                      <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white shadow-xs border border-slate-100 flex items-center justify-center text-[#2d4d38] group-hover:scale-105 transition duration-200">
-                        <IconComp className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d4d38]" />
+                    {/* Top row: icon chip + badge + edit */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`w-8 h-8 rounded-lg ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <h3 className="font-bold text-[11px] sm:text-xs text-slate-800 leading-tight line-clamp-2">
+                          {item.layanan}
+                        </h3>
                       </div>
-                    </div>
-
-                    {/* Product Name */}
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <h3 className="font-bold text-[10px] sm:text-[11px] text-slate-800 leading-tight line-clamp-2 text-left flex-1">
-                        {item.layanan}
-                      </h3>
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openItemDetailModal(item);
-                        }}
-                        className="text-slate-400 hover:text-[#2d4d38] p-0.5 rounded hover:bg-slate-100 shrink-0"
-                        title="Tambah Catatan Item"
+                        onClick={(e) => { e.stopPropagation(); openItemDetailModal(item); }}
+                        className="text-slate-300 hover:text-slate-500 p-0.5 rounded hover:bg-slate-100 shrink-0 transition"
+                        title="Catatan item"
                       >
                         <Edit3 className="w-3 h-3" />
                       </button>
                     </div>
 
-                    {/* Price & Action Button Bottom Row */}
-                    <div className="flex items-end justify-between pt-1 border-t border-slate-100 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <div className="text-left">
-                        <span className="text-[8px] sm:text-[9px] text-slate-400 font-bold block uppercase tracking-wider leading-none mb-0.5">Harga</span>
-                        <span className="text-[10px] sm:text-xs font-extrabold text-slate-900 leading-tight">
-                          Rp {effectivePrice.toLocaleString('id-ID')}
+                    {/* Bottom row: price + badge + qty stepper */}
+                    <div className="flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-sm font-extrabold text-slate-900 leading-none">
+                          Rp {item.hargaSatuan.toLocaleString('id-ID')}
+                        </span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                          isBest ? 'bg-amber-100 text-amber-700' : badge
+                        }`}>
+                          {isBest ? 'Best' : 'Ready'}
                         </span>
                       </div>
 
                       {qtyInCart > 0 ? (
-                        <div className="flex items-center gap-0.5 bg-[#2d4d38] text-white p-0.5 rounded-lg shadow-2xs">
+                        <div className="flex items-center gap-0.5 bg-[#2d4d38] text-white rounded-lg p-0.5 shrink-0">
                           <button
                             onClick={() => updateCart(item, -1)}
-                            className="w-4 h-4 bg-white/20 hover:bg-white/30 text-white font-bold rounded flex items-center justify-center transition"
+                            className="w-5 h-5 bg-white/20 hover:bg-white/30 rounded flex items-center justify-center transition"
                           >
-                            <Minus className="w-2.5 h-2.5" />
+                            <Minus className="w-3 h-3" />
                           </button>
-                          <span className="text-[10px] font-bold px-1">{qtyInCart}</span>
+                          <span className="text-[11px] font-bold px-1 min-w-[16px] text-center">{qtyInCart}</span>
                           <button
                             onClick={() => updateCart(item, 1)}
-                            className="w-4 h-4 bg-white/20 hover:bg-white/30 text-white font-bold rounded flex items-center justify-center transition"
+                            className="w-5 h-5 bg-white/20 hover:bg-white/30 rounded flex items-center justify-center transition"
                           >
-                            <Plus className="w-2.5 h-2.5" />
+                            <Plus className="w-3 h-3" />
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={() => updateCart(item, 1)}
-                          className="bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 font-bold px-1.5 sm:px-2 py-0.5 rounded-lg text-[9px] sm:text-[10px] flex items-center gap-0.5 transition shadow-2xs hover:border-slate-300"
+                          className="shrink-0 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold px-2 py-1 rounded-lg text-[10px] flex items-center gap-1 transition shadow-2xs hover:border-slate-300"
                         >
-                          <ShoppingCart className="w-3 h-3 text-slate-500" />
+                          <Plus className="w-3 h-3 text-[#2d4d38]" />
                           <span>Pilih</span>
                         </button>
                       )}
