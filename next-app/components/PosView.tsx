@@ -474,7 +474,7 @@ export default function PosView() {
 
         {/* STEP 1: Product Cards Grid (Aspect Square 1:1, Compact Font, Tap -> Cart / Double Tap -> Note Modal) */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-2.5 auto-rows-fr">
             {(() => {
               const renderCard = (item: LayananItem, idx: number) => {
                 const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
@@ -486,39 +486,38 @@ export default function PosView() {
                     key={idx}
                     onClick={() => updateCart(item, 1)}
                     onDoubleClick={() => openItemDetailModal(item)}
-                    className={`bg-white rounded-xl border p-3 flex flex-col gap-2 transition-all duration-150 cursor-pointer select-none hover:shadow-md hover:-translate-y-0.5 ${
+                    className={`bg-white rounded-xl border flex flex-col transition-all duration-150 cursor-pointer select-none hover:shadow-md hover:-translate-y-0.5 ${
                       qtyInCart > 0
                         ? 'ring-2 ring-[#2d4d38]/25 border-[#2d4d38] bg-[#2d4d38]/[0.02]'
                         : 'border-slate-200/80 shadow-2xs hover:border-slate-300'
                     }`}
                   >
-                    {/* Top row: icon chip + name + edit */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className={`w-8 h-8 rounded-lg ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>
-                          <Icon className="w-4 h-4" />
-                        </div>
-                        <h3 className="font-bold text-[11px] sm:text-xs text-slate-800 leading-tight line-clamp-2">
+                    {/* Top: icon + name + edit — fixed height area */}
+                    <div className="flex items-start gap-2 p-2.5 pb-1.5">
+                      <div className={`w-7 h-7 rounded-lg ${iconBg} ${iconColor} flex items-center justify-center shrink-0 mt-0.5`}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="flex-1 min-w-0 flex items-start justify-between gap-1">
+                        <h3 className="font-bold text-[11px] text-slate-800 leading-snug line-clamp-2 flex-1">
                           {item.layanan}
                         </h3>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); openItemDetailModal(item); }}
+                          className="text-slate-300 hover:text-slate-500 p-0.5 rounded hover:bg-slate-100 shrink-0 transition"
+                        >
+                          <Edit3 className="w-2.5 h-2.5" />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); openItemDetailModal(item); }}
-                        className="text-slate-300 hover:text-slate-500 p-0.5 rounded hover:bg-slate-100 shrink-0 transition mt-0.5"
-                        title="Catatan item"
-                      >
-                        <Edit3 className="w-3 h-3" />
-                      </button>
                     </div>
 
-                    {/* Bottom row: price + badge + qty stepper */}
-                    <div className="flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-sm font-extrabold text-slate-900 leading-none">
+                    {/* Bottom: price row + action */}
+                    <div className="flex items-center justify-between gap-1 px-2.5 pb-2.5 pt-1 mt-auto border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                      <div className="min-w-0">
+                        <div className="text-xs font-extrabold text-slate-900 leading-none">
                           Rp {item.hargaSatuan.toLocaleString('id-ID')}
-                        </span>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                        </div>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1 inline-block ${
                           isBest ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
                         }`}>
                           {isBest ? 'Best' : 'Ready'}
@@ -526,16 +525,16 @@ export default function PosView() {
                       </div>
 
                       {qtyInCart > 0 ? (
-                        <div className="flex items-center gap-0.5 bg-[#2d4d38] text-white rounded-lg p-0.5 shrink-0">
+                        <div className="flex items-center gap-0.5 bg-[#2d4d38] text-white rounded-lg p-0.5 shrink-0" onClick={e => e.stopPropagation()}>
                           <button
-                            onClick={() => updateCart(item, -1)}
+                            onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
                             className="w-5 h-5 bg-white/20 hover:bg-white/30 rounded flex items-center justify-center transition"
                           >
                             <Minus className="w-3 h-3" />
                           </button>
                           <span className="text-[11px] font-bold px-1 min-w-[16px] text-center">{qtyInCart}</span>
                           <button
-                            onClick={() => updateCart(item, 1)}
+                            onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
                             className="w-5 h-5 bg-white/20 hover:bg-white/30 rounded flex items-center justify-center transition"
                           >
                             <Plus className="w-3 h-3" />
@@ -543,10 +542,10 @@ export default function PosView() {
                         </div>
                       ) : (
                         <button
-                          onClick={() => updateCart(item, 1)}
-                          className="shrink-0 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold px-2 py-1 rounded-lg text-[10px] flex items-center gap-1 transition shadow-2xs hover:border-slate-300"
+                          onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
+                          className="shrink-0 bg-[#2d4d38] hover:bg-[#213b2a] text-white font-bold px-2.5 py-1.5 rounded-lg text-[10px] flex items-center gap-1 transition shadow-2xs"
                         >
-                          <Plus className="w-3 h-3 text-[#2d4d38]" />
+                          <Plus className="w-3 h-3" />
                           <span>Pilih</span>
                         </button>
                       )}
