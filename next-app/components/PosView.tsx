@@ -64,18 +64,18 @@ function getLayananStyleConfig(item: LayananItem) {
   else if (name.includes('Air') || name.includes('Kopi') || name.includes('Teh')) Icon = Coffee;
   else if (name.includes('Setrika') || name.includes('Express') || name.includes('Setrika')) Icon = Sparkles;
 
-  // Color scheme per category
+  // Subtle color scheme — semua pakai nuansa teal/slate, hanya icon bg yang beda tipis
   if (kategori === 'MakananMinuman') {
-    return { Icon, iconBg: 'bg-orange-100', iconColor: 'text-orange-600', accent: 'border-l-orange-400', badge: 'bg-orange-100 text-orange-700' };
+    return { Icon, iconBg: 'bg-orange-50', iconColor: 'text-orange-500', dot: 'bg-orange-400' };
   }
   if (kategori === 'Produk') {
-    return { Icon, iconBg: 'bg-sky-100', iconColor: 'text-sky-600', accent: 'border-l-sky-400', badge: 'bg-sky-100 text-sky-700' };
+    return { Icon, iconBg: 'bg-slate-100', iconColor: 'text-slate-500', dot: 'bg-slate-400' };
   }
   if (kategori === 'Layanan Tambahan') {
-    return { Icon, iconBg: 'bg-violet-100', iconColor: 'text-violet-600', accent: 'border-l-violet-400', badge: 'bg-violet-100 text-violet-700' };
+    return { Icon, iconBg: 'bg-teal-50', iconColor: 'text-teal-600', dot: 'bg-teal-400' };
   }
   // Default: Layanan Utama
-  return { Icon, iconBg: 'bg-teal-100', iconColor: 'text-[#1E4648]', accent: 'border-l-[#1E4648]', badge: 'bg-teal-100 text-teal-800' };
+  return { Icon, iconBg: 'bg-teal-50', iconColor: 'text-[#1E4648]', dot: 'bg-[#1E4648]' };
 }
 
 export default function PosView() {
@@ -478,7 +478,7 @@ export default function PosView() {
             {(() => {
               const renderCard = (item: LayananItem, idx: number) => {
                 const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
-                const { Icon, iconBg, iconColor, accent, badge } = getLayananStyleConfig(item);
+                const { Icon, iconBg, iconColor } = getLayananStyleConfig(item);
                 const isBest = idx % 3 === 0;
 
                 return (
@@ -486,14 +486,14 @@ export default function PosView() {
                     key={idx}
                     onClick={() => updateCart(item, 1)}
                     onDoubleClick={() => openItemDetailModal(item)}
-                    className={`bg-white rounded-xl border-l-4 border border-slate-200/80 ${accent} p-3 flex flex-col gap-2 transition-all duration-150 cursor-pointer select-none hover:shadow-md hover:-translate-y-0.5 ${
+                    className={`bg-white rounded-xl border p-3 flex flex-col gap-2 transition-all duration-150 cursor-pointer select-none hover:shadow-md hover:-translate-y-0.5 ${
                       qtyInCart > 0
                         ? 'ring-2 ring-[#2d4d38]/25 border-[#2d4d38] bg-[#2d4d38]/[0.02]'
-                        : 'shadow-2xs'
+                        : 'border-slate-200/80 shadow-2xs hover:border-slate-300'
                     }`}
                   >
-                    {/* Top row: icon chip + badge + edit */}
-                    <div className="flex items-center justify-between gap-2">
+                    {/* Top row: icon chip + name + edit */}
+                    <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className={`w-8 h-8 rounded-lg ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>
                           <Icon className="w-4 h-4" />
@@ -505,7 +505,7 @@ export default function PosView() {
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); openItemDetailModal(item); }}
-                        className="text-slate-300 hover:text-slate-500 p-0.5 rounded hover:bg-slate-100 shrink-0 transition"
+                        className="text-slate-300 hover:text-slate-500 p-0.5 rounded hover:bg-slate-100 shrink-0 transition mt-0.5"
                         title="Catatan item"
                       >
                         <Edit3 className="w-3 h-3" />
@@ -519,7 +519,7 @@ export default function PosView() {
                           Rp {item.hargaSatuan.toLocaleString('id-ID')}
                         </span>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                          isBest ? 'bg-amber-100 text-amber-700' : badge
+                          isBest ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
                         }`}>
                           {isBest ? 'Best' : 'Ready'}
                         </span>
