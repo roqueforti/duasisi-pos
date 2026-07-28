@@ -218,77 +218,82 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       {/* SECTION 1 — RINGKASAN CEPAT (ALL ROLES) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Metric 1: Order Today */}
-        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-2xs space-y-1">
-          <div className="flex justify-between items-center text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-            <span>Order Hari Ini</span>
-            <ShoppingCart className="w-4 h-4 text-[#1E4648]" />
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#1E4648] flex items-center justify-center font-bold shrink-0">
+            <ShoppingCart className="w-5 h-5" />
           </div>
-          <div className="text-2xl font-black text-slate-900">{totalOrderHariIni} Transaksi</div>
-          <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 pt-1">
-            <ArrowUpRight className="w-3.5 h-3.5" />
-            <span>Order aktif terpantau</span>
+          <div>
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Order Hari Ini</div>
+            <div className="text-xl font-extrabold text-slate-900">{totalOrderHariIni} Transaksi</div>
           </div>
         </div>
 
         {/* Metric 2: Omzet Today */}
-        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-2xs space-y-1">
-          <div className="flex justify-between items-center text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-            <span>Omzet Hari Ini</span>
-            <DollarSign className="w-4 h-4 text-emerald-600" />
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+            <DollarSign className="w-5 h-5" />
           </div>
-          <div className="text-2xl font-black text-emerald-700">
-            Rp {omzetHariIni.toLocaleString('id-ID')}
-          </div>
-          <div className="text-[11px] text-slate-500 font-medium pt-1">
-            Akumulasi transaksi hari ini
+          <div>
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Omzet Hari Ini</div>
+            <div className="text-xl font-black text-emerald-700">Rp {omzetHariIni.toLocaleString('id-ID')}</div>
           </div>
         </div>
 
         {/* Metric 3: Active In-Progress Orders */}
-        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-2xs space-y-1">
-          <div className="flex justify-between items-center text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-            <span>Order Aktif (Proses)</span>
-            <Clock className="w-4 h-4 text-amber-500" />
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold shrink-0">
+            <Clock className="w-5 h-5" />
           </div>
-          <div className="text-2xl font-black text-slate-900">{activeOrders.length} Order</div>
-          <div className="text-[11px] text-amber-700 font-bold pt-1">
-            {readyPickupOrders.length} Siap Diambil
+          <div>
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Order Aktif (Proses)</div>
+            <div className="text-xl font-extrabold text-slate-900">{activeOrders.length} Order</div>
+            <div className="text-[10px] text-amber-700 font-bold">{readyPickupOrders.length} Siap Diambil</div>
           </div>
         </div>
 
         {/* Metric 4: System Alerts Status */}
-        <div className="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-2xs space-y-1">
-          <div className="flex justify-between items-center text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-            <span>Status Alert Sistem</span>
-            <AlertTriangle className="w-4 h-4 text-rose-500" />
-          </div>
-          <div className="text-base font-extrabold text-slate-900">
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+            lowStockItems.length > 0 || maintenanceMachines.length > 0 
+              ? 'bg-rose-50 text-rose-600' 
+              : 'bg-emerald-50 text-emerald-700'
+          }`}>
             {lowStockItems.length > 0 || maintenanceMachines.length > 0 ? (
-              <span className="text-rose-600 flex items-center gap-1">
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                {lowStockItems.length + maintenanceMachines.length} Warning Alert
-              </span>
+              <AlertTriangle className="w-5 h-5" />
             ) : (
-              <span className="text-emerald-600 flex items-center gap-1">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                Semua Optimal
-              </span>
+              <CheckCircle2 className="w-5 h-5" />
             )}
           </div>
-          <div className="text-[10px] text-slate-500 pt-1">
-            {lowStockItems.length} Stok Menipis • {maintenanceMachines.length} Mesin Servis
+          <div>
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Status Alert Sistem</div>
+            <div className={`text-xl font-extrabold ${
+              lowStockItems.length > 0 || maintenanceMachines.length > 0 
+                ? 'text-rose-600' 
+                : 'text-emerald-700'
+            }`}>
+              {lowStockItems.length > 0 || maintenanceMachines.length > 0 ? (
+                <span>{lowStockItems.length + maintenanceMachines.length} Warning</span>
+              ) : (
+                <span>Semua Optimal</span>
+              )}
+            </div>
+            <div className="text-[10px] text-slate-500 font-semibold">
+              {lowStockItems.length} Stok • {maintenanceMachines.length} Mesin
+            </div>
           </div>
         </div>
       </div>
 
       {/* SECTION 2 — OPERASIONAL REAL-TIME (ALL ROLES) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         
         {/* Widget 1: Machine Status Progress (2 Columns on Desktop) */}
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <Cpu className="w-5 h-5 text-[#1E4648]" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center shrink-0">
+                <Cpu className="w-4 h-4" />
+              </div>
               <h2 className="text-sm font-bold text-slate-900">Status & Progress Mesin Real-time</h2>
             </div>
             <span className="text-xs font-bold text-slate-500">
@@ -348,10 +353,12 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         </div>
 
         {/* Widget 2: Queue & Ready for Pickup List */}
-        <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-2xs space-y-4 flex flex-col justify-between">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4 flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3 mb-3">
-              <Clock className="w-5 h-5 text-amber-600" />
+            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4" />
+              </div>
               <h2 className="text-sm font-bold text-slate-900">Antrian & Siap Di-pickup</h2>
             </div>
 
@@ -385,10 +392,12 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
       {/* SECTION 3 — PENJUALAN & KEUANGAN (ROLES: MANAGER ONLY) */}
       {isManager ? (
-        <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-[#1E4648]" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center shrink-0">
+                <BarChart3 className="w-4 h-4" />
+              </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-900">Analisis Penjualan & Keuangan</h2>
                 <p className="text-[11px] text-slate-400 font-medium">Tren omzet, kategori layanan, & distribusi metode bayar</p>
@@ -467,7 +476,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         </div>
       ) : (
         /* SAFE FRONTIER GUARD FOR KASIR / STAFF ROLE */
-        <div className="bg-slate-100 border-2 border-dashed border-slate-300 rounded-3xl p-5 text-center text-slate-500 space-y-1">
+        <div className="bg-slate-100 border-2 border-dashed border-slate-300 rounded-2xl p-5 text-center text-slate-500 space-y-1">
           <div className="flex justify-center text-slate-400 mb-1">
             <Lock className="w-6 h-6" />
           </div>
@@ -478,9 +487,11 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
       {/* SECTION 4 — PELANGGAN INSIGHTS (ROLES: MANAGER ONLY) */}
       {isManager && (
-        <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <Users className="w-5 h-5 text-[#1E4648]" />
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+          <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+            <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center shrink-0">
+              <Users className="w-4 h-4" />
+            </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900">Insight Pelanggan & Repeat Order</h2>
               <p className="text-[11px] text-slate-400 font-medium">Top pelanggan loyal & distribusi transaksi</p>
@@ -524,10 +535,12 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       )}
 
       {/* SECTION 5 — INVENTORY & MESIN LEVEL (ALL ROLES, DIFFERENT PERMISSIONS) */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <Package className="w-5 h-5 text-[#1E4648]" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center shrink-0">
+              <Package className="w-4 h-4" />
+            </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900">Level Stok Bahan Habis Pakai</h2>
               <p className="text-[11px] text-slate-400 font-medium">
@@ -592,10 +605,12 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       </div>
 
       {/* SECTION 6 — STAFF & SHIFT (ADAPTIVE PERMISSION) */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <Layers className="w-5 h-5 text-[#1E4648]" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center shrink-0">
+              <Layers className="w-4 h-4" />
+            </div>
             <h2 className="text-sm font-bold text-slate-900">Rekap Shift & Kinerja Staf</h2>
           </div>
         </div>
@@ -644,7 +659,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       {/* QUICK RESTOCK MODAL (MANAGER ONLY) */}
       {selectedRestockItem && (
         <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3">
-          <div className="bg-white rounded-3xl p-5 w-full max-w-sm border border-slate-100 shadow-2xl space-y-3">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-sm border border-slate-100 shadow-2xl space-y-3">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
               <h3 className="font-bold text-sm text-slate-900">Input Restock Stok Inventory</h3>
               <button onClick={() => setSelectedRestockItem(null)}><X className="w-4 h-4 text-slate-400" /></button>
