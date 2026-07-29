@@ -444,7 +444,7 @@ export default function RiwayatView() {
       {/* Void Request Modal (FR-POS-24) */}
       {showVoidModal && txToVoid && (
         <div className="fixed inset-0 z-[550] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-sm">
+          <div className="bg-white rounded-lg p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
               <div className="flex items-center gap-1.5 text-rose-600 font-bold text-sm">
                 <ShieldAlert className="w-4 h-4" />
@@ -479,7 +479,7 @@ export default function RiwayatView() {
       {/* Production Status Change Modal (FR-POS-20) */}
       {showStatusModal && txToUpdateStatus && (
         <div className="fixed inset-0 z-[550] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-sm text-center">
+          <div className="bg-white rounded-lg p-5 w-full max-w-sm text-center">
             <h3 className="text-sm font-bold text-slate-800 mb-1">Perbarui Status Produksi</h3>
             <p className="text-xs text-slate-500 mb-4">Nota: <span className="font-bold text-slate-800">{txToUpdateStatus.noNota}</span></p>
 
@@ -507,7 +507,7 @@ export default function RiwayatView() {
       {/* DP Pelunasan Modal (FR-POS-16) */}
       {showPelunasanModal && txToLunas && (
         <div className="fixed inset-0 z-[550] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-sm">
+          <div className="bg-white rounded-lg p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-800">Pelunasan Pengambilan Cucian</h3>
               <button onClick={() => setShowPelunasanModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
@@ -562,7 +562,7 @@ export default function RiwayatView() {
       {/* Detail Modal */}
       {selectedTx && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-md">
+          <div className="bg-white rounded-lg p-5 w-full max-w-md">
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-semibold text-slate-800">Detail Nota {selectedTx.noNota}</h3>
@@ -577,7 +577,7 @@ export default function RiwayatView() {
       {/* Manual Transaction Input Modal */}
       {showManualModal && (
         <div className="fixed inset-0 z-[500] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-lg max-h-[92vh] overflow-y-auto space-y-4 shadow-xl">
+          <div className="bg-white rounded-lg p-5 w-full max-w-lg max-h-[92vh] overflow-y-auto space-y-4 shadow-xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 text-[#1E4648] flex items-center justify-center font-bold text-sm">

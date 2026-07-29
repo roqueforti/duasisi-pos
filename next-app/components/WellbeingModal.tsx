@@ -129,7 +129,7 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
       <div
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
-        className="relative bg-white text-slate-800 rounded-2xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 text-center overflow-hidden animate-pop-scale"
+        className="relative bg-white text-slate-800 rounded-lg p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 text-center overflow-hidden animate-pop-scale"
       >
         {/* Top Accent Line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-[#1E4648]" />
@@ -148,7 +148,7 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
 
         {/* Icon */}
         <div className="mx-auto w-14 h-14 mb-3 flex items-center justify-center">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border shadow-xs transition-all duration-200 ${affirmation.iconBg}`}>
+          <div className={`w-14 h-14 rounded-lg flex items-center justify-center border shadow-xs transition-all duration-200 ${affirmation.iconBg}`}>
             <IconComp className={`w-7 h-7 ${isChanging ? 'scale-75 opacity-50' : 'scale-100 opacity-100'} transition-all duration-200`} />
           </div>
         </div>
@@ -167,7 +167,7 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
         </div>
 
         {/* Quote Box */}
-        <div className="relative mb-4 text-left bg-slate-50 border border-slate-200/80 rounded-xl p-4 overflow-hidden">
+        <div className="relative mb-4 text-left bg-slate-50 border border-slate-200/80 rounded-lg p-4 overflow-hidden">
           <Quote className="absolute top-2 left-2 w-6 h-6 text-slate-300 pointer-events-none" />
           <Quote className="absolute bottom-2 right-2 w-6 h-6 text-slate-300 pointer-events-none rotate-180" />
 
@@ -206,7 +206,7 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
         {/* Primary Action Button */}
         <button
           onClick={onFinish}
-          className="w-full bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-2.5 px-5 rounded-xl text-xs transition-all shadow-sm active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+          className="w-full bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-2.5 px-5 rounded-lg text-xs transition-all shadow-sm active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
         >
           <span>Siap Bertugas & Melayani</span>
           <ArrowRight className="w-4 h-4 text-white" />

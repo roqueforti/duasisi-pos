@@ -98,20 +98,20 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
       <div className="fixed inset-0 bg-[radial-gradient(#1E4648_1px,transparent_1px)] [background-size:16px_16px] opacity-20 pointer-events-none" />
 
       {loading ? (
-        <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl border border-slate-200">
+        <div className="bg-white rounded-lg p-8 max-w-sm w-full text-center shadow-2xl border border-slate-200">
           <RefreshCw className="w-10 h-10 text-[#1E4648] animate-spin mx-auto mb-4" />
           <h3 className="text-base font-bold text-slate-800 mb-1">Memverifikasi Keaslian E-Nota...</h3>
           <p className="text-xs text-slate-500">Mengecek sertifikat keamanan di Cloud Dua SiSi POS</p>
         </div>
       ) : errorMsg || !tx ? (
-        <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl border border-rose-200">
+        <div className="bg-white rounded-lg p-8 max-w-md w-full text-center shadow-2xl border border-rose-200">
           <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-slate-900 mb-2">E-Nota Tidak Ditemukan</h3>
           <p className="text-xs text-slate-600 mb-6">{errorMsg || 'Nomor nota tidak terdaftar pada sistem server Dua SiSi POS.'}</p>
           {onBackToApp && (
             <button
               onClick={onBackToApp}
-              className="bg-[#1E4648] text-white px-5 py-2.5 rounded-xl text-xs font-semibold hover:bg-[#153334] transition shadow-md"
+              className="bg-[#1E4648] text-white px-5 py-2.5 rounded-lg text-xs font-semibold hover:bg-[#153334] transition shadow-md"
             >
               Kembali ke Aplikasi Utama
             </button>
@@ -120,9 +120,9 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
       ) : (
         <div className="w-full max-w-md space-y-4 relative z-10">
           {/* Security Verification Banner Header */}
-          <div className="bg-emerald-950/80 border border-emerald-700/60 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-emerald-200 shadow-lg">
+          <div className="bg-emerald-950/80 border border-emerald-700/60 rounded-lg p-3.5 flex items-center justify-between gap-3 text-emerald-200 shadow-lg">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-400/30">
+              <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-400/30">
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
               </div>
               <div>
@@ -141,13 +141,13 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
           </div>
 
           {/* THERMAL PDF RECEIPT CONTAINER */}
-          <div className="bg-stone-50 border border-stone-300 rounded-2xl p-6 shadow-2xl text-slate-800 font-sans relative overflow-hidden print:shadow-none print:border-none print:p-0">
+          <div className="bg-stone-50 border border-stone-300 rounded-lg p-6 shadow-2xl text-slate-800 font-sans relative overflow-hidden print:shadow-none print:border-none print:p-0">
             {/* Top Zig-Zag Thermal Paper Decoration */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-[radial-gradient(circle,#cbd5e1_1px,transparent_1px)] [background-size:8px_8px]" />
 
             {/* Receipt Header */}
             <div className="text-center pb-4 border-b border-dashed border-stone-300">
-              <div className="inline-block p-2 rounded-xl bg-[#1E4648]/10 mb-2">
+              <div className="inline-block p-2 rounded-lg bg-[#1E4648]/10 mb-2">
                 <img
                   src="./assets/logo-full-white.svg"
                   alt="Dua SiSi Logo"
@@ -269,14 +269,14 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
           <div className="flex items-center gap-2 print:hidden">
             <button
               onClick={handlePrint}
-              className="flex-1 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm"
+              className="flex-1 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-semibold py-2.5 px-4 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-sm"
             >
               <Printer className="w-4 h-4 text-[#1E4648]" />
               <span>Cetak / PDF</span>
             </button>
             <button
               onClick={handleShare}
-              className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-semibold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md"
+              className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-semibold py-2.5 px-4 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-md"
             >
               <Share2 className="w-4 h-4" />
               <span>Bagikan Link WA</span>
@@ -284,7 +284,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
             {onBackToApp && (
               <button
                 onClick={onBackToApp}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 px-3 rounded-xl text-xs transition shadow-sm"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 px-3 rounded-lg text-xs transition shadow-sm"
                 title="Buka POS"
               >
                 Aplikasi

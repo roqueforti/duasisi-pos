@@ -215,7 +215,7 @@ export default function PegawaiView() {
       {/* Add Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-sm">
+          <div className="bg-white rounded-lg p-5 w-full max-w-sm">
             <h3 className="text-sm font-semibold text-slate-800 mb-4">Tambah Pegawai Baru</h3>
             <div className="space-y-3 mb-4">
               <div>

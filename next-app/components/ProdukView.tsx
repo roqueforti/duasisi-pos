@@ -345,7 +345,7 @@ export default function ProdukView() {
 
       {showModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-sm">
+          <div className="bg-white rounded-lg p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-800">{editingId ? 'Edit Layanan' : 'Tambah Layanan Baru'}</h3>
               <button onClick={() => setShowModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
@@ -378,7 +378,7 @@ export default function ProdukView() {
 
       {showPromoModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-sm">
+          <div className="bg-white rounded-lg p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-800">Buat Voucher Promo Baru</h3>
               <button onClick={() => setShowPromoModal(false)}><X className="w-4 h-4 text-slate-400" /></button>

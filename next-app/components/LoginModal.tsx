@@ -62,7 +62,7 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
         backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.88)), url('${bgImgUrl}'), url('./assets/bg-outlet.jpeg')`
       }}
     >
-      <div className="bg-[#11292B] rounded-2xl p-8 text-center max-w-sm w-full border border-slate-700 shadow-2xl text-white">
+      <div className="bg-[#11292B] rounded-lg p-8 text-center max-w-sm w-full border border-slate-700 shadow-2xl text-white">
         {/* Logo Header */}
         <div className="mb-6 flex items-center justify-center">
           <img 
@@ -78,7 +78,7 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
         </div>
 
         {errorMsg && (
-          <div className="mb-4 text-xs font-semibold text-rose-300 bg-rose-950/80 p-2.5 rounded-xl border border-rose-700 animate-shake">
+          <div className="mb-4 text-xs font-semibold text-rose-300 bg-rose-950/80 p-2.5 rounded-lg border border-rose-700 animate-shake">
             {errorMsg}
           </div>
         )}
@@ -93,7 +93,7 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
             maxLength={4}
             autoFocus
             disabled={loading}
-            className="w-full text-center text-3xl font-bold tracking-[14px] py-3.5 px-4 bg-slate-900 text-white placeholder-slate-500 border border-slate-700 rounded-xl outline-none focus:border-teal-400 focus:bg-slate-950 transition-all shadow-inner font-sans"
+            className="w-full text-center text-3xl font-bold tracking-[14px] py-3.5 px-4 bg-slate-900 text-white placeholder-slate-500 border border-slate-700 rounded-lg outline-none focus:border-teal-400 focus:bg-slate-950 transition-all shadow-inner font-sans"
           />
           {loading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-teal-400">

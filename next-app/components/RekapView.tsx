@@ -410,7 +410,7 @@ export default function RekapView() {
           ) : (
             <div className="space-y-3">
               {pendingVoidList.map((tx) => (
-                <div key={tx.noNota} className="p-4 border border-rose-200 rounded-xl bg-rose-50/40 flex items-center justify-between gap-4 flex-wrap">
+                <div key={tx.noNota} className="p-4 border border-rose-200 rounded-lg bg-rose-50/40 flex items-center justify-between gap-4 flex-wrap">
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-slate-800 text-sm">{tx.noNota}</span>

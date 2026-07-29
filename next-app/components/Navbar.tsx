@@ -108,7 +108,7 @@ export default function Navbar({
           {/* Bluetooth Thermal Printer Status & Config Button */}
           <button
             onClick={() => setIsPrinterModalOpen(true)}
-            className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition border shrink-0 ${
+            className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition border shrink-0 ${
               printerConnected
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
@@ -129,7 +129,7 @@ export default function Navbar({
           {/* PWA Install Button */}
           <button
             onClick={handleInstallPWA}
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0"
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition shrink-0"
             title="Instal Aplikasi Dua SiSi POS ke HP/PC"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
@@ -150,7 +150,7 @@ export default function Navbar({
           )}
 
           {/* Clock */}
-          <div className="hidden lg:block text-xs text-slate-500 font-semibold px-3 py-1 bg-slate-50 border border-slate-200/80 rounded-xl shrink-0">
+          <div className="hidden lg:block text-xs text-slate-500 font-semibold px-3 py-1 bg-slate-50 border border-slate-200/80 rounded-lg shrink-0">
             {clockStr || '00.00.00 WIB'}
           </div>
 

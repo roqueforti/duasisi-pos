@@ -287,7 +287,7 @@ export default function PrinterModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
         {/* Header */}
         <div className="bg-[#1E4648] text-white px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -311,14 +311,14 @@ export default function PrinterModal({
         <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
           {/* Notifications */}
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <div className="flex-1">{errorMsg}</div>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-start gap-2">
+            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-start gap-2">
               <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <div className="flex-1">{successMsg}</div>
             </div>
@@ -326,7 +326,7 @@ export default function PrinterModal({
 
           {/* Bluetooth Compatibility Warning */}
           {!btSupported && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-start gap-2">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs flex items-start gap-2">
               <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
               <div>
                 Browser ini belum mendukung Web Bluetooth API. Anda dapat menggunakan mode <b>Printer System (Standard)</b> atau gunakan peramban Chrome / Edge.
@@ -335,7 +335,7 @@ export default function PrinterModal({
           )}
 
           {/* Bluetooth Connection Status Card */}
-          <div className={`p-4 rounded-xl border transition ${
+          <div className={`p-4 rounded-lg border transition ${
             deviceInfo.connected
               ? 'bg-emerald-50/50 border-emerald-200'
               : 'bg-slate-50 border-slate-200'
@@ -358,7 +358,7 @@ export default function PrinterModal({
             </div>
 
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-xl ${
+              <div className={`p-3 rounded-lg ${
                 deviceInfo.connected ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600'
               }`}>
                 {deviceInfo.connected ? <Bluetooth className="w-6 h-6" /> : <BluetoothOff className="w-6 h-6" />}
@@ -409,7 +409,7 @@ export default function PrinterModal({
               <button
                 type="button"
                 onClick={() => handleModeChange('thermal')}
-                className={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${
+                className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
                   printMode === 'thermal'
                     ? 'border-[#1E4648] bg-teal-50/40 text-[#1E4648] ring-1 ring-[#1E4648]'
                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
@@ -428,7 +428,7 @@ export default function PrinterModal({
               <button
                 type="button"
                 onClick={() => handleModeChange('system')}
-                className={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${
+                className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
                   printMode === 'system'
                     ? 'border-[#1E4648] bg-teal-50/40 text-[#1E4648] ring-1 ring-[#1E4648]'
                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
@@ -448,7 +448,7 @@ export default function PrinterModal({
 
           {/* Pending Print Job Preview if triggered with tx */}
           {tx && (
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
                   {printType === 'label' ? <Tag className="w-3.5 h-3.5 text-amber-600" /> : <FileText className="w-3.5 h-3.5 text-teal-600" />}
