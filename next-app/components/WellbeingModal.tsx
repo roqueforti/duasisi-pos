@@ -129,7 +129,7 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
       <div
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
-        className="relative bg-white text-slate-800 rounded-lg p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 text-center overflow-hidden animate-pop-scale"
+        className="relative bg-white text-slate-600 rounded-lg p-6 sm:p-7 max-w-md w-full shadow-lg border border-slate-100 text-center overflow-hidden animate-pop-scale"
       >
         {/* Top Accent Line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-[#1E4648]" />
@@ -155,7 +155,7 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
 
         {/* Greeting & Title */}
         <div className="mb-4">
-          <h2 className="text-xl font-bold text-slate-900 mb-0.5">
+          <h2 className="text-xl font-bold text-[#1E4648] mb-0.5">
             {greeting.main}
           </h2>
           <p className="text-xs text-slate-500 mb-2">

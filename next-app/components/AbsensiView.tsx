@@ -102,7 +102,7 @@ export default function AbsensiView() {
     <div className="p-3 md:p-4 space-y-4 w-full">
       {/* Clock In / Out Box */}
       <div className="bg-white rounded-lg border border-slate-200 p-4">
-        <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-slate-800">
+        <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-slate-600">
           <Clock className="w-4 h-4 text-[#1E4648]" />
           <span>Presensi Shift Pegawai</span>
         </div>
@@ -113,7 +113,7 @@ export default function AbsensiView() {
             <select
               value={namaPegawai}
               onChange={(e) => setNamaPegawai(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white font-medium text-slate-800"
+              className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white font-medium text-slate-600"
             >
               {pegawaiList.map((p, idx) => (
                 <option key={idx} value={p.nama}>
@@ -128,7 +128,7 @@ export default function AbsensiView() {
             <select
               value={shift}
               onChange={(e) => setShift(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white text-slate-800"
+              className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white text-slate-600"
             >
               {shiftList.length > 0 ? (
                 shiftList.map((s, idx) => (
@@ -178,7 +178,7 @@ export default function AbsensiView() {
       {/* Rekap Absensi Table */}
       <div className="bg-white rounded-lg border border-slate-200 overflow-hidden w-full">
         <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
             <UserCheck className="w-4 h-4 text-[#1E4648]" />
             <span>Riwayat Absensi</span>
           </div>
@@ -227,11 +227,11 @@ export default function AbsensiView() {
                 rekap.map((r) => (
                   <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-4 text-slate-600 font-medium">{r.tanggal}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-800">{r.namaPegawai}</td>
+                    <td className="py-3 px-4 font-semibold text-slate-600">{r.namaPegawai}</td>
                     <td className="py-3 px-4 text-slate-600">{r.shift}</td>
                     <td className="py-3 px-4 text-[#1E4648] font-medium">{r.clockIn}</td>
                     <td className="py-3 px-4 text-[#FF9500] font-medium">{r.clockOut || '-'}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-800">{r.durasi}</td>
+                    <td className="py-3 px-4 font-semibold text-slate-600">{r.durasi}</td>
                     <td className="py-3 px-4 text-slate-500">{r.catatan}</td>
                   </tr>
                 ))

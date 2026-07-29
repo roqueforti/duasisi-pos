@@ -158,7 +158,7 @@ export default function PelangganView() {
   const totalOmzetPelanggan = pelangganList.reduce((acc, curr) => acc + curr.totalSpend, 0);
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto text-slate-800">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto text-slate-600">
       {/* Top Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-lg border border-slate-200/80 shadow-2xs">
         <div className="flex items-center gap-3">
@@ -166,7 +166,7 @@ export default function PelangganView() {
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">Data Pelanggan & Repeat Order</h1>
+            <h1 className="text-base sm:text-lg font-bold text-slate-700 leading-tight">Data Pelanggan & Repeat Order</h1>
             <p className="text-xs text-slate-500 font-medium">Kelola basis data pelanggan, preferensi cuci, & riwayat belanja</p>
           </div>
         </div>
@@ -189,7 +189,7 @@ export default function PelangganView() {
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Pelanggan</div>
-            <div className="text-xl font-extrabold text-slate-900">{totalPelanggan.toLocaleString('id-ID')} Orang</div>
+            <div className="text-xl font-bold text-[#1E4648]">{totalPelanggan.toLocaleString('id-ID')} Orang</div>
           </div>
         </div>
 
@@ -199,7 +199,7 @@ export default function PelangganView() {
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Repeat Order (Member)</div>
-            <div className="text-xl font-extrabold text-[#FF9500]">{repeatCount.toLocaleString('id-ID')} Orang</div>
+            <div className="text-xl font-bold text-[#FF9500]">{repeatCount.toLocaleString('id-ID')} Orang</div>
           </div>
         </div>
 
@@ -209,7 +209,7 @@ export default function PelangganView() {
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Akumulasi Belanja</div>
-            <div className="text-xl font-black text-[#1E4648]">Rp {totalOmzetPelanggan.toLocaleString('id-ID')}</div>
+            <div className="text-xl font-bold text-[#1E4648]">Rp {totalOmzetPelanggan.toLocaleString('id-ID')}</div>
           </div>
         </div>
       </div>
@@ -234,7 +234,7 @@ export default function PelangganView() {
             <button
               onClick={() => setSortBy('terakhir')}
               className={`px-3 py-1.5 rounded-lg border transition ${
-                sortBy === 'terakhir' ? 'bg-[#0f172a] text-white border-[#0f172a]' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                sortBy === 'terakhir' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
               }`}
             >
               Terbaru Order
@@ -242,7 +242,7 @@ export default function PelangganView() {
             <button
               onClick={() => setSortBy('order')}
               className={`px-3 py-1.5 rounded-lg border transition ${
-                sortBy === 'order' ? 'bg-[#0f172a] text-white border-[#0f172a]' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                sortBy === 'order' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
               }`}
             >
               Paling Sering
@@ -250,7 +250,7 @@ export default function PelangganView() {
             <button
               onClick={() => setSortBy('spend')}
               className={`px-3 py-1.5 rounded-lg border transition ${
-                sortBy === 'spend' ? 'bg-[#0f172a] text-white border-[#0f172a]' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                sortBy === 'spend' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
               }`}
             >
               Belanja Tertinggi
@@ -294,14 +294,14 @@ export default function PelangganView() {
               ) : (
                 sortedList.map((item) => (
                   <tr key={item.noHp} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
+                    <td className="py-3.5 px-4 font-mono font-bold text-slate-700">
                       {item.noHp}
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                      <div className="font-bold text-slate-700 flex items-center gap-1.5">
                         <span>{item.nama}</span>
                         {item.totalOrder > 1 && (
-                          <span className="px-1.5 py-0.5 bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/30 rounded text-[9px] font-extrabold uppercase">
+                          <span className="px-1.5 py-0.5 bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/30 rounded text-[9px] font-bold uppercase">
                             Member ({item.totalOrder}x)
                           </span>
                         )}
@@ -311,11 +311,11 @@ export default function PelangganView() {
                       )}
                     </td>
                     <td className="py-3.5 px-4 text-center">
-                      <span className="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-lg text-xs font-black">
+                      <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
                         {item.totalOrder} Transaksi
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-right font-black text-[#1E4648]">
+                    <td className="py-3.5 px-4 text-right font-bold text-[#1E4648]">
                       Rp {item.totalSpend.toLocaleString('id-ID')}
                     </td>
                     <td className="py-3.5 px-4 text-slate-500 text-[11px]">
@@ -344,7 +344,7 @@ export default function PelangganView() {
       {/* Modal Detail & Edit Pelanggan + Riwayat Transaksi */}
       {showDetailModal && selectedCust && (
         <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg p-5 sm:p-6 w-full max-w-2xl border border-slate-100 shadow-2xl my-auto max-h-[92vh] flex flex-col">
+          <div className="bg-white rounded-lg p-5 sm:p-6 w-full max-w-2xl border border-slate-100 shadow-lg my-auto max-h-[92vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -352,7 +352,7 @@ export default function PelangganView() {
                   <Users className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Detail & Edit Data Pelanggan</h3>
+                  <h3 className="text-base font-bold text-slate-700">Detail & Edit Data Pelanggan</h3>
                   <p className="text-[11px] text-slate-500 font-medium">No. HP Primary Key: {selectedCust.noHp}</p>
                 </div>
               </div>
@@ -365,7 +365,7 @@ export default function PelangganView() {
             <div className="flex-1 overflow-y-auto pr-1 py-4 text-xs space-y-4">
               {/* Form Input Section */}
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
-                <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px] border-b border-slate-200 pb-1 flex items-center gap-1.5">
+                <div className="font-bold text-slate-600 uppercase tracking-wider text-[11px] border-b border-slate-200 pb-1 flex items-center gap-1.5">
                   <Edit3 className="w-3.5 h-3.5 text-[#1E4648]" />
                   <span>Informasi Data Pelanggan</span>
                 </div>
@@ -377,7 +377,7 @@ export default function PelangganView() {
                       type="text"
                       value={editNama}
                       onChange={(e) => setEditNama(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
                     />
                   </div>
 
@@ -388,7 +388,7 @@ export default function PelangganView() {
                       value={editNoHp}
                       onChange={(e) => setEditNoHp(e.target.value)}
                       placeholder="08..."
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono font-bold outline-none focus:border-[#1E4648]"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-mono font-bold outline-none focus:border-[#1E4648]"
                     />
                   </div>
                 </div>
@@ -400,7 +400,7 @@ export default function PelangganView() {
                     value={editAlamat}
                     onChange={(e) => setEditAlamat(e.target.value)}
                     placeholder="Alamat rumah / outlet jemput"
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
                   />
                 </div>
 
@@ -411,7 +411,7 @@ export default function PelangganView() {
                     value={editCatatan}
                     onChange={(e) => setEditCatatan(e.target.value)}
                     placeholder="Misal: Selalu minta tanpa pewangi, lipat baju rapi"
-                    className="w-full p-2.5 bg-white border border-slate-300 rounded-lg font-medium outline-none focus:border-[#1E4648]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-lg font-medium outline-none focus:border-[#1E4648]"
                   />
                 </div>
               </div>
@@ -420,25 +420,25 @@ export default function PelangganView() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-[11px]">
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Daftar Pertama:</span>
-                  <span className="font-bold text-slate-800">{selectedCust.tglDaftar || '-'}</span>
+                  <span className="font-bold text-slate-600">{selectedCust.tglDaftar || '-'}</span>
                 </div>
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Total Order:</span>
-                  <span className="font-bold text-slate-800">{selectedCust.totalOrder} Transaksi</span>
+                  <span className="font-bold text-slate-600">{selectedCust.totalOrder} Transaksi</span>
                 </div>
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Total Belanja:</span>
-                  <span className="font-extrabold text-[#1E4648]">Rp {selectedCust.totalSpend.toLocaleString('id-ID')}</span>
+                  <span className="font-bold text-[#1E4648]">Rp {selectedCust.totalSpend.toLocaleString('id-ID')}</span>
                 </div>
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Terakhir Order:</span>
-                  <span className="font-bold text-slate-800">{selectedCust.terakhirOrder || '-'}</span>
+                  <span className="font-bold text-slate-600">{selectedCust.terakhirOrder || '-'}</span>
                 </div>
               </div>
 
               {/* Transaction History Section */}
               <div className="space-y-2">
-                <div className="font-bold text-slate-800 uppercase tracking-wider text-[11px] pb-1 border-b border-slate-100 flex items-center justify-between">
+                <div className="font-bold text-slate-600 uppercase tracking-wider text-[11px] pb-1 border-b border-slate-100 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <History className="w-3.5 h-3.5 text-[#1E4648]" />
                     <span>Riwayat Transaksi Pelanggan Ini</span>
@@ -454,7 +454,7 @@ export default function PelangganView() {
                   ) : (
                     historyList.map((tx) => (
                       <div key={tx.noNota} className="p-3 bg-white border border-slate-200 rounded-lg space-y-1 text-[11px]">
-                        <div className="flex justify-between items-center font-bold text-slate-900">
+                        <div className="flex justify-between items-center font-bold text-slate-700">
                           <span className="font-mono text-[#1E4648]">{tx.noNota}</span>
                           <span>Rp {tx.total.toLocaleString('id-ID')}</span>
                         </div>

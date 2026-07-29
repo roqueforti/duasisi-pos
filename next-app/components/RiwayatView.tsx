@@ -250,7 +250,7 @@ export default function RiwayatView() {
               className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${
                 filter === f
                   ? 'bg-[#1E4648] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 hover:text-slate-700'
               }`}
             >
               {f === 'Semua' ? 'Semua Tipe' : f === 'SelfService' ? 'Self Service' : 'Full Service'}
@@ -332,7 +332,7 @@ export default function RiwayatView() {
               ) : (
                 filteredTx.map((tx) => (
                   <tr key={tx.noNota} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-800">
+                    <td className="py-3 px-4 font-bold text-slate-600">
                       {tx.noNota}
                       {tx.statusVoid === 'PendingApproval' && (
                         <div className="text-[10px] text-[#FF9500] font-semibold bg-[#FF9500]/10 border border-[#FF9500]/30 px-1.5 py-0.5 rounded mt-0.5 inline-block">
@@ -341,7 +341,7 @@ export default function RiwayatView() {
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-800">{tx.namaPelanggan}</div>
+                      <div className="font-semibold text-slate-600">{tx.namaPelanggan}</div>
                       {tx.noHp && <div className="text-[11px] text-slate-500">{tx.noHp}</div>}
                     </td>
                     <td className="py-3 px-4">
@@ -385,14 +385,14 @@ export default function RiwayatView() {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => setSelectedTx(tx)}
-                          className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded transition"
+                          className="p-1.5 text-slate-500 hover:text-slate-600 hover:bg-slate-100 rounded transition"
                           title="Detail Nota"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handlePrintReceipt(tx)}
-                          className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded transition"
+                          className="p-1.5 text-slate-500 hover:text-slate-600 hover:bg-slate-100 rounded transition"
                           title="Cetak Struk"
                         >
                           <Printer className="w-3.5 h-3.5" />
@@ -477,8 +477,8 @@ export default function RiwayatView() {
       {showStatusModal && txToUpdateStatus && (
         <div className="fixed inset-0 z-[550] bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm text-center">
-            <h3 className="text-sm font-bold text-slate-800 mb-1">Perbarui Status Produksi</h3>
-            <p className="text-xs text-slate-500 mb-4">Nota: <span className="font-bold text-slate-800">{txToUpdateStatus.noNota}</span></p>
+            <h3 className="text-sm font-bold text-slate-600 mb-1">Perbarui Status Produksi</h3>
+            <p className="text-xs text-slate-500 mb-4">Nota: <span className="font-bold text-slate-600">{txToUpdateStatus.noNota}</span></p>
 
             <div className="space-y-2 mb-5">
               {(['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika', 'Siap Diambil', 'Selesai'] as const).map((st) => (
@@ -506,7 +506,7 @@ export default function RiwayatView() {
         <div className="fixed inset-0 z-[550] bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-slate-800">Pelunasan Pengambilan Cucian</h3>
+              <h3 className="text-sm font-bold text-slate-600">Pelunasan Pengambilan Cucian</h3>
               <button onClick={() => setShowPelunasanModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
             
@@ -562,7 +562,7 @@ export default function RiwayatView() {
           <div className="bg-white rounded-lg p-5 w-full max-w-md">
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
               <div>
-                <h3 className="text-sm font-semibold text-slate-800">Detail Nota {selectedTx.noNota}</h3>
+                <h3 className="text-sm font-semibold text-slate-600">Detail Nota {selectedTx.noNota}</h3>
                 <p className="text-[11px] text-slate-400">{selectedTx.tanggal}</p>
               </div>
               <button onClick={() => setSelectedTx(null)} className="p-1 rounded hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
@@ -574,14 +574,14 @@ export default function RiwayatView() {
       {/* Manual Transaction Input Modal */}
       {showManualModal && (
         <div className="fixed inset-0 z-[500] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-5 w-full max-w-lg max-h-[92vh] overflow-y-auto space-y-4 shadow-xl">
+          <div className="bg-white rounded-lg p-5 w-full max-w-lg max-h-[92vh] overflow-y-auto space-y-4 shadow-md">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 border border-[#B5C9C9]200 text-[#1E4648] flex items-center justify-center font-bold text-sm">
                   📝
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800">Input Transaksi Manual</h3>
+                  <h3 className="text-sm font-bold text-slate-600">Input Transaksi Manual</h3>
                   <p className="text-[11px] text-slate-500">Catat transaksi susulan / khusus ke database server online</p>
                 </div>
               </div>
@@ -668,7 +668,7 @@ export default function RiwayatView() {
                 <select
                   value={manualStatus}
                   onChange={(e) => setManualStatus(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] bg-white font-medium text-slate-800"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] bg-white font-medium text-slate-600"
                 >
                   <option value="Selesai">Selesai (Langsung Lunas & Selesai)</option>
                   <option value="Diterima">Diterima (Proses Pengerjaan)</option>
@@ -740,7 +740,7 @@ export default function RiwayatView() {
                 <span className="text-[11px] font-semibold text-[#1E4648]">Total Nominal Transaksi</span>
                 <p className="text-[11px] text-[#1E4648]">{manualQty || 1} × Rp {(Number(manualHarga) || 0).toLocaleString('id-ID')}</p>
               </div>
-              <div className="text-base font-extrabold text-[#1E4648]">
+              <div className="text-base font-bold text-[#1E4648]">
                 Rp {((Number(manualHarga) || 0) * (Number(manualQty) || 1)).toLocaleString('id-ID')}
               </div>
             </div>

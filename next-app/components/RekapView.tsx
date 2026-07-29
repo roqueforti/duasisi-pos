@@ -149,7 +149,7 @@ export default function RekapView() {
             <button
               onClick={() => setActiveTab('Laporan')}
               className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
-                activeTab === 'Laporan' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeTab === 'Laporan' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
@@ -158,7 +158,7 @@ export default function RekapView() {
             <button
               onClick={() => setActiveTab('ApprovalVoid')}
               className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 relative ${
-                activeTab === 'ApprovalVoid' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeTab === 'ApprovalVoid' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
               }`}
             >
               <ShieldAlert className="w-3.5 h-3.5" />
@@ -172,7 +172,7 @@ export default function RekapView() {
             <button
               onClick={() => setActiveTab('AuditTrail')}
               className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
-                activeTab === 'AuditTrail' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeTab === 'AuditTrail' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
               }`}
             >
               <History className="w-3.5 h-3.5" />
@@ -189,7 +189,7 @@ export default function RekapView() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="bg-transparent outline-none font-semibold text-slate-800"
+              className="bg-transparent outline-none font-semibold text-slate-600"
             />
           </div>
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md text-xs">
@@ -198,7 +198,7 @@ export default function RekapView() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="bg-transparent outline-none font-semibold text-slate-800"
+              className="bg-transparent outline-none font-semibold text-slate-600"
             />
           </div>
 
@@ -242,21 +242,21 @@ export default function RekapView() {
 
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs">
               <div className="text-[11px] font-medium text-slate-500 mb-1">Jumlah Transaksi Nota</div>
-              <div className="text-lg font-bold text-slate-800">
+              <div className="text-lg font-bold text-slate-600">
                 {ringkasan.jumlahTransaksi} <span className="text-xs font-normal text-slate-400">nota</span>
               </div>
             </div>
 
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs">
               <div className="text-[11px] font-medium text-slate-500 mb-1">Rata-rata Nilai Nota</div>
-              <div className="text-lg font-bold text-slate-800">
+              <div className="text-lg font-bold text-slate-600">
                 Rp {ringkasan.rataRata.toLocaleString('id-ID')}
               </div>
             </div>
 
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs">
               <div className="text-[11px] font-medium text-slate-500 mb-1">Self vs Full Service</div>
-              <div className="text-sm font-bold text-slate-800 flex items-center gap-2 mt-1">
+              <div className="text-sm font-bold text-slate-600 flex items-center gap-2 mt-1">
                 <span className="text-[#1E4648]">{ringkasan.selfCount} Self</span>
                 <span className="text-slate-300">•</span>
                 <span className="text-[#FF9500]">{ringkasan.fullCount} Full</span>
@@ -266,7 +266,7 @@ export default function RekapView() {
 
           {/* Visual Analytics Chart Widget */}
           <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs">
-            <h3 className="text-xs font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+            <h3 className="text-xs font-bold text-slate-600 mb-3 flex items-center gap-1.5">
               <TrendingUp className="w-4 h-4 text-[#1E4648]" />
               <span>Grafik Visual Tren Omzet Harian</span>
             </h3>
@@ -303,7 +303,7 @@ export default function RekapView() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Left: Omzet Harian Table */}
             <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
-              <div className="px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-800">
+              <div className="px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-600">
                 Rincian Tabel Omzet Harian
               </div>
 
@@ -330,7 +330,7 @@ export default function RekapView() {
                     ) : (
                       omzetHarian.map((row, idx) => (
                         <tr key={idx} className="hover:bg-slate-50 transition">
-                          <td className="py-2.5 px-4 font-semibold text-slate-800">{row.tanggal}</td>
+                          <td className="py-2.5 px-4 font-semibold text-slate-600">{row.tanggal}</td>
                           <td className="py-2.5 px-4 text-slate-600">{row.jumlahTransaksi} transaksi</td>
                           <td className="py-2.5 px-4 text-right font-bold text-[#1E4648]">Rp {row.omzet.toLocaleString('id-ID')}</td>
                         </tr>
@@ -343,7 +343,7 @@ export default function RekapView() {
 
             {/* Right: Top Layanan */}
             <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
-              <div className="px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-800 flex items-center justify-between">
+              <div className="px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-600 flex items-center justify-between">
                 <span>Peringkat Layanan Terlaris</span>
                 <Award className="w-4 h-4 text-[#FF9500]" />
               </div>
@@ -371,7 +371,7 @@ export default function RekapView() {
                     ) : (
                       layananTerlaris.map((row, idx) => (
                         <tr key={idx} className="hover:bg-slate-50 transition">
-                          <td className="py-2.5 px-4 font-semibold text-slate-800">{row.layanan}</td>
+                          <td className="py-2.5 px-4 font-semibold text-slate-600">{row.layanan}</td>
                           <td className="py-2.5 px-4 text-center font-bold text-slate-700">{row.qty}</td>
                           <td className="py-2.5 px-4 text-right font-bold text-[#1E4648]">Rp {row.omzet.toLocaleString('id-ID')}</td>
                         </tr>
@@ -390,7 +390,7 @@ export default function RekapView() {
         <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-600 flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 text-rose-600" />
                 <span>Persetujuan Void & Retur Transaksi</span>
               </h3>
@@ -413,10 +413,10 @@ export default function RekapView() {
                 <div key={tx.noNota} className="p-4 border border-rose-200 rounded-lg bg-rose-50/40 flex items-center justify-between gap-4 flex-wrap">
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-800 text-sm">{tx.noNota}</span>
+                      <span className="font-bold text-slate-600 text-sm">{tx.noNota}</span>
                       <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded">Pengajuan Void</span>
                     </div>
-                    <p className="text-slate-600">Pelanggan: <span className="font-semibold text-slate-800">{tx.namaPelanggan}</span> ({tx.noHp || '-'})</p>
+                    <p className="text-slate-600">Pelanggan: <span className="font-semibold text-slate-600">{tx.namaPelanggan}</span> ({tx.noHp || '-'})</p>
                     <p className="text-slate-600">Total Nominal: <span className="font-bold text-rose-700">Rp {tx.total.toLocaleString('id-ID')}</span></p>
                     <p className="text-slate-500 italic">Alasan Void: "{tx.alasanVoid || 'Pembatalan transaksi kasir'}"</p>
                   </div>
@@ -445,7 +445,7 @@ export default function RekapView() {
       {/* TAB 3: AUDIT TRAIL LOG SYSTEM (FR-BE-04) */}
       {activeTab === 'AuditTrail' && (
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
-          <div className="px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-800 flex items-center gap-2">
+          <div className="px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-600 flex items-center gap-2">
             <History className="w-4 h-4 text-[#1E4648]" />
             <span>Jejak Rekam Aktivitas (Audit Trail Log)</span>
           </div>
@@ -467,7 +467,7 @@ export default function RekapView() {
                   auditLogs.map((log, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 transition">
                       <td className="py-2.5 px-4 text-slate-500">{log.waktu}</td>
-                      <td className="py-2.5 px-4 font-semibold text-slate-800">{log.namaUser}</td>
+                      <td className="py-2.5 px-4 font-semibold text-slate-600">{log.namaUser}</td>
                       <td className="py-2.5 px-4 text-slate-700">{log.jenisAktivitas}</td>
                       <td className="py-2.5 px-4 text-slate-500">{log.referensi || '-'}</td>
                     </tr>

@@ -160,7 +160,7 @@ export default function ProdukView() {
             <button
               onClick={() => setActiveSubTab('Produk')}
               className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
-                activeSubTab === 'Produk' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeSubTab === 'Produk' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
               }`}
             >
               <Tag className="w-3.5 h-3.5" />
@@ -169,7 +169,7 @@ export default function ProdukView() {
             <button
               onClick={() => setActiveSubTab('Promo')}
               className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
-                activeSubTab === 'Promo' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeSubTab === 'Promo' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
               }`}
             >
               <TagIcon className="w-3.5 h-3.5" />
@@ -178,7 +178,7 @@ export default function ProdukView() {
             <button
               onClick={() => setActiveSubTab('Loyalitas')}
               className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
-                activeSubTab === 'Loyalitas' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                activeSubTab === 'Loyalitas' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
               }`}
             >
               <Gift className="w-3.5 h-3.5" />
@@ -235,7 +235,7 @@ export default function ProdukView() {
                 ) : (
                   layananList.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50 transition">
-                      <td className="py-3 px-4 font-semibold text-slate-800 flex items-center gap-2">
+                      <td className="py-3 px-4 font-semibold text-slate-600 flex items-center gap-2">
                         <span>{item.nama}</span>
                       </td>
                       <td className="py-3 px-4">
@@ -252,7 +252,7 @@ export default function ProdukView() {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right space-x-1">
-                        <button onClick={() => handleOpenEdit(item)} className="p-1 text-slate-500 hover:text-slate-800"><Edit3 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleOpenEdit(item)} className="p-1 text-slate-500 hover:text-slate-600"><Edit3 className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')} className="p-1 text-[#FF9500] hover:text-[#FF9500]"><RotateCcw className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handleHapusLayanan(item.id)} className="p-1 text-rose-500 hover:text-rose-700"><Trash2 className="w-3.5 h-3.5" /></button>
                       </td>
@@ -306,7 +306,7 @@ export default function ProdukView() {
 
       {activeSubTab === 'Loyalitas' && (
         <div className="bg-white rounded-lg border border-slate-200 p-5 max-w-md shadow-xs space-y-4 text-xs">
-          <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+          <h3 className="font-bold text-slate-600 text-sm flex items-center gap-2">
             <Gift className="w-4 h-4 text-[#FF9500]" />
             <span>Pengaturan Skema Poin Pelanggan</span>
           </h3>
@@ -347,7 +347,7 @@ export default function ProdukView() {
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-slate-800">{editingId ? 'Edit Layanan' : 'Tambah Layanan Baru'}</h3>
+              <h3 className="text-sm font-bold text-slate-600">{editingId ? 'Edit Layanan' : 'Tambah Layanan Baru'}</h3>
               <button onClick={() => setShowModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
 
@@ -380,7 +380,7 @@ export default function ProdukView() {
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-slate-800">Buat Voucher Promo Baru</h3>
+              <h3 className="text-sm font-bold text-slate-600">Buat Voucher Promo Baru</h3>
               <button onClick={() => setShowPromoModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
 

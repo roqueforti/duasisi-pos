@@ -62,7 +62,7 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
         backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.88)), url('${bgImgUrl}'), url('./assets/bg-outlet.jpeg')`
       }}
     >
-      <div className="bg-[#11292B] rounded-lg p-8 text-center max-w-sm w-full border border-slate-700 shadow-2xl text-white">
+      <div className="bg-[#11292B] rounded-lg p-8 text-center max-w-sm w-full border border-slate-700 shadow-lg text-white">
         {/* Logo Header */}
         <div className="mb-6 flex items-center justify-center">
           <img 

@@ -86,7 +86,7 @@ export default function InventoryView() {
     <div className="p-3 md:p-4 space-y-4 w-full">
       {/* Header & Controls */}
       <div className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
           <Package className="w-4 h-4 text-[#1E4648]" />
           <span>Stok Bahan & Deterjen</span>
         </div>
@@ -145,8 +145,8 @@ export default function InventoryView() {
                   const isMenipis = item.stok <= item.stokMinimum;
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-4 font-semibold text-slate-800">{item.nama}</td>
-                      <td className="py-3 px-4 font-bold text-slate-900">
+                      <td className="py-3 px-4 font-semibold text-slate-600">{item.nama}</td>
+                      <td className="py-3 px-4 font-bold text-slate-700">
                         {item.stok} <span className="text-slate-400 font-normal text-[11px]">{item.satuan}</span>
                       </td>
                       <td className="py-3 px-4 text-slate-500">{item.stokMinimum} {item.satuan}</td>
@@ -200,7 +200,7 @@ export default function InventoryView() {
       {showAddModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4">Tambah Stok Bahan Baru</h3>
+            <h3 className="text-sm font-semibold text-slate-600 mb-4">Tambah Stok Bahan Baru</h3>
             <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Nama Barang</label>

@@ -84,7 +84,7 @@ export default function PegawaiView() {
     <div className="p-3 md:p-4 space-y-4 w-full">
       {/* Header & Control */}
       <div className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
           <Users className="w-4 h-4 text-[#1E4648]" />
           <span>Manajemen Data Pegawai & Kinerja</span>
         </div>
@@ -109,7 +109,7 @@ export default function PegawaiView() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left: Daftar Pegawai */}
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-200 font-semibold text-xs text-slate-800 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-slate-200 font-semibold text-xs text-slate-600 flex items-center justify-between">
             <span>Daftar Tim Pegawai</span>
             <span className="text-slate-400 font-normal">{pegawaiList.length} Orang</span>
           </div>
@@ -143,7 +143,7 @@ export default function PegawaiView() {
                 ) : (
                   pegawaiList.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-4 font-semibold text-slate-800">{p.nama}</td>
+                      <td className="py-3 px-4 font-semibold text-slate-600">{p.nama}</td>
                       <td className="py-3 px-4 text-slate-600">{p.jabatan}</td>
                       <td className="py-3 px-4 text-slate-500">{p.noHp || '-'}</td>
                       <td className="py-3 px-4 text-right">
@@ -165,7 +165,7 @@ export default function PegawaiView() {
 
         {/* Right: Rekap Kinerja Omzet */}
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-200 font-semibold text-xs text-slate-800 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-slate-200 font-semibold text-xs text-slate-600 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <Award className="w-4 h-4 text-[#FF9500]" /> Rekap Kinerja Penjualan
             </span>
@@ -198,7 +198,7 @@ export default function PegawaiView() {
                 ) : (
                   kinerjaList.map((k, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-4 font-semibold text-slate-800">{k.nama}</td>
+                      <td className="py-3 px-4 font-semibold text-slate-600">{k.nama}</td>
                       <td className="py-3 px-4 font-bold text-slate-700">{k.totalTransaksi} nota</td>
                       <td className="py-3 px-4 font-bold text-[#1E4648] text-right">
                         Rp {(k.totalOmzet || 0).toLocaleString('id-ID')}
@@ -216,7 +216,7 @@ export default function PegawaiView() {
       {showAddModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4">Tambah Pegawai Baru</h3>
+            <h3 className="text-sm font-semibold text-slate-600 mb-4">Tambah Pegawai Baru</h3>
             <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Nama Lengkap *</label>

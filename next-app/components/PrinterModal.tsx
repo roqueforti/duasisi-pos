@@ -287,7 +287,7 @@ export default function PrinterModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-md overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
         {/* Header */}
         <div className="bg-[#1E4648] text-white px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -364,7 +364,7 @@ export default function PrinterModal({
                 {deviceInfo.connected ? <Bluetooth className="w-6 h-6" /> : <BluetoothOff className="w-6 h-6" />}
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-slate-800 text-sm truncate">
+                <h4 className="font-bold text-slate-600 text-sm truncate">
                   {deviceInfo.name}
                 </h4>
                 <p className="text-[11px] text-slate-500 truncate">
@@ -457,7 +457,7 @@ export default function PrinterModal({
                 <span className="text-[11px] font-sans font-bold text-slate-700">{tx.noNota}</span>
               </div>
               <div className="text-xs text-slate-600">
-                Pelanggan: <span className="font-semibold text-slate-800">{tx.namaPelanggan}</span> ({tx.items?.length || 0} items)
+                Pelanggan: <span className="font-semibold text-slate-600">{tx.namaPelanggan}</span> ({tx.items?.length || 0} items)
               </div>
               <div className="text-xs text-slate-600">
                 Total Transaksi: <span className="font-semibold text-[#1E4648]">Rp {tx.total?.toLocaleString('id-ID')}</span>

@@ -91,13 +91,13 @@ export default function Navbar({
       <header className="h-14 bg-white border-b border-slate-200/80 px-2.5 sm:px-4 md:px-6 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-initial mr-2">
           <button
-            className="lg:hidden text-slate-500 hover:text-slate-800 p-1.5 rounded-lg hover:bg-slate-100 transition shrink-0"
+            className="lg:hidden text-slate-500 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition shrink-0"
             onClick={onToggleSidebar}
           >
             <Menu className="w-5 h-5" />
           </button>
           <div className="min-w-0">
-            <h1 className="text-xs sm:text-sm font-bold text-slate-800 truncate whitespace-nowrap max-w-[120px] xs:max-w-[170px] sm:max-w-none">
+            <h1 className="text-xs sm:text-sm font-bold text-slate-600 truncate whitespace-nowrap max-w-[120px] xs:max-w-[170px] sm:max-w-none">
               {tabTitles[currentTab] || 'Dua SiSi POS'}
             </h1>
             <p className="text-[11px] text-slate-400 font-medium hidden md:block truncate">Dashboard • {currentTab}</p>
@@ -161,7 +161,7 @@ export default function Navbar({
             }`}>
               {currentRole === 'MANAGER' ? 'M' : 'S'}
             </div>
-            <span className="hidden md:inline text-xs font-bold text-slate-800">
+            <span className="hidden md:inline text-xs font-bold text-slate-600">
               {currentRole === 'MANAGER' ? 'Manager' : 'Kasir 1'}
             </span>
             <button

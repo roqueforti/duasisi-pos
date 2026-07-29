@@ -93,20 +93,20 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-3 sm:p-6 text-slate-800 select-none">
+    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-3 sm:p-6 text-slate-600 select-none">
       {/* Background Graphic Watermark */}
       <div className="fixed inset-0 bg-[radial-gradient(#1E4648_1px,transparent_1px)] [background-size:16px_16px] opacity-20 pointer-events-none" />
 
       {loading ? (
-        <div className="bg-white rounded-lg p-8 max-w-sm w-full text-center shadow-2xl border border-slate-200">
+        <div className="bg-white rounded-lg p-8 max-w-sm w-full text-center shadow-lg border border-slate-200">
           <RefreshCw className="w-10 h-10 text-[#1E4648] animate-spin mx-auto mb-4" />
-          <h3 className="text-base font-bold text-slate-800 mb-1">Memverifikasi Keaslian E-Nota...</h3>
+          <h3 className="text-base font-bold text-slate-600 mb-1">Memverifikasi Keaslian E-Nota...</h3>
           <p className="text-xs text-slate-500">Mengecek sertifikat keamanan di Cloud Dua SiSi POS</p>
         </div>
       ) : errorMsg || !tx ? (
-        <div className="bg-white rounded-lg p-8 max-w-md w-full text-center shadow-2xl border border-rose-200">
+        <div className="bg-white rounded-lg p-8 max-w-md w-full text-center shadow-lg border border-rose-200">
           <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-slate-900 mb-2">E-Nota Tidak Ditemukan</h3>
+          <h3 className="text-lg font-bold text-slate-700 mb-2">E-Nota Tidak Ditemukan</h3>
           <p className="text-xs text-slate-600 mb-6">{errorMsg || 'Nomor nota tidak terdaftar pada sistem server Dua SiSi POS.'}</p>
           {onBackToApp && (
             <button
@@ -141,7 +141,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
           </div>
 
           {/* THERMAL PDF RECEIPT CONTAINER */}
-          <div className="bg-stone-50 border border-stone-300 rounded-lg p-6 shadow-2xl text-slate-800 font-sans relative overflow-hidden print:shadow-none print:border-none print:p-0">
+          <div className="bg-stone-50 border border-stone-300 rounded-lg p-6 shadow-lg text-slate-600 font-sans relative overflow-hidden print:shadow-none print:border-none print:p-0">
             {/* Top Zig-Zag Thermal Paper Decoration */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-[radial-gradient(circle,#cbd5e1_1px,transparent_1px)] [background-size:8px_8px]" />
 
@@ -154,7 +154,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
                   className="h-8 w-auto filter brightness-0"
                 />
               </div>
-              <h2 className="text-sm font-bold tracking-tight text-slate-900">DUA SISI LAUNDRY</h2>
+              <h2 className="text-sm font-bold tracking-tight text-slate-700">DUA SISI LAUNDRY</h2>
               <p className="text-[10px] text-slate-600 tracking-wider">EXPRESS & COIN LAUNDRY SYSTEM</p>
               <p className="text-[9px] text-slate-500 mt-1">Hotline CS / WA: 0812-3456-7890</p>
             </div>
@@ -163,15 +163,15 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
             <div className="py-3 text-xs space-y-1 border-b border-dashed border-stone-300">
               <div className="flex justify-between">
                 <span className="text-slate-500">NO. NOTA:</span>
-                <span className="font-bold text-slate-900">{tx.noNota}</span>
+                <span className="font-bold text-slate-700">{tx.noNota}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">TANGGAL:</span>
-                <span className="text-slate-800">{tx.tanggal}</span>
+                <span className="text-slate-600">{tx.tanggal}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">PELANGGAN:</span>
-                <span className="font-bold text-slate-900">{tx.namaPelanggan} ({tx.noHp || '-'})</span>
+                <span className="font-bold text-slate-700">{tx.namaPelanggan} ({tx.noHp || '-'})</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">KECEPATAN:</span>
@@ -179,7 +179,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">KASIR:</span>
-                <span className="text-slate-800">{tx.petugas || 'Kasir Dua SiSi'}</span>
+                <span className="text-slate-600">{tx.petugas || 'Kasir Dua SiSi'}</span>
               </div>
               <div className="flex justify-between items-center pt-1">
                 <span className="text-slate-500">STATUS ORDER:</span>
@@ -200,12 +200,12 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
                   tx.items.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-start">
                       <div>
-                        <div className="font-semibold text-slate-900">{item.layanan}</div>
+                        <div className="font-semibold text-slate-700">{item.layanan}</div>
                         <div className="text-[10px] text-slate-500">
                           {item.qty} x Rp {Number(item.hargaSatuan || 0).toLocaleString('id-ID')}
                         </div>
                       </div>
-                      <div className="font-bold text-slate-900">
+                      <div className="font-bold text-slate-700">
                         Rp {Number(item.qty * item.hargaSatuan).toLocaleString('id-ID')}
                       </div>
                     </div>
@@ -219,7 +219,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
             {/* Totals & Payment Summary */}
             <div className="py-3 text-xs space-y-1.5 border-b border-dashed border-stone-300">
               <div className="flex justify-between items-center text-sm font-bold">
-                <span className="text-slate-900">TOTAL PEMBAYARAN:</span>
+                <span className="text-slate-700">TOTAL PEMBAYARAN:</span>
                 <span className="text-[#1E4648] text-base">Rp {Number(tx.total).toLocaleString('id-ID')}</span>
               </div>
               {tx.nominalDP ? (
@@ -228,7 +228,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
                     <span>DP TERBAYAR:</span>
                     <span className="font-medium text-[#1E4648]">Rp {Number(tx.nominalDP).toLocaleString('id-ID')}</span>
                   </div>
-                  <div className="flex justify-between text-slate-900 font-bold">
+                  <div className="flex justify-between text-slate-700 font-bold">
                     <span>SISA TAGIHAN:</span>
                     <span className="text-rose-600">Rp {Number(tx.sisaTagihan || 0).toLocaleString('id-ID')}</span>
                   </div>
@@ -269,7 +269,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
           <div className="flex items-center gap-2 print:hidden">
             <button
               onClick={handlePrint}
-              className="flex-1 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-semibold py-2.5 px-4 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-sm"
+              className="flex-1 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-semibold py-2.5 px-4 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-sm"
             >
               <Printer className="w-4 h-4 text-[#1E4648]" />
               <span>Cetak / PDF</span>

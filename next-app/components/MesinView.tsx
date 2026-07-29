@@ -107,7 +107,7 @@ export default function MesinView() {
     <div className="p-3 md:p-4 space-y-4 w-full">
       {/* Header & Control */}
       <div className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
           <Cpu className="w-4 h-4 text-[#1E4648]" />
           <span>Status Operational Mesin Cuci & Dryer</span>
         </div>
@@ -161,7 +161,7 @@ export default function MesinView() {
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
                       <span>{m.tipe === 'Washer' ? <WashingMachine className="w-4 h-4 text-[#1E4648]" /> : <Flame className="w-4 h-4 text-[#FF9500]" />}</span>
                       <span>{m.nama}</span>
                     </span>
@@ -244,7 +244,7 @@ export default function MesinView() {
       {showAddModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4">Tambah Mesin Baru</h3>
+            <h3 className="text-sm font-semibold text-slate-600 mb-4">Tambah Mesin Baru</h3>
             <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Nama Mesin</label>
@@ -280,7 +280,7 @@ export default function MesinView() {
       {showMulaiModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm">
-            <h3 className="text-sm font-semibold text-slate-800 mb-4">Jalankan Mesin</h3>
+            <h3 className="text-sm font-semibold text-slate-600 mb-4">Jalankan Mesin</h3>
             <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Keterangan / No Nota / Pelanggan</label>

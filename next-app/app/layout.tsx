@@ -53,7 +53,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${plusJakartaSans.variable} font-sans bg-slate-50 text-slate-900 antialiased h-full overflow-hidden`}>
+      <body className={`${plusJakartaSans.variable} font-sans bg-[#F8FAFC] text-slate-700 antialiased h-full overflow-hidden`}>
         {children}
       </body>
     </html>

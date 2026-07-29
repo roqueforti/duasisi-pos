@@ -55,8 +55,8 @@ export default function Sidebar({
     const isActive = currentTab === tabKey;
     return `w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'} rounded-lg text-xs font-semibold transition-colors ${
       isActive 
-        ? 'bg-slate-100 text-slate-900 font-bold shadow-2xs' 
-        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+        ? 'bg-slate-100 text-slate-700 font-bold shadow-2xs' 
+        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
     }`;
   };
 
@@ -74,7 +74,7 @@ export default function Sidebar({
         />
       )}
 
-      <aside className={`bg-white text-slate-800 border-r border-slate-200/80 flex flex-col shrink-0 z-[200] fixed lg:static inset-y-0 left-0 transition-all duration-200 overflow-y-auto ${
+      <aside className={`bg-white text-slate-600 border-r border-slate-200/80 flex flex-col shrink-0 z-[200] fixed lg:static inset-y-0 left-0 transition-all duration-200 overflow-y-auto ${
         isCollapsed ? 'lg:w-[64px]' : 'lg:w-60'
       } ${isSidebarOpen ? 'w-60 translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         
@@ -88,7 +88,7 @@ export default function Sidebar({
             />
             <button
               onClick={() => setIsCollapsed(false)}
-              className="hidden lg:flex text-slate-400 hover:text-slate-800 p-1 rounded-md hover:bg-slate-100 transition"
+              className="hidden lg:flex text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition"
               title="Expand Sidebar"
             >
               <PanelLeftOpen className="w-4 h-4" />
@@ -104,13 +104,13 @@ export default function Sidebar({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setIsCollapsed(true)}
-                className="hidden lg:flex text-slate-400 hover:text-slate-800 p-1 rounded-md hover:bg-slate-100 transition"
+                className="hidden lg:flex text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition"
                 title="Minimize Sidebar"
               >
                 <PanelLeftClose className="w-4 h-4" />
               </button>
               <button 
-                className="lg:hidden text-slate-400 hover:text-slate-800 p-1"
+                className="lg:hidden text-slate-400 hover:text-slate-600 p-1"
                 onClick={() => setIsSidebarOpen(false)}
               >
                 <X className="w-5 h-5" />
@@ -128,7 +128,7 @@ export default function Sidebar({
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
-              <div className="text-xs font-bold text-slate-800 truncate">
+              <div className="text-xs font-bold text-slate-600 truncate">
                 {currentRole === 'MANAGER' ? 'Manager' : 'Kasir 1'}
               </div>
               <div className="text-[11px] text-slate-400 font-medium">
