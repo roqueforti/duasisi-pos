@@ -19,7 +19,7 @@ import { UserRole } from '@/lib/types';
 
 export default function HomePage() {
   const [currentRole, setCurrentRole] = useState<UserRole>('');
-  const [currentTab, setCurrentTab] = useState<string>('dashboard');
+  const [currentTab, setCurrentTab] = useState<string>('transaksi');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [publicNotaParam, setPublicNotaParam] = useState<string | null>(null);
 
@@ -35,7 +35,7 @@ export default function HomePage() {
 
   const handleLoginSuccess = (role: UserRole, label: string) => {
     setCurrentRole(role);
-    setCurrentTab('dashboard');
+    setCurrentTab('transaksi');
   };
 
   const handleLogout = () => {
