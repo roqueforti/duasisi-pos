@@ -485,11 +485,10 @@ export default function PosView() {
                   <div
                     key={idx}
                     onClick={() => updateCart(item, 1)}
-                    onDoubleClick={() => openItemDetailModal(item)}
-                    className={`bg-white rounded-lg border p-3 flex flex-col gap-2.5 transition-all duration-150 cursor-pointer select-none hover:shadow-md hover:-translate-y-0.5 ${
+                    className={`bg-white rounded-lg border p-3 flex flex-col gap-2.5 cursor-pointer select-none active:scale-95 transition-transform duration-75 ${
                       qtyInCart > 0
                         ? 'ring-2 ring-[#1E4648]/25 border-[#1E4648] bg-[#1E4648]/[0.02]'
-                        : 'border-slate-200/80 shadow-2xs hover:border-slate-300'
+                        : 'border-slate-200/80 shadow-2xs hover:border-slate-300 hover:shadow-md'
                     }`}
                   >
                     {/* Icon + Nama produk */}
