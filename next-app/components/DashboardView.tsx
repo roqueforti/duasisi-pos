@@ -29,7 +29,7 @@ import {
   X
 } from 'lucide-react';
 import { UserRole } from '@/lib/types';
-import { runBackend } from '@/lib/api';
+import { runBackend, runBackendCached } from '@/lib/api';
 
 interface DashboardViewProps {
   currentRole: UserRole;
@@ -107,43 +107,31 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
   const fetchDashboardData = async () => {
     setLoading(true);
-    try {
-      // 1. Fetch Transactions
-      const txs = await runBackend<TransaksiItem[]>('getTransaksiList', 'Semua').catch(() => []);
-      if (Array.isArray(txs)) setTransaksiList(txs);
 
-      // 2. Fetch Machines
-      const msn = await runBackend<MesinItem[]>('getMesinList').catch(() => []);
-      if (Array.isArray(msn)) setMesinList(msn);
+    // Fetch dengan cache — render instan dari cache, fresh di background
+    runBackendCached<TransaksiItem[]>('getTransaksiList', (txs) => { if (Array.isArray(txs)) setTransaksiList(txs); }, 2 * 60 * 1000, 'Semua');
+    runBackendCached<MesinItem[]>('getMesinList', (msn) => { if (Array.isArray(msn)) setMesinList(msn); }, 3 * 60 * 1000);
+    runBackendCached<InventoryItem[]>('getInventoryList', (inv) => { if (Array.isArray(inv)) setInventoryList(inv); }, 5 * 60 * 1000);
+    runBackendCached<PelangganItem[]>('getDaftarPelanggan', (cust) => { if (Array.isArray(cust)) setPelangganList(cust); }, 5 * 60 * 1000);
 
-      // 3. Fetch Inventory
-      const inv = await runBackend<InventoryItem[]>('getInventoryList').catch(() => []);
-      if (Array.isArray(inv)) setInventoryList(inv);
+    if (isManager) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const past7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      // 4. Fetch Customers
-      const cust = await runBackend<PelangganItem[]>('getDaftarPelanggan').catch(() => []);
-      if (Array.isArray(cust)) setPelangganList(cust);
+      runBackend('getLaporanRange', past7Days, todayStr)
+        .then((lapRes) => {
+          if (lapRes) {
+            setLaporanSummary(lapRes.ringkasan);
+            if (Array.isArray(lapRes.omzetHarian)) setOmzetHarian(lapRes.omzetHarian);
+            if (Array.isArray(lapRes.layananTerlaris)) setLayananTerlaris(lapRes.layananTerlaris);
+          }
+        })
+        .catch(() => {});
 
-      // 5. Manager Only Data Fetching (Gated Backend Call)
-      if (isManager) {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const past7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        
-        const lapRes = await runBackend('getLaporanRange', past7Days, todayStr).catch(() => null);
-        if (lapRes) {
-          setLaporanSummary(lapRes.ringkasan);
-          if (Array.isArray(lapRes.omzetHarian)) setOmzetHarian(lapRes.omzetHarian);
-          if (Array.isArray(lapRes.layananTerlaris)) setLayananTerlaris(lapRes.layananTerlaris);
-        }
-
-        const kin = await runBackend<KinerjaPegawai[]>('getRekapKinerjaPegawai').catch(() => []);
-        if (Array.isArray(kin)) setKinerjaStaff(kin);
-      }
-    } catch (err) {
-      console.error('Error loading dashboard data:', err);
-    } finally {
-      setLoading(false);
+      runBackendCached<KinerjaPegawai[]>('getRekapKinerjaPegawai', (kin) => { if (Array.isArray(kin)) setKinerjaStaff(kin); }, 10 * 60 * 1000);
     }
+
+    setLoading(false);
   };
 
   useEffect(() => {

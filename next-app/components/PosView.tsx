@@ -31,7 +31,8 @@ import {
   Edit3
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir } from '@/lib/types';
-import { runBackend } from '@/lib/api';
+import { runBackend, runBackendCached } from '@/lib/api';
+import { clearCache } from '@/lib/cache';
 
 interface CustomerState {
   nama: string;
@@ -159,48 +160,52 @@ export default function PosView() {
     kategori: 'Layanan' as LayananItem['kategori']
   });
 
-  // Fetch Master Data from Google Sheets Backend on Mount
+  // Fetch Master Data — stale-while-revalidate (instant dari cache, fresh di background)
   useEffect(() => {
-    // 1. Fetch Layanan Catalog
-    runBackend<any[]>('getLayananListAll')
-      .then((data) => {
+    // 1. Layanan Catalog
+    runBackendCached<any[]>(
+      'getLayananListAll',
+      (data) => {
         if (Array.isArray(data) && data.length > 0) {
-          const mapped: LayananItem[] = data.map((item) => ({
+          setLayananList(data.map((item) => ({
             layanan: item.nama,
             hargaSatuan: Number(item.harga),
             tipe: item.tipe || 'SelfService',
             satuan: item.satuan || 'paket',
             kategori: item.tipe === 'FullService' ? 'Layanan Tambahan' : 'Layanan',
-          }));
-          setLayananList(mapped);
+          })));
         }
-      })
-      .catch((err) => console.warn('Using default layanan fallback:', err));
+      },
+      10 * 60 * 1000 // 10 menit TTL — katalog jarang berubah
+    );
 
-    // 2. Fetch Customers List
-    runBackend<any[]>('getDaftarPelanggan')
-      .then((data) => {
+    // 2. Customers List
+    runBackendCached<any[]>(
+      'getDaftarPelanggan',
+      (data) => {
         if (Array.isArray(data) && data.length > 0) {
-          const mapped: CustomerState[] = data.map((c) => ({
+          setCustomerList(data.map((c) => ({
             nama: c.nama,
             noHp: c.noHp,
             alamat: c.alamat,
             memberStatus: c.isRepeatOrder ? 'Member Regular' : 'Pelanggan Baru',
-          }));
-          setCustomerList(mapped);
+          })));
         }
-      })
-      .catch((err) => console.warn('Using default customers fallback:', err));
+      },
+      5 * 60 * 1000 // 5 menit TTL
+    );
 
-    // 3. Fetch Staff Pegawai List
-    runBackend<any[]>('getPegawaiList')
-      .then((data) => {
+    // 3. Staff List
+    runBackendCached<any[]>(
+      'getPegawaiList',
+      (data) => {
         if (Array.isArray(data) && data.length > 0) {
           setStaffList(data);
           if (data[0]?.nama) setNamaKasirInput(data[0].nama);
         }
-      })
-      .catch((err) => console.warn('Using default staff fallback:', err));
+      },
+      15 * 60 * 1000 // 15 menit TTL — pegawai sangat jarang berubah
+    );
   }, []);
 
   // Calculate totals
@@ -318,39 +323,14 @@ export default function PosView() {
     setShowCustModal(false);
   };
 
-  // Step 5: Confirm Payment & Save Transaction Directly to Google Sheets Backend
-  const handleConfirmPayment = async () => {
+  // Step 5: Optimistic Payment — langsung show success, save ke GAS di background
+  const handleConfirmPayment = () => {
     const kasir = namaKasirInput || 'Kasir 1';
     const custName = customer.nama || 'Pelanggan Umum';
     const total = grandTotal;
     const bayar = Number(uangBayarInput) || total;
     const returnChange = Math.max(0, bayar - total);
-
-    // Save transaction to Google Sheets (SHEET_TRANSAKSI & SHEET_DETAIL)
-    let trxId = `TRX-${Date.now().toString().slice(-6)}`;
-    try {
-      const payload = {
-        namaPelanggan: custName,
-        noHp: customer.noHp || '',
-        total,
-        status: 'Selesai',
-        kasir,
-        tipeLayanan,
-        metodeBayar,
-        estimasiSelesai,
-        items: cartArray.map((i) => ({
-          layanan: i.layanan,
-          qty: i.qty,
-          hargaSatuan: i.hargaSatuan
-        }))
-      };
-      const backendRes = await runBackend<{ success: boolean; noNota: string }>('simpanTransaksi', payload);
-      if (backendRes && backendRes.noNota) {
-        trxId = backendRes.noNota;
-      }
-    } catch (err) {
-      console.warn('Failed to save to backend, using local invoice fallback:', err);
-    }
+    const trxId = `TRX-${Date.now().toString().slice(-6)}`;
 
     const summary = {
       trxId,
@@ -369,9 +349,35 @@ export default function PosView() {
       tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
     };
 
+    // Langsung tutup modal & tampilkan success — tidak perlu tunggu GAS
     setCompletedOrderData(summary);
     setShowDetailTransaksiModal(false);
     setShowSuccessModal(true);
+
+    // Invalidate cache riwayat supaya next load ambil data fresh
+    clearCache('getRiwayatTransaksi');
+    clearCache('getDashboardData');
+
+    // Save ke GAS di background — tidak blocking UI
+    const payload = {
+      namaPelanggan: custName,
+      noHp: customer.noHp || '',
+      total,
+      status: 'Selesai',
+      kasir,
+      tipeLayanan,
+      metodeBayar,
+      estimasiSelesai,
+      items: cartArray.map((i) => ({ layanan: i.layanan, qty: i.qty, hargaSatuan: i.hargaSatuan }))
+    };
+    runBackend<{ success: boolean; noNota: string }>('simpanTransaksi', payload)
+      .then((res) => {
+        if (res?.noNota) {
+          // Update no nota di completedOrderData jika masih ditampilkan
+          setCompletedOrderData((prev: any) => prev ? { ...prev, trxId: res.noNota } : prev);
+        }
+      })
+      .catch((err) => console.warn('Background save failed, data tetap tersimpan lokal:', err));
   };
 
   // Step 8: Return to POS Main Page

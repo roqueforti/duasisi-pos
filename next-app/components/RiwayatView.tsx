@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Printer, Send, Eye, CheckCircle, RefreshCw, X, FileText, Plus, Calendar, User, CreditCard, Check, AlertTriangle, ShieldAlert, DollarSign } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
-import { runBackend } from '@/lib/api';
+import { runBackend, runBackendCached } from '@/lib/api';
 import PrinterModal from '@/components/PrinterModal';
 
 export default function RiwayatView() {
@@ -112,21 +112,18 @@ export default function RiwayatView() {
     loadRiwayat();
   };
 
-  const loadRiwayat = async () => {
+  const loadRiwayat = () => {
     setLoading(true);
-    try {
-      const data = await runBackend<Transaksi[]>('getTransaksiList', 'Semua');
-      if (Array.isArray(data)) {
-        setTxList(data);
-      } else {
-        setTxList([]);
-      }
-    } catch (err) {
-      console.error('[Riwayat] Gagal mengambil data transaksi online:', err);
-      setTxList([]);
-    } finally {
-      setLoading(false);
-    }
+    runBackendCached<Transaksi[]>(
+      'getTransaksiList',
+      (data, fromCache) => {
+        setTxList(Array.isArray(data) ? data : []);
+        if (!fromCache) setLoading(false);
+      },
+      2 * 60 * 1000,
+      'Semua'
+    );
+    setLoading(false);
   };
 
   useEffect(() => {

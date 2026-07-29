@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle } from 'lucide-react';
-import { runBackend } from '@/lib/api';
+import { runBackend, runBackendCached } from '@/lib/api';
+import { clearCache } from '@/lib/cache';
 
 interface InventoryItem {
   id: string;
@@ -24,16 +25,17 @@ export default function InventoryView() {
   const [satuan, setSatuan] = useState('pcs');
   const [stokMin, setStokMin] = useState('5');
 
-  const loadInventory = async () => {
+  const loadInventory = () => {
     setLoading(true);
-    try {
-      const data = await runBackend<InventoryItem[]>('getInventoryList');
-      if (Array.isArray(data)) setItems(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    runBackendCached<InventoryItem[]>(
+      'getInventoryList',
+      (data, fromCache) => {
+        if (Array.isArray(data)) setItems(data);
+        if (!fromCache) setLoading(false);
+      },
+      3 * 60 * 1000
+    );
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export default function InventoryView() {
         satuan: satuan.trim(),
         stokMinimum: Number(stokMin) || 0
       });
+      clearCache('getInventoryList');
       setShowAddModal(false);
       setNama(''); setStok('');
       loadInventory();

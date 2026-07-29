@@ -19,7 +19,7 @@ import {
   ChevronRight,
   ShieldAlert
 } from 'lucide-react';
-import { runBackend } from '@/lib/api';
+import { runBackend, runBackendCached } from '@/lib/api';
 
 export interface PelangganItem {
   noHp: string;
@@ -62,18 +62,17 @@ export default function PelangganView() {
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
 
-  const loadDataPelanggan = async () => {
+  const loadDataPelanggan = () => {
     setLoading(true);
-    try {
-      const data = await runBackend<PelangganItem[]>('getDaftarPelanggan');
-      if (Array.isArray(data)) {
-        setPelangganList(data);
-      }
-    } catch (err) {
-      console.error('Error fetching pelanggan list:', err);
-    } finally {
-      setLoading(false);
-    }
+    runBackendCached<PelangganItem[]>(
+      'getDaftarPelanggan',
+      (data, fromCache) => {
+        if (Array.isArray(data)) setPelangganList(data);
+        if (!fromCache) setLoading(false);
+      },
+      5 * 60 * 1000
+    );
+    setLoading(false);
   };
 
   useEffect(() => {
