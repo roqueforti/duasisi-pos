@@ -185,7 +185,7 @@ export default function PelangganView() {
       {/* Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold">
             <Users className="w-5 h-5" />
           </div>
           <div>
@@ -195,22 +195,22 @@ export default function PelangganView() {
         </div>
 
         <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-lg bg-[#FF9500]/10 text-[#FF9500] flex items-center justify-center font-bold">
             <UserCheck className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Repeat Order (Member)</div>
-            <div className="text-xl font-extrabold text-amber-700">{repeatCount.toLocaleString('id-ID')} Orang</div>
+            <div className="text-xl font-extrabold text-[#FF9500]">{repeatCount.toLocaleString('id-ID')} Orang</div>
           </div>
         </div>
 
         <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold">
             <TrendingUp className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Akumulasi Belanja</div>
-            <div className="text-xl font-black text-emerald-700">Rp {totalOmzetPelanggan.toLocaleString('id-ID')}</div>
+            <div className="text-xl font-black text-[#1E4648]">Rp {totalOmzetPelanggan.toLocaleString('id-ID')}</div>
           </div>
         </div>
       </div>
@@ -302,7 +302,7 @@ export default function PelangganView() {
                       <div className="font-bold text-slate-900 flex items-center gap-1.5">
                         <span>{item.nama}</span>
                         {item.totalOrder > 1 && (
-                          <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[9px] font-extrabold uppercase">
+                          <span className="px-1.5 py-0.5 bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/30 rounded text-[9px] font-extrabold uppercase">
                             Member ({item.totalOrder}x)
                           </span>
                         )}
@@ -316,7 +316,7 @@ export default function PelangganView() {
                         {item.totalOrder} Transaksi
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-right font-black text-emerald-700">
+                    <td className="py-3.5 px-4 text-right font-black text-[#1E4648]">
                       Rp {item.totalSpend.toLocaleString('id-ID')}
                     </td>
                     <td className="py-3.5 px-4 text-slate-500 text-[11px]">
@@ -328,7 +328,7 @@ export default function PelangganView() {
                     <td className="py-3.5 px-4 text-center">
                       <button
                         onClick={() => openDetailModal(item)}
-                        className="px-2.5 py-1.5 bg-[#1E4648] hover:bg-[#153334] text-white rounded-lg font-bold text-[11px] transition inline-flex items-center gap-1 shadow-2xs"
+                        className="px-2.5 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-lg font-bold text-[11px] transition inline-flex items-center gap-1 shadow-2xs"
                       >
                         <Edit3 className="w-3 h-3" />
                         <span>Detail & Edit</span>
@@ -349,7 +349,7 @@ export default function PelangganView() {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center font-bold">
+                <div className="w-9 h-9 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold">
                   <Users className="w-5 h-5" />
                 </div>
                 <div>
@@ -429,7 +429,7 @@ export default function PelangganView() {
                 </div>
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Total Belanja:</span>
-                  <span className="font-extrabold text-emerald-700">Rp {selectedCust.totalSpend.toLocaleString('id-ID')}</span>
+                  <span className="font-extrabold text-[#1E4648]">Rp {selectedCust.totalSpend.toLocaleString('id-ID')}</span>
                 </div>
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Terakhir Order:</span>
@@ -462,7 +462,7 @@ export default function PelangganView() {
                         <div className="flex justify-between items-center text-slate-500 text-[10px]">
                           <span>{tx.tanggal}</span>
                           <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${
-                            tx.status === 'Selesai' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                            tx.status === 'Selesai' ? 'bg-[#B5C9C9]/20 text-[#1E4648]' : 'bg-[#FF9500]/10 text-[#FF9500]'
                           }`}>
                             {tx.status}
                           </span>
@@ -496,7 +496,7 @@ export default function PelangganView() {
                 type="button"
                 onClick={handleSaveCustomerEdit}
                 disabled={savingEdit}
-                className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-md transition"
+                className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-md transition"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>{savingEdit ? 'Menyimpan...' : 'Simpan Perubahan Data Pelanggan'}</span>

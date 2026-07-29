@@ -122,7 +122,7 @@ export default function MesinView() {
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="bg-[#1E4648] hover:bg-[#153334] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5"
+            className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" /> Tambah Mesin
           </button>
@@ -153,24 +153,24 @@ export default function MesinView() {
                 key={m.id}
                 className={`bg-white rounded-lg border p-4 flex flex-col justify-between transition-colors ${
                   isRunning
-                    ? 'border-teal-500 bg-teal-50/20'
+                    ? 'border-[#B5C9C9]500 bg-[#B5C9C9]/20/20'
                     : isMaintenance
-                    ? 'border-amber-300 bg-amber-50/20'
+                    ? 'border-[#FF9500]/50 bg-[#FF9500]/10/20'
                     : 'border-slate-200'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <span>{m.tipe === 'Washer' ? <WashingMachine className="w-4 h-4 text-[#2d4d38]" /> : <Flame className="w-4 h-4 text-amber-600" />}</span>
+                      <span>{m.tipe === 'Washer' ? <WashingMachine className="w-4 h-4 text-[#1E4648]" /> : <Flame className="w-4 h-4 text-[#FF9500]" />}</span>
                       <span>{m.nama}</span>
                     </span>
                     <span
                       className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
                         isRunning
-                          ? 'bg-teal-100 text-teal-800'
+                          ? 'bg-[#B5C9C9]/30 text-[#1E4648]'
                           : isMaintenance
-                          ? 'bg-amber-100 text-amber-800'
+                          ? 'bg-[#FF9500]/15 text-[#FF9500]'
                           : 'bg-slate-100 text-slate-600'
                       }`}
                     >
@@ -182,12 +182,12 @@ export default function MesinView() {
                     {isRunning ? (
                       <>
                         <p>Catatan: <span className="font-semibold text-slate-700">{m.keterangan || 'Proses mencuci'}</span></p>
-                        <p className="flex items-center gap-1 text-teal-700 font-medium">
+                        <p className="flex items-center gap-1 text-[#1E4648] font-medium">
                           <Clock className="w-3 h-3" /> Mulai: {m.mulaiPakai} (Est: {m.estimasiSelesai})
                         </p>
                       </>
                     ) : isMaintenance ? (
-                      <p className="text-amber-700 font-medium">Mesin sedang perbaikan / servis</p>
+                      <p className="text-[#FF9500] font-medium">Mesin sedang perbaikan / servis</p>
                     ) : (
                       <p className="text-slate-400">Siap digunakan untuk pelanggan</p>
                     )}
@@ -198,7 +198,7 @@ export default function MesinView() {
                   {isRunning ? (
                     <button
                       onClick={() => handleSelesai(m.id)}
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-1.5 rounded-md text-xs transition flex items-center justify-center gap-1"
+                      className="flex-1 bg-[#1E4648] hover:bg-[#1E4648] text-white font-medium py-1.5 rounded-md text-xs transition flex items-center justify-center gap-1"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Selesai
                     </button>
@@ -213,7 +213,7 @@ export default function MesinView() {
                     <>
                       <button
                         onClick={() => { setSelectedMesinId(m.id); setShowMulaiModal(true); }}
-                        className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-medium py-1.5 rounded-md text-xs transition flex items-center justify-center gap-1"
+                        className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-medium py-1.5 rounded-md text-xs transition flex items-center justify-center gap-1"
                       >
                         <Play className="w-3.5 h-3.5" /> Jalankan
                       </button>
@@ -270,7 +270,7 @@ export default function MesinView() {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowAddModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-md text-xs">Batal</button>
-              <button onClick={handleAddMesin} className="bg-[#1E4648] hover:bg-[#153334] text-white font-medium px-4 py-2 rounded-md text-xs">Simpan</button>
+              <button onClick={handleAddMesin} className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-4 py-2 rounded-md text-xs">Simpan</button>
             </div>
           </div>
         </div>
@@ -305,7 +305,7 @@ export default function MesinView() {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowMulaiModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-md text-xs">Batal</button>
-              <button onClick={handleConfirmMulai} className="bg-[#1E4648] hover:bg-[#153334] text-white font-medium px-4 py-2 rounded-md text-xs">Mulai Pakai</button>
+              <button onClick={handleConfirmMulai} className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-4 py-2 rounded-md text-xs">Mulai Pakai</button>
             </div>
           </div>
         </div>

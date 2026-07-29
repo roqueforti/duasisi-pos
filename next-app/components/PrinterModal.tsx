@@ -291,12 +291,12 @@ export default function PrinterModal({
         {/* Header */}
         <div className="bg-[#1E4648] text-white px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-teal-500/20 rounded-lg text-teal-300">
+            <div className="p-2 bg-[#B5C9C9]/200/20 rounded-lg text-[#B5C9C9]">
               <Printer className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-sm">Pengecekan & Pemilihan Printer</h3>
-              <p className="text-[11px] text-teal-200">Koneksi Bluetooth Thermal Printer</p>
+              <p className="text-[11px] text-[#B5C9C9]">Koneksi Bluetooth Thermal Printer</p>
             </div>
           </div>
           <button
@@ -318,7 +318,7 @@ export default function PrinterModal({
           )}
 
           {successMsg && (
-            <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-start gap-2">
+            <div className="p-3 rounded-lg bg-[#B5C9C9]/20 border border-[#B5C9C9] text-[#1E4648] text-xs flex items-start gap-2">
               <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <div className="flex-1">{successMsg}</div>
             </div>
@@ -326,8 +326,8 @@ export default function PrinterModal({
 
           {/* Bluetooth Compatibility Warning */}
           {!btSupported && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs flex items-start gap-2">
-              <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+            <div className="p-3 bg-[#FF9500]/10 border border-[#FF9500]/30 rounded-lg text-[#FF9500] text-xs flex items-start gap-2">
+              <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#FF9500]" />
               <div>
                 Browser ini belum mendukung Web Bluetooth API. Anda dapat menggunakan mode <b>Printer System (Standard)</b> atau gunakan peramban Chrome / Edge.
               </div>
@@ -337,7 +337,7 @@ export default function PrinterModal({
           {/* Bluetooth Connection Status Card */}
           <div className={`p-4 rounded-lg border transition ${
             deviceInfo.connected
-              ? 'bg-emerald-50/50 border-emerald-200'
+              ? 'bg-[#B5C9C9]/20/50 border-[#B5C9C9]'
               : 'bg-slate-50 border-slate-200'
           }`}>
             <div className="flex items-center justify-between mb-2">
@@ -345,8 +345,8 @@ export default function PrinterModal({
                 Status Koneksi Printer
               </span>
               {deviceInfo.connected ? (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#B5C9C9]/30 text-[#1E4648]">
+                  <span className="w-2 h-2 rounded-full bg-[#B5C9C9]/200 animate-pulse" />
                   Terhubung
                 </span>
               ) : (
@@ -359,7 +359,7 @@ export default function PrinterModal({
 
             <div className="flex items-center gap-3">
               <div className={`p-3 rounded-lg ${
-                deviceInfo.connected ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600'
+                deviceInfo.connected ? 'bg-[#B5C9C9]/200 text-white' : 'bg-slate-200 text-slate-600'
               }`}>
                 {deviceInfo.connected ? <Bluetooth className="w-6 h-6" /> : <BluetoothOff className="w-6 h-6" />}
               </div>
@@ -380,7 +380,7 @@ export default function PrinterModal({
                   type="button"
                   onClick={handleConnectBluetooth}
                   disabled={loading}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-[#1E4648] hover:bg-[#153334] text-white text-xs font-semibold px-3 py-2 rounded-lg transition disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-semibold px-3 py-2 rounded-lg transition disabled:opacity-50"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                   <span>{deviceInfo.connected ? 'Ganti / Hubungkan Ulang' : 'Pilih & Hubungkan Thermal Printer'}</span>
@@ -411,13 +411,13 @@ export default function PrinterModal({
                 onClick={() => handleModeChange('thermal')}
                 className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
                   printMode === 'thermal'
-                    ? 'border-[#1E4648] bg-teal-50/40 text-[#1E4648] ring-1 ring-[#1E4648]'
+                    ? 'border-[#1E4648] bg-[#B5C9C9]/20/40 text-[#1E4648] ring-1 ring-[#1E4648]'
                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <Zap className="w-4 h-4 text-teal-600" />
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-100 text-teal-800">Cepat</span>
+                  <Zap className="w-4 h-4 text-[#1E4648]" />
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#B5C9C9]/30 text-[#1E4648]">Cepat</span>
                 </div>
                 <div>
                   <div className="font-bold text-xs">Bluetooth Thermal</div>
@@ -430,7 +430,7 @@ export default function PrinterModal({
                 onClick={() => handleModeChange('system')}
                 className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
                   printMode === 'system'
-                    ? 'border-[#1E4648] bg-teal-50/40 text-[#1E4648] ring-1 ring-[#1E4648]'
+                    ? 'border-[#1E4648] bg-[#B5C9C9]/20/40 text-[#1E4648] ring-1 ring-[#1E4648]'
                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                 }`}
               >
@@ -451,7 +451,7 @@ export default function PrinterModal({
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
-                  {printType === 'label' ? <Tag className="w-3.5 h-3.5 text-amber-600" /> : <FileText className="w-3.5 h-3.5 text-teal-600" />}
+                  {printType === 'label' ? <Tag className="w-3.5 h-3.5 text-[#FF9500]" /> : <FileText className="w-3.5 h-3.5 text-[#1E4648]" />}
                   {printType === 'label' ? 'Dokumen Tag / Label Cucian' : 'Dokumen Struk Transaksi'}
                 </span>
                 <span className="text-[11px] font-sans font-bold text-slate-700">{tx.noNota}</span>
@@ -460,7 +460,7 @@ export default function PrinterModal({
                 Pelanggan: <span className="font-semibold text-slate-800">{tx.namaPelanggan}</span> ({tx.items?.length || 0} items)
               </div>
               <div className="text-xs text-slate-600">
-                Total Transaksi: <span className="font-semibold text-teal-700">Rp {tx.total?.toLocaleString('id-ID')}</span>
+                Total Transaksi: <span className="font-semibold text-[#1E4648]">Rp {tx.total?.toLocaleString('id-ID')}</span>
               </div>
             </div>
           )}
@@ -491,7 +491,7 @@ export default function PrinterModal({
                 type="button"
                 onClick={handleExecutePrintAction}
                 disabled={loading || (printMode === 'thermal' && !deviceInfo.connected && !btSupported)}
-                className="flex items-center gap-1.5 bg-[#1E4648] hover:bg-[#153334] text-white text-xs font-bold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition disabled:opacity-50"
+                className="flex items-center gap-1.5 bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-bold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition disabled:opacity-50"
               >
                 <Printer className="w-4 h-4" />
                 <span>{printType === 'label' ? 'Cetak Label Tag' : 'Cetak Struk Now'}</span>

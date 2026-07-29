@@ -111,7 +111,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
           {onBackToApp && (
             <button
               onClick={onBackToApp}
-              className="bg-[#1E4648] text-white px-5 py-2.5 rounded-lg text-xs font-semibold hover:bg-[#153334] transition shadow-md"
+              className="bg-[#1E4648] text-white px-5 py-2.5 rounded-lg text-xs font-semibold hover:bg-[#163536] transition shadow-md"
             >
               Kembali ke Aplikasi Utama
             </button>
@@ -122,20 +122,20 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
           {/* Security Verification Banner Header */}
           <div className="bg-emerald-950/80 border border-emerald-700/60 rounded-lg p-3.5 flex items-center justify-between gap-3 text-emerald-200 shadow-lg">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-400/30">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+              <div className="w-9 h-9 rounded-lg bg-[#B5C9C9]/200/20 flex items-center justify-center shrink-0 border border-emerald-400/30">
+                <ShieldCheck className="w-5 h-5 text-[#B5C9C9]" />
               </div>
               <div>
                 <div className="text-xs font-bold text-emerald-200 flex items-center gap-1.5">
                   <span>E-NOTA RESMI TERVERIFIKASI</span>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400/20" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#B5C9C9] fill-emerald-400/20" />
                 </div>
-                <div className="text-[10px] text-emerald-300/80 font-sans tracking-tight">
+                <div className="text-[10px] text-[#B5C9C9]/80 font-sans tracking-tight">
                   {getSecurityHash(tx.noNota)}
                 </div>
               </div>
             </div>
-            <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-400/30 shrink-0">
+            <span className="bg-[#B5C9C9]/200/20 text-[#B5C9C9] text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-400/30 shrink-0">
               ASLI & VALID
             </span>
           </div>
@@ -183,7 +183,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
               </div>
               <div className="flex justify-between items-center pt-1">
                 <span className="text-slate-500">STATUS ORDER:</span>
-                <span className="bg-teal-100 text-[#1E4648] font-bold text-[10px] px-2 py-0.5 rounded-md border border-teal-200">
+                <span className="bg-[#B5C9C9]/30 text-[#1E4648] font-bold text-[10px] px-2 py-0.5 rounded-md border border-[#B5C9C9]200">
                   {tx.status}
                 </span>
               </div>
@@ -226,7 +226,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
                 <>
                   <div className="flex justify-between text-slate-600">
                     <span>DP TERBAYAR:</span>
-                    <span className="font-medium text-emerald-700">Rp {Number(tx.nominalDP).toLocaleString('id-ID')}</span>
+                    <span className="font-medium text-[#1E4648]">Rp {Number(tx.nominalDP).toLocaleString('id-ID')}</span>
                   </div>
                   <div className="flex justify-between text-slate-900 font-bold">
                     <span>SISA TAGIHAN:</span>
@@ -239,9 +239,9 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
             {/* Security Digital Seal & Barcode Visual */}
             <div className="pt-4 text-center space-y-2">
               <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <Sparkles className="w-3.5 h-3.5 text-[#FF9500]" />
                 <span>OFFICIAL DIGITAL SECURITY SEAL</span>
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <Sparkles className="w-3.5 h-3.5 text-[#FF9500]" />
               </div>
 
               {/* Barcode Mock Visual */}
@@ -276,7 +276,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
             </button>
             <button
               onClick={handleShare}
-              className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-semibold py-2.5 px-4 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-md"
+              className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-semibold py-2.5 px-4 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-md"
             >
               <Share2 className="w-4 h-4" />
               <span>Bagikan Link WA</span>

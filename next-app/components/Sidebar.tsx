@@ -122,7 +122,7 @@ export default function Sidebar({
         {/* User Info Badge */}
         <div className={`px-3.5 py-3 border-b border-slate-100 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs ${
-            currentRole === 'MANAGER' ? 'bg-amber-600' : 'bg-[#1E4648]'
+            currentRole === 'MANAGER' ? 'bg-[#FF9500]' : 'bg-[#1E4648]'
           }`}>
             {currentRole === 'MANAGER' ? 'M' : 'S'}
           </div>

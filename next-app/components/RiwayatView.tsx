@@ -280,7 +280,7 @@ export default function RiwayatView() {
 
           <button
             onClick={openManualModal}
-            className="bg-[#1E4648] hover:bg-[#153334] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-sm shrink-0"
+            className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-sm shrink-0"
             title="Input Transaksi Manual"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -338,7 +338,7 @@ export default function RiwayatView() {
                     <td className="py-3 px-4 font-bold text-slate-800">
                       {tx.noNota}
                       {tx.statusVoid === 'PendingApproval' && (
-                        <div className="text-[10px] text-amber-700 font-semibold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded mt-0.5 inline-block">
+                        <div className="text-[10px] text-[#FF9500] font-semibold bg-[#FF9500]/10 border border-[#FF9500]/30 px-1.5 py-0.5 rounded mt-0.5 inline-block">
                           Pending Void
                         </div>
                       )}
@@ -353,7 +353,7 @@ export default function RiwayatView() {
                           {tx.tipe}
                         </span>
                         {tx.tingkatLayanan && tx.tingkatLayanan !== 'Reguler' && (
-                          <span className="text-[10px] font-bold text-amber-700">
+                          <span className="text-[10px] font-bold text-[#FF9500]">
                             ⚡ {tx.tingkatLayanan}
                           </span>
                         )}
@@ -373,12 +373,12 @@ export default function RiwayatView() {
                         onClick={() => { setTxToUpdateStatus(tx); setShowStatusModal(true); }}
                         className={`text-[11px] font-bold px-2.5 py-1 rounded-md border flex items-center gap-1 transition ${
                           tx.status === 'Selesai'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                            ? 'bg-[#B5C9C9]/20 text-[#1E4648] border-[#B5C9C9] hover:bg-[#B5C9C9]/30'
                             : tx.status === 'Siap Diambil'
-                            ? 'bg-teal-50 text-[#1E4648] border-teal-300 hover:bg-teal-100 animate-pulse'
+                            ? 'bg-[#B5C9C9]/20 text-[#1E4648] border-[#B5C9C9]300 hover:bg-[#B5C9C9]/30 animate-pulse'
                             : tx.status === 'Batal'
                             ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                            : 'bg-[#FF9500]/10 text-[#FF9500] border-[#FF9500]/50 hover:bg-[#FF9500]/15'
                         }`}
                       >
                         <span>{tx.status || 'Diterima'}</span>
@@ -404,7 +404,7 @@ export default function RiwayatView() {
                         {/* Send WA Notification */}
                         <button
                           onClick={() => tx.status === 'Siap Diambil' ? handleSendSiapWA(tx) : handleWhatsAppStruk(tx)}
-                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition"
+                          className="p-1.5 text-[#1E4648] hover:bg-[#B5C9C9]/20 rounded transition"
                           title={tx.status === 'Siap Diambil' ? "Kirim WA Siap Diambil" : "Kirim WA Struk"}
                         >
                           <Send className="w-3.5 h-3.5" />
@@ -414,7 +414,7 @@ export default function RiwayatView() {
                         {tx.sisaTagihan && tx.sisaTagihan > 0 ? (
                           <button
                             onClick={() => { setTxToLunas(tx); setPelunasanNominalInput((tx.sisaTagihan || 0).toString()); setShowPelunasanModal(true); }}
-                            className="p-1 text-xs bg-emerald-600 text-white hover:bg-emerald-700 rounded px-2 font-semibold transition"
+                            className="p-1 text-xs bg-[#1E4648] text-white hover:bg-[#1E4648] rounded px-2 font-semibold transition"
                             title="Pelunasan DP"
                           >
                             Lunas
@@ -540,7 +540,7 @@ export default function RiwayatView() {
                       key={m}
                       type="button"
                       onClick={() => setPelunasanMetode(m)}
-                      className={`py-1.5 rounded text-xs font-semibold border ${pelunasanMetode === m ? 'bg-teal-50 border-[#1E4648] text-[#1E4648]' : 'border-slate-200 text-slate-600'}`}
+                      className={`py-1.5 rounded text-xs font-semibold border ${pelunasanMetode === m ? 'bg-[#B5C9C9]/20 border-[#1E4648] text-[#1E4648]' : 'border-slate-200 text-slate-600'}`}
                     >
                       {m}
                     </button>
@@ -551,7 +551,7 @@ export default function RiwayatView() {
 
             <div className="flex gap-2">
               <button onClick={() => setShowPelunasanModal(false)} className="bg-slate-100 text-slate-600 px-3 py-2 rounded-md text-xs font-semibold">Batal</button>
-              <button onClick={handleProsesPelunasan} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-md text-xs transition">
+              <button onClick={handleProsesPelunasan} className="flex-1 bg-[#1E4648] hover:bg-[#1E4648] text-white font-semibold py-2 rounded-md text-xs transition">
                 Simpan Pelunasan
               </button>
             </div>
@@ -580,7 +580,7 @@ export default function RiwayatView() {
           <div className="bg-white rounded-lg p-5 w-full max-w-lg max-h-[92vh] overflow-y-auto space-y-4 shadow-xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 text-[#1E4648] flex items-center justify-center font-bold text-sm">
+                <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 border border-[#B5C9C9]200 text-[#1E4648] flex items-center justify-center font-bold text-sm">
                   📝
                 </div>
                 <div>
@@ -738,10 +738,10 @@ export default function RiwayatView() {
             </div>
 
             {/* Total Ringkasan Box */}
-            <div className="bg-teal-50/60 border border-teal-200/80 rounded-lg p-3 flex items-center justify-between">
+            <div className="bg-[#B5C9C9]/20/60 border border-[#B5C9C9]200/80 rounded-lg p-3 flex items-center justify-between">
               <div>
-                <span className="text-[11px] font-semibold text-teal-800">Total Nominal Transaksi</span>
-                <p className="text-[11px] text-teal-600">{manualQty || 1} × Rp {(Number(manualHarga) || 0).toLocaleString('id-ID')}</p>
+                <span className="text-[11px] font-semibold text-[#1E4648]">Total Nominal Transaksi</span>
+                <p className="text-[11px] text-[#1E4648]">{manualQty || 1} × Rp {(Number(manualHarga) || 0).toLocaleString('id-ID')}</p>
               </div>
               <div className="text-base font-extrabold text-[#1E4648]">
                 Rp {((Number(manualHarga) || 0) * (Number(manualQty) || 1)).toLocaleString('id-ID')}
@@ -758,7 +758,7 @@ export default function RiwayatView() {
               <button
                 onClick={handleSaveManualTx}
                 disabled={savingManual}
-                className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-2.5 rounded-md text-xs transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 rounded-md text-xs transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
               >
                 {savingManual ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />

@@ -110,7 +110,7 @@ export default function Navbar({
             onClick={() => setIsPrinterModalOpen(true)}
             className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition border shrink-0 ${
               printerConnected
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                ? 'bg-[#B5C9C9]/20 text-[#1E4648] border-[#B5C9C9] hover:bg-[#B5C9C9]/30'
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
             }`}
             title="Pengecekan Bluetooth & Setting Thermal Printer"
@@ -118,7 +118,7 @@ export default function Navbar({
             <div className="relative">
               <Printer className="w-3.5 h-3.5 text-slate-600" />
               <span className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full ${
-                printerConnected ? 'bg-emerald-500' : 'bg-slate-400'
+                printerConnected ? 'bg-[#B5C9C9]/200' : 'bg-slate-400'
               }`} />
             </div>
             <span className="hidden md:inline">
@@ -138,8 +138,8 @@ export default function Navbar({
 
           {/* Online Status */}
           {isOnline ? (
-            <div className="hidden sm:flex items-center gap-1.5 text-emerald-600 text-xs font-semibold px-1.5 shrink-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <div className="hidden sm:flex items-center gap-1.5 text-[#1E4648] text-xs font-semibold px-1.5 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-[#B5C9C9]/200" />
               <span className="hidden md:inline">Online</span>
             </div>
           ) : (
@@ -157,7 +157,7 @@ export default function Navbar({
           {/* User Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2 pl-1.5 sm:pl-2 border-l border-slate-200 shrink-0">
             <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-2xs shrink-0 ${
-              currentRole === 'MANAGER' ? 'bg-amber-600' : 'bg-[#1E4648]'
+              currentRole === 'MANAGER' ? 'bg-[#FF9500]' : 'bg-[#1E4648]'
             }`}>
               {currentRole === 'MANAGER' ? 'M' : 'S'}
             </div>

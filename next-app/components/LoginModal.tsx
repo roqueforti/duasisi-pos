@@ -72,8 +72,8 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
           />
         </div>
 
-        <div className="text-xs font-medium text-teal-200/90 mb-5 flex items-center justify-center gap-1.5">
-          <KeyRound className="w-3.5 h-3.5 text-teal-400" />
+        <div className="text-xs font-medium text-[#B5C9C9]/90 mb-5 flex items-center justify-center gap-1.5">
+          <KeyRound className="w-3.5 h-3.5 text-[#B5C9C9]" />
           <span>Masukkan 4-digit PIN untuk masuk</span>
         </div>
 
@@ -93,10 +93,10 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
             maxLength={4}
             autoFocus
             disabled={loading}
-            className="w-full text-center text-3xl font-bold tracking-[14px] py-3.5 px-4 bg-slate-900 text-white placeholder-slate-500 border border-slate-700 rounded-lg outline-none focus:border-teal-400 focus:bg-slate-950 transition-all shadow-inner font-sans"
+            className="w-full text-center text-3xl font-bold tracking-[14px] py-3.5 px-4 bg-slate-900 text-white placeholder-slate-500 border border-slate-700 rounded-lg outline-none focus:border-[#B5C9C9]400 focus:bg-slate-950 transition-all shadow-inner font-sans"
           />
           {loading && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-teal-400">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B5C9C9]">
               <Loader2 className="w-5 h-5 animate-spin" />
             </div>
           )}

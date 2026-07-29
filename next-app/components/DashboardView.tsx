@@ -187,14 +187,14 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       {/* PAGE HEADER: ADAPTIVE ROLE BADGE */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-lg border border-slate-200/80 shadow-2xs">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#0f172a] text-emerald-400 flex items-center justify-center shadow-md">
+          <div className="w-10 h-10 rounded-lg bg-[#0f172a] text-[#B5C9C9] flex items-center justify-center shadow-md">
             <LayoutDashboard className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">Dashboard Utama</h1>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                isManager ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                isManager ? 'bg-[#FF9500]/15 text-[#FF9500] border border-[#FF9500]/50' : 'bg-[#B5C9C9]/30 text-[#1E4648] border border-[#B5C9C9]'
               }`}>
                 {isManager ? 'Owner / Manager Mode' : 'Kasir / Staff Mode'}
               </span>
@@ -219,7 +219,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Metric 1: Order Today */}
         <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center font-bold shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold shrink-0">
             <ShoppingCart className="w-5 h-5" />
           </div>
           <div>
@@ -230,24 +230,24 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
         {/* Metric 2: Omzet Today */}
         <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold shrink-0">
             <DollarSign className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Omzet Hari Ini</div>
-            <div className="text-xl font-black text-emerald-700">Rp {omzetHariIni.toLocaleString('id-ID')}</div>
+            <div className="text-xl font-black text-[#1E4648]">Rp {omzetHariIni.toLocaleString('id-ID')}</div>
           </div>
         </div>
 
         {/* Metric 3: Active In-Progress Orders */}
         <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-[#FF9500]/10 text-[#FF9500] flex items-center justify-center font-bold shrink-0">
             <Clock className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Order Aktif (Proses)</div>
             <div className="text-xl font-extrabold text-slate-900">{activeOrders.length} Order</div>
-            <div className="text-[10px] text-amber-700 font-bold">{readyPickupOrders.length} Siap Diambil</div>
+            <div className="text-[10px] text-[#FF9500] font-bold">{readyPickupOrders.length} Siap Diambil</div>
           </div>
         </div>
 
@@ -256,7 +256,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
           <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold shrink-0 ${
             lowStockItems.length > 0 || maintenanceMachines.length > 0 
               ? 'bg-rose-50 text-rose-600' 
-              : 'bg-emerald-50 text-emerald-700'
+              : 'bg-[#B5C9C9]/20 text-[#1E4648]'
           }`}>
             {lowStockItems.length > 0 || maintenanceMachines.length > 0 ? (
               <AlertTriangle className="w-5 h-5" />
@@ -269,7 +269,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             <div className={`text-xl font-extrabold ${
               lowStockItems.length > 0 || maintenanceMachines.length > 0 
                 ? 'text-rose-600' 
-                : 'text-emerald-700'
+                : 'text-[#1E4648]'
             }`}>
               {lowStockItems.length > 0 || maintenanceMachines.length > 0 ? (
                 <span>{lowStockItems.length + maintenanceMachines.length} Warning</span>
@@ -291,7 +291,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         <div className="lg:col-span-2 bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
                 <Cpu className="w-4 h-4" />
               </div>
               <h2 className="text-sm font-bold text-slate-900">Status & Progress Mesin Real-time</h2>
@@ -310,7 +310,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                   key={m.id}
                   className={`p-3.5 rounded-lg border transition ${
                     isMaint ? 'bg-rose-50/70 border-rose-200' :
-                    isUsed ? 'bg-emerald-50/70 border-emerald-200' : 'bg-slate-50 border-slate-200'
+                    isUsed ? 'bg-[#B5C9C9]/20/70 border-[#B5C9C9]' : 'bg-slate-50 border-slate-200'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -318,13 +318,13 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                       {m.tipe === 'Washer' ? (
                         <WashingMachine className="w-4 h-4 text-[#1E4648]" />
                       ) : (
-                        <Flame className="w-4 h-4 text-amber-600" />
+                        <Flame className="w-4 h-4 text-[#FF9500]" />
                       )}
                       <span className="font-bold text-xs text-slate-900">{m.nama}</span>
                     </div>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                       isMaint ? 'bg-rose-100 text-rose-800' :
-                      isUsed ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                      isUsed ? 'bg-[#B5C9C9]/30 text-[#1E4648]' : 'bg-slate-200 text-slate-700'
                     }`}>
                       {m.status}
                     </span>
@@ -335,10 +335,10 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                       <div className="text-slate-600 truncate">Customer/Ket: {m.keterangan || 'Proses Cuci/Dry'}</div>
                       <div className="flex justify-between text-slate-500 font-semibold">
                         <span>Mulai: {m.mulaiPakai || '-'}</span>
-                        <span className="text-emerald-800 font-bold">Est: {m.estimasiSelesai || '-'}</span>
+                        <span className="text-[#1E4648] font-bold">Est: {m.estimasiSelesai || '-'}</span>
                       </div>
                       <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                        <div className="bg-emerald-600 h-full w-3/4 rounded-full animate-pulse" />
+                        <div className="bg-[#1E4648] h-full w-3/4 rounded-full animate-pulse" />
                       </div>
                     </div>
                   ) : (
@@ -356,7 +356,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-[#FF9500]/10 text-[#FF9500] flex items-center justify-center shrink-0">
                 <Clock className="w-4 h-4" />
               </div>
               <h2 className="text-sm font-bold text-slate-900">Antrian & Siap Di-pickup</h2>
@@ -374,7 +374,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                       <div className="text-[10px] text-slate-500">Est: {tx.estimasi || '-'}</div>
                     </div>
                     <span className={`px-2 py-1 rounded-lg text-[10px] font-extrabold uppercase ${
-                      tx.status === 'Siap Ambil' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-slate-200 text-slate-700'
+                      tx.status === 'Siap Ambil' ? 'bg-[#FF9500]/15 text-[#FF9500] border border-[#FF9500]/50' : 'bg-slate-200 text-slate-700'
                     }`}>
                       {tx.status}
                     </span>
@@ -395,7 +395,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
                 <BarChart3 className="w-4 h-4" />
               </div>
               <div>
@@ -428,7 +428,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             <div className="md:col-span-2 space-y-3">
               <div className="text-xs font-bold text-slate-700 flex justify-between items-center">
                 <span>Grafik Tren Omzet Harian (Rp)</span>
-                <span className="text-emerald-700 font-extrabold">Total: Rp {omzetHariIni.toLocaleString('id-ID')}</span>
+                <span className="text-[#1E4648] font-extrabold">Total: Rp {omzetHariIni.toLocaleString('id-ID')}</span>
               </div>
               
               <div className="bg-slate-900 text-white rounded-lg p-4 space-y-3 shadow-inner">
@@ -466,7 +466,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                         <div className="font-bold text-slate-800">{l.layanan}</div>
                         <div className="text-[10px] text-slate-400">{l.qty} Transaksi</div>
                       </div>
-                      <span className="font-extrabold text-emerald-700">Rp {l.omzet.toLocaleString('id-ID')}</span>
+                      <span className="font-extrabold text-[#1E4648]">Rp {l.omzet.toLocaleString('id-ID')}</span>
                     </div>
                   ))
                 )}
@@ -489,7 +489,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       {isManager && (
         <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4">
           <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
               <Users className="w-4 h-4" />
             </div>
             <div>
@@ -509,7 +509,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                       <div className="font-bold text-slate-900">{c.nama}</div>
                       <div className="text-[10px] text-slate-400">{c.noHp} • {c.totalOrder} Order</div>
                     </div>
-                    <span className="font-black text-emerald-700">Rp {c.totalSpend.toLocaleString('id-ID')}</span>
+                    <span className="font-black text-[#1E4648]">Rp {c.totalSpend.toLocaleString('id-ID')}</span>
                   </div>
                 ))}
               </div>
@@ -519,7 +519,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             <div className="p-4 bg-[#0f172a] text-white rounded-lg flex flex-col justify-between">
               <div>
                 <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Rasio Member / Repeat Order</div>
-                <div className="text-2xl font-black text-amber-400 mt-1">
+                <div className="text-2xl font-black text-[#FF9500] mt-1">
                   {pelangganList.length > 0 ? Math.round((pelangganList.filter(p => p.totalOrder > 1).length / pelangganList.length) * 100) : 0}%
                 </div>
                 <p className="text-[11px] text-slate-300 mt-1">
@@ -538,7 +538,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
               <Package className="w-4 h-4" />
             </div>
             <div>
@@ -566,14 +566,14 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                 key={i.id}
                 className={`p-3.5 rounded-lg border text-xs space-y-2 ${
                   isCritical ? 'bg-rose-50/80 border-rose-300' :
-                  isLow ? 'bg-amber-50/80 border-amber-300' : 'bg-slate-50 border-slate-200'
+                  isLow ? 'bg-[#FF9500]/10/80 border-[#FF9500]/50' : 'bg-slate-50 border-slate-200'
                 }`}
               >
                 <div className="flex justify-between items-start">
                   <span className="font-bold text-slate-900">{i.nama}</span>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
                     isCritical ? 'bg-rose-100 text-rose-800' :
-                    isLow ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                    isLow ? 'bg-[#FF9500]/15 text-[#FF9500]' : 'bg-[#B5C9C9]/30 text-[#1E4648]'
                   }`}>
                     {isCritical ? 'Menipis' : 'Stok Aman'}
                   </span>
@@ -591,7 +591,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                         setSelectedRestockItem(i);
                         setRestockQty('10');
                       }}
-                      className="px-2 py-1 bg-[#1E4648] hover:bg-[#153334] text-white font-bold rounded-lg text-[10px] flex items-center gap-1 transition"
+                      className="px-2 py-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold rounded-lg text-[10px] flex items-center gap-1 transition"
                     >
                       <Plus className="w-3 h-3" />
                       <span>Restock</span>
@@ -608,7 +608,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
               <Layers className="w-4 h-4" />
             </div>
             <h2 className="text-sm font-bold text-slate-900">Rekap Shift & Kinerja Staf</h2>
@@ -635,7 +635,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                       <td className="py-2.5 px-3 font-bold text-slate-900">{p.nama}</td>
                       <td className="py-2.5 px-3 text-slate-500">{p.jabatan || 'Kasir/Operator'}</td>
                       <td className="py-2.5 px-3 text-center">{p.totalTransaksi} Order</td>
-                      <td className="py-2.5 px-3 text-right font-black text-emerald-700">Rp {p.totalOmzet.toLocaleString('id-ID')}</td>
+                      <td className="py-2.5 px-3 text-right font-black text-[#1E4648]">Rp {p.totalOmzet.toLocaleString('id-ID')}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -649,7 +649,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
               <div className="font-extrabold text-slate-900">Sesi Shift Aktif Kasir: Kasir 1 (Shift Pagi)</div>
               <div className="text-[11px] text-slate-500">Jam Masuk: 07.00 WIB • Modal Kas Awal: Rp 100.000</div>
             </div>
-            <span className="px-3 py-1.5 bg-emerald-100 text-emerald-800 font-bold rounded-lg text-xs">
+            <span className="px-3 py-1.5 bg-[#B5C9C9]/30 text-[#1E4648] font-bold rounded-lg text-xs">
               Shift Berlangsung Aktif
             </span>
           </div>
@@ -683,7 +683,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
             <div className="flex gap-2 pt-2">
               <button onClick={() => setSelectedRestockItem(null)} className="px-3 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs">Batal</button>
-              <button onClick={handleRestockSubmit} className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-2 rounded-lg text-xs">Simpan Stok Baru</button>
+              <button onClick={handleRestockSubmit} className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2 rounded-lg text-xs">Simpan Stok Baru</button>
             </div>
           </div>
         </div>

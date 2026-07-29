@@ -190,7 +190,7 @@ export default function ProdukView() {
         {activeSubTab === 'Produk' && (
           <button
             onClick={handleOpenAdd}
-            className="bg-[#1E4648] hover:bg-[#153334] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
+            className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" /> Tambah Layanan
           </button>
@@ -199,7 +199,7 @@ export default function ProdukView() {
         {activeSubTab === 'Promo' && (
           <button
             onClick={() => setShowPromoModal(true)}
-            className="bg-[#1E4648] hover:bg-[#153334] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
+            className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" /> Buat Voucher Promo
           </button>
@@ -247,13 +247,13 @@ export default function ProdukView() {
                         Rp {item.harga.toLocaleString('id-ID')} / {item.satuan}
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.aktif === 'Y' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.aktif === 'Y' ? 'bg-[#B5C9C9]/20 text-[#1E4648]' : 'bg-slate-100 text-slate-500'}`}>
                           {item.aktif === 'Y' ? 'Aktif' : 'Non-Aktif'}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right space-x-1">
                         <button onClick={() => handleOpenEdit(item)} className="p-1 text-slate-500 hover:text-slate-800"><Edit3 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')} className="p-1 text-amber-600 hover:text-amber-800"><RotateCcw className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')} className="p-1 text-[#FF9500] hover:text-[#FF9500]"><RotateCcw className="w-3.5 h-3.5" /></button>
                         <button onClick={() => handleHapusLayanan(item.id)} className="p-1 text-rose-500 hover:text-rose-700"><Trash2 className="w-3.5 h-3.5" /></button>
                       </td>
                     </tr>
@@ -284,10 +284,10 @@ export default function ProdukView() {
                   <tr key={prm.idPromo} className="hover:bg-slate-50 transition">
                     <td className="py-3 px-4 font-bold font-sans text-[#1E4648] text-sm">{prm.kodeVoucher}</td>
                     <td className="py-3 px-4 text-slate-600">{prm.jenisDiskon}</td>
-                    <td className="py-3 px-4 font-bold text-emerald-700">Rp {prm.nilaiDiskon.toLocaleString('id-ID')}</td>
+                    <td className="py-3 px-4 font-bold text-[#1E4648]">Rp {prm.nilaiDiskon.toLocaleString('id-ID')}</td>
                     <td className="py-3 px-4 text-slate-600">Rp {(prm.minTransaksi || 0).toLocaleString('id-ID')}</td>
                     <td className="py-3 px-4">
-                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                      <span className="bg-[#B5C9C9]/20 text-[#1E4648] border border-[#B5C9C9] px-2 py-0.5 rounded text-[10px] font-bold">
                         Berlaku
                       </span>
                     </td>
@@ -307,7 +307,7 @@ export default function ProdukView() {
       {activeSubTab === 'Loyalitas' && (
         <div className="bg-white rounded-lg border border-slate-200 p-5 max-w-md shadow-xs space-y-4 text-xs">
           <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-            <Gift className="w-4 h-4 text-amber-500" />
+            <Gift className="w-4 h-4 text-[#FF9500]" />
             <span>Pengaturan Skema Poin Pelanggan</span>
           </h3>
 

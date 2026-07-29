@@ -66,16 +66,16 @@ function getLayananStyleConfig(item: LayananItem) {
 
   // Subtle color scheme — semua pakai nuansa teal/slate, hanya icon bg yang beda tipis
   if (kategori === 'MakananMinuman') {
-    return { Icon, iconBg: 'bg-orange-50', iconColor: 'text-orange-500', dot: 'bg-orange-400' };
+    return { Icon, iconBg: 'bg-[#FF9500]/10', iconColor: 'text-[#FF9500]', dot: 'bg-orange-400' };
   }
   if (kategori === 'Produk') {
     return { Icon, iconBg: 'bg-slate-100', iconColor: 'text-slate-500', dot: 'bg-slate-400' };
   }
   if (kategori === 'Layanan Tambahan') {
-    return { Icon, iconBg: 'bg-teal-50', iconColor: 'text-teal-600', dot: 'bg-teal-400' };
+    return { Icon, iconBg: 'bg-[#B5C9C9]/20', iconColor: 'text-[#1E4648]', dot: 'bg-teal-400' };
   }
   // Default: Layanan Utama
-  return { Icon, iconBg: 'bg-teal-50', iconColor: 'text-[#1E4648]', dot: 'bg-[#1E4648]' };
+  return { Icon, iconBg: 'bg-[#B5C9C9]/20', iconColor: 'text-[#1E4648]', dot: 'bg-[#1E4648]' };
 }
 
 export default function PosView() {
@@ -391,10 +391,10 @@ export default function PosView() {
       
       {/* Toast Notification Banner (Step 8) */}
       {toastMsg && (
-        <div className="fixed top-4 right-4 z-[999] bg-[#2d4d38] text-white px-4 py-3 rounded-lg shadow-2xl border border-teal-600/40 flex items-center gap-2.5 animate-bounce-in max-w-sm text-xs font-bold">
-          <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0" />
+        <div className="fixed top-4 right-4 z-[999] bg-[#1E4648] text-white px-4 py-3 rounded-lg shadow-2xl border border-[#B5C9C9]600/40 flex items-center gap-2.5 animate-bounce-in max-w-sm text-xs font-bold">
+          <CheckCircle2 className="w-5 h-5 text-[#B5C9C9] shrink-0" />
           <span>{toastMsg}</span>
-          <button onClick={() => setToastMsg(null)} className="ml-auto p-1 text-teal-200 hover:text-white"><X className="w-4 h-4" /></button>
+          <button onClick={() => setToastMsg(null)} className="ml-auto p-1 text-[#B5C9C9] hover:text-white"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -412,7 +412,7 @@ export default function PosView() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari produk / layanan..."
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200/80 rounded-lg text-xs outline-none focus:border-[#2d4d38] focus:bg-white transition"
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200/80 rounded-lg text-xs outline-none focus:border-[#1E4648] focus:bg-white transition"
             />
           </div>
 
@@ -420,7 +420,7 @@ export default function PosView() {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setShowCustomItemModal(true)}
-              className="bg-[#2d4d38] hover:bg-[#213b2a] text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-2xs"
+              className="bg-[#1E4648] hover:bg-[#163536] text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-2xs"
             >
               <Plus className="w-4 h-4" />
               <span>+ Baru</span>
@@ -429,9 +429,9 @@ export default function PosView() {
             {shiftAktif ? (
               <button
                 onClick={() => setShowTutupShiftModal(true)}
-                className="bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                className="bg-[#B5C9C9]/20 border border-[#B5C9C9] text-[#1E4648] hover:bg-[#B5C9C9]/30 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
               >
-                <Unlock className="w-3.5 h-3.5 text-emerald-600" />
+                <Unlock className="w-3.5 h-3.5 text-[#1E4648]" />
                 <span className="hidden sm:inline">Shift (Rp {shiftAktif.kasAwal.toLocaleString('id-ID')})</span>
               </button>
             ) : (
@@ -462,7 +462,7 @@ export default function PosView() {
                 onClick={() => setSelectedCategoryTab(tab.id as any)}
                 className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 border ${
                   isActive
-                    ? 'bg-[#2d4d38] text-white border-[#2d4d38] shadow-2xs font-bold'
+                    ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-2xs font-bold'
                     : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
@@ -488,7 +488,7 @@ export default function PosView() {
                     onDoubleClick={() => openItemDetailModal(item)}
                     className={`bg-white rounded-lg border p-3 flex flex-col gap-2.5 transition-all duration-150 cursor-pointer select-none hover:shadow-md hover:-translate-y-0.5 ${
                       qtyInCart > 0
-                        ? 'ring-2 ring-[#2d4d38]/25 border-[#2d4d38] bg-[#2d4d38]/[0.02]'
+                        ? 'ring-2 ring-[#1E4648]/25 border-[#1E4648] bg-[#1E4648]/[0.02]'
                         : 'border-slate-200/80 shadow-2xs hover:border-slate-300'
                     }`}
                   >
@@ -509,14 +509,14 @@ export default function PosView() {
                           Rp {item.hargaSatuan.toLocaleString('id-ID')}
                         </div>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1 inline-block ${
-                          isBest ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                          isBest ? 'bg-[#FF9500]/15 text-[#FF9500]' : 'bg-slate-100 text-slate-500'
                         }`}>
                           {isBest ? 'Best' : 'Ready'}
                         </span>
                       </div>
 
                       {qtyInCart > 0 ? (
-                        <div className="flex items-center bg-[#2d4d38] text-white rounded-lg overflow-hidden shrink-0">
+                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden shrink-0">
                           <button
                             onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
                             className="w-7 h-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
@@ -532,8 +532,8 @@ export default function PosView() {
                           </button>
                         </div>
                       ) : (
-                        <div className="w-7 h-7 rounded-lg bg-[#2d4d38]/10 flex items-center justify-center shrink-0">
-                          <Plus className="w-3.5 h-3.5 text-[#2d4d38]" />
+                        <div className="w-7 h-7 rounded-lg bg-[#1E4648]/10 flex items-center justify-center shrink-0">
+                          <Plus className="w-3.5 h-3.5 text-[#1E4648]" />
                         </div>
                       )}
                     </div>
@@ -603,7 +603,7 @@ export default function PosView() {
                   <span className="text-sm font-extrabold text-slate-900 w-8 text-center">{itemModalQty}</span>
                   <button 
                     onClick={() => setItemModalQty(itemModalQty + 1)}
-                    className="p-2 bg-[#2d4d38] text-white rounded-lg hover:bg-[#213b2a] font-bold"
+                    className="p-2 bg-[#1E4648] text-white rounded-lg hover:bg-[#163536] font-bold"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -617,7 +617,7 @@ export default function PosView() {
                   value={itemModalCatatan}
                   onChange={(e) => setItemModalCatatan(e.target.value)}
                   placeholder="Misal: Jangan pakai pewangi, lipat rapi"
-                  className="w-full p-2.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#2d4d38]"
+                  className="w-full p-2.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#1E4648]"
                 />
               </div>
             </div>
@@ -626,7 +626,7 @@ export default function PosView() {
               <button onClick={() => setShowTambahItemModal(false)} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
                 Batal
               </button>
-              <button onClick={handleSaveItemModal} className="flex-1 bg-[#2d4d38] text-white rounded-lg text-xs font-bold py-2.5">
+              <button onClick={handleSaveItemModal} className="flex-1 bg-[#1E4648] text-white rounded-lg text-xs font-bold py-2.5">
                 Simpan ke Keranjang
               </button>
             </div>
@@ -635,12 +635,12 @@ export default function PosView() {
       )}
 
       {/* Floating Sticky Bottom Bar on Mobile (< 768px) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#1E4648] text-white px-3.5 py-2.5 flex items-center justify-between shadow-2xl border-t border-teal-800">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#1E4648] text-white px-3.5 py-2.5 flex items-center justify-between shadow-2xl border-t border-[#B5C9C9]800">
         <div className="flex items-center gap-2.5 min-w-0" onClick={() => setShowMobileCart(true)}>
           <div className="relative shrink-0">
-            <ShoppingCart className="w-5 h-5 text-teal-300" />
+            <ShoppingCart className="w-5 h-5 text-[#B5C9C9]" />
             {totalCartItems > 0 && (
-              <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-bold w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-2xs">
+              <span className="absolute -top-2 -right-2 bg-[#FF9500] text-white text-[10px] font-bold w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-2xs">
                 {totalCartItems}
               </span>
             )}
@@ -649,7 +649,7 @@ export default function PosView() {
             <div className="text-xs font-bold truncate">
               {totalCartItems > 0 ? `Total: Rp ${grandTotal.toLocaleString('id-ID')}` : 'Keranjang Kosong'}
             </div>
-            <div className="text-[10px] text-teal-200/90 truncate">
+            <div className="text-[10px] text-[#B5C9C9]/90 truncate">
               {totalCartItems > 0 ? `${totalCartItems} item dipilih` : 'Klik item di atas untuk memilih'}
             </div>
           </div>
@@ -658,7 +658,7 @@ export default function PosView() {
         <button
           onClick={() => setShowMobileCart(true)}
           disabled={totalCartItems === 0}
-          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shrink-0 shadow-2xs"
+          className="bg-[#FF9500] hover:bg-[#FF9500] disabled:opacity-40 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shrink-0 shadow-2xs"
         >
           <span>Lihat Order</span>
           <ArrowRight className="w-3.5 h-3.5" />
@@ -680,13 +680,13 @@ export default function PosView() {
         {/* Header Order & Customer Button */}
         <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-white flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4 text-[#2d4d38]" />
+            <ShoppingCart className="w-4 h-4 text-[#1E4648]" />
             <h2 className="text-sm font-bold text-slate-800">Order Detail</h2>
           </div>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setShowCustModal(true)}
-              className="text-xs font-semibold text-[#2d4d38] bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg flex items-center gap-1 hover:bg-slate-100 transition"
+              className="text-xs font-semibold text-[#1E4648] bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg flex items-center gap-1 hover:bg-slate-100 transition"
             >
               <User className="w-3.5 h-3.5 text-slate-500" />
               <span className="truncate max-w-[100px] sm:max-w-[120px]">{customer.nama || 'Pilih Pelanggan'}</span>
@@ -708,7 +708,7 @@ export default function PosView() {
             <span className="font-bold text-slate-800">{customer.nama || 'Pelanggan Umum'}</span>
             {customer.noHp && <span className="text-[10px] text-slate-500 ml-1">({customer.noHp})</span>}
           </div>
-          <button onClick={() => setShowCustModal(true)} className="text-[10px] font-bold text-[#2d4d38] hover:underline">
+          <button onClick={() => setShowCustModal(true)} className="text-[10px] font-bold text-[#1E4648] hover:underline">
             Ubah
           </button>
         </div>
@@ -729,7 +729,7 @@ export default function PosView() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 pr-2">
                     <h4 className="font-bold text-xs text-slate-800 leading-snug">{item.layanan}</h4>
-                    <div className="text-[11px] font-bold text-[#2d4d38] mt-0.5">
+                    <div className="text-[11px] font-bold text-[#1E4648] mt-0.5">
                       Rp {item.hargaSatuan.toLocaleString('id-ID')} × {item.qty} = Rp {(item.qty * item.hargaSatuan).toLocaleString('id-ID')}
                     </div>
                   </div>
@@ -753,7 +753,7 @@ export default function PosView() {
                     <span className="text-xs font-bold text-slate-800 px-1.5">{item.qty}</span>
                     <button
                       onClick={() => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, 1)}
-                      className="w-5 h-5 bg-[#2d4d38] text-white font-bold rounded flex items-center justify-center"
+                      className="w-5 h-5 bg-[#1E4648] text-white font-bold rounded flex items-center justify-center"
                     >
                       <Plus className="w-3 h-3" />
                     </button>
@@ -764,7 +764,7 @@ export default function PosView() {
                     value={item.catatan || ''}
                     onChange={(e) => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, 0, e.target.value)}
                     placeholder="+ Catatan"
-                    className="text-[11px] px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-[#2d4d38] text-right w-24"
+                    className="text-[11px] px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-[#1E4648] text-right w-24"
                   />
                 </div>
               </div>
@@ -780,7 +780,7 @@ export default function PosView() {
               value={voucherInput}
               onChange={(e) => setVoucherInput(e.target.value)}
               placeholder="Kode Voucher (HEMAT10)"
-              className="flex-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold uppercase outline-none focus:border-[#2d4d38]"
+              className="flex-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold uppercase outline-none focus:border-[#1E4648]"
             />
             <button
               onClick={handleApplyVoucher}
@@ -790,7 +790,7 @@ export default function PosView() {
             </button>
           </div>
           {voucherMsg && (
-            <div className={`text-[10px] font-bold ${voucherMsg.type === 'success' ? 'text-emerald-600' : 'text-rose-500'}`}>
+            <div className={`text-[10px] font-bold ${voucherMsg.type === 'success' ? 'text-[#1E4648]' : 'text-rose-500'}`}>
               {voucherMsg.text}
             </div>
           )}
@@ -804,7 +804,7 @@ export default function PosView() {
               <span className="font-bold text-slate-800">Rp {subtotalCart.toLocaleString('id-ID')}</span>
             </div>
             {diskonApplied.nilai > 0 && (
-              <div className="flex justify-between text-emerald-600">
+              <div className="flex justify-between text-[#1E4648]">
                 <span>Diskon ({diskonApplied.kode}) :</span>
                 <span className="font-bold">-Rp {diskonApplied.nilai.toLocaleString('id-ID')}</span>
               </div>
@@ -813,7 +813,7 @@ export default function PosView() {
 
           <div className="bg-slate-900 text-white rounded-lg p-3.5 flex justify-between items-center shadow-inner my-1">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Total Tagihan</span>
-            <span className="text-lg font-black text-emerald-400">Rp {grandTotal.toLocaleString('id-ID')}</span>
+            <span className="text-lg font-black text-[#B5C9C9]">Rp {grandTotal.toLocaleString('id-ID')}</span>
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -828,7 +828,7 @@ export default function PosView() {
             <button
               onClick={() => setShowDetailTransaksiModal(true)}
               disabled={cartArray.length === 0}
-              className="flex-1 bg-[#2d4d38] hover:bg-[#213b2a] text-white font-bold py-3 rounded-lg text-xs sm:text-sm transition flex items-center justify-center gap-2 disabled:opacity-40 shadow-md"
+              className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3 rounded-lg text-xs sm:text-sm transition flex items-center justify-center gap-2 disabled:opacity-40 shadow-md"
             >
               <CreditCard className="w-4 h-4" />
               <span>Proses Bayar Rp {grandTotal.toLocaleString('id-ID')}</span>
@@ -843,7 +843,7 @@ export default function PosView() {
           <div className="bg-white rounded-lg p-5 w-full max-w-md border border-slate-100 shadow-2xl flex flex-col max-h-[85vh]">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <User className="w-5 h-5 text-[#2d4d38]" />
+                <User className="w-5 h-5 text-[#1E4648]" />
                 <div>
                   <h3 className="text-sm font-bold text-slate-800">Pilih / Cari Pelanggan</h3>
                   <p className="text-[10px] text-slate-500">Ketik 4 digit terakhir No. HP atau nama pelanggan</p>
@@ -861,7 +861,7 @@ export default function PosView() {
                   value={searchCust}
                   onChange={(e) => setSearchCust(e.target.value)}
                   placeholder="Ketik 4 digit terakhir (misal: 7890) / Nama..."
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#2d4d38] font-semibold"
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#1E4648] font-semibold"
                 />
               </div>
             </div>
@@ -891,11 +891,11 @@ export default function PosView() {
                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 my-1">
                   {/* Case 0: Search query entered but 0 results found */}
                   {query && filtered.length === 0 && (
-                    <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-lg text-center space-y-2">
-                      <div className="text-xs font-bold text-amber-900">
+                    <div className="p-4 bg-[#FF9500]/10/70 border border-[#FF9500]/30 rounded-lg text-center space-y-2">
+                      <div className="text-xs font-bold text-[#FF9500]">
                         Tidak ditemukan kecocokan untuk "{query}"
                       </div>
-                      <p className="text-[11px] text-amber-700">
+                      <p className="text-[11px] text-[#FF9500]">
                         Nomor HP atau nama belum terdaftar di database. Silakan input sebagai Pelanggan Baru.
                       </p>
                       <button
@@ -905,7 +905,7 @@ export default function PosView() {
                           else if (!isNaN(Number(query))) setNewCustNoHp(query);
                           else setNewCustNama(query);
                         }}
-                        className="px-3 py-1.5 bg-[#2d4d38] text-white text-xs font-bold rounded-lg shadow-2xs hover:bg-[#213b2a]"
+                        className="px-3 py-1.5 bg-[#1E4648] text-white text-xs font-bold rounded-lg shadow-2xs hover:bg-[#163536]"
                       >
                         + Input Pelanggan Baru
                       </button>
@@ -914,16 +914,16 @@ export default function PosView() {
 
                   {/* Case 1: Exactly 1 result found (Requires Kasir Name Confirmation) */}
                   {query && filtered.length === 1 && (
-                    <div className="p-3 bg-emerald-50 border-2 border-emerald-300 rounded-lg space-y-2">
-                      <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                    <div className="p-3 bg-[#B5C9C9]/20 border-2 border-[#B5C9C9] rounded-lg space-y-2">
+                      <div className="text-[10px] font-bold text-[#1E4648] uppercase tracking-wider">
                         Ditemukan 1 Kecocokan — Mohon Cocokkan Nama Pelanggan:
                       </div>
-                      <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-emerald-200">
+                      <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-[#B5C9C9]">
                         <div>
                           <div className="text-xs font-extrabold text-slate-900">{filtered[0].nama}</div>
                           <div className="text-[11px] font-mono text-slate-500">{maskHp(filtered[0].noHp)}</div>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-[#B5C9C9]/30 text-[#1E4648] rounded-full">
                           {filtered[0].memberStatus || 'Pelanggan'}
                         </span>
                       </div>
@@ -932,9 +932,9 @@ export default function PosView() {
                           setCustomer(filtered[0]);
                           setShowCustModal(false);
                         }}
-                        className="w-full py-2 bg-[#2d4d38] hover:bg-[#213b2a] text-white text-xs font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1.5"
+                        className="w-full py-2 bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1.5"
                       >
-                        <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                        <CheckCircle2 className="w-4 h-4 text-[#B5C9C9]" />
                         <span>Konfirmasi & Gunakan Data Ini</span>
                       </button>
                     </div>
@@ -955,13 +955,13 @@ export default function PosView() {
                             setCustomer(c);
                             setShowCustModal(false);
                           }}
-                          className="p-3 bg-slate-50 hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 rounded-lg cursor-pointer transition flex items-center justify-between"
+                          className="p-3 bg-slate-50 hover:bg-[#B5C9C9]/20/50 border border-slate-200 hover:border-[#B5C9C9] rounded-lg cursor-pointer transition flex items-center justify-between"
                         >
                           <div>
                             <div className="text-xs font-bold text-slate-800">{c.nama}</div>
                             <div className="text-[11px] font-mono text-slate-500">{maskHp(c.noHp)} {c.alamat ? `• ${c.alamat}` : ''}</div>
                           </div>
-                          <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-[#B5C9C9]/30 text-[#1E4648] rounded-full">
                             {c.memberStatus || 'Pelanggan'}
                           </span>
                         </div>
@@ -981,13 +981,13 @@ export default function PosView() {
                 <input type="text" value={newCustAlamat} onChange={(e) => setNewCustAlamat(e.target.value)} placeholder="Alamat (Opsional)" className="w-full p-2 border border-slate-200 rounded-lg text-xs font-semibold" />
                 <div className="flex gap-2 pt-1">
                   <button onClick={() => setShowAddCustForm(false)} className="px-3 py-1.5 bg-slate-200 text-xs font-bold rounded-lg">Batal</button>
-                  <button onClick={handleAddNewCustomer} className="flex-1 bg-[#2d4d38] text-white text-xs font-bold py-1.5 rounded-lg">Simpan & Pilih Pelanggan</button>
+                  <button onClick={handleAddNewCustomer} className="flex-1 bg-[#1E4648] text-white text-xs font-bold py-1.5 rounded-lg">Simpan & Pilih Pelanggan</button>
                 </div>
               </div>
             ) : (
               <button 
                 onClick={() => setShowAddCustForm(true)} 
-                className="w-full py-2.5 border-2 border-dashed border-[#2d4d38]/40 text-[#2d4d38] font-bold text-xs rounded-lg hover:bg-emerald-50/50 transition mt-2 flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 border-2 border-dashed border-[#1E4648]/40 text-[#1E4648] font-bold text-xs rounded-lg hover:bg-[#B5C9C9]/20/50 transition mt-2 flex items-center justify-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Input Pelanggan Baru</span>
@@ -1022,7 +1022,7 @@ export default function PosView() {
                 
                 {/* COLUMN 1: DETAIL ORDER */}
                 <div className="space-y-3.5">
-                  <div className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[#2d4d38] pb-1 border-b border-slate-100 flex items-center gap-1.5">
+                  <div className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[#1E4648] pb-1 border-b border-slate-100 flex items-center gap-1.5">
                     <span>1. Detail Order & Customer</span>
                   </div>
 
@@ -1032,7 +1032,7 @@ export default function PosView() {
                     <select
                       value={namaKasirInput}
                       onChange={(e) => setNamaKasirInput(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#2d4d38]"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
                     >
                       {staffList.map((s) => (
                         <option key={s.id || s.nama} value={s.nama}>
@@ -1046,11 +1046,11 @@ export default function PosView() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">Nama Pelanggan *</label>
-                      <input type="text" value={customer.nama} onChange={(e) => setCustomer({ ...customer, nama: e.target.value })} placeholder="Nama Pelanggan" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#2d4d38]" />
+                      <input type="text" value={customer.nama} onChange={(e) => setCustomer({ ...customer, nama: e.target.value })} placeholder="Nama Pelanggan" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]" />
                     </div>
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">No. HP / WhatsApp *</label>
-                      <input type="tel" value={customer.noHp} onChange={(e) => setCustomer({ ...customer, noHp: e.target.value })} placeholder="08..." className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#2d4d38]" />
+                      <input type="tel" value={customer.noHp} onChange={(e) => setCustomer({ ...customer, noHp: e.target.value })} placeholder="08..." className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]" />
                     </div>
                   </div>
 
@@ -1091,7 +1091,7 @@ export default function PosView() {
                       value={estimasiSelesai}
                       onChange={(e) => setEstimasiSelesai(e.target.value)}
                       placeholder="Hari ini, 17.00 WIB"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#2d4d38]"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
                     />
                   </div>
 
@@ -1103,7 +1103,7 @@ export default function PosView() {
                       value={catatanOrderInput}
                       onChange={(e) => setCatatanOrderInput(e.target.value)}
                       placeholder="Misal: Jemput jam 5 sore, pisahkan baju putih"
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:border-[#2d4d38]"
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:border-[#1E4648]"
                     />
                   </div>
 
@@ -1124,14 +1124,14 @@ export default function PosView() {
                 {/* COLUMN 2: PEMBAYARAN */}
                 <div className="space-y-3.5 flex flex-col justify-between">
                   <div className="space-y-3.5">
-                    <div className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[#2d4d38] pb-1 border-b border-slate-100">
+                    <div className="font-bold text-slate-800 text-xs uppercase tracking-wider text-[#1E4648] pb-1 border-b border-slate-100">
                       2. Pembayaran Transaksi
                     </div>
 
                     {/* Total Tagihan Banner */}
                     <div className="bg-slate-900 text-white rounded-lg p-4 text-center shadow-inner">
                       <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Tagihan:</span>
-                      <span className="text-2xl sm:text-3xl font-black text-emerald-400">Rp {grandTotal.toLocaleString('id-ID')}</span>
+                      <span className="text-2xl sm:text-3xl font-black text-[#B5C9C9]">Rp {grandTotal.toLocaleString('id-ID')}</span>
                     </div>
 
                     {/* Metode Pembayaran Selection */}
@@ -1201,9 +1201,9 @@ export default function PosView() {
 
                         {/* State 2: Kembalian Normal (Emerald Box) */}
                         {Number(uangBayarInput) >= grandTotal && (
-                          <div className="flex justify-between items-center text-xs font-bold text-emerald-800 bg-emerald-50/90 border border-emerald-300 p-2.5 rounded-lg">
+                          <div className="flex justify-between items-center text-xs font-bold text-[#1E4648] bg-[#B5C9C9]/20/90 border border-[#B5C9C9] p-2.5 rounded-lg">
                             <span>Kembalian:</span>
-                            <span className="text-base font-black text-emerald-700">
+                            <span className="text-base font-black text-[#1E4648]">
                               Rp {(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}
                             </span>
                           </div>
@@ -1222,7 +1222,7 @@ export default function PosView() {
                             setQrisStatus('SUCCESS');
                             alert('Pembayaran QRIS / Non-Tunai Terverifikasi Berhasil!');
                           }}
-                          className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-[11px] font-bold hover:bg-emerald-700 transition"
+                          className="px-3 py-1 bg-[#1E4648] text-white rounded-lg text-[11px] font-bold hover:bg-[#1E4648] transition"
                         >
                           Cek Status Pembayaran
                         </button>
@@ -1262,7 +1262,7 @@ export default function PosView() {
                 className={`flex-1 font-bold py-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition ${
                   metodeBayar === 'Tunai' && Number(uangBayarInput) > 0 && Number(uangBayarInput) < grandTotal
                     ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-                    : 'bg-[#2d4d38] hover:bg-[#213b2a] text-white'
+                    : 'bg-[#1E4648] hover:bg-[#163536] text-white'
                 }`}
               >
                 <span>Konfirmasi & Selesaikan Bayar</span>
@@ -1278,7 +1278,7 @@ export default function PosView() {
         <div className="fixed inset-0 z-[600] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div className="bg-white rounded-lg p-5 sm:p-6 w-full max-w-md border border-slate-100 shadow-2xl my-auto text-center animate-scale-in">
             {/* Success Icon */}
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3 shadow-inner">
+            <div className="w-16 h-16 rounded-full bg-[#B5C9C9]/30 text-[#1E4648] flex items-center justify-center mx-auto mb-3 shadow-inner">
               <CheckCircle2 className="w-9 h-9" />
             </div>
 
@@ -1292,7 +1292,7 @@ export default function PosView() {
               <div className="flex justify-between"><span className="text-slate-500">Metode Bayar:</span><span className="font-bold text-slate-800">{completedOrderData.metodeBayar}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Total Dibayar:</span><span className="font-black text-slate-900">Rp {completedOrderData.total.toLocaleString('id-ID')}</span></div>
               {completedOrderData.metodeBayar === 'Tunai' && (
-                <div className="flex justify-between text-emerald-700 font-bold pt-1 border-t border-slate-200">
+                <div className="flex justify-between text-[#1E4648] font-bold pt-1 border-t border-slate-200">
                   <span>Kembalian:</span>
                   <span className="font-black">Rp {completedOrderData.kembalian.toLocaleString('id-ID')}</span>
                 </div>
@@ -1310,7 +1310,7 @@ export default function PosView() {
                   setShowSuccessModal(false);
                   setShowPreviewStrukModal(true);
                 }}
-                className="w-full bg-[#2d4d38] hover:bg-[#213b2a] text-white font-bold py-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md"
+                className="w-full bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md"
               >
                 <Printer className="w-4 h-4" />
                 <span>Preview & Cetak Struk</span>
@@ -1322,7 +1322,7 @@ export default function PosView() {
                   const waUrl = `https://wa.me/${phone || ''}?text=${encodeURIComponent(`Halo Kak ${completedOrderData.pelanggan}, ini nota resmi transaksi laundry Dua SiSi POS #${completedOrderData.trxId} sebesar Rp ${completedOrderData.total.toLocaleString('id-ID')}. Terima kasih!`)}`;
                   window.open(waUrl, '_blank');
                 }}
-                className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold py-2.5 rounded-lg text-xs border border-emerald-200 flex items-center justify-center gap-2"
+                className="w-full bg-[#B5C9C9]/20 hover:bg-[#B5C9C9]/30 text-[#1E4648] font-bold py-2.5 rounded-lg text-xs border border-[#B5C9C9] flex items-center justify-center gap-2"
               >
                 <Send className="w-4 h-4" />
                 <span>Kirim ke WhatsApp Pelanggan</span>
@@ -1360,7 +1360,7 @@ export default function PosView() {
                   key={p.id}
                   onClick={() => setPaperSize(p.id as any)}
                   className={`px-3 py-1 rounded-lg text-xs font-bold border transition ${
-                    paperSize === p.id ? 'bg-[#2d4d38] text-white border-[#2d4d38]' : 'bg-slate-50 text-slate-600 border-slate-200'
+                    paperSize === p.id ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-slate-50 text-slate-600 border-slate-200'
                   }`}
                 >
                   {p.label}
@@ -1404,7 +1404,7 @@ export default function PosView() {
                 <div className="flex justify-between"><span>TOTAL :</span><span>Rp {completedOrderData.total.toLocaleString('id-ID')}</span></div>
                 <div className="flex justify-between"><span>BAYAR ({completedOrderData.metodeBayar}):</span><span>Rp {completedOrderData.uangBayar.toLocaleString('id-ID')}</span></div>
                 {completedOrderData.kembalian > 0 && (
-                  <div className="flex justify-between text-emerald-800"><span>KEMBALI :</span><span>Rp {completedOrderData.kembalian.toLocaleString('id-ID')}</span></div>
+                  <div className="flex justify-between text-[#1E4648]"><span>KEMBALI :</span><span>Rp {completedOrderData.kembalian.toLocaleString('id-ID')}</span></div>
                 )}
                 <div className="border-b border-dashed border-slate-400 my-2" />
               </div>
@@ -1419,7 +1419,7 @@ export default function PosView() {
             <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 shrink-0 mt-3">
               <button
                 onClick={() => alert(`Mengirim cetak struk format ${paperSize} ke Thermal Printer...`)}
-                className="bg-[#2d4d38] hover:bg-[#213b2a] text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-xs"
+                className="bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-xs"
               >
                 <Printer className="w-4 h-4" />
                 <span>Cetak Struk</span>
@@ -1449,7 +1449,7 @@ export default function PosView() {
                   value={kasAwalInput}
                   onChange={(e) => setKasAwalInput(e.target.value)}
                   placeholder="100000"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#2d4d38]"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648]"
                 />
               </div>
             </div>
@@ -1467,7 +1467,7 @@ export default function PosView() {
                   totalOmzetTunai: 0
                 });
                 setShowBukaShiftModal(false);
-              }} className="flex-1 bg-[#2d4d38] text-white rounded-lg text-xs font-bold py-2">Buka Shift Sekarang</button>
+              }} className="flex-1 bg-[#1E4648] text-white rounded-lg text-xs font-bold py-2">Buka Shift Sekarang</button>
             </div>
           </div>
         </div>
@@ -1490,7 +1490,7 @@ export default function PosView() {
                   value={kasAkhirFisik}
                   onChange={(e) => setKasAkhirFisik(e.target.value)}
                   placeholder="Hitung jumlah uang fisik di laci"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#2d4d38]"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648]"
                 />
               </div>
             </div>
@@ -1520,7 +1520,7 @@ export default function PosView() {
                   value={customItemForm.layanan}
                   onChange={(e) => setCustomItemForm({ ...customItemForm, layanan: e.target.value })}
                   placeholder="Contoh: Cuci Karpet Jumbo"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#2d4d38]"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648]"
                 />
               </div>
               <div>
@@ -1530,7 +1530,7 @@ export default function PosView() {
                   value={customItemForm.hargaSatuan}
                   onChange={(e) => setCustomItemForm({ ...customItemForm, hargaSatuan: e.target.value })}
                   placeholder="25000"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#2d4d38]"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs outline-none focus:border-[#1E4648]"
                 />
               </div>
             </div>
@@ -1551,7 +1551,7 @@ export default function PosView() {
                 setLayananList([newItem, ...layananList]);
                 setShowCustomItemModal(false);
                 setCustomItemForm({ layanan: '', hargaSatuan: '', kategori: 'Layanan' });
-              }} className="flex-1 bg-[#2d4d38] text-white rounded-lg text-xs font-bold py-2">Tambah Produk</button>
+              }} className="flex-1 bg-[#1E4648] text-white rounded-lg text-xs font-bold py-2">Tambah Produk</button>
             </div>
           </div>
         </div>

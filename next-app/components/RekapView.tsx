@@ -204,7 +204,7 @@ export default function RekapView() {
 
           <button
             onClick={loadLaporan}
-            className="bg-[#1E4648] hover:bg-[#153334] text-white font-semibold px-3 py-1.5 rounded-md text-xs transition flex items-center gap-1.5 shadow-xs"
+            className="bg-[#1E4648] hover:bg-[#163536] text-white font-semibold px-3 py-1.5 rounded-md text-xs transition flex items-center gap-1.5 shadow-xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Filter
           </button>
@@ -212,7 +212,7 @@ export default function RekapView() {
           <button
             onClick={handleRunSeeder6Bulan}
             disabled={loading}
-            className="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs transition flex items-center gap-1.5 shadow-xs"
+            className="bg-[#FF9500] hover:bg-amber-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs transition flex items-center gap-1.5 shadow-xs"
             title="Generate 300+ sampel data transaksi acak selama 6 bulan terakhir"
           >
             <Award className="w-3.5 h-3.5" /> Seeder 6 Bulan
@@ -220,7 +220,7 @@ export default function RekapView() {
 
           <button
             onClick={handleExportCSV}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs transition flex items-center gap-1.5 shadow-xs"
+            className="bg-[#1E4648] hover:bg-[#1E4648] text-white font-semibold px-3 py-1.5 rounded-md text-xs transition flex items-center gap-1.5 shadow-xs"
             title="Ekspor Laporan ke CSV Excel"
           >
             <Download className="w-3.5 h-3.5" /> Ekspor Excel
@@ -257,9 +257,9 @@ export default function RekapView() {
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs">
               <div className="text-[11px] font-medium text-slate-500 mb-1">Self vs Full Service</div>
               <div className="text-sm font-bold text-slate-800 flex items-center gap-2 mt-1">
-                <span className="text-teal-700">{ringkasan.selfCount} Self</span>
+                <span className="text-[#1E4648]">{ringkasan.selfCount} Self</span>
                 <span className="text-slate-300">•</span>
-                <span className="text-amber-700">{ringkasan.fullCount} Full</span>
+                <span className="text-[#FF9500]">{ringkasan.fullCount} Full</span>
               </div>
             </div>
           </div>
@@ -345,7 +345,7 @@ export default function RekapView() {
             <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
               <div className="px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-800 flex items-center justify-between">
                 <span>Peringkat Layanan Terlaris</span>
-                <Award className="w-4 h-4 text-amber-500" />
+                <Award className="w-4 h-4 text-[#FF9500]" />
               </div>
 
               <div className="overflow-x-auto">

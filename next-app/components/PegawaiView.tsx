@@ -99,7 +99,7 @@ export default function PegawaiView() {
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="bg-[#1E4648] hover:bg-[#153334] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5"
+            className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5"
           >
             <Plus className="w-3.5 h-3.5" /> Tambah Pegawai
           </button>
@@ -167,7 +167,7 @@ export default function PegawaiView() {
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-200 font-semibold text-xs text-slate-800 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-amber-600" /> Rekap Kinerja Penjualan
+              <Award className="w-4 h-4 text-[#FF9500]" /> Rekap Kinerja Penjualan
             </span>
           </div>
 
@@ -253,7 +253,7 @@ export default function PegawaiView() {
               <button onClick={() => setShowAddModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-md text-xs">
                 Batal
               </button>
-              <button onClick={handleAddPegawai} className="bg-[#1E4648] hover:bg-[#153334] text-white font-medium px-4 py-2 rounded-md text-xs">
+              <button onClick={handleAddPegawai} className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-4 py-2 rounded-md text-xs">
                 Simpan
               </button>
             </div>

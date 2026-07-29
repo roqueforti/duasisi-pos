@@ -15,7 +15,7 @@ const AFFIRMATIONS = [
     category: 'Pelayanan Prima',
     icon: Sparkles,
     color: 'text-[#1E4648]',
-    iconBg: 'bg-teal-50 border-teal-200 text-[#1E4648]',
+    iconBg: 'bg-[#B5C9C9]/20 border-[#B5C9C9]200 text-[#1E4648]',
     title: 'Semangat Kerja Hari Ini!',
     quote: 'Pelayanan ramah dan senyumanmu hari ini membawa keberkahan serta kepuasan utama bagi setiap pelanggan Dua SiSi.'
   },
@@ -30,24 +30,24 @@ const AFFIRMATIONS = [
   {
     category: 'Kesehatan & Self-Care',
     icon: Coffee,
-    color: 'text-emerald-600',
-    iconBg: 'bg-emerald-50 border-emerald-200 text-emerald-600',
+    color: 'text-[#1E4648]',
+    iconBg: 'bg-[#B5C9C9]/20 border-[#B5C9C9] text-[#1E4648]',
     title: 'Jaga Kesehatan & Wellbeing',
     quote: 'Jangan lupa minum air putih yang cukup, istirahat sejenak di sela tugas, dan jaga selalu energi kebaikanmu!'
   },
   {
     category: 'Energi Positif',
     icon: Sun,
-    color: 'text-amber-600',
-    iconBg: 'bg-amber-50 border-amber-200 text-amber-600',
+    color: 'text-[#FF9500]',
+    iconBg: 'bg-[#FF9500]/10 border-[#FF9500]/30 text-[#FF9500]',
     title: 'Hari Baru, Energi Positif',
     quote: 'Setiap lembar pakaian bersih yang kamu kerjakan adalah bukti profesionalisme tinggi dan hasil kerja terbaikmu.'
   },
   {
     category: 'Kebahagiaan Kerja',
     icon: Smile,
-    color: 'text-teal-700',
-    iconBg: 'bg-teal-50 border-teal-200 text-teal-700',
+    color: 'text-[#1E4648]',
+    iconBg: 'bg-[#B5C9C9]/20 border-[#B5C9C9]200 text-[#1E4648]',
     title: 'Suasana Kerja Bahagia',
     quote: 'Bekerja dengan rasa bahagia dan ikhlas akan membuat waktu berjalan cepat dan hasil kerjamu bernilai sangat tinggi.'
   },
@@ -136,8 +136,8 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
 
         {/* Header Badge */}
         <div className="flex items-center justify-between mb-4 pt-1">
-          <div className="inline-flex items-center gap-1.5 bg-teal-50 border border-teal-200 px-3 py-1 rounded-full text-xs font-semibold text-[#1E4648]">
-            <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+          <div className="inline-flex items-center gap-1.5 bg-[#B5C9C9]/20 border border-[#B5C9C9]200 px-3 py-1 rounded-full text-xs font-semibold text-[#1E4648]">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#1E4648]" />
             <span>{label || (role === 'MANAGER' ? 'Manager / Owner' : 'Staff / Kasir')}</span>
           </div>
 
@@ -180,7 +180,7 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
             type="button"
             onClick={handleNextQuote}
             title="Ganti motivasi baru"
-            className="mt-2.5 mx-auto flex items-center gap-1.5 text-[11px] font-semibold text-[#1E4648] hover:text-[#153334] bg-white hover:bg-teal-50 border border-slate-200 px-3 py-1 rounded-full transition active:scale-95 cursor-pointer shadow-2xs"
+            className="mt-2.5 mx-auto flex items-center gap-1.5 text-[11px] font-semibold text-[#1E4648] hover:text-[#163536] bg-white hover:bg-[#B5C9C9]/20 border border-slate-200 px-3 py-1 rounded-full transition active:scale-95 cursor-pointer shadow-2xs"
           >
             <RefreshCw className={`w-3 h-3 ${isChanging ? 'animate-spin' : ''}`} />
             <span>Ganti Motivation Quote</span>
@@ -206,7 +206,7 @@ export default function WellbeingModal({ role, label, onFinish }: WellbeingModal
         {/* Primary Action Button */}
         <button
           onClick={onFinish}
-          className="w-full bg-[#1E4648] hover:bg-[#153334] text-white font-bold py-2.5 px-5 rounded-lg text-xs transition-all shadow-sm active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+          className="w-full bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 px-5 rounded-lg text-xs transition-all shadow-sm active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
         >
           <span>Siap Bertugas & Melayani</span>
           <ArrowRight className="w-4 h-4 text-white" />

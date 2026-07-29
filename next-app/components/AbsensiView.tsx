@@ -161,14 +161,14 @@ export default function AbsensiView() {
           <button
             onClick={handleClockIn}
             disabled={loading}
-            className="flex-1 bg-[#1E4648] hover:bg-[#153334] text-white font-medium py-2 rounded-md text-xs transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-medium py-2 rounded-md text-xs transition flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
             <LogIn className="w-3.5 h-3.5" /> Clock In (Masuk)
           </button>
           <button
             onClick={handleClockOut}
             disabled={loading}
-            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 rounded-md text-xs transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="flex-1 bg-[#FF9500] hover:bg-amber-700 text-white font-medium py-2 rounded-md text-xs transition flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
             <LogOut className="w-3.5 h-3.5" /> Clock Out (Pulang)
           </button>
@@ -229,8 +229,8 @@ export default function AbsensiView() {
                     <td className="py-3 px-4 text-slate-600 font-medium">{r.tanggal}</td>
                     <td className="py-3 px-4 font-semibold text-slate-800">{r.namaPegawai}</td>
                     <td className="py-3 px-4 text-slate-600">{r.shift}</td>
-                    <td className="py-3 px-4 text-emerald-700 font-medium">{r.clockIn}</td>
-                    <td className="py-3 px-4 text-amber-700 font-medium">{r.clockOut || '-'}</td>
+                    <td className="py-3 px-4 text-[#1E4648] font-medium">{r.clockIn}</td>
+                    <td className="py-3 px-4 text-[#FF9500] font-medium">{r.clockOut || '-'}</td>
                     <td className="py-3 px-4 font-semibold text-slate-800">{r.durasi}</td>
                     <td className="py-3 px-4 text-slate-500">{r.catatan}</td>
                   </tr>
