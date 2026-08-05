@@ -1,0 +1,289 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================
+// PEGAWAI / EMPLOYEE
+// =============================================
+model Employee {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  nama      String
+  jabatan   String
+  noHp      String?  @map("no_hp")
+  role      String   // 'STAFF' | 'MANAGER'
+  aktif     Boolean  @default(true)
+
+  shifts       Shift[]
+  absensiList  Absensi[]
+  pipelineSteps PipelineStep[]
+
+  @@map("employees")
+}
+
+// =============================================
+// PELANGGAN / CUSTOMER
+// =============================================
+model Customer {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  nama            String
+  noHp            String   @unique @map("no_hp")
+  alamat          String?
+  saldoPoin       Int      @default(0) @map("saldo_poin")
+  isBlacklist     Boolean  @default(false) @map("is_blacklist")
+  tanggalDaftar   DateTime @default(dbgenerated("CURRENT_DATE")) @map("tanggal_daftar") @db.Date
+  totalTransaksi  Int      @default(0) @map("total_transaksi")
+  totalBelanja    Decimal  @default(0) @map("total_belanja")
+  terakhirOrder   DateTime? @map("terakhir_order") @db.Timestamptz
+  catatan         String?
+
+  transactions    Transaction[]
+
+  @@map("customers")
+}
+
+// =============================================
+// LAYANAN / SERVICE CATALOG
+// =============================================
+model Service {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  namaLayanan  String   @map("nama_layanan")
+  hargaSatuan  Decimal  @map("harga_satuan")
+  tipe         String   // 'SelfService' | 'FullService'
+  satuan       String?
+  icon         String?
+  kategori     String?  // 'Layanan' | 'Layanan Tambahan' | 'Produk' | 'MakananMinuman'
+  aktif        Boolean  @default(true)
+
+  transactionItems TransactionItem[]
+
+  @@map("services")
+}
+
+// =============================================
+// MESIN CUCI / DRYER
+// =============================================
+model Machine {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  namaMesin       String    @map("nama_mesin")
+  tipe            String    // 'Washer' | 'Dryer'
+  status          String    @default("Kosong") // 'Kosong' | 'Digunakan' | 'Maintenance'
+  keterangan      String?
+  mulaiPakai      DateTime? @map("mulai_pakai") @db.Timestamptz
+  estimasiSelesai String?   @map("estimasi_selesai")
+
+  @@map("machines")
+}
+
+// =============================================
+// SHIFT KASIR (INSTANCE — setiap buka/tutup kasir)
+// =============================================
+model Shift {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  idPegawai       String?   @map("id_pegawai") @db.Uuid
+  namaKasir       String    @map("nama_kasir")
+  kasAwal         Decimal   @map("kas_awal")
+  kasAkhir        Decimal?  @map("kas_akhir")
+  totalOmzetTunai Decimal?  @map("total_omzet_tunai")
+  selisihKas      Decimal?  @map("selisih_kas")
+  status          String    // 'Buka' | 'Tutup'
+  waktuBuka       DateTime  @map("waktu_buka") @db.Timestamptz
+  waktuTutup      DateTime? @map("waktu_tutup") @db.Timestamptz
+  catatan         String?
+
+  employee        Employee? @relation(fields: [idPegawai], references: [id])
+
+  @@map("shifts")
+}
+
+// =============================================
+// MASTER SHIFT (TEMPLATE JADWAL SHIFT)
+// =============================================
+model MasterShift {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  namaShift  String  @map("nama_shift")   // 'Shift Pagi' | 'Shift Siang' | 'Shift Malam'
+  jamMulai   String  @map("jam_mulai")    // '07:00'
+  jamSelesai String  @map("jam_selesai")  // '15:00'
+  deskripsi  String?
+
+  absensiList Absensi[]
+
+  @@map("master_shifts")
+}
+
+// =============================================
+// ABSENSI
+// =============================================
+model Absensi {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  idPegawai   String    @map("id_pegawai") @db.Uuid
+  idShift     String?   @map("id_shift") @db.Uuid
+  namaShift   String?   @map("nama_shift")
+  tanggal     DateTime  @db.Date
+  jamMasuk    DateTime? @map("jam_masuk") @db.Timestamptz
+  jamKeluar   DateTime? @map("jam_keluar") @db.Timestamptz
+  status      String    // 'Hadir' | 'Izin' | 'Sakit' | 'Alpha'
+  catatan     String?
+
+  employee    Employee   @relation(fields: [idPegawai], references: [id])
+  masterShift MasterShift? @relation(fields: [idShift], references: [id])
+
+  @@map("absensi")
+}
+
+// =============================================
+// PROMO / VOUCHER
+// =============================================
+model Promo {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  kodeVoucher    String    @unique @map("kode_voucher")
+  jenisDiskon    String    @map("jenis_diskon") // 'Persentase' | 'Nominal'
+  nilaiDiskon    Decimal   @map("nilai_diskon")
+  minTransaksi   Decimal?  @map("min_transaksi")
+  periodeSelesai DateTime? @map("periode_selesai") @db.Timestamptz
+  kuota          Int?
+  terpakai       Int       @default(0)
+  statusAktif    Boolean   @default(true) @map("status_aktif")
+
+  @@map("promos")
+}
+
+// =============================================
+// TRANSAKSI (HEADER)
+// =============================================
+model Transaction {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  noNota          String    @unique @map("no_nota")
+  tanggal         DateTime  @db.Timestamptz
+  idPelanggan     String?   @map("id_pelanggan") @db.Uuid
+  namaPelanggan   String    @map("nama_pelanggan")
+  noHpPelanggan   String?   @map("no_hp_pelanggan")
+  petugas         String
+  tipe            String    // 'SelfService' | 'FullService'
+  tingkatLayanan  String?   @map("tingkat_layanan") // 'Reguler' | 'Express' | 'Kilat'
+  subtotal        Decimal?
+  diskon          Decimal   @default(0)
+  pajak           Decimal   @default(0)
+  total           Decimal
+  nominalDp       Decimal   @default(0) @map("nominal_dp")
+  sisaTagihan     Decimal   @default(0) @map("sisa_tagihan")
+  metodeBayar     String?   @map("metode_bayar") // 'Tunai' | 'QRIS' | 'Transfer' | 'Kartu' | 'Split'
+  status          String    // 'Diterima' | 'Dicuci' | 'Dikeringkan' | 'Disetrika' | 'Siap Diambil' | 'Selesai' | 'Batal'
+  statusVoid      String    @default("None") @map("status_void")
+  alasanVoid      String?   @map("alasan_void")
+  catatan         String?
+  estimasiSelesai DateTime? @map("estimasi_selesai") @db.Timestamptz
+  idOutlet        String?   @map("id_outlet")
+
+  customer        Customer?         @relation(fields: [idPelanggan], references: [id])
+  items           TransactionItem[]
+  pipelineSteps   PipelineStep[]
+
+  @@map("transactions")
+}
+
+// =============================================
+// TRANSAKSI DETAIL (ITEM BARIS)
+// =============================================
+model TransactionItem {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idTransaksi String?  @map("id_transaksi") @db.Uuid
+  idLayanan   String?  @map("id_layanan") @db.Uuid
+  namaLayanan String   @map("nama_layanan")
+  qty         Decimal
+  hargaSatuan Decimal  @map("harga_satuan")
+  subtotal    Decimal  @default(0)
+  catatan     String?
+
+  transaction Transaction? @relation(fields: [idTransaksi], references: [id], onDelete: Cascade)
+  service     Service?     @relation(fields: [idLayanan], references: [id])
+
+  @@map("transaction_items")
+}
+
+// =============================================
+// PIPELINE TRACKING (per nota, per step)
+// =============================================
+model PipelineStep {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  idTransaksi   String    @map("id_transaksi") @db.Uuid
+  noNota        String    @map("no_nota")
+  step          Int
+  namaStep      String    @map("nama_step")
+  status        String    // 'Pending' | 'Aktif' | 'Selesai' | 'Skip'
+  idPegawai     String?   @map("id_pegawai") @db.Uuid
+  mesinId       String?   @map("mesin_id")
+  waktuMulai    DateTime? @map("waktu_mulai") @db.Timestamptz
+  waktuSelesai  DateTime? @map("waktu_selesai") @db.Timestamptz
+  catatan       String?
+
+  transaction   Transaction @relation(fields: [idTransaksi], references: [id], onDelete: Cascade)
+  employee      Employee?   @relation(fields: [idPegawai], references: [id])
+
+  @@map("pipeline_steps")
+}
+
+// =============================================
+// INVENTORY (BAHAN HABIS PAKAI)
+// =============================================
+model Inventory {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  nama           String
+  stok           Decimal
+  satuan         String
+  minStok        Decimal  @map("min_stok")
+  terakhirUpdate DateTime? @map("terakhir_update") @db.Timestamptz
+
+  @@map("inventory")
+}
+
+// =============================================
+// AUDIT LOG
+// =============================================
+model AuditLog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  idUser         String?  @map("id_user") @db.Uuid
+  namaUser       String   @map("nama_user")
+  jenisAktivitas String   @map("jenis_aktivitas")
+  referensi      String?
+  detail         String?
+
+  @@map("audit_logs")
+}
+
+// =============================================
+// REQUIREMENTS (riset UX — bisa dihapus nanti)
+// =============================================
+model Requirement {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  name        String
+  role        String?
+  laundryType String?  @map("laundry_type")
+  painPoints  String[] @map("pain_points")
+  features    String[]
+  notes       String?
+  version     String?  @default("v2")
+  empathize   String?
+  define      String?
+  ideate      String?
+  prototype   String?
+
+  @@map("requirements")
+}
