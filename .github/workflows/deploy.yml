@@ -33,14 +33,17 @@ jobs:
       - name: Run Prisma migrations
         run: npx prisma migrate deploy
         working-directory: next-app
+        continue-on-error: true
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
 
       - name: Generate Prisma client
         run: npx prisma generate
         working-directory: next-app
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
 
       - name: Build static export
         run: npm run build
