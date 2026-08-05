@@ -30,11 +30,26 @@ jobs:
         run: npm install --prefer-offline
         working-directory: next-app
 
+      - name: Run Prisma migrations
+        run: npx prisma migrate deploy
+        working-directory: next-app
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: next-app
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Build static export
         run: npm run build
         working-directory: next-app
         env:
           NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Copy public assets to out
         run: cp -r public/. out/
