@@ -490,7 +490,9 @@ export default function PosView() {
                 return (
                   <div
                     key={idx}
-                    onClick={() => updateCart(item, 1)}
+                    // Trigger on pointer-down so the cart responds immediately on tablet/touch.
+                    // The +/- controls below stop propagation and keep their click handlers.
+                    onPointerDown={() => updateCart(item, 1)}
                     className={`bg-white rounded-lg border p-3 flex flex-col gap-2.5 cursor-pointer select-none active:scale-95 transition-transform duration-75 ${
                       qtyInCart > 0
                         ? 'ring-2 ring-[#1E4648]/25 border-[#1E4648] bg-[#1E4648]/[0.02]'
@@ -523,6 +525,7 @@ export default function PosView() {
                       {qtyInCart > 0 ? (
                         <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden shrink-0">
                           <button
+                            onPointerDown={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
                             className="w-7 h-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
                           >
@@ -530,6 +533,7 @@ export default function PosView() {
                           </button>
                           <span className="text-xs font-bold px-1.5 min-w-[20px] text-center">{qtyInCart}</span>
                           <button
+                            onPointerDown={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
                             className="w-7 h-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
                           >
