@@ -17,6 +17,7 @@ const SHEET_SHIFT     = "MasterShift";
 const SHEET_PIPELINE  = "Pipeline";
 const SHEET_PROMO     = "Promo";
 const TIMEZONE_WIB    = "Asia/Jakarta";
+const MIGRATION_KEY   = "SPREADSHEET_SCHEMA_VERSION";
 
 // PIN HAK AKSES PERAN
 const PIN_STAFF   = "1234";
@@ -59,7 +60,7 @@ function doGet(e) {
     status: "online",
     service: "Dua SiSi POS — REST API Engine",
     version: "2.5",
-    frontendUrl: "https://roqueforti.github.io/duasisi-pos/",
+    frontendUrl: "Vercel deployment",
     timestamp: new Date().toISOString()
   })).setMimeType(ContentService.MimeType.JSON);
 }
@@ -121,6 +122,54 @@ function doPost(e) {
 
   return ContentService.createTextOutput(JSON.stringify(result || {}))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============================================================
+// IDEMPOTENT SPREADSHEET MIGRATIONS
+// Dipanggil otomatis oleh CI setelah Apps Script deployment.
+// Tidak menghapus isi sheet atau menggandakan header.
+// ============================================================
+function runMigrations() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const props = PropertiesService.getScriptProperties();
+    let version = Number(props.getProperty(MIGRATION_KEY) || 0);
+    const migrations = [
+      function v1() {
+        const schemas = {
+          Transaksi: ["No Nota", "Tanggal", "Nama Pelanggan", "No HP", "Total", "Status", "Estimasi Selesai", "Petugas", "Tipe"],
+          TransaksiDetail: ["No Nota", "Layanan", "Qty", "Harga Satuan", "Subtotal"],
+          Pelanggan: ["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan"],
+          Layanan: ["ID", "Nama Layanan", "Harga", "Satuan", "Icon", "Aktif", "Tipe"],
+          Inventory: ["ID", "Nama Barang", "Stok", "Satuan", "Stok Minimum", "Terakhir Update"],
+          Mesin: ["ID", "Nama Mesin", "Tipe", "Status", "Keterangan", "Mulai Pakai", "Estimasi Selesai"],
+          Pegawai: ["ID", "Nama Pegawai", "No HP", "Jabatan", "Status", "Tanggal Bergabung"],
+          Absensi: ["ID", "Tanggal", "Nama Pegawai", "Shift", "Clock In", "Clock Out", "Durasi Kerja", "Catatan"],
+          MasterShift: ["ID", "Nama Shift", "Jam Masuk", "Jam Keluar", "Keterangan"],
+          Pipeline: ["ID", "No Nota", "Step", "Nama Step", "Status", "Assigned Staff", "Mesin ID", "Waktu Mulai", "Waktu Selesai", "Catatan"],
+          Promo: ["ID", "Kode Voucher", "Jenis Diskon", "Nilai Diskon", "Min Transaksi", "Periode Selesai", "Kuota", "Terpakai", "Status Aktif"],
+          AuditLog: ["ID", "Timestamp", "Nama User", "Jenis Aktivitas", "Referensi", "Detail"]
+        };
+        Object.keys(schemas).forEach(function(name) { ensureSheetSchema_(name, schemas[name]); });
+      },
+      function v2() {
+        // Kolom lifecycle fisik untuk drop-off; hanya ditambahkan bila belum ada.
+        ensureSheetSchema_(SHEET_PIPELINE, ["ID", "No Nota", "Step", "Nama Step", "Status", "Assigned Staff", "Mesin ID", "Waktu Mulai", "Waktu Selesai", "Catatan", "Washer ID", "Dryer ID"]);
+        ensureSheetSchema_(SHEET_TRANSAKSI, ["No Nota", "Tanggal", "Nama Pelanggan", "No HP", "Total", "Status", "Estimasi Selesai", "Petugas", "Tipe", "Status Void", "Alasan Void"]);
+      }
+    ];
+    for (let i = version; i < migrations.length; i++) { migrations[i](); version = i + 1; props.setProperty(MIGRATION_KEY, String(version)); }
+    return { success: true, version: version };
+  } finally { lock.releaseLock(); }
+}
+
+function ensureSheetSchema_(name, headers) {
+  let sh = SS.getSheetByName(name);
+  if (!sh) sh = SS.insertSheet(name);
+  if (sh.getLastRow() === 0) { sh.getRange(1, 1, 1, headers.length).setValues([headers]); return; }
+  const existing = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
+  headers.forEach(function(header) { if (existing.indexOf(header) === -1) { sh.getRange(1, sh.getLastColumn() + 1).setValue(header); existing.push(header); } });
 }
 
 // ============================================================

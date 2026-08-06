@@ -1,0 +1,40 @@
+name: Deploy Apps Script and migrate Spreadsheet
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Kode.gs'
+      - 'appsscript.json'
+      - '.github/workflows/deploy-appscript.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Configure clasp
+        env:
+          CLASP_TOKEN: ${{ secrets.CLASP_TOKEN }}
+          SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+        run: |
+          test -n "$CLASP_TOKEN" && test -n "$SCRIPT_ID"
+          printf '%s' "$CLASP_TOKEN" > "$HOME/.clasprc.json"
+          printf '{"scriptId":"%s","rootDir":"."}' "$SCRIPT_ID" > .clasp.json
+      - name: Push Apps Script source
+        run: npx --yes @google/clasp push --force
+      - name: Deploy Apps Script version
+        env:
+          DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+        run: npx --yes @google/clasp deploy --deploymentId "$DEPLOYMENT_ID" --description "CI $GITHUB_SHA"
+      - name: Run Spreadsheet migrations
+        env:
+          WEB_APP_URL: ${{ secrets.APPS_SCRIPT_WEB_APP_URL }}
+        run: |
+          test -n "$WEB_APP_URL"
+          curl --fail --silent --show-error --retry 3 \
+            -H 'Content-Type: application/json' \
+            --data '{"action":"runMigrations","args":[]}' "$WEB_APP_URL"
