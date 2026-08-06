@@ -30,10 +30,16 @@ jobs:
         run: npm install --prefer-offline
         working-directory: next-app
 
+      - name: Test DB connectivity
+        run: |
+          timeout 10 bash -c 'cat < /dev/null > /dev/tcp/aws-0-ap-northeast-1.pooler.supabase.com/6543' && echo "PORT OPEN" || echo "PORT BLOCKED"
+        working-directory: next-app
+
       - name: Run Prisma migrations
         run: npx prisma migrate deploy
         working-directory: next-app
         continue-on-error: true
+        timeout-minutes: 2
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
