@@ -510,9 +510,9 @@ export default function PosView() {
                     </div>
 
                     {/* Harga + badge + stepper */}
-                    <div className="flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
-                      <div className="shrink-0">
-                        <div className="text-sm font-bold text-slate-700 leading-none whitespace-nowrap">
+                    <div className="flex items-center justify-between gap-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                      <div className="min-w-0 shrink">
+                        <div className="text-[13px] font-bold text-slate-700 leading-none whitespace-nowrap">
                           Rp {item.hargaSatuan.toLocaleString('id-ID')}
                         </div>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1 inline-block ${
@@ -527,15 +527,15 @@ export default function PosView() {
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
-                            className="w-7 h-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
+                            className="w-6 h-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
                           >
                             <Minus className="w-3.5 h-3.5" />
                           </button>
-                          <span className="text-xs font-bold px-1.5 min-w-[20px] text-center">{qtyInCart}</span>
+                          <span className="text-xs font-bold px-1 min-w-[18px] text-center">{qtyInCart}</span>
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                            className="w-7 h-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
+                            className="w-6 h-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
                           >
                             <Plus className="w-3.5 h-3.5" />
                           </button>
