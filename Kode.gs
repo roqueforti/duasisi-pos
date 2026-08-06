@@ -19,6 +19,56 @@ const SHEET_PROMO     = "Promo";
 const TIMEZONE_WIB    = "Asia/Jakarta";
 const MIGRATION_KEY   = "SPREADSHEET_SCHEMA_VERSION";
 
+/**
+ * Reset data operasional tanpa menghapus master layanan/produk maupun akun.
+ * Jalankan manual dari Apps Script editor setelah memastikan spreadsheet yang
+ * aktif adalah spreadsheet POS Dua Sisi Laundry.
+ */
+function resetDatabaseOperasional() {
+  const lock = LockService.getDocumentLock();
+  lock.waitLock(30000);
+  try {
+    const dataSheets = [
+      SHEET_TRANSAKSI,
+      SHEET_DETAIL,
+      SHEET_PELANGGAN,
+      SHEET_ABSENSI,
+      SHEET_PIPELINE,
+      SHEET_AUDIT,
+      "KasShift",
+      "ShiftKasir"
+    ];
+
+    dataSheets.forEach(function(name) { clearDataRows_(name); });
+
+    // Inventory adalah data operasional; header dipertahankan agar schema tetap.
+    clearDataRows_(SHEET_INVENTORY);
+
+    // Mesin tetap dipertahankan sebagai master, tetapi status pemakaian di-reset.
+    const machineSheet = SS.getSheetByName(SHEET_MESIN);
+    if (machineSheet && machineSheet.getLastRow() > 1) {
+      const rows = machineSheet.getLastRow() - 1;
+      machineSheet.getRange(2, 4, rows, 1).setValue("Kosong");
+      machineSheet.getRange(2, 6, rows, 2).clearContent();
+    }
+
+    SpreadsheetApp.flush();
+    return { success: true, message: "Data operasional berhasil di-reset. Master layanan/produk dan akun tetap dipertahankan." };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function clearDataRows_(sheetName) {
+  const sheet = SS.getSheetByName(sheetName);
+  if (!sheet) return;
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  if (lastRow > 1 && lastColumn > 0) {
+    sheet.getRange(2, 1, lastRow - 1, lastColumn).clearContent();
+  }
+}
+
 // PIN HAK AKSES PERAN
 const PIN_STAFF   = "1234";
 const PIN_MANAGER = "8888";
