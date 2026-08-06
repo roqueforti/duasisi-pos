@@ -41,15 +41,15 @@ jobs:
         continue-on-error: true
         timeout-minutes: 2
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}?sslmode=require
+          DIRECT_URL: ${{ secrets.DATABASE_URL }}?sslmode=require
 
       - name: Generate Prisma client
         run: npx prisma generate
         working-directory: next-app
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}?sslmode=require
+          DIRECT_URL: ${{ secrets.DATABASE_URL }}?sslmode=require
 
       - name: Build static export
         run: npm run build
