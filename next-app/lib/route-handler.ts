@@ -7,6 +7,15 @@ export async function jsonBody(request: Request) {
 export function actor(request: Request) {
   return { id: request.headers.get('x-user-id'), name: request.headers.get('x-user-name') || 'System User', role: request.headers.get('x-user-role') || 'STAFF' };
 }
+export function requireActor(request: Request) {
+  const a = actor(request);
+  if (!a.id) throw new HttpError(401, 'Autentikasi diperlukan');
+  return a;
+}
+export function requireEnum(value: unknown, values: readonly string[], field: string): string {
+  if (typeof value !== 'string' || !values.includes(value)) throw new HttpError(400, `${field} tidak valid`);
+  return value;
+}
 export function respondError(error: unknown) {
   console.error(error);
   const e = error instanceof HttpError ? error : new HttpError(500, 'Terjadi kesalahan server');
