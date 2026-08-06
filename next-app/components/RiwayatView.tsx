@@ -205,7 +205,7 @@ export default function RiwayatView() {
       return;
     }
 
-    const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : 'https://roqueforti.github.io/duasisi-pos/';
+    const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
     const notaUrl = `${baseUrl}?nota=${encodeURIComponent(tx.noNota)}`;
 
     const itemsStr = tx.items.map(i => `• ${i.layanan} (x${i.qty}) - Rp ${(i.qty * i.hargaSatuan).toLocaleString('id-ID')}`).join('\n');
