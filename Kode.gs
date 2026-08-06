@@ -76,7 +76,18 @@ const PIN_MANAGER = "8888";
 // ============ HELPER ============
 function getWibTimeZone() { return TIMEZONE_WIB; }
 
-function generateId() { return Utilities.getUuid().substring(0, 8); }
+/**
+ * ID terurut dan mudah dibaca: ID-YYYYMMDD-NNNN.
+ * Counter disimpan di Script Properties agar tetap unik antar request.
+ */
+function generateId(prefix) {
+  const props = PropertiesService.getScriptProperties();
+  const today = Utilities.formatDate(new Date(), TIMEZONE_WIB, "yyyyMMdd");
+  const key = "ID_COUNTER_" + today;
+  const next = Number(props.getProperty(key) || 0) + 1;
+  props.setProperty(key, String(next));
+  return (prefix || "ID") + "-" + today + "-" + String(next).padStart(4, "0");
+}
 
 function fmtWib(date, pattern) {
   if (!date) return "";
