@@ -32,24 +32,22 @@ jobs:
 
       - name: Test DB connectivity
         run: |
-          timeout 10 bash -c 'cat < /dev/null > /dev/tcp/aws-0-ap-northeast-1.pooler.supabase.com/6543' && echo "PORT OPEN" || echo "PORT BLOCKED"
+          timeout 10 bash -c 'cat < /dev/null > /dev/tcp/aws-0-ap-northeast-1.pooler.supabase.com/5432' && echo "PORT 5432 OPEN" || echo "PORT 5432 BLOCKED"
         working-directory: next-app
 
       - name: Run Prisma migrations
         run: npx prisma migrate deploy
         working-directory: next-app
         continue-on-error: true
-        timeout-minutes: 2
+        timeout-minutes: 3
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}?sslmode=require
-          DIRECT_URL: ${{ secrets.DATABASE_URL }}?sslmode=require
+          DATABASE_URL: postgresql://postgres.qgzxrtnelfwlhqisgjcq:${{ secrets.DB_PASSWORD }}@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres
 
       - name: Generate Prisma client
         run: npx prisma generate
         working-directory: next-app
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}?sslmode=require
-          DIRECT_URL: ${{ secrets.DATABASE_URL }}?sslmode=require
+          DATABASE_URL: postgresql://postgres.qgzxrtnelfwlhqisgjcq:${{ secrets.DB_PASSWORD }}@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres
 
       - name: Build static export
         run: npm run build
