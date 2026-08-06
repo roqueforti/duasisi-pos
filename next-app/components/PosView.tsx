@@ -480,7 +480,7 @@ export default function PosView() {
 
         {/* STEP 1: Product Cards Grid (Aspect Square 1:1, Compact Font, Tap -> Cart / Double Tap -> Note Modal) */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 auto-rows-fr">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 auto-rows-auto sm:auto-rows-fr">
             {(() => {
               const renderCard = (item: LayananItem, idx: number) => {
                 const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
