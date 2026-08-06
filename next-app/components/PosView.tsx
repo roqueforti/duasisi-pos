@@ -511,8 +511,8 @@ export default function PosView() {
 
                     {/* Harga + badge + stepper */}
                     <div className="flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
-                      <div>
-                        <div className="text-sm font-bold text-slate-700 leading-none">
+                      <div className="shrink-0">
+                        <div className="text-sm font-bold text-slate-700 leading-none whitespace-nowrap">
                           Rp {item.hargaSatuan.toLocaleString('id-ID')}
                         </div>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1 inline-block ${
