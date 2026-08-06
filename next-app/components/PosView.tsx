@@ -82,7 +82,7 @@ function getLayananStyleConfig(item: LayananItem) {
 export default function PosView() {
   const [layananList, setLayananList] = useState<LayananItem[]>(defaultLayanan);
   const [search, setSearch] = useState('');
-  const [selectedCategoryTab, setSelectedCategoryTab] = useState<'Semua' | 'Layanan' | 'Layanan Tambahan' | 'Produk' | 'MakananMinuman'>('Semua');
+  const [selectedCategoryTab, setSelectedCategoryTab] = useState<'Semua' | 'SelfService' | 'Dropoff' | 'MakananMinuman'>('Semua');
   
   // 1. Cart & Order State
   const [cart, setCart] = useState<{ [key: string]: CartItem }>({});
@@ -174,7 +174,9 @@ export default function PosView() {
             hargaSatuan: Number(item.harga),
             tipe: item.tipe || 'SelfService',
             satuan: item.satuan || 'paket',
-            kategori: item.tipe === 'FullService' ? 'Layanan Tambahan' : 'Layanan',
+            kategori: item.kategori === 'MakananMinuman'
+              ? 'MakananMinuman'
+              : item.tipe === 'FullService' ? 'Layanan Tambahan' : 'Layanan',
           })));
         }
       },
@@ -458,9 +460,8 @@ export default function PosView() {
         <div className="px-3 sm:px-4 py-2.5 border-b border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar bg-slate-50/30">
           {[
             { id: 'Semua', label: 'Semua Produk' },
-            { id: 'Layanan', label: 'Layanan Utama' },
-            { id: 'Layanan Tambahan', label: 'Layanan Tambahan' },
-            { id: 'Produk', label: 'Produk Laundry' },
+            { id: 'SelfService', label: 'Self Service' },
+            { id: 'Dropoff', label: 'Drop-off' },
             { id: 'MakananMinuman', label: 'Makanan & Minuman' },
           ].map((tab) => {
             const isActive = selectedCategoryTab === tab.id;
@@ -557,9 +558,8 @@ export default function PosView() {
 
               if (selectedCategoryTab !== 'Semua') {
                 const tabFiltered = filteredAll.filter((i) => {
-                  if (selectedCategoryTab === 'Layanan') return i.kategori === 'Layanan';
-                  if (selectedCategoryTab === 'Layanan Tambahan') return i.kategori === 'Layanan Tambahan';
-                  if (selectedCategoryTab === 'Produk') return i.kategori === 'Produk';
+                  if (selectedCategoryTab === 'SelfService') return i.tipe === 'SelfService' && i.kategori !== 'MakananMinuman';
+                  if (selectedCategoryTab === 'Dropoff') return i.tipe === 'FullService';
                   if (selectedCategoryTab === 'MakananMinuman') return i.kategori === 'MakananMinuman';
                   return true;
                 });
