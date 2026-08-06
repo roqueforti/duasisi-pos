@@ -510,7 +510,7 @@ export default function PosView() {
                     </div>
 
                     {/* Harga + badge + stepper */}
-                    <div className="flex items-center justify-between gap-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between gap-1 min-w-0 max-[380px]:flex-col max-[380px]:items-stretch" onClick={(e) => e.stopPropagation()}>
                       <div className="min-w-0 shrink">
                         <div className="text-[13px] font-bold text-slate-700 leading-none whitespace-nowrap">
                           Rp {item.hargaSatuan.toLocaleString('id-ID')}
@@ -523,7 +523,7 @@ export default function PosView() {
                       </div>
 
                       {qtyInCart > 0 ? (
-                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden shrink-0">
+                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden shrink-0 max-[380px]:self-end">
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
