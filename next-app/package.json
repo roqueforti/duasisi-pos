@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@prisma/client": "5.22.0",
     "chart.js": "^4.5.1",
     "lucide-react": "^1.26.0",
     "next": "16.2.11",
@@ -24,7 +23,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
-    "prisma": "5.22.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

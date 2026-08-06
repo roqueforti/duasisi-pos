@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { gasAction } from '@/lib/db';
 import { HttpError, jsonBody, respondError } from '@/lib/route-handler';
+
 export async function POST(request: Request) {
   try {
-    const b = await jsonBody(request); if (!b.replacementEmployeeId) throw new HttpError(400, 'replacementEmployeeId wajib diisi');
-    const attendance = await prisma.absensi.findFirst({ where: { idPegawai: b.replacementEmployeeId, jamMasuk: { not: null }, ...(b.shiftId ? { idShift: b.shiftId } : {}) }, orderBy: { jamMasuk: 'desc' } });
-    return NextResponse.json({ eligible: !!attendance, attendance: attendance || null });
-  } catch (e) { return respondError(e); }
+    const body = await jsonBody(request);
+    if (!body.replacementEmployeeId) throw new HttpError(400, 'replacementEmployeeId wajib diisi');
+    const data = await gasAction('handoverCheckKasShift', body);
+    return NextResponse.json({ data });
+  } catch (error) { return respondError(error); }
 }
