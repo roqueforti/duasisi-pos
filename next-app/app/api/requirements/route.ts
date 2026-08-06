@@ -15,7 +15,7 @@ export async function GET() {
 
     return NextResponse.json(formattedData);
   } catch (error) {
-    console.error('Error reading requirements from Supabase:', error);
+    console.error('Error reading requirements from backend:', error);
     return NextResponse.json({ error: 'Failed to read requirements' }, { status: 500 });
   }
 }
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error('Error saving requirement to Supabase:', error);
+    console.error('Error saving requirement to backend:', error);
     return NextResponse.json({ error: 'Failed to save requirement' }, { status: 500 });
   }
 }
