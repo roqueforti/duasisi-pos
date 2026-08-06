@@ -22,7 +22,11 @@ jobs:
           SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
         run: |
           test -n "$CLASP_TOKEN" && test -n "$SCRIPT_ID"
-          printf '%s' "$CLASP_TOKEN" > "$HOME/.clasprc.json"
+          if printf '%s' "$CLASP_TOKEN" | grep -q '^{' ; then
+            printf '%s' "$CLASP_TOKEN" > "$HOME/.clasprc.json"
+          else
+            printf '{"tokens":{"default":{"type":"authorized_user","access_token":"%s"}}}' "$CLASP_TOKEN" > "$HOME/.clasprc.json"
+          fi
           printf '{"scriptId":"%s","rootDir":"."}' "$SCRIPT_ID" > .clasp.json
       - name: Push Apps Script source
         run: npx --yes @google/clasp push --force
