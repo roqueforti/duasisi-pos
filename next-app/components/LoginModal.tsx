@@ -22,8 +22,8 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
     try {
       const res = await runBackend<{ success: boolean; role?: UserRole; label?: string; message?: string; sessionToken?: string }>('verifikasiPin', pinValue);
       if (res && res.success) {
-        if (!res.sessionToken || !res.role) throw new Error('Token sesi tidak diterima');
-        setBackendSession(res.sessionToken);
+        if (!res.role) throw new Error('Role pengguna tidak diterima');
+        if (res.sessionToken) setBackendSession(res.sessionToken);
         onSuccess(res.role, res.label || res.role);
       } else {
         setErrorMsg(res?.message || 'PIN salah! Akses ditolak.');
