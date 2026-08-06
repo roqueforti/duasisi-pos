@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { UserRole } from '@/lib/types';
-import { runBackend } from '@/lib/api';
+import { runBackend, setBackendSession } from '@/lib/api';
 import { KeyRound, ShieldCheck, Loader2 } from 'lucide-react';
 
 interface LoginModalProps {
@@ -20,23 +20,18 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
     setErrorMsg('');
 
     try {
-      const res = await runBackend('verifikasiPin', pinValue);
+      const res = await runBackend<{ success: boolean; role?: UserRole; label?: string; message?: string; sessionToken?: string }>('verifikasiPin', pinValue);
       if (res && res.success) {
-        onSuccess(res.role as UserRole, res.label);
+        if (!res.sessionToken || !res.role) throw new Error('Token sesi tidak diterima');
+        setBackendSession(res.sessionToken);
+        onSuccess(res.role, res.label || res.role);
       } else {
         setErrorMsg(res?.message || 'PIN salah! Akses ditolak.');
         setPin('');
       }
-    } catch (err: any) {
-      // Local fallback verification if backend offline
-      if (pinValue === '1234') {
-        onSuccess('STAFF', 'Staff / Kasir');
-      } else if (pinValue === '8888') {
-        onSuccess('MANAGER', 'Manager / Owner');
-      } else {
-        setErrorMsg('PIN salah! Silakan coba lagi.');
-        setPin('');
-      }
+    } catch {
+      setErrorMsg('Tidak dapat memverifikasi login. Periksa koneksi lalu coba lagi.');
+      setPin('');
     } finally {
       setLoading(false);
     }

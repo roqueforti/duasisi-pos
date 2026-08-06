@@ -19,6 +19,33 @@ const SHEET_PROMO     = "Promo";
 const TIMEZONE_WIB    = "Asia/Jakarta";
 const MIGRATION_KEY   = "SPREADSHEET_SCHEMA_VERSION";
 
+// Hanya fungsi bisnis berikut yang boleh dipanggil melalui Web App.
+// Fungsi maintenance/destruktif (reset, seed, setup, migration) sengaja tidak diekspos.
+const ALLOWED_API_ACTIONS = Object.freeze({
+  verifikasiPin: true,
+  getLayananList: true, getLayananListAll: true, tambahLayanan: true, updateLayanan: true, toggleAktifLayanan: true, hapusLayanan: true,
+  getInventoryList: true, tambahInventory: true, updateStokInventory: true, hapusInventory: true,
+  getMesinList: true, tambahMesin: true, mulaiPakaiMesin: true, selesaiMesin: true, setMaintenanceMesin: true, hapusMesin: true,
+  simpanTransaksi: true, pelunasanDP: true,
+  getPromoList: true, tambahPromo: true, hapusPromo: true, validasiVoucher: true,
+  simpanPelangganJikaBaru: true, cariPelangganByHp: true, getDaftarPelanggan: true, updateDataPelanggan: true, getRiwayatPelangganByHp: true,
+  getPipelineSteps: true, advancePipeline: true, getTransaksiList: true, getTransaksiByNota: true, getTransaksiByPipeline: true, updateStatus: true,
+  getLaporanRange: true, getPegawaiList: true, tambahPegawai: true, hapusPegawai: true, getRekapKinerjaPegawai: true,
+  clockInPegawai: true, clockOutPegawai: true, getStatusAbsensiHariIni: true, getRekapAbsensi: true,
+  getMasterShiftList: true, tambahMasterShift: true, hapusMasterShift: true,
+  getAuditLogs: true, ajukanVoidTransaksi: true, approveVoidTransaksi: true
+});
+const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true });
+const MANAGER_API_ACTIONS = Object.freeze({
+  tambahLayanan: true, updateLayanan: true, toggleAktifLayanan: true, hapusLayanan: true,
+  tambahInventory: true, hapusInventory: true,
+  tambahMesin: true, hapusMesin: true,
+  tambahPromo: true, hapusPromo: true,
+  tambahPegawai: true, hapusPegawai: true,
+  tambahMasterShift: true, hapusMasterShift: true,
+  getLaporanRange: true, getAuditLogs: true, approveVoidTransaksi: true
+});
+
 /**
  * Reset data operasional tanpa menghapus master layanan/produk maupun akun.
  * Jalankan manual dari Apps Script editor setelah memastikan spreadsheet yang
@@ -147,9 +174,48 @@ function fmtWib(date, pattern) {
   return Utilities.formatDate(d, TIMEZONE_WIB, pattern || "dd/MM/yyyy HH:mm 'WIB'");
 }
 
+function getSessionSecret_() {
+  const props = PropertiesService.getScriptProperties();
+  let secret = props.getProperty("SESSION_SECRET");
+  if (!secret) {
+    secret = Utilities.getUuid() + Utilities.getUuid();
+    props.setProperty("SESSION_SECRET", secret);
+  }
+  return secret;
+}
+
+function signSessionPayload_(payload) {
+  const signature = Utilities.computeHmacSha256Signature(payload, getSessionSecret_());
+  return Utilities.base64EncodeWebSafe(signature).replace(/=+$/, "");
+}
+
+function createSessionToken_(role, label) {
+  const payload = Utilities.base64EncodeWebSafe(JSON.stringify({
+    role: role,
+    label: label,
+    exp: Date.now() + (30 * 60 * 1000)
+  })).replace(/=+$/, "");
+  return payload + "." + signSessionPayload_(payload);
+}
+
+function verifySessionToken_(token) {
+  try {
+    const parts = String(token || "").split(".");
+    if (parts.length !== 2 || signSessionPayload_(parts[0]) !== parts[1]) return null;
+    const data = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[0])).getDataAsString());
+    if (!data.exp || Number(data.exp) < Date.now() || ["STAFF", "MANAGER"].indexOf(data.role) === -1) return null;
+    return data;
+  } catch (error) {
+    return null;
+  }
+}
+
 function verifikasiPin(pin) {
-  if (pin === PIN_MANAGER) return { success: true, role: "MANAGER", label: "Manager / Owner" };
-  if (pin === PIN_STAFF)   return { success: true, role: "STAFF",   label: "Staff / Kasir" };
+  const props = PropertiesService.getScriptProperties();
+  const managerPin = props.getProperty("PIN_MANAGER") || PIN_MANAGER;
+  const staffPin = props.getProperty("PIN_STAFF") || PIN_STAFF;
+  if (String(pin) === managerPin) return { success: true, role: "MANAGER", label: "Manager / Owner", sessionToken: createSessionToken_("MANAGER", "Manager / Owner") };
+  if (String(pin) === staffPin) return { success: true, role: "STAFF", label: "Staff / Kasir", sessionToken: createSessionToken_("STAFF", "Staff / Kasir") };
   return { success: false, message: "PIN Salah! Akses Ditolak." };
 }
 
@@ -206,6 +272,18 @@ function doPost(e) {
     const action = typeof rawAction === 'string' ? rawAction.replace(/[^a-zA-Z0-9_]/g, '') : '';
     const args = Array.isArray(rawArgs) ? rawArgs.map(sanitizeValue) : [];
 
+    if (!ALLOWED_API_ACTIONS[action]) {
+      throw new Error("Action tidak diizinkan melalui API publik.");
+    }
+
+    const session = PUBLIC_API_ACTIONS[action] ? null : verifySessionToken_(request.sessionToken);
+    if (!PUBLIC_API_ACTIONS[action] && !session) {
+      throw new Error("Sesi tidak valid atau sudah kedaluwarsa. Silakan login kembali.");
+    }
+    if (MANAGER_API_ACTIONS[action] && session.role !== "MANAGER") {
+      throw new Error("Akses ditolak. Action ini khusus Manager/Owner.");
+    }
+
     const targetFn = (typeof globalThis !== 'undefined' && typeof globalThis[action] === 'function') 
       ? globalThis[action] 
       : (typeof this !== 'undefined' && typeof this[action] === 'function') ? this[action] : null;
@@ -256,6 +334,9 @@ function runMigrations() {
         // Kolom lifecycle fisik untuk drop-off; hanya ditambahkan bila belum ada.
         ensureSheetSchema_(SHEET_PIPELINE, ["ID", "No Nota", "Step", "Nama Step", "Status", "Assigned Staff", "Mesin ID", "Waktu Mulai", "Waktu Selesai", "Catatan", "Washer ID", "Dryer ID"]);
         ensureSheetSchema_(SHEET_TRANSAKSI, ["No Nota", "Tanggal", "Nama Pelanggan", "No HP", "Total", "Status", "Estimasi Selesai", "Petugas", "Tipe", "Status Void", "Alasan Void"]);
+      },
+      function v3() {
+        ensureSheetSchema_(SHEET_TRANSAKSI, ["No Nota", "Tanggal", "Nama Pelanggan", "No HP", "Total", "Status", "Estimasi Selesai", "Petugas", "Tipe", "Status Void", "Alasan Void", "Subtotal", "Diskon", "Metode Pembayaran", "Status Pembayaran", "Nominal Bayar", "Sisa Tagihan", "Referensi Pembayaran", "Catatan"]);
       }
     ];
     for (let i = version; i < migrations.length; i++) { migrations[i](); version = i + 1; props.setProperty(MIGRATION_KEY, String(version)); }
@@ -594,34 +675,62 @@ function generateNoNota() {
 }
 
 function simpanTransaksi(data) {
-  const sh = SS.getSheetByName(SHEET_TRANSAKSI);
-  const shD = SS.getSheetByName(SHEET_DETAIL);
-  const noNota = (data.noNota && !data.noNota.startsWith('OFF-') && !data.noNota.startsWith('TRX-')) ? data.noNota : generateNoNota();
-  const tanggal = data.tanggal ? new Date(data.tanggal) : new Date();
-  const tipe = data.tipe || data.tipeLayanan || "SelfService";
-  const status = data.status || "Selesai";
-  const petugas = data.petugas || data.kasir || data.namaPetugas || "Kasir";
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = SS.getSheetByName(SHEET_TRANSAKSI);
+    const shD = SS.getSheetByName(SHEET_DETAIL);
+    if (!sh || !shD) throw new Error("Schema transaksi belum tersedia. Jalankan runMigrations dari editor Apps Script.");
 
-  let total = 0;
-  if (Array.isArray(data.items) && data.items.length > 0) {
-    data.items.forEach(item => {
-      const subtotal = item.qty * item.hargaSatuan;
-      total += subtotal;
-      shD.appendRow([noNota, item.layanan, item.qty, item.hargaSatuan, subtotal]);
+    const items = Array.isArray(data.items) ? data.items : [];
+    if (items.length === 0) throw new Error("Transaksi minimal memiliki satu item.");
+
+    const detailRows = [];
+    let subtotal = 0;
+    items.forEach(function(item) {
+      const qty = Number(item.qty);
+      const harga = Number(item.hargaSatuan);
+      if (!item.layanan || !isFinite(qty) || qty <= 0 || !isFinite(harga) || harga < 0) {
+        throw new Error("Item transaksi tidak valid.");
+      }
+      const subtotalItem = qty * harga;
+      subtotal += subtotalItem;
+      detailRows.push(["", item.layanan, qty, harga, subtotalItem]);
     });
-  } else if (data.total) {
-    total = Number(data.total);
-    shD.appendRow([noNota, "Transaksi Manual", 1, total, total]);
+
+    const diskon = Math.max(0, Math.min(Number(data.diskon) || 0, subtotal));
+    const total = subtotal - diskon;
+    const nominalBayar = Number(data.nominalBayar);
+    if (!isFinite(nominalBayar) || nominalBayar < 0) throw new Error("Nominal pembayaran tidak valid.");
+
+    const tipe = data.tipe || data.tipeLayanan || "SelfService";
+    const status = tipe === "FullService" ? "Diterima" : "Selesai";
+    const sisaTagihan = Math.max(0, total - nominalBayar);
+    const statusPembayaran = sisaTagihan === 0 ? "Lunas" : nominalBayar > 0 ? "DP" : "Belum Bayar";
+    const petugas = data.petugas || data.kasir || data.namaPetugas || "Kasir";
+    const noNota = (data.noNota && !String(data.noNota).startsWith('OFF-') && !String(data.noNota).startsWith('TRX-')) ? String(data.noNota) : generateNoNota();
+    const tanggal = data.tanggal ? new Date(data.tanggal) : new Date();
+
+    const duplicate = sh.getDataRange().getValues().some(function(row, index) { return index > 0 && String(row[0]) === noNota; });
+    if (duplicate) throw new Error("Nomor nota sudah digunakan.");
+
+    detailRows.forEach(function(row) { row[0] = noNota; });
+    shD.getRange(shD.getLastRow() + 1, 1, detailRows.length, 5).setValues(detailRows);
+    sh.appendRow([
+      noNota, tanggal, data.namaPelanggan || data.pelanggan || "Pelanggan Umum", data.noHp || "",
+      total, status, data.estimasiSelesai || data.estimasi || "", petugas, tipe,
+      "None", "", subtotal, diskon, data.metodeBayar || "Tunai", statusPembayaran,
+      nominalBayar, sisaTagihan, data.referensiPembayaran || "", data.catatan || ""
+    ]);
+
+    simpanPelangganJikaBaru(data.namaPelanggan || data.pelanggan, data.noHp, data.alamat || "", total, data.catatanPelanggan || "");
+    if (tipe === "FullService") createPipelineForNota(noNota, tipe);
+    addAuditLog(petugas, "Transaksi Baru", noNota, "Total Rp " + total.toLocaleString('id-ID') + " (" + (data.metodeBayar || "Tunai") + ", " + statusPembayaran + ")");
+    SpreadsheetApp.flush();
+    return { success: true, noNota: noNota, total: total, subtotal: subtotal, diskon: diskon, nominalBayar: nominalBayar, sisaTagihan: sisaTagihan, statusPembayaran: statusPembayaran, jumlahItem: items.length, tipe: tipe };
+  } finally {
+    lock.releaseLock();
   }
-
-  sh.appendRow([noNota, tanggal, data.namaPelanggan || data.pelanggan || "Pelanggan Umum", data.noHp || "", total, status, data.estimasiSelesai || data.estimasi || "", petugas, tipe]);
-  simpanPelangganJikaBaru(data.namaPelanggan || data.pelanggan, data.noHp);
-
-  // Auto-create pipeline steps
-  createPipelineForNota(noNota, tipe);
-  addAuditLog(petugas, "Transaksi Baru", noNota, "Total Rp " + total.toLocaleString('id-ID') + " (" + (data.metodeBayar || "Tunai") + ")");
-
-  return { success: true, noNota: noNota, total: total, jumlahItem: data.items ? data.items.length : 1, tipe: tipe };
 }
 
 function pelunasanDP(noNota, nominal, metode) {
@@ -630,9 +739,20 @@ function pelunasanDP(noNota, nominal, metode) {
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === noNota) {
-      sh.getRange(i + 1, 6).setValue("Selesai");
-      addAuditLog("Kasir", "Pelunasan Nota", noNota, "Pelunasan Rp " + Number(nominal).toLocaleString('id-ID') + " via " + (metode || "Tunai"));
-      return { success: true, message: "Pelunasan nota " + noNota + " berhasil disimpan!" };
+      const bayar = Number(nominal);
+      const total = Number(rows[i][4]) || 0;
+      const sudahBayar = Number(rows[i][15]) || 0;
+      const sisaSaatIni = Number(rows[i][16]) || Math.max(0, total - sudahBayar);
+      if (!isFinite(bayar) || bayar <= 0) return { success: false, message: "Nominal pelunasan harus lebih dari 0" };
+      if (bayar > sisaSaatIni) return { success: false, message: "Nominal melebihi sisa tagihan" };
+      const totalDibayar = sudahBayar + bayar;
+      const sisaBaru = Math.max(0, total - totalDibayar);
+      sh.getRange(i + 1, 14).setValue(metode || "Tunai");
+      sh.getRange(i + 1, 15).setValue(sisaBaru === 0 ? "Lunas" : "DP");
+      sh.getRange(i + 1, 16).setValue(totalDibayar);
+      sh.getRange(i + 1, 17).setValue(sisaBaru);
+      addAuditLog("Kasir", "Pelunasan Nota", noNota, "Pembayaran Rp " + bayar.toLocaleString('id-ID') + " via " + (metode || "Tunai") + "; sisa Rp " + sisaBaru.toLocaleString('id-ID'));
+      return { success: true, nominalBayar: totalDibayar, sisaTagihan: sisaBaru, statusPembayaran: sisaBaru === 0 ? "Lunas" : "DP", message: "Pembayaran nota " + noNota + " berhasil disimpan!" };
     }
   }
   return { success: false, message: "Nota " + noNota + " tidak ditemukan." };
@@ -1020,7 +1140,11 @@ function getTransaksiList(statusFilter) {
     return {
       noNota: r[0], tanggal: fmtWib(r[1]),
       namaPelanggan: r[2], noHp: r[3], total: r[4], status: r[5],
-      estimasi: r[6], petugas: r[7] || "Kasir", tipe: r[8] || "SelfService", items: items
+      estimasi: r[6], petugas: r[7] || "Kasir", tipe: r[8] || "SelfService",
+      statusVoid: r[9] || "None", alasanVoid: r[10] || "", subtotal: Number(r[11]) || Number(r[4]) || 0,
+      diskon: Number(r[12]) || 0, metodeBayar: r[13] || "", statusPembayaran: r[14] || "Lunas",
+      nominalDP: Number(r[15]) || 0, sisaTagihan: Number(r[16]) || 0,
+      referensiPembayaran: r[17] || "", catatan: r[18] || "", items: items
     };
   });
 
@@ -1039,7 +1163,7 @@ function getTransaksiByNota(noNota) {
 
 function getTransaksiByPipeline(tipeFilter) {
   const allTx = getTransaksiList();
-  let filtered = allTx.filter(t => t.status !== "Selesai");
+  let filtered = allTx.filter(t => t.tipe === "FullService" && t.status !== "Selesai" && t.status !== "Void" && t.status !== "Batal");
   if (tipeFilter && tipeFilter !== "Semua") {
     filtered = filtered.filter(t => t.tipe === tipeFilter);
   }
@@ -1073,7 +1197,8 @@ function getLaporanRange(startDateStr, endDateStr) {
 
   const filtered = dataHeader.filter(r => {
     const tgl = fmtWib(r[1], "yyyy-MM-dd");
-    return tgl >= startDateStr && tgl <= endDateStr;
+    const isVoid = r[9] === "Approved" || r[5] === "Void" || r[5] === "Batal";
+    return tgl >= startDateStr && tgl <= endDateStr && !isVoid;
   });
 
   let totalOmzet = 0;
@@ -1094,7 +1219,10 @@ function getLaporanRange(startDateStr, endDateStr) {
     const items = dataDetail.filter(d => d[0] === r[0]).map(d => ({ layanan: d[1], qty: d[2], subtotal: d[4] }));
     transaksiList.push({
       noNota: r[0], tanggal: fmtWib(r[1]), namaPelanggan: r[2], noHp: r[3],
-      total: total, status: r[5], petugas: r[7] || "Kasir", tipe: r[8] || "SelfService", items: items
+      total: total, status: r[5], petugas: r[7] || "Kasir", tipe: r[8] || "SelfService",
+      statusVoid: r[9] || "None", alasanVoid: r[10] || "", metodeBayar: r[13] || "",
+      statusPembayaran: r[14] || "Lunas", nominalDP: Number(r[15]) || 0,
+      sisaTagihan: Number(r[16]) || 0, items: items
     });
   });
 
@@ -1315,7 +1443,11 @@ function ajukanVoidTransaksi(noNota, alasan, petugas) {
   const data = sh.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === noNota) {
-      sh.getRange(i + 1, 6).setValue("Pending Void (" + (alasan || "") + ")");
+      if (!String(alasan || "").trim()) return { success: false, message: "Alasan void wajib diisi" };
+      if (data[i][9] === "PendingApproval") return { success: false, message: "Permintaan void sudah menunggu approval" };
+      if (data[i][9] === "Approved" || data[i][5] === "Void") return { success: false, message: "Transaksi sudah berstatus Void" };
+      sh.getRange(i + 1, 10).setValue("PendingApproval");
+      sh.getRange(i + 1, 11).setValue(String(alasan).trim());
       addAuditLog(petugas || "Kasir", "Pengajuan Void", noNota, alasan);
       return { success: true, message: "Permohonan void berhasil dikirim" };
     }
@@ -1323,16 +1455,19 @@ function ajukanVoidTransaksi(noNota, alasan, petugas) {
   return { success: false, message: "Nota tidak ditemukan" };
 }
 
-function approveVoidTransaksi(noNota, isApproved, managerName) {
+function approveVoidTransaksi(noNota, isApproved, managerName, managerId, catatan) {
   const sh = SS.getSheetByName(SHEET_TRANSAKSI);
   if (!sh) return { success: false, message: "Sheet Transaksi tidak ada" };
   const data = sh.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === noNota) {
-      const newStatus = isApproved ? "Batal" : "Diterima";
-      sh.getRange(i + 1, 6).setValue(newStatus);
-      addAuditLog(managerName || "Manager", isApproved ? "Approve Void" : "Reject Void", noNota, "Status: " + newStatus);
-      return { success: true, message: "Keputusan void berhasil disimpan (" + newStatus + ")" };
+      if (data[i][9] !== "PendingApproval") return { success: false, message: "Transaksi tidak berada dalam antrean approval" };
+      const voidStatus = isApproved ? "Approved" : "Rejected";
+      sh.getRange(i + 1, 10).setValue(voidStatus);
+      if (isApproved) sh.getRange(i + 1, 6).setValue("Void");
+      const detail = "Keputusan: " + voidStatus + "; alasan: " + (data[i][10] || "-") + "; catatan: " + (catatan || "-") + "; approver_id: " + (managerId || "-");
+      addAuditLog(managerName || "Manager", isApproved ? "Approve Void" : "Reject Void", noNota, detail);
+      return { success: true, statusVoid: voidStatus, status: isApproved ? "Void" : data[i][5], message: "Keputusan void berhasil disimpan (" + voidStatus + ")" };
     }
   }
   return { success: false, message: "Nota tidak ditemukan" };

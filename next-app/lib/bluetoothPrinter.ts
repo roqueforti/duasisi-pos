@@ -263,28 +263,19 @@ export function generateReceiptEscPos(tx: Transaksi): Uint8Array {
     .line('DUA SISI LAUNDRY')
     .size(1, 1)
     .bold(false)
-    .line('Express & Coin Laundry')
-    .line('Jl. Nota Resmi Dua SiSi POS')
+    .line('TIKET MESIN / PRODUKSI')
     .dashedLine(32)
     .align('left')
     .twoColumn('No Nota:', tx.noNota, 32)
     .twoColumn('Tanggal:', tx.tanggal, 32)
     .twoColumn('Pelanggan:', tx.namaPelanggan.substring(0, 16), 32);
 
-  if (tx.noHp) {
-    builder.twoColumn('No HP:', tx.noHp, 32);
-  }
-
   builder
-    .twoColumn('Layanan:', tx.tingkatLayanan || 'Reguler', 32)
-    .twoColumn('Kasir:', tx.petugas || 'Staff', 32)
     .dashedLine(32);
 
   tx.items.forEach((item) => {
     builder.bold(true).line(item.layanan).bold(false);
-    const qtyPrice = `${item.qty} x Rp ${item.hargaSatuan.toLocaleString('id-ID')}`;
-    const totalItem = `Rp ${(item.qty * item.hargaSatuan).toLocaleString('id-ID')}`;
-    builder.twoColumn(`  ${qtyPrice}`, totalItem, 32);
+    builder.line(`  Jumlah/Berat: ${item.qty}`);
     if (item.catatan) {
       builder.line(`  *Note: ${item.catatan}`);
     }
@@ -292,29 +283,12 @@ export function generateReceiptEscPos(tx: Transaksi): Uint8Array {
 
   builder.dashedLine(32);
 
-  if (tx.diskon && tx.diskon > 0) {
-    builder.twoColumn('Diskon:', `-Rp ${tx.diskon.toLocaleString('id-ID')}`, 32);
-  }
-
   builder
     .bold(true)
-    .size(1, 2)
-    .twoColumn('TOTAL:', `Rp ${tx.total.toLocaleString('id-ID')}`, 32)
-    .size(1, 1)
-    .bold(false);
-
-  if (tx.nominalDP && tx.nominalDP > 0) {
-    builder.twoColumn('DP Dibayar:', `Rp ${tx.nominalDP.toLocaleString('id-ID')}`, 32);
-    builder.bold(true).twoColumn('Sisa Tagihan:', `Rp ${(tx.sisaTagihan || 0).toLocaleString('id-ID')}`, 32).bold(false);
-  }
-
-  builder
-    .twoColumn('Metode Bayar:', tx.metodeBayar || 'Tunai', 32)
-    .dashedLine(32)
+    .line('BUKAN BUKTI PEMBAYARAN')
+    .bold(false)
     .align('center')
-    .line('Terima Kasih atas Kunjungan Anda!')
-    .line('Simpan Struk ini sebagai Bukti')
-    .line('Pengambilan Laundry')
+    .line('Gunakan sebagai penanda cucian')
     .feedLines(4);
 
   return builder.build();

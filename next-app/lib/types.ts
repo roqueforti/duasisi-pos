@@ -40,7 +40,9 @@ export interface Transaksi {
   nominalDP?: number;
   sisaTagihan?: number;
   metodeBayar?: 'Tunai' | 'QRIS' | 'Transfer' | 'Kartu' | 'Split';
-  status: 'Diterima' | 'Dicuci' | 'Dikeringkan' | 'Disetrika' | 'Siap Diambil' | 'Selesai' | 'Batal';
+  statusPembayaran?: 'Lunas' | 'DP' | 'Belum Bayar';
+  referensiPembayaran?: string;
+  status: 'Diterima' | 'Dicuci' | 'Dikeringkan' | 'Disetrika' | 'Siap Diambil' | 'Selesai' | 'Void' | 'Batal';
   statusVoid?: 'None' | 'PendingApproval' | 'Approved' | 'Rejected';
   alasanVoid?: string;
   catatan?: string;
@@ -113,4 +115,3 @@ export interface BahanInventory {
   satuan: string;
   minStok: number;
 }
-

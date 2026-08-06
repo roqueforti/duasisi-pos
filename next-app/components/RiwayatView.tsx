@@ -83,6 +83,8 @@ export default function RiwayatView() {
       tipe: manualTipe,
       status: manualStatus,
       metodeBayar: manualMetode,
+      nominalBayar: grandTotal,
+      diskon: 0,
       total: grandTotal,
       items: [{ layanan: manualLayanan.trim() || 'Layanan Manual', qty: qtyNum, hargaSatuan: hargaNum }]
     };
@@ -156,13 +158,15 @@ export default function RiwayatView() {
     if (!alasanVoidInput.trim()) { alert('Alasan pembatalan (void) wajib diisi!'); return; }
 
     try {
-      await runBackend('ajukanVoidTransaksi', txToVoid.noNota, alasanVoidInput.trim(), 'Kasir 1');
+      const result = await runBackend<{ success: boolean; message?: string }>('ajukanVoidTransaksi', txToVoid.noNota, alasanVoidInput.trim(), 'Kasir 1');
+      if (!result?.success) throw new Error(result?.message || 'Pengajuan void ditolak backend');
       alert(`Permohonan void nota ${txToVoid.noNota} berhasil dikirim ke Manager/Owner.`);
       setShowVoidModal(false);
       setAlasanVoidInput('');
       loadRiwayat();
-    } catch (e) {
-      alert('Gagal mengajukan void. Memperbarui lokal...');
+    } catch (error) {
+      console.error(error);
+      alert('Gagal mengajukan void. Data transaksi tidak diubah.');
     }
   };
 
@@ -174,9 +178,9 @@ export default function RiwayatView() {
       alert(`Pelunasan Rp ${nominal.toLocaleString('id-ID')} untuk nota ${txToLunas.noNota} berhasil!`);
       setShowPelunasanModal(false);
       loadRiwayat();
-    } catch (e) {
-      alert('Pelunasan berhasil dicatat!');
-      setShowPelunasanModal(false);
+    } catch (error) {
+      console.error(error);
+      alert('Pelunasan gagal dicatat. Silakan coba lagi.');
     }
   };
 

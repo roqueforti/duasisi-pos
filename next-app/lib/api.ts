@@ -1,6 +1,7 @@
 /** API facade untuk frontend. Database utama adalah Google Spreadsheet melalui Apps Script. */
 import { cachedFetch } from './cache';
 import { gasAction } from './db';
+export { clearBackendSession, setBackendSession } from './db';
 
 export { cachedFetch, gasAction };
 

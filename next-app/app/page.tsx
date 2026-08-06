@@ -16,6 +16,7 @@ import ENotaView from '@/components/ENotaView';
 import PelangganView from '@/components/PelangganView';
 import DashboardView from '@/components/DashboardView';
 import { UserRole } from '@/lib/types';
+import { clearBackendSession } from '@/lib/api';
 
 export default function HomePage() {
   const [currentRole, setCurrentRole] = useState<UserRole>('');
@@ -39,6 +40,7 @@ export default function HomePage() {
   };
 
   const handleLogout = () => {
+    clearBackendSession();
     setCurrentRole('');
   };
 

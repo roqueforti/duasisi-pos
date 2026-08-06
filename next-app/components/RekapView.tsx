@@ -81,14 +81,20 @@ export default function RekapView() {
   const handleApproveVoid = async (noNota: string, isApproved: boolean) => {
     const actionStr = isApproved ? 'menyetujui' : 'menolak';
     if (!confirm(`Konfirmasi ${actionStr} pembatalan (void) nota ${noNota}?`)) return;
+    const catatan = window.prompt(`Catatan keputusan (${actionStr}) *:`);
+    if (!catatan?.trim()) {
+      alert('Catatan keputusan wajib diisi.');
+      return;
+    }
 
     try {
-      await runBackend('approveVoidTransaksi', noNota, isApproved, 'Manager / Owner');
+      const result = await runBackend<{ success: boolean; message?: string }>('approveVoidTransaksi', noNota, isApproved, 'Manager / Owner', 'MANAGER', catatan.trim());
+      if (!result?.success) throw new Error(result?.message || 'Approval gagal disimpan');
       alert(`Berhasil ${actionStr} void nota ${noNota}`);
       loadLaporan();
-    } catch (e) {
-      alert(`Permohonan void nota ${noNota} telah diproses.`);
-      loadLaporan();
+    } catch (error) {
+      console.error(error);
+      alert(`Gagal memproses void nota ${noNota}. Silakan coba lagi.`);
     }
   };
 
@@ -209,14 +215,16 @@ export default function RekapView() {
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Filter
           </button>
 
-          <button
-            onClick={handleRunSeeder6Bulan}
-            disabled={loading}
-            className="bg-[#FF9500] hover:bg-amber-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs transition flex items-center gap-1.5 shadow-xs"
-            title="Generate 300+ sampel data transaksi acak selama 6 bulan terakhir"
-          >
-            <Award className="w-3.5 h-3.5" /> Seeder 6 Bulan
-          </button>
+          {process.env.NODE_ENV !== 'production' && (
+            <button
+              onClick={handleRunSeeder6Bulan}
+              disabled={loading}
+              className="bg-[#FF9500] hover:bg-amber-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs transition flex items-center gap-1.5 shadow-xs"
+              title="Generate data sampel khusus environment development"
+            >
+              <Award className="w-3.5 h-3.5" /> Seeder Development
+            </button>
+          )}
 
           <button
             onClick={handleExportCSV}

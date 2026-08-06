@@ -156,10 +156,10 @@ export default function PrinterModal({
       <tr>
         <td class="print-receipt-cell-left">
           ${i.layanan}<br/>
-          <span class="print-receipt-cell-sub">${i.qty} x Rp ${i.hargaSatuan.toLocaleString('id-ID')}</span>
+          <span class="print-receipt-cell-sub">Jumlah/Berat: ${i.qty}</span>
           ${i.catatan ? `<br/><small class="print-receipt-cell-note">Catatan: ${i.catatan}</small>` : ''}
         </td>
-        <td class="print-receipt-cell-right">Rp ${(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</td>
+        <td class="print-receipt-cell-right"></td>
       </tr>
     `
       )
@@ -168,13 +168,13 @@ export default function PrinterModal({
     printWindow.document.write(`
       <html>
         <head>
-          <title>Struk ${transaction.noNota}</title>
-          <link rel="stylesheet" href="/duasisi-pos/globals.css" />
+          <title>Tiket Mesin ${transaction.noNota}</title>
+          <link rel="stylesheet" href="/globals.css" />
         </head>
         <body class="print-receipt-body">
           <div class="print-receipt-header">
             <h2>DUA SISI LAUNDRY</h2>
-            <p>Express & Coin Laundry</p>
+            <p><b>TIKET MESIN / PRODUKSI</b></p>
             <p>Nota: ${transaction.noNota}</p>
             <p>${transaction.tanggal}</p>
             <p>Kecepatan: <b>${transaction.tingkatLayanan || 'Reguler'}</b></p>
@@ -184,13 +184,10 @@ export default function PrinterModal({
           <div class="print-receipt-line"></div>
           <table class="print-receipt-table">${itemsHtml}</table>
           <div class="print-receipt-line"></div>
-          ${transaction.diskon ? `<div class="print-receipt-text-right">Diskon: -Rp ${transaction.diskon.toLocaleString('id-ID')}</div>` : ''}
-          <div class="print-receipt-total">TOTAL: Rp ${transaction.total.toLocaleString('id-ID')}</div>
-          ${transaction.nominalDP ? `<div class="print-receipt-text-right-bold">DP Paid: Rp ${transaction.nominalDP.toLocaleString('id-ID')}</div><div class="print-receipt-text-red-bold">Sisa Tagihan: Rp ${(transaction.sisaTagihan || 0).toLocaleString('id-ID')}</div>` : ''}
           <div class="print-receipt-line"></div>
           <div class="print-receipt-footer">
-            <p>Terima kasih atas kunjungan Anda!</p>
-            <p>Simpan nota ini sebagai bukti pengambilan.</p>
+            <p><b>BUKAN BUKTI PEMBAYARAN</b></p>
+            <p>Gunakan sebagai penanda cucian.</p>
           </div>
           <script>
             window.onload = function() { window.print(); window.close(); }

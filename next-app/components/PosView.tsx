@@ -104,6 +104,7 @@ export default function PosView() {
   const [uangBayarInput, setUangBayarInput] = useState<string>('');
   const [qrisStatus, setQrisStatus] = useState<'PENDING' | 'SUCCESS'>('PENDING');
   const [refNoInput, setRefNoInput] = useState<string>('');
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
 
   // Post Payment & Receipt State
   const [completedOrderData, setCompletedOrderData] = useState<any>(null);
@@ -327,61 +328,69 @@ export default function PosView() {
     setShowCustModal(false);
   };
 
-  // Step 5: Optimistic Payment — langsung show success, save ke GAS di background
-  const handleConfirmPayment = () => {
+  const handleConfirmPaymentSafe = async () => {
+    if (paymentSubmitting) return;
     const kasir = namaKasirInput || 'Kasir 1';
     const custName = customer.nama || 'Pelanggan Umum';
     const total = grandTotal;
     const bayar = Number(uangBayarInput) || total;
-    const returnChange = Math.max(0, bayar - total);
-    const trxId = `TRX-${Date.now().toString().slice(-6)}`;
 
-    const summary = {
-      trxId,
-      kasir,
-      pelanggan: custName,
-      noHp: customer.noHp || '-',
-      metodeBayar,
-      total,
-      uangBayar: bayar,
-      kembalian: returnChange,
-      items: [...cartArray],
-      catatan: catatanOrderInput,
-      tipeLayanan,
-      estimasiSelesai,
-      waktu: new Date().toLocaleTimeString('id-ID') + ' WIB',
-      tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-    };
+    if (!customer.nama.trim() || !customer.noHp.trim()) {
+      alert('Nama dan No. HP / WhatsApp pelanggan wajib diisi.');
+      return;
+    }
+    if (metodeBayar === 'Tunai' && (!uangBayarInput || bayar < total)) {
+      alert('Nominal uang tunai belum cukup.');
+      return;
+    }
+    if (metodeBayar !== 'Tunai' && qrisStatus !== 'SUCCESS') {
+      alert('Pembayaran nontunai belum diverifikasi.');
+      return;
+    }
 
-    // Langsung tutup modal & tampilkan success — tidak perlu tunggu GAS
-    setCompletedOrderData(summary);
-    setShowDetailTransaksiModal(false);
-    setShowSuccessModal(true);
+    setPaymentSubmitting(true);
+    try {
+      const res = await runBackend<{ success: boolean; noNota: string; total: number }>('simpanTransaksi', {
+        namaPelanggan: custName,
+        noHp: customer.noHp,
+        kasir,
+        tipeLayanan,
+        metodeBayar,
+        nominalBayar: metodeBayar === 'Tunai' ? bayar : total,
+        referensiPembayaran: refNoInput.trim(),
+        estimasiSelesai,
+        diskon: diskonApplied.nilai,
+        catatan: catatanOrderInput,
+        items: cartArray.map((i) => ({ layanan: i.layanan, qty: i.qty, hargaSatuan: i.hargaSatuan }))
+      });
+      if (!res?.success || !res.noNota) throw new Error('Backend tidak mengembalikan nomor nota');
 
-    // Invalidate cache riwayat supaya next load ambil data fresh
-    clearCache('getRiwayatTransaksi');
-    clearCache('getDashboardData');
-
-    // Save ke GAS di background — tidak blocking UI
-    const payload = {
-      namaPelanggan: custName,
-      noHp: customer.noHp || '',
-      total,
-      status: 'Selesai',
-      kasir,
-      tipeLayanan,
-      metodeBayar,
-      estimasiSelesai,
-      items: cartArray.map((i) => ({ layanan: i.layanan, qty: i.qty, hargaSatuan: i.hargaSatuan }))
-    };
-    runBackend<{ success: boolean; noNota: string }>('simpanTransaksi', payload)
-      .then((res) => {
-        if (res?.noNota) {
-          // Update no nota di completedOrderData jika masih ditampilkan
-          setCompletedOrderData((prev: any) => prev ? { ...prev, trxId: res.noNota } : prev);
-        }
-      })
-      .catch((err) => console.warn('Background save failed, data tetap tersimpan lokal:', err));
+      setCompletedOrderData({
+        trxId: res.noNota,
+        kasir,
+        pelanggan: custName,
+        noHp: customer.noHp,
+        metodeBayar,
+        total: res.total,
+        uangBayar: bayar,
+        kembalian: Math.max(0, bayar - res.total),
+        items: [...cartArray],
+        catatan: catatanOrderInput,
+        tipeLayanan,
+        estimasiSelesai,
+        waktu: new Date().toLocaleTimeString('id-ID') + ' WIB',
+        tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+      });
+      setShowDetailTransaksiModal(false);
+      setShowSuccessModal(true);
+      clearCache('getTransaksiList');
+      clearCache('getLaporanRange');
+    } catch (error) {
+      console.error('Gagal menyimpan transaksi:', error);
+      alert('Pembayaran belum diselesaikan karena transaksi gagal disimpan. Silakan coba lagi.');
+    } finally {
+      setPaymentSubmitting(false);
+    }
   };
 
   // Step 8: Return to POS Main Page
@@ -1284,15 +1293,15 @@ export default function PosView() {
               </button>
               <button 
                 type="button"
-                onClick={handleConfirmPayment}
-                disabled={metodeBayar === 'Tunai' && Number(uangBayarInput) > 0 && Number(uangBayarInput) < grandTotal}
+                onClick={handleConfirmPaymentSafe}
+                disabled={paymentSubmitting || (metodeBayar === 'Tunai' && Number(uangBayarInput) > 0 && Number(uangBayarInput) < grandTotal)}
                 className={`flex-1 font-bold py-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition ${
-                  metodeBayar === 'Tunai' && Number(uangBayarInput) > 0 && Number(uangBayarInput) < grandTotal
+                  paymentSubmitting || (metodeBayar === 'Tunai' && Number(uangBayarInput) > 0 && Number(uangBayarInput) < grandTotal)
                     ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
                     : 'bg-[#1E4648] hover:bg-[#163536] text-white'
                 }`}
               >
-                <span>Konfirmasi & Selesaikan Bayar</span>
+                <span>{paymentSubmitting ? 'Menyimpan Transaksi...' : 'Konfirmasi & Selesaikan Bayar'}</span>
                 <CheckCircle2 className="w-4 h-4" />
               </button>
             </div>
