@@ -370,7 +370,7 @@ function getLayananListAll() {
 
 function tambahLayanan(data) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
-  const id = generateId();
+  const id = generateId("SVC");
   sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe || "SelfService"]);
   return { success: true, id: id };
 }
@@ -440,7 +440,7 @@ function getInventoryList() {
 
 function tambahInventory(data) {
   const sh = SS.getSheetByName(SHEET_INVENTORY);
-  const id = generateId();
+  const id = generateId("INV");
   sh.appendRow([id, data.nama, data.stok, data.satuan, data.stokMinimum, new Date()]);
   return { success: true, id: id };
 }
@@ -484,7 +484,7 @@ function getMesinList() {
 
 function tambahMesin(data) {
   const sh = SS.getSheetByName(SHEET_MESIN);
-  const id = generateId();
+  const id = generateId("MCH");
   sh.appendRow([id, data.nama, data.tipe || "Washer", "Kosong", "", "", ""]);
   return { success: true, id: id };
 }
@@ -623,7 +623,7 @@ function tambahPromo(data) {
     sh = SS.insertSheet(SHEET_PROMO);
     sh.appendRow(["ID", "Kode Voucher", "Jenis Diskon", "Nilai Diskon", "Min Transaksi", "Status"]);
   }
-  const id = generateId();
+  const id = generateId("PRM");
   const kode = String(data.kodeVoucher).trim().toUpperCase();
   sh.appendRow([id, kode, data.jenisDiskon || "Nominal", Number(data.nilaiDiskon) || 0, Number(data.minTransaksi) || 0, "Aktif"]);
   return { success: true, idPromo: id };
@@ -892,7 +892,7 @@ function createPipelineForNota(noNota, tipe) {
   config.forEach((c, idx) => {
     const status = idx === 0 ? "Aktif" : "Pending";
     const waktuMulai = idx === 0 ? new Date() : "";
-    sh.appendRow([generateId(), noNota, c.step, c.nama, status, "", "", waktuMulai, "", ""]);
+    sh.appendRow([generateId("PIP"), noNota, c.step, c.nama, status, "", "", waktuMulai, "", ""]);
   });
 }
 
@@ -1102,7 +1102,7 @@ function getPegawaiList() {
 function tambahPegawai(data) {
   let sh = SS.getSheetByName(SHEET_PEGAWAI);
   if (!sh) { sh = SS.insertSheet(SHEET_PEGAWAI); sh.appendRow(["ID", "Nama Pegawai", "No HP", "Jabatan", "Status", "Tanggal Bergabung"]); }
-  const id = generateId();
+  const id = generateId("EMP");
   sh.appendRow([id, data.nama, data.noHp || "", data.jabatan || "Operator", "Aktif", new Date()]);
   return { success: true, id: id };
 }
@@ -1155,7 +1155,7 @@ function clockInPegawai(namaPegawai, shift, catatan) {
       return { success: false, message: "Pegawai ini sudah Clock In (belum Clock Out)." };
     }
   }
-  sh.appendRow([generateId(), now, namaPegawai, shift || "Pagi", clockInStr, "", "", catatan || ""]);
+  sh.appendRow([generateId("ABS"), now, namaPegawai, shift || "Pagi", clockInStr, "", "", catatan || ""]);
   return { success: true, message: "✅ Clock In Berhasil (" + clockInStr + ")" };
 }
 
@@ -1231,7 +1231,7 @@ function getMasterShiftList() {
 function tambahMasterShift(data) {
   let sh = SS.getSheetByName(SHEET_SHIFT);
   if (!sh) { sh = SS.insertSheet(SHEET_SHIFT); sh.appendRow(["ID", "Nama Shift", "Jam Masuk", "Jam Keluar", "Keterangan"]); }
-  const id = generateId();
+  const id = generateId("SFT");
   sh.appendRow([id, data.nama, data.jamMasuk || "07:00", data.jamKeluar || "15:00", data.keterangan || ""]);
   return { success: true, id: id };
 }
@@ -1257,7 +1257,7 @@ function addAuditLog(namaUser, jenisAktivitas, referensi, detail) {
     sh = SS.insertSheet(SHEET_AUDIT);
     sh.appendRow(["ID Log", "Waktu", "Pengguna", "Aktivitas", "Referensi", "Detail"]);
   }
-  const idLog = "LOG-" + generateId();
+  const idLog = generateId("LOG");
   const waktu = fmtWib(new Date());
   sh.appendRow([idLog, waktu, namaUser || "System", jenisAktivitas || "Activity", referensi || "-", detail || "-"]);
 }
