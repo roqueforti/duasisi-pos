@@ -16,6 +16,7 @@ interface NavbarProps {
 const tabTitles: Record<string, string> = {
   transaksi: 'Point of Sale (POS)',
   riwayat: 'Riwayat Transaksi',
+  pesanan: 'Manajemen Pesanan Drop-off',
   absensi: 'Absensi Shift Presensi',
   inventory: 'Inventory Stok Bahan',
   mesin: 'Status Mesin Cuci & Dryer',

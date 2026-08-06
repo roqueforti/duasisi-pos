@@ -49,10 +49,27 @@ export interface Transaksi {
   estimasiSelesai?: string;
   idOutlet?: string;
   items: TransaksiItem[];
+  pipeline?: PipelineStep[];
+}
+
+export interface PipelineStep {
+  id: string;
+  noNota: string;
+  step: number;
+  namaStep: string;
+  status: 'Pending' | 'Aktif' | 'Selesai';
+  assignedStaff?: string;
+  mesinId?: string;
+  washerId?: string;
+  dryerId?: string;
+  waktuMulai?: string;
+  waktuSelesai?: string;
+  catatan?: string;
 }
 
 export interface ShiftKasir {
   idShift: string;
+  idOutlet?: string;
   idUser: string;
   namaKasir: string;
   kasAwal: number;

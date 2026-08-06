@@ -15,6 +15,7 @@ import RekapView from '@/components/RekapView';
 import ENotaView from '@/components/ENotaView';
 import PelangganView from '@/components/PelangganView';
 import DashboardView from '@/components/DashboardView';
+import PesananView from '@/components/PesananView';
 import { UserRole } from '@/lib/types';
 import { clearBackendSession } from '@/lib/api';
 
@@ -87,6 +88,7 @@ export default function HomePage() {
               {currentTab === 'dashboard' && <DashboardView currentRole={currentRole} />}
               {currentTab === 'transaksi' && <PosView />}
               {currentTab === 'riwayat' && <RiwayatView />}
+              {currentTab === 'pesanan' && <PesananView />}
               {currentTab === 'absensi' && <AbsensiView />}
               {currentTab === 'pelanggan' && <PelangganView />}
               {currentTab === 'inventory' && <InventoryView />}

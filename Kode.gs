@@ -16,6 +16,7 @@ const SHEET_ABSENSI   = "Absensi";
 const SHEET_SHIFT     = "MasterShift";
 const SHEET_PIPELINE  = "Pipeline";
 const SHEET_PROMO     = "Promo";
+const SHEET_KAS_SHIFT = "KasShift";
 const TIMEZONE_WIB    = "Asia/Jakarta";
 const MIGRATION_KEY   = "SPREADSHEET_SCHEMA_VERSION";
 
@@ -29,10 +30,11 @@ const ALLOWED_API_ACTIONS = Object.freeze({
   simpanTransaksi: true, pelunasanDP: true,
   getPromoList: true, tambahPromo: true, hapusPromo: true, validasiVoucher: true,
   simpanPelangganJikaBaru: true, cariPelangganByHp: true, getDaftarPelanggan: true, updateDataPelanggan: true, getRiwayatPelangganByHp: true,
-  getPipelineSteps: true, advancePipeline: true, getTransaksiList: true, getTransaksiByNota: true, getTransaksiByPipeline: true, updateStatus: true,
+  getPipelineSteps: true, updateDropoffStatus: true, getTransaksiList: true, getTransaksiByNota: true, getTransaksiByPipeline: true,
   getLaporanRange: true, getPegawaiList: true, tambahPegawai: true, hapusPegawai: true, getRekapKinerjaPegawai: true,
   clockInPegawai: true, clockOutPegawai: true, getStatusAbsensiHariIni: true, getRekapAbsensi: true,
   getMasterShiftList: true, tambahMasterShift: true, hapusMasterShift: true,
+  getKasShiftAktif: true, openKasShift: true, handoverCheckKasShift: true, closeKasShift: true, getRekapKasShift: true,
   getAuditLogs: true, ajukanVoidTransaksi: true, approveVoidTransaksi: true
 });
 const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true });
@@ -43,7 +45,7 @@ const MANAGER_API_ACTIONS = Object.freeze({
   tambahPromo: true, hapusPromo: true,
   tambahPegawai: true, hapusPegawai: true,
   tambahMasterShift: true, hapusMasterShift: true,
-  getLaporanRange: true, getAuditLogs: true, approveVoidTransaksi: true
+  getLaporanRange: true, getAuditLogs: true, approveVoidTransaksi: true, getRekapKasShift: true
 });
 
 /**
@@ -337,6 +339,12 @@ function runMigrations() {
       },
       function v3() {
         ensureSheetSchema_(SHEET_TRANSAKSI, ["No Nota", "Tanggal", "Nama Pelanggan", "No HP", "Total", "Status", "Estimasi Selesai", "Petugas", "Tipe", "Status Void", "Alasan Void", "Subtotal", "Diskon", "Metode Pembayaran", "Status Pembayaran", "Nominal Bayar", "Sisa Tagihan", "Referensi Pembayaran", "Catatan"]);
+      },
+      function v4() {
+        ensureSheetSchema_(SHEET_KAS_SHIFT, ["ID Kas Shift", "Outlet", "Nama Penanggung Jawab", "ID Penanggung Jawab", "Waktu Buka", "Waktu Tutup", "Kas Awal", "Kas Akhir Sistem", "Kas Akhir Fisik", "Selisih", "Status", "Mode Tutup", "ID Pengganti", "Nama Pengganti", "Waktu Handover", "Catatan"]);
+      },
+      function v5() {
+        ensureSheetSchema_(SHEET_TRANSAKSI, ["No Nota", "Tanggal", "Nama Pelanggan", "No HP", "Total", "Status", "Estimasi Selesai", "Petugas", "Tipe", "Status Void", "Alasan Void", "Subtotal", "Diskon", "Metode Pembayaran", "Status Pembayaran", "Nominal Bayar", "Sisa Tagihan", "Referensi Pembayaran", "Catatan", "Prioritas"]);
       }
     ];
     for (let i = version; i < migrations.length; i++) { migrations[i](); version = i + 1; props.setProperty(MIGRATION_KEY, String(version)); }
@@ -355,7 +363,7 @@ function ensureSheetSchema_(name, headers) {
 // ============================================================
 // PIPELINE CONFIG
 // ============================================================
-function getPipelineConfig(tipe) {
+function getLegacyPipelineConfig_(tipe) {
   if (tipe === "FullService") {
     return [
       { step: 1, nama: "Diterima",           icon: "📥", needStaff: false, needMesin: false },
@@ -375,6 +383,20 @@ function getPipelineConfig(tipe) {
     { step: 3, nama: "Dryer",     icon: "♨️", needStaff: false, needMesin: true  },
     { step: 4, nama: "Selesai",   icon: "🏁", needStaff: false, needMesin: false }
   ];
+}
+
+function getPipelineConfig(tipe) {
+  if (tipe === "FullService") {
+    return [
+      { step: 1, nama: "Diterima", needStaff: false, needMesin: false },
+      { step: 2, nama: "Dicuci", needStaff: true, needMesin: true },
+      { step: 3, nama: "Dikeringkan", needStaff: true, needMesin: true },
+      { step: 4, nama: "Disetrika", needStaff: true, needMesin: false },
+      { step: 5, nama: "Siap Diambil", needStaff: false, needMesin: false },
+      { step: 6, nama: "Selesai", needStaff: false, needMesin: false }
+    ];
+  }
+  return getLegacyPipelineConfig_(tipe);
 }
 
 // ============================================================
@@ -720,7 +742,7 @@ function simpanTransaksi(data) {
       noNota, tanggal, data.namaPelanggan || data.pelanggan || "Pelanggan Umum", data.noHp || "",
       total, status, data.estimasiSelesai || data.estimasi || "", petugas, tipe,
       "None", "", subtotal, diskon, data.metodeBayar || "Tunai", statusPembayaran,
-      nominalBayar, sisaTagihan, data.referensiPembayaran || "", data.catatan || ""
+      nominalBayar, sisaTagihan, data.referensiPembayaran || "", data.catatan || "", data.tingkatLayanan || data.prioritas || "Reguler"
     ]);
 
     simpanPelangganJikaBaru(data.namaPelanggan || data.pelanggan, data.noHp, data.alamat || "", total, data.catatanPelanggan || "");
@@ -1066,7 +1088,7 @@ function getPipelineSteps(noNota) {
       assignedStaff: r[5] || "", mesinId: r[6] || "",
       waktuMulai: r[7] ? fmtWib(r[7]) : "",
       waktuSelesai: r[8] ? fmtWib(r[8]) : "",
-      catatan: r[9] || ""
+      catatan: r[9] || "", washerId: r[10] || "", dryerId: r[11] || ""
     }))
     .sort((a, b) => a.step - b.step);
 }
@@ -1124,6 +1146,108 @@ function advancePipeline(noNota, assignedStaff, mesinId, catatan) {
   }
 }
 
+function getDropoffStatusIndex_(status) {
+  return ["Diterima", "Dicuci", "Dikeringkan", "Disetrika", "Siap Diambil", "Selesai"].indexOf(String(status || ""));
+}
+
+function findMachineRow_(machineId, expectedType) {
+  const sh = SS.getSheetByName(SHEET_MESIN);
+  if (!sh || !machineId) return { success: false, message: "Mesin wajib dipilih." };
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) !== String(machineId)) continue;
+    const actualType = String(rows[i][2] || "").toLowerCase();
+    if (actualType.indexOf(String(expectedType).toLowerCase()) === -1) {
+      return { success: false, message: "Tipe mesin tidak sesuai untuk tahap ini." };
+    }
+    if (rows[i][3] === "Maintenance") return { success: false, message: "Mesin sedang maintenance." };
+    if (rows[i][3] === "Digunakan") return { success: false, message: "Mesin sedang digunakan order lain." };
+    return { success: true, sheet: sh, rowIndex: i };
+  }
+  return { success: false, message: "Mesin tidak ditemukan." };
+}
+
+/**
+ * Memajukan lifecycle drop-off satu tahap. Mesin dicatat pada tahap yang baru
+ * dimulai sehingga washer/dryer fisik selalu dapat ditelusuri dari order.
+ */
+function updateDropoffStatus(data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const noNota = String(data.noNota || data.id || "");
+    const statusBaru = String(data.status || "");
+    const shT = SS.getSheetByName(SHEET_TRANSAKSI);
+    const shP = SS.getSheetByName(SHEET_PIPELINE);
+    if (!shT || !shP) return { success: false, message: "Schema transaksi atau pipeline belum tersedia." };
+
+    const txRows = shT.getDataRange().getValues();
+    let txIndex = -1;
+    for (let i = 1; i < txRows.length; i++) {
+      if (String(txRows[i][0]) === noNota) { txIndex = i; break; }
+    }
+    if (txIndex < 0) return { success: false, message: "Order drop-off tidak ditemukan." };
+    if (txRows[txIndex][8] !== "FullService") return { success: false, message: "Lifecycle produksi hanya berlaku untuk order drop-off." };
+    if (txRows[txIndex][9] === "Approved" || ["Void", "Batal"].indexOf(txRows[txIndex][5]) !== -1) {
+      return { success: false, message: "Order void/batal tidak dapat diproses." };
+    }
+
+    const currentIndex = getDropoffStatusIndex_(txRows[txIndex][5]);
+    const targetIndex = getDropoffStatusIndex_(statusBaru);
+    if (targetIndex < 0) return { success: false, message: "Status drop-off tidak valid." };
+    if (targetIndex !== currentIndex + 1) return { success: false, message: "Status harus dilanjutkan satu tahap secara berurutan." };
+
+    let machine = null;
+    let machineId = "";
+    if (statusBaru === "Dicuci") {
+      machineId = String(data.washerId || "");
+      machine = findMachineRow_(machineId, "washer");
+    } else if (statusBaru === "Dikeringkan") {
+      machineId = String(data.dryerId || "");
+      machine = findMachineRow_(machineId, "dryer");
+    }
+    if (machine && !machine.success) return { success: false, message: machine.message };
+
+    const pipelineRows = shP.getDataRange().getValues();
+    let activeRow = -1;
+    let targetRow = -1;
+    for (let i = 1; i < pipelineRows.length; i++) {
+      if (String(pipelineRows[i][1]) !== noNota) continue;
+      if (pipelineRows[i][4] === "Aktif") activeRow = i;
+      if (pipelineRows[i][3] === statusBaru) targetRow = i;
+    }
+    if (activeRow < 0 || targetRow < 0) return { success: false, message: "Pipeline order belum sesuai schema terbaru." };
+
+    const now = new Date();
+    const previousMachineId = String(pipelineRows[activeRow][6] || "");
+    shP.getRange(activeRow + 1, 5).setValue("Selesai");
+    shP.getRange(activeRow + 1, 9).setValue(now);
+    if (data.assignedStaff) shP.getRange(activeRow + 1, 6).setValue(data.assignedStaff);
+    if (data.catatan) shP.getRange(activeRow + 1, 10).setValue(data.catatan);
+
+    if (statusBaru === "Selesai") {
+      shP.getRange(targetRow + 1, 5).setValue("Selesai");
+      shP.getRange(targetRow + 1, 8, 1, 2).setValues([[now, now]]);
+    } else {
+      shP.getRange(targetRow + 1, 5).setValue("Aktif");
+      shP.getRange(targetRow + 1, 8).setValue(now);
+    }
+    if (machineId) {
+      shP.getRange(targetRow + 1, 7).setValue(machineId);
+      shP.getRange(targetRow + 1, statusBaru === "Dicuci" ? 11 : 12).setValue(machineId);
+      machine.sheet.getRange(machine.rowIndex + 1, 4, 1, 4).setValues([["Digunakan", noNota + " - " + statusBaru, now, data.estimasiSelesai || ""]]);
+    }
+    if (previousMachineId) selesaiMesin(previousMachineId);
+
+    shT.getRange(txIndex + 1, 6).setValue(statusBaru);
+    addAuditLog(data.userName || data.assignedStaff || "Staff", "Update Drop-off", noNota, txRows[txIndex][5] + " -> " + statusBaru + (machineId ? "; mesin " + machineId : ""));
+    SpreadsheetApp.flush();
+    return { success: true, noNota: noNota, previousStatus: txRows[txIndex][5], status: statusBaru, machineId: machineId || "", message: "Status order diperbarui menjadi " + statusBaru + "." };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function getTransaksiList(statusFilter) {
   const sh = SS.getSheetByName(SHEET_TRANSAKSI);
   const shD = SS.getSheetByName(SHEET_DETAIL);
@@ -1144,7 +1268,7 @@ function getTransaksiList(statusFilter) {
       statusVoid: r[9] || "None", alasanVoid: r[10] || "", subtotal: Number(r[11]) || Number(r[4]) || 0,
       diskon: Number(r[12]) || 0, metodeBayar: r[13] || "", statusPembayaran: r[14] || "Lunas",
       nominalDP: Number(r[15]) || 0, sisaTagihan: Number(r[16]) || 0,
-      referensiPembayaran: r[17] || "", catatan: r[18] || "", items: items
+      referensiPembayaran: r[17] || "", catatan: r[18] || "", tingkatLayanan: r[19] || "Reguler", items: items
     };
   });
 
@@ -1410,6 +1534,127 @@ function hapusMasterShift(id) {
     if (rows[i][0] === id) { sh.deleteRow(i + 1); return true; }
   }
   return false;
+}
+
+// ============================================================
+// KAS SHIFT & SERAH TERIMA
+// ============================================================
+function getKasShiftAktif(outlet) {
+  const sh = SS.getSheetByName(SHEET_KAS_SHIFT);
+  if (!sh || sh.getLastRow() < 2) return null;
+  const rows = sh.getDataRange().getValues();
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if (rows[i][10] === "Aktif" && (!outlet || rows[i][1] === outlet)) {
+      return {
+        idShift: rows[i][0], idOutlet: rows[i][1], namaKasir: rows[i][2], idUser: rows[i][3],
+        waktuBuka: new Date(rows[i][4]).toISOString(), kasAwal: Number(rows[i][6]) || 0,
+        kasAkhirSistem: Number(rows[i][7]) || 0, status: "Buka"
+      };
+    }
+  }
+  return null;
+}
+
+function openKasShift(data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    let sh = SS.getSheetByName(SHEET_KAS_SHIFT);
+    if (!sh) {
+      ensureSheetSchema_(SHEET_KAS_SHIFT, ["ID Kas Shift", "Outlet", "Nama Penanggung Jawab", "ID Penanggung Jawab", "Waktu Buka", "Waktu Tutup", "Kas Awal", "Kas Akhir Sistem", "Kas Akhir Fisik", "Selisih", "Status", "Mode Tutup", "ID Pengganti", "Nama Pengganti", "Waktu Handover", "Catatan"]);
+      sh = SS.getSheetByName(SHEET_KAS_SHIFT);
+    }
+    const outlet = data.idOutlet || data.outlet || "OUTLET-UTAMA";
+    if (getKasShiftAktif(outlet)) return { success: false, message: "Masih ada kas shift aktif pada outlet ini." };
+    const kasAwal = Number(data.kasAwal);
+    if (!isFinite(kasAwal) || kasAwal < 0) return { success: false, message: "Kas awal tidak valid." };
+    const id = generateId("KAS");
+    const now = new Date();
+    sh.appendRow([id, outlet, data.namaKasir || data.userName || "Kasir", data.userId || "-", now, "", kasAwal, "", "", "", "Aktif", "", "", "", "", data.catatan || ""]);
+    addAuditLog(data.namaKasir || data.userName || "Kasir", "Buka Kas Shift", id, "Outlet: " + outlet + "; kas awal Rp " + kasAwal.toLocaleString('id-ID'));
+    return { success: true, data: getKasShiftAktif(outlet) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function findEmployeeNameById_(employeeId) {
+  const sh = SS.getSheetByName(SHEET_PEGAWAI);
+  if (!sh) return "";
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) if (String(rows[i][0]) === String(employeeId)) return String(rows[i][1]);
+  return "";
+}
+
+function handoverCheckKasShift(data) {
+  const active = getKasShiftAktif(data.idOutlet || data.outlet || "OUTLET-UTAMA");
+  if (!active || active.idShift !== data.shiftId) return { eligible: false, clockedIn: false, message: "Kas shift aktif tidak ditemukan." };
+  if (!data.replacementEmployeeId || String(data.replacementEmployeeId) === String(active.idUser)) {
+    return { eligible: false, clockedIn: false, message: "Staf pengganti harus berbeda dari penanggung jawab kas." };
+  }
+  const replacementName = findEmployeeNameById_(data.replacementEmployeeId);
+  if (!replacementName) return { eligible: false, clockedIn: false, message: "Staf pengganti tidak ditemukan." };
+  const attendance = SS.getSheetByName(SHEET_ABSENSI);
+  if (!attendance) return { eligible: false, clockedIn: false, message: "Staf pengganti belum Clock In." };
+  const today = fmtWib(new Date(), "yyyy-MM-dd");
+  const rows = attendance.getDataRange().getValues();
+  const clockedIn = rows.some(function(row, index) {
+    return index > 0 && row[1] && fmtWib(row[1], "yyyy-MM-dd") === today && row[2] === replacementName && row[4] && !row[5];
+  });
+  return { eligible: clockedIn, clockedIn: clockedIn, replacementEmployeeId: data.replacementEmployeeId, replacementName: replacementName, message: clockedIn ? "Staf pengganti sudah Clock In." : "Staf pengganti belum Clock In." };
+}
+
+function calculateShiftCash_(openedAt) {
+  const sh = SS.getSheetByName(SHEET_TRANSAKSI);
+  if (!sh) return 0;
+  const rows = sh.getDataRange().getValues();
+  return rows.reduce(function(total, row, index) {
+    if (index === 0 || !row[1] || new Date(row[1]).getTime() < openedAt.getTime()) return total;
+    if (row[9] === "Approved" || row[5] === "Void" || row[5] === "Batal") return total;
+    if (row[13] !== "Tunai") return total;
+    return total + (Number(row[15]) || Number(row[4]) || 0);
+  }, 0);
+}
+
+function closeKasShift(data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = SS.getSheetByName(SHEET_KAS_SHIFT);
+    if (!sh) return { success: false, message: "Sheet KasShift belum tersedia." };
+    const rows = sh.getDataRange().getValues();
+    let rowIndex = -1;
+    for (let i = 1; i < rows.length; i++) if (rows[i][0] === data.shiftId && rows[i][10] === "Aktif") { rowIndex = i; break; }
+    if (rowIndex < 0) return { success: false, message: "Kas shift aktif tidak ditemukan." };
+    if (["SERAH_TERIMA", "TUTUP_HARIAN"].indexOf(data.mode) === -1) return { success: false, message: "Mode penutupan tidak valid." };
+
+    let replacement = { replacementEmployeeId: "", replacementName: "" };
+    if (data.mode === "SERAH_TERIMA") {
+      if (!data.handoverConfirmed) return { success: false, message: "Serah terima belum dikonfirmasi." };
+      const check = handoverCheckKasShift({ shiftId: data.shiftId, idOutlet: rows[rowIndex][1], replacementEmployeeId: data.replacementEmployeeId });
+      if (!check.eligible) return { success: false, message: check.message };
+      replacement = check;
+    }
+
+    const kasFisik = Number(data.kasAkhir);
+    if (!isFinite(kasFisik) || kasFisik < 0) return { success: false, message: "Kas akhir fisik tidak valid." };
+    const omzetTunai = calculateShiftCash_(new Date(rows[rowIndex][4]));
+    const kasSistem = (Number(rows[rowIndex][6]) || 0) + omzetTunai;
+    const now = new Date();
+    sh.getRange(rowIndex + 1, 6).setValue(now);
+    sh.getRange(rowIndex + 1, 8, 1, 9).setValues([[kasSistem, kasFisik, kasFisik - kasSistem, "Ditutup", data.mode, replacement.replacementEmployeeId || "", replacement.replacementName || "", data.mode === "SERAH_TERIMA" ? now : "", data.catatan || ""]]);
+    addAuditLog(data.userName || rows[rowIndex][2] || "Kasir", "Tutup Kas Shift", data.shiftId, "Mode: " + data.mode + "; sistem Rp " + kasSistem.toLocaleString('id-ID') + "; fisik Rp " + kasFisik.toLocaleString('id-ID'));
+    return { success: true, idShift: data.shiftId, kasAkhirSistem: kasSistem, kasAkhirFisik: kasFisik, selisihKas: kasFisik - kasSistem, mode: data.mode };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getRekapKasShift() {
+  const sh = SS.getSheetByName(SHEET_KAS_SHIFT);
+  if (!sh || sh.getLastRow() < 2) return [];
+  const rows = sh.getDataRange().getValues(); rows.shift();
+  return rows.map(function(r) { return { idShift: r[0], idOutlet: r[1], namaKasir: r[2], waktuBuka: fmtWib(r[4]), waktuTutup: r[5] ? fmtWib(r[5]) : "", kasAwal: Number(r[6]) || 0, kasAkhirSistem: Number(r[7]) || 0, kasAkhirFisik: Number(r[8]) || 0, selisihKas: Number(r[9]) || 0, status: r[10], modeTutup: r[11] || "" }; }).reverse();
 }
 
 // ============================================================

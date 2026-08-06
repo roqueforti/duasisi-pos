@@ -16,7 +16,8 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
-  ChevronRight
+  ChevronRight,
+  ClipboardList
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -162,6 +163,10 @@ export default function Sidebar({
           <button className={navClass('riwayat')} onClick={() => handleNavClick('riwayat')} title="Riwayat">
             <History className={`w-[18px] h-[18px] shrink-0 ${iconClass('riwayat')}`} />
             {!isCollapsed && <span>Riwayat Transaksi</span>}
+          </button>
+          <button className={navClass('pesanan')} onClick={() => handleNavClick('pesanan')} title="Pesanan Drop-off">
+            <ClipboardList className={`w-[18px] h-[18px] shrink-0 ${iconClass('pesanan')}`} />
+            {!isCollapsed && <span>Pesanan Drop-off</span>}
           </button>
           <button className={navClass('absensi')} onClick={() => handleNavClick('absensi')} title="Absensi">
             <Clock className={`w-[18px] h-[18px] shrink-0 ${iconClass('absensi')}`} />

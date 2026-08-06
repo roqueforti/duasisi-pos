@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search, 
   Plus, 
@@ -95,6 +95,7 @@ export default function PosView() {
 
   // Order Details Form State
   const [tipeLayanan, setTipeLayanan] = useState<'SelfService' | 'FullService'>('SelfService');
+  const [tingkatLayanan, setTingkatLayanan] = useState<'Reguler' | 'Express' | 'Kilat'>('Reguler');
   const [estimasiSelesai, setEstimasiSelesai] = useState<string>('Hari ini, 17.00 WIB');
   const [catatanOrderInput, setCatatanOrderInput] = useState<string>('');
 
@@ -145,15 +146,12 @@ export default function PosView() {
   const [showMobileCart, setShowMobileCart] = useState<boolean>(false);
 
   // Shift & Kas State
-  const [shiftAktif, setShiftAktif] = useState<ShiftKasir | null>({
-    idShift: 'SHIFT-DEMO',
-    idUser: 'U1',
-    namaKasir: 'Kasir 1',
-    kasAwal: 100000,
-    waktuBuka: new Date().toISOString(),
-    status: 'Buka',
-    totalOmzetTunai: 0
-  });
+  const [shiftAktif, setShiftAktif] = useState<ShiftKasir | null>(null);
+  const [shiftLoading, setShiftLoading] = useState(true);
+  const [shiftSubmitting, setShiftSubmitting] = useState(false);
+  const [closeShiftMode, setCloseShiftMode] = useState<'SERAH_TERIMA' | 'TUTUP_HARIAN'>('SERAH_TERIMA');
+  const [replacementEmployeeId, setReplacementEmployeeId] = useState('');
+  const [handoverResult, setHandoverResult] = useState<{ eligible: boolean; message: string } | null>(null);
 
   const [kasAwalInput, setKasAwalInput] = useState('100000');
   const [kasAkhirFisik, setKasAkhirFisik] = useState('');
@@ -212,6 +210,24 @@ export default function PosView() {
       15 * 60 * 1000 // 15 menit TTL — pegawai sangat jarang berubah
     );
   }, []);
+
+  const refreshActiveShift = useCallback(async () => {
+    setShiftLoading(true);
+    try {
+      const data = await runBackend<ShiftKasir | null>('getKasShiftAktif', 'OUTLET-UTAMA');
+      setShiftAktif(data || null);
+    } catch (error) {
+      console.error('Gagal memuat kas shift:', error);
+      setToastMsg('Kas shift belum dapat dimuat. Periksa koneksi backend.');
+    } finally {
+      setShiftLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void refreshActiveShift(), 0);
+    return () => window.clearTimeout(timer);
+  }, [refreshActiveShift]);
 
   // Calculate totals
   const cartArray = Object.values(cart);
@@ -330,6 +346,12 @@ export default function PosView() {
 
   const handleConfirmPaymentSafe = async () => {
     if (paymentSubmitting) return;
+    if (!shiftAktif) {
+      alert('Buka kas shift terlebih dahulu sebelum memproses pembayaran.');
+      setShowDetailTransaksiModal(false);
+      setShowBukaShiftModal(true);
+      return;
+    }
     const kasir = namaKasirInput || 'Kasir 1';
     const custName = customer.nama || 'Pelanggan Umum';
     const total = grandTotal;
@@ -355,6 +377,7 @@ export default function PosView() {
         noHp: customer.noHp,
         kasir,
         tipeLayanan,
+        tingkatLayanan,
         metodeBayar,
         nominalBayar: metodeBayar === 'Tunai' ? bayar : total,
         referensiPembayaran: refNoInput.trim(),
@@ -390,6 +413,90 @@ export default function PosView() {
       alert('Pembayaran belum diselesaikan karena transaksi gagal disimpan. Silakan coba lagi.');
     } finally {
       setPaymentSubmitting(false);
+    }
+  };
+
+  const handleOpenShift = async () => {
+    const kasAwal = Number(kasAwalInput);
+    if (!Number.isFinite(kasAwal) || kasAwal < 0) {
+      alert('Kas awal harus berupa angka nol atau lebih.');
+      return;
+    }
+    const selectedStaff = staffList.find((staff) => staff.nama === namaKasirInput) || staffList[0];
+    setShiftSubmitting(true);
+    try {
+      const result = await runBackend<{ success: boolean; data?: ShiftKasir; message?: string }>('openKasShift', {
+        idOutlet: 'OUTLET-UTAMA',
+        userId: selectedStaff?.id || '-',
+        namaKasir: selectedStaff?.nama || namaKasirInput || 'Kasir',
+        kasAwal,
+      });
+      if (!result?.success || !result.data) throw new Error(result?.message || 'Kas shift gagal dibuka.');
+      setShiftAktif(result.data);
+      setShowBukaShiftModal(false);
+      setToastMsg(`Kas shift ${result.data.idShift} berhasil dibuka.`);
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : 'Kas shift gagal dibuka.');
+    } finally {
+      setShiftSubmitting(false);
+    }
+  };
+
+  const handleCheckHandover = async () => {
+    if (!shiftAktif || !replacementEmployeeId) {
+      alert('Pilih staf shift pengganti terlebih dahulu.');
+      return;
+    }
+    setShiftSubmitting(true);
+    try {
+      const result = await runBackend<{ eligible: boolean; message: string }>('handoverCheckKasShift', {
+        shiftId: shiftAktif.idShift,
+        idOutlet: 'OUTLET-UTAMA',
+        replacementEmployeeId,
+      });
+      setHandoverResult(result);
+    } catch (error) {
+      console.error(error);
+      setHandoverResult({ eligible: false, message: error instanceof Error ? error.message : 'Verifikasi handover gagal.' });
+    } finally {
+      setShiftSubmitting(false);
+    }
+  };
+
+  const handleCloseShift = async () => {
+    if (!shiftAktif) return;
+    const kasAkhir = Number(kasAkhirFisik);
+    if (!Number.isFinite(kasAkhir) || kasAkhir < 0) {
+      alert('Kas akhir fisik harus berupa angka nol atau lebih.');
+      return;
+    }
+    if (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible) {
+      alert('Clock In staf pengganti harus diverifikasi sebelum serah terima.');
+      return;
+    }
+    setShiftSubmitting(true);
+    try {
+      const result = await runBackend<{ success: boolean; message?: string; selisihKas?: number }>('closeKasShift', {
+        shiftId: shiftAktif.idShift,
+        mode: closeShiftMode,
+        kasAkhir,
+        replacementEmployeeId: closeShiftMode === 'SERAH_TERIMA' ? replacementEmployeeId : '',
+        handoverConfirmed: closeShiftMode === 'SERAH_TERIMA',
+        userName: shiftAktif.namaKasir,
+      });
+      if (!result?.success) throw new Error(result?.message || 'Kas shift gagal ditutup.');
+      setShiftAktif(null);
+      setShowTutupShiftModal(false);
+      setKasAkhirFisik('');
+      setReplacementEmployeeId('');
+      setHandoverResult(null);
+      setToastMsg(`Kas shift ditutup. Selisih kas Rp ${(result.selisihKas || 0).toLocaleString('id-ID')}.`);
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : 'Kas shift gagal ditutup.');
+    } finally {
+      setShiftSubmitting(false);
     }
   };
 
@@ -445,7 +552,11 @@ export default function PosView() {
               <span>+ Baru</span>
             </button>
 
-            {shiftAktif ? (
+            {shiftLoading ? (
+              <button disabled className="bg-slate-50 border border-slate-200 text-slate-400 px-3 py-2 rounded-lg text-xs font-semibold">
+                Memuat Shift...
+              </button>
+            ) : shiftAktif ? (
               <button
                 onClick={() => setShowTutupShiftModal(true)}
                 className="bg-[#B5C9C9]/20 border border-[#B5C9C9] text-[#1E4648] hover:bg-[#B5C9C9]/30 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
@@ -1119,6 +1230,28 @@ export default function PosView() {
                     </div>
                   </div>
 
+                  {tipeLayanan === 'FullService' && (
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Prioritas Pengerjaan</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['Reguler', 'Express', 'Kilat'] as const).map((priority) => (
+                          <button
+                            key={priority}
+                            type="button"
+                            onClick={() => setTingkatLayanan(priority)}
+                            className={`py-2 rounded-lg text-[11px] font-bold border transition ${
+                              tingkatLayanan === priority
+                                ? 'bg-[#FF9500] border-[#FF9500] text-white'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {priority}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Estimasi Selesai */}
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Estimasi Selesai Laundry</label>
@@ -1491,19 +1624,13 @@ export default function PosView() {
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowBukaShiftModal(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">Batal</button>
-              <button onClick={() => {
-                const nominal = Number(kasAwalInput) || 0;
-                setShiftAktif({
-                  idShift: `SHIFT-${Date.now()}`,
-                  idUser: 'U1',
-                  namaKasir: 'Kasir 1',
-                  kasAwal: nominal,
-                  waktuBuka: new Date().toISOString(),
-                  status: 'Buka',
-                  totalOmzetTunai: 0
-                });
-                setShowBukaShiftModal(false);
-              }} className="flex-1 bg-[#1E4648] text-white rounded-lg text-xs font-bold py-2">Buka Shift Sekarang</button>
+              <button
+                onClick={handleOpenShift}
+                disabled={shiftSubmitting}
+                className="flex-1 bg-[#1E4648] disabled:opacity-50 text-white rounded-lg text-xs font-bold py-2"
+              >
+                {shiftSubmitting ? 'Membuka...' : 'Buka Shift Sekarang'}
+              </button>
             </div>
           </div>
         </div>
@@ -1520,6 +1647,61 @@ export default function PosView() {
             </div>
             <div className="space-y-3 mb-4">
               <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Mode Penutupan</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setCloseShiftMode('SERAH_TERIMA'); setHandoverResult(null); }}
+                    className={`rounded-lg border px-2 py-2 text-[11px] font-bold ${closeShiftMode === 'SERAH_TERIMA' ? 'bg-[#1E4648] border-[#1E4648] text-white' : 'border-slate-200 text-slate-600'}`}
+                  >
+                    Serah Terima
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setCloseShiftMode('TUTUP_HARIAN'); setHandoverResult(null); }}
+                    className={`rounded-lg border px-2 py-2 text-[11px] font-bold ${closeShiftMode === 'TUTUP_HARIAN' ? 'bg-rose-600 border-rose-600 text-white' : 'border-slate-200 text-slate-600'}`}
+                  >
+                    Tutup Hari Ini
+                  </button>
+                </div>
+              </div>
+
+              {closeShiftMode === 'SERAH_TERIMA' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Staf Shift Pengganti</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={replacementEmployeeId}
+                      onChange={(event) => { setReplacementEmployeeId(event.target.value); setHandoverResult(null); }}
+                      className="min-w-0 flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#1E4648]"
+                    >
+                      <option value="">Pilih staf...</option>
+                      {staffList.filter((staff) => staff.id !== shiftAktif.idUser).map((staff) => (
+                        <option key={staff.id} value={staff.id}>{staff.nama}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleCheckHandover}
+                      disabled={shiftSubmitting || !replacementEmployeeId}
+                      className="px-3 py-2 rounded-lg bg-slate-100 text-[#1E4648] disabled:opacity-50 text-[11px] font-bold"
+                    >
+                      Verifikasi
+                    </button>
+                  </div>
+                  {handoverResult && (
+                    <p className={`mt-1.5 rounded-md px-2 py-1.5 text-[11px] font-semibold ${handoverResult.eligible ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+                      {handoverResult.message}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800">
+                  Gunakan hanya untuk shift terakhir saat operasional outlet benar-benar selesai.
+                </p>
+              )}
+
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Total Fisik Kas di Laci (Rp)</label>
                 <input
                   type="number"
@@ -1532,12 +1714,13 @@ export default function PosView() {
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowTutupShiftModal(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">Batal</button>
-              <button onClick={() => {
-                setShiftAktif(null);
-                setShowTutupShiftModal(false);
-                setKasAkhirFisik('');
-                alert('Shift berhasil ditutup & rekap kas laci disimpan!');
-              }} className="flex-1 bg-rose-600 text-white rounded-lg text-xs font-bold py-2">Tutup Shift Kasir</button>
+              <button
+                onClick={handleCloseShift}
+                disabled={shiftSubmitting || (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible)}
+                className="flex-1 bg-rose-600 disabled:opacity-50 text-white rounded-lg text-xs font-bold py-2"
+              >
+                {shiftSubmitting ? 'Memproses...' : 'Tutup Shift Kasir'}
+              </button>
             </div>
           </div>
         </div>

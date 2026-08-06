@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, Send, Eye, CheckCircle, RefreshCw, X, FileText, Plus, Calendar, User, CreditCard, Check, AlertTriangle, ShieldAlert, DollarSign } from 'lucide-react';
+import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, Check } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import PrinterModal from '@/components/PrinterModal';
@@ -21,10 +21,6 @@ export default function RiwayatView() {
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [txToVoid, setTxToVoid] = useState<Transaksi | null>(null);
   const [alasanVoidInput, setAlasanVoidInput] = useState('');
-
-  // State for Status Change Modal (FR-POS-20)
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [txToUpdateStatus, setTxToUpdateStatus] = useState<Transaksi | null>(null);
 
   // State for DP Settlement Modal (FR-POS-16)
   const [showPelunasanModal, setShowPelunasanModal] = useState(false);
@@ -89,24 +85,18 @@ export default function RiwayatView() {
       items: [{ layanan: manualLayanan.trim() || 'Layanan Manual', qty: qtyNum, hargaSatuan: hargaNum }]
     };
 
-    let generatedNota = manualNoNota.trim() || `MAN-${Date.now().toString().slice(-6)}`;
+    let generatedNota = manualNoNota.trim();
 
     try {
-      const res = await runBackend('simpanTransaksi', payload);
-      if (res && res.noNota) generatedNota = res.noNota;
-    } catch (err) {}
-
-    const newTxObj: Transaksi = {
-      noNota: generatedNota,
-      tanggal: manualTanggal ? new Date(manualTanggal).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'),
-      namaPelanggan: payload.namaPelanggan,
-      noHp: payload.noHp,
-      petugas: payload.petugas,
-      tipe: payload.tipe,
-      total: payload.total,
-      status: manualStatus,
-      items: payload.items
-    };
+      const res = await runBackend<{ success: boolean; noNota?: string; message?: string }>('simpanTransaksi', payload);
+      if (!res?.success || !res.noNota) throw new Error(res?.message || 'Backend tidak mengembalikan nomor nota.');
+      generatedNota = res.noNota;
+    } catch (error) {
+      console.error(error);
+      setSavingManual(false);
+      alert(error instanceof Error ? error.message : 'Transaksi manual gagal disimpan.');
+      return;
+    }
 
     setShowManualModal(false);
     setSavingManual(false);
@@ -125,33 +115,11 @@ export default function RiwayatView() {
       2 * 60 * 1000,
       'Semua'
     );
-    setLoading(false);
   };
 
   useEffect(() => {
     loadRiwayat();
   }, []);
-
-  const handleUpdateStatus = async (noNota: string, newStatus: any) => {
-    try {
-      await runBackend('updateStatus', noNota, newStatus);
-      
-      if (newStatus === 'Siap Diambil') {
-        const found = txList.find(t => t.noNota === noNota);
-        if (found && found.noHp) {
-          if (confirm(`Order ${noNota} siap diambil! Kirim pesan notifikasi WA ke ${found.namaPelanggan}?`)) {
-            handleSendSiapWA(found);
-          }
-        }
-      }
-
-      alert(`Status nota ${noNota} diperbarui menjadi '${newStatus}'`);
-      setShowStatusModal(false);
-      loadRiwayat();
-    } catch (err) {
-      alert('Gagal meng-update status ke server');
-    }
-  };
 
   const handleAjukanVoid = async () => {
     if (!txToVoid) return;
@@ -174,7 +142,8 @@ export default function RiwayatView() {
     if (!txToLunas) return;
     const nominal = Number(pelunasanNominalInput) || (txToLunas.sisaTagihan || 0);
     try {
-      await runBackend('pelunasanDP', txToLunas.noNota, nominal, pelunasanMetode);
+      const result = await runBackend<{ success: boolean; message?: string }>('pelunasanDP', txToLunas.noNota, nominal, pelunasanMetode);
+      if (!result?.success) throw new Error(result?.message || 'Pelunasan ditolak backend.');
       alert(`Pelunasan Rp ${nominal.toLocaleString('id-ID')} untuk nota ${txToLunas.noNota} berhasil!`);
       setShowPelunasanModal(false);
       loadRiwayat();
@@ -305,11 +274,10 @@ export default function RiwayatView() {
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
                 <th className="py-3 px-4">No Nota</th>
-                <th className="py-3 px-4">Pelanggan</th>
-                <th className="py-3 px-4">Tipe & Kecepatan</th>
                 <th className="py-3 px-4">Tanggal</th>
+                <th className="py-3 px-4">Kasir</th>
                 <th className="py-3 px-4">Total</th>
-                <th className="py-3 px-4">Status Produksi</th>
+                <th className="py-3 px-4">Status Bayar</th>
                 <th className="py-3 px-4 text-right">Aksi & Approval</th>
               </tr>
             </thead>
@@ -318,7 +286,6 @@ export default function RiwayatView() {
                 Array.from({ length: 5 }).map((_, idx) => (
                   <tr key={idx} className="animate-pulse">
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-32" /></td>
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-28" /></td>
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
@@ -328,7 +295,7 @@ export default function RiwayatView() {
                 ))
               ) : filteredTx.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
                     <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     Belum ada riwayat transaksi
                   </td>
@@ -344,23 +311,8 @@ export default function RiwayatView() {
                         </div>
                       )}
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-600">{tx.namaPelanggan}</div>
-                      {tx.noHp && <div className="text-[11px] text-slate-500">{tx.noHp}</div>}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 w-fit">
-                          {tx.tipe}
-                        </span>
-                        {tx.tingkatLayanan && tx.tingkatLayanan !== 'Reguler' && (
-                          <span className="text-[10px] font-bold text-[#FF9500]">
-                            ⚡ {tx.tingkatLayanan}
-                          </span>
-                        )}
-                      </div>
-                    </td>
                     <td className="py-3 px-4 text-slate-500">{tx.tanggal}</td>
+                    <td className="py-3 px-4 font-semibold text-slate-600">{tx.petugas || '-'}</td>
                     <td className="py-3 px-4">
                       <div className="font-bold text-[#1E4648]">Rp {tx.total.toLocaleString('id-ID')}</div>
                       {tx.sisaTagihan && tx.sisaTagihan > 0 ? (
@@ -370,20 +322,17 @@ export default function RiwayatView() {
                       ) : null}
                     </td>
                     <td className="py-3 px-4">
-                      <button
-                        onClick={() => { setTxToUpdateStatus(tx); setShowStatusModal(true); }}
-                        className={`text-[11px] font-bold px-2.5 py-1 rounded-md border flex items-center gap-1 transition ${
-                          tx.status === 'Selesai'
-                            ? 'bg-[#B5C9C9]/20 text-[#1E4648] border-[#B5C9C9] hover:bg-[#B5C9C9]/30'
-                            : tx.status === 'Siap Diambil'
-                            ? 'bg-[#B5C9C9]/20 text-[#1E4648] border-[#B5C9C9]300 hover:bg-[#B5C9C9]/30 animate-pulse'
-                            : tx.status === 'Batal'
+                      <span
+                        className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${
+                          tx.statusVoid === 'Approved' || tx.status === 'Void' || tx.status === 'Batal'
                             ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : 'bg-[#FF9500]/10 text-[#FF9500] border-[#FF9500]/50 hover:bg-[#FF9500]/15'
+                            : tx.statusPembayaran === 'DP' || (tx.sisaTagihan || 0) > 0
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         }`}
                       >
-                        <span>{tx.status || 'Diterima'}</span>
-                      </button>
+                        <span>{tx.statusVoid === 'Approved' || tx.status === 'Void' || tx.status === 'Batal' ? 'VOID' : tx.statusPembayaran || ((tx.sisaTagihan || 0) > 0 ? 'DP' : 'Lunas')}</span>
+                      </span>
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
@@ -423,7 +372,7 @@ export default function RiwayatView() {
                         ) : null}
 
                         {/* Void Request Button (FR-POS-24) */}
-                        {tx.status !== 'Batal' && tx.statusVoid !== 'PendingApproval' && (
+                        {tx.status !== 'Batal' && tx.status !== 'Void' && tx.statusVoid !== 'PendingApproval' && tx.statusVoid !== 'Approved' && (
                           <button
                             onClick={() => { setTxToVoid(tx); setShowVoidModal(true); }}
                             className="p-1.5 text-rose-500 hover:bg-rose-50 rounded transition"
@@ -473,34 +422,6 @@ export default function RiwayatView() {
                 Kirim Pengajuan Void
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Production Status Change Modal (FR-POS-20) */}
-      {showStatusModal && txToUpdateStatus && (
-        <div className="fixed inset-0 z-[550] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-5 w-full max-w-sm text-center">
-            <h3 className="text-sm font-bold text-slate-600 mb-1">Perbarui Status Produksi</h3>
-            <p className="text-xs text-slate-500 mb-4">Nota: <span className="font-bold text-slate-600">{txToUpdateStatus.noNota}</span></p>
-
-            <div className="space-y-2 mb-5">
-              {(['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika', 'Siap Diambil', 'Selesai'] as const).map((st) => (
-                <button
-                  key={st}
-                  onClick={() => handleUpdateStatus(txToUpdateStatus.noNota, st)}
-                  className={`w-full py-2 rounded-lg text-xs font-bold border transition ${
-                    txToUpdateStatus.status === st
-                      ? 'bg-[#1E4648] text-white border-[#1E4648]'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  {st}
-                </button>
-              ))}
-            </div>
-
-            <button onClick={() => setShowStatusModal(false)} className="w-full bg-slate-100 text-slate-600 py-2 rounded-lg text-xs font-semibold">Tutup</button>
           </div>
         </div>
       )}

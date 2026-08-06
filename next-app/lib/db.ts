@@ -21,14 +21,25 @@ function getBackendSession() {
   return inMemorySessionToken;
 }
 
-export async function gasAction<T = any>(action: string, ...args: any[]): Promise<T> {
+async function callGas<T>(sessionToken: string, action: string, args: any[]): Promise<T> {
   if (!gasUrl) throw new Error('NEXT_PUBLIC_GAS_API_URL belum dikonfigurasi');
   const response = await fetch(gasUrl, {
     method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, args, sessionToken: getBackendSession() }),
+    body: JSON.stringify({ action, args, sessionToken }),
+    cache: 'no-store',
   });
   if (!response.ok) throw new Error(`Apps Script HTTP ${response.status}`);
   const data = await response.json();
   if (data?.error) throw new Error(data.message || 'Apps Script error');
   return data as T;
+}
+
+export async function gasAction<T = any>(action: string, ...args: any[]): Promise<T> {
+  return callGas<T>(getBackendSession(), action, args);
+}
+
+/** Digunakan Route Handler untuk meneruskan bearer session milik pemanggil. */
+export async function gasActionWithSession<T = any>(sessionToken: string, action: string, ...args: any[]): Promise<T> {
+  if (!sessionToken) throw new Error('Backend session token wajib diisi');
+  return callGas<T>(sessionToken, action, args);
 }

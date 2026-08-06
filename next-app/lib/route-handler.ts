@@ -12,6 +12,13 @@ export function requireActor(request: Request) {
   if (!a.id) throw new HttpError(401, 'Autentikasi diperlukan');
   return a;
 }
+export function requireBackendSession(request: Request) {
+  const authorization = request.headers.get('authorization') || '';
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  const token = bearer || request.headers.get('x-backend-session')?.trim();
+  if (!token) throw new HttpError(401, 'Bearer session diperlukan');
+  return token;
+}
 export function requireEnum(value: unknown, values: readonly string[], field: string): string {
   if (typeof value !== 'string' || !values.includes(value)) throw new HttpError(400, `${field} tidak valid`);
   return value;
