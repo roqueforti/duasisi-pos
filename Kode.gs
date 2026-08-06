@@ -89,6 +89,44 @@ function generateId(prefix) {
   return (prefix || "ID") + "-" + today + "-" + String(next).padStart(4, "0");
 }
 
+/** Migrasi satu kali ID lama menjadi ID ber-prefix tanpa menghapus data. */
+function migrasiIdTerstruktur() {
+  const lock = LockService.getDocumentLock();
+  lock.waitLock(30000);
+  try {
+    const entities = [
+      { sheet: SHEET_LAYANAN, prefix: "SVC" },
+      { sheet: SHEET_INVENTORY, prefix: "INV" },
+      { sheet: SHEET_MESIN, prefix: "MCH" },
+      { sheet: SHEET_PEGAWAI, prefix: "EMP" },
+      { sheet: SHEET_ABSENSI, prefix: "ABS" },
+      { sheet: SHEET_SHIFT, prefix: "SFT" },
+      { sheet: SHEET_PIPELINE, prefix: "PIP" },
+      { sheet: SHEET_PROMO, prefix: "PRM" },
+      { sheet: SHEET_AUDIT, prefix: "LOG" }
+    ];
+    const result = {};
+    entities.forEach(function(entity) {
+      const sheet = SS.getSheetByName(entity.sheet);
+      if (!sheet || sheet.getLastRow() < 2) { result[entity.sheet] = 0; return; }
+      const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+      let changed = 0;
+      values.forEach(function(row, index) {
+        const current = String(row[0] || "");
+        if (!current.startsWith(entity.prefix + "-")) {
+          sheet.getRange(index + 2, 1).setValue(generateId(entity.prefix));
+          changed++;
+        }
+      });
+      result[entity.sheet] = changed;
+    });
+    SpreadsheetApp.flush();
+    return { success: true, updated: result, message: "Migrasi ID terstruktur selesai." };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function fmtWib(date, pattern) {
   if (!date) return "";
   let d;
