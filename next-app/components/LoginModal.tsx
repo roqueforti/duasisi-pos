@@ -48,13 +48,13 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
     }
   };
 
-  const bgImgUrl = process.env.NODE_ENV === 'production' ? '/duasisi-pos/assets/bg-outlet.jpeg' : '/assets/bg-outlet.jpeg';
+  const bgImgUrl = '/assets/bg-outlet.jpeg';
 
   return (
     <div 
       className="fixed inset-0 z-[1000] bg-outlet-login flex items-center justify-center p-4 transition-all duration-500"
       style={{
-        backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.88)), url('${bgImgUrl}'), url('./assets/bg-outlet.jpeg')`
+        backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.88)), url('${bgImgUrl}')`
       }}
     >
       <div className="bg-[#11292B] rounded-lg p-8 text-center max-w-sm w-full border border-slate-700 shadow-lg text-white">

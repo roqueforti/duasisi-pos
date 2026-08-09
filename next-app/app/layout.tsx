@@ -11,10 +11,10 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "dua SiSi — Laundry Express & Coin POS",
   description: "Aplikasi POS Laundry Modern & Smart Management System",
-  manifest: "/duasisi-pos/manifest.json",
+  manifest: "/manifest.json",
   icons: {
-    icon: "/duasisi-pos/assets/icon-192.svg",
-    apple: "/duasisi-pos/assets/icon-512.svg",
+    icon: "/assets/icon-192.svg",
+    apple: "/assets/icon-512.svg",
   },
 };
 
