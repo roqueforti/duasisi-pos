@@ -388,16 +388,17 @@ export default function PosView() {
       });
       if (!res?.success || !res.noNota) throw new Error('Backend tidak mengembalikan nomor nota');
 
+      const resTotal = Number(res.total) || grandTotal;
       setCompletedOrderData({
         trxId: res.noNota,
         kasir,
         pelanggan: custName,
         noHp: customer.noHp,
         metodeBayar,
-        total: res.total,
-        uangBayar: bayar,
-        kembalian: Math.max(0, bayar - res.total),
-        items: [...cartArray],
+        total: resTotal,
+        uangBayar: Number(bayar) || resTotal,
+        kembalian: Math.max(0, (Number(bayar) || resTotal) - resTotal),
+        items: cartArray.map(i => ({ ...i, hargaSatuan: Number(i.hargaSatuan) || 0, qty: Number(i.qty) || 0 })),
         catatan: catatanOrderInput,
         tipeLayanan,
         estimasiSelesai,
@@ -410,7 +411,8 @@ export default function PosView() {
       clearCache('getLaporanRange');
     } catch (error) {
       console.error('Gagal menyimpan transaksi:', error);
-      alert('Pembayaran belum diselesaikan karena transaksi gagal disimpan. Silakan coba lagi.');
+      const msg = error instanceof Error ? error.message : 'Transaksi gagal disimpan.';
+      alert(`Transaksi gagal: ${msg}\n\nPastikan Apps Script sudah di-deploy ulang dan koneksi internet stabil.`);
     } finally {
       setPaymentSubmitting(false);
     }
@@ -1556,12 +1558,12 @@ export default function PosView() {
 
               {/* Items List */}
               <div className="space-y-1">
-                {completedOrderData.items.map((i: any, idx: number) => (
+                {(completedOrderData.items || []).map((i: any, idx: number) => (
                   <div key={idx}>
                     <div className="font-bold">{i.layanan}</div>
                     <div className="flex justify-between text-[10px]">
-                      <span>{i.qty} x Rp {i.hargaSatuan.toLocaleString('id-ID')}</span>
-                      <span>Rp {(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</span>
+                      <span>{i.qty} x Rp {(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}</span>
+                      <span>Rp {(i.qty * (Number(i.hargaSatuan) || 0)).toLocaleString('id-ID')}</span>
                     </div>
                   </div>
                 ))}
@@ -1570,10 +1572,10 @@ export default function PosView() {
 
               {/* Financial Breakdown */}
               <div className="space-y-0.5 font-bold">
-                <div className="flex justify-between"><span>TOTAL :</span><span>Rp {completedOrderData.total.toLocaleString('id-ID')}</span></div>
-                <div className="flex justify-between"><span>BAYAR ({completedOrderData.metodeBayar}):</span><span>Rp {completedOrderData.uangBayar.toLocaleString('id-ID')}</span></div>
-                {completedOrderData.kembalian > 0 && (
-                  <div className="flex justify-between text-[#1E4648]"><span>KEMBALI :</span><span>Rp {completedOrderData.kembalian.toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between"><span>TOTAL :</span><span>Rp {(Number(completedOrderData?.total) || 0).toLocaleString('id-ID')}</span></div>
+                <div className="flex justify-between"><span>BAYAR ({completedOrderData?.metodeBayar || 'Tunai'}):</span><span>Rp {(Number(completedOrderData?.uangBayar) || 0).toLocaleString('id-ID')}</span></div>
+                {(completedOrderData?.kembalian || 0) > 0 && (
+                  <div className="flex justify-between text-[#1E4648]"><span>KEMBALI :</span><span>Rp {(Number(completedOrderData?.kembalian) || 0).toLocaleString('id-ID')}</span></div>
                 )}
                 <div className="border-b border-dashed border-slate-400 my-2" />
               </div>
