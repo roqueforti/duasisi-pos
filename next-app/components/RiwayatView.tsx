@@ -275,6 +275,7 @@ export default function RiwayatView() {
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
                 <th className="py-3 px-4">No Nota</th>
                 <th className="py-3 px-4">Tanggal</th>
+                <th className="py-3 px-4">Pelanggan</th>
                 <th className="py-3 px-4">Kasir</th>
                 <th className="py-3 px-4">Total</th>
                 <th className="py-3 px-4">Status Bayar</th>
@@ -287,6 +288,7 @@ export default function RiwayatView() {
                   <tr key={idx} className="animate-pulse">
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
+                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-28" /></td>
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
@@ -295,7 +297,7 @@ export default function RiwayatView() {
                 ))
               ) : filteredTx.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
                     <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     Belum ada riwayat transaksi
                   </td>
@@ -312,6 +314,10 @@ export default function RiwayatView() {
                       )}
                     </td>
                     <td className="py-3 px-4 text-slate-500">{tx.tanggal}</td>
+                    <td className="py-3 px-4">
+                      <div className="font-semibold text-slate-700">{tx.namaPelanggan || '-'}</div>
+                      {tx.noHp && <div className="text-[10px] text-slate-400">{tx.noHp}</div>}
+                    </td>
                     <td className="py-3 px-4 font-semibold text-slate-600">{tx.petugas || '-'}</td>
                     <td className="py-3 px-4">
                       <div className="font-bold text-[#1E4648]">Rp {(tx?.total || 0).toLocaleString('id-ID')}</div>
