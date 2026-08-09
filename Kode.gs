@@ -499,14 +499,29 @@ function getLayananList(tipeFilter) {
   data.shift();
   let list = data.filter(r => r[5] === "Y");
   if (tipeFilter) list = list.filter(r => r[6] === tipeFilter);
-  return list.map(r => ({ id: r[0], nama: r[1], harga: r[2], satuan: r[3], icon: r[4] || "🧺", tipe: r[6] || "SelfService" }));
+  return list.map(r => ({ 
+    id: r[0], 
+    nama: r[1], 
+    harga: Number(r[2]) || 0, 
+    satuan: r[3], 
+    icon: r[4] || "🧺", 
+    tipe: r[6] || "SelfService" 
+  }));
 }
 
 function getLayananListAll() {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   const data = sh.getDataRange().getValues();
   data.shift();
-  return data.map(r => ({ id: r[0], nama: r[1], harga: r[2], satuan: r[3], icon: r[4] || "🧺", aktif: r[5], tipe: r[6] || "SelfService" }));
+  return data.map(r => ({ 
+    id: r[0], 
+    nama: r[1], 
+    harga: Number(r[2]) || 0, 
+    satuan: r[3], 
+    icon: r[4] || "🧺", 
+    aktif: r[5], 
+    tipe: r[6] || "SelfService" 
+  }));
 }
 
 function tambahLayanan(data) {
@@ -574,7 +589,11 @@ function getInventoryList() {
   const data = sh.getDataRange().getValues();
   data.shift();
   return data.map(r => ({
-    id: r[0], nama: r[1], stok: r[2], satuan: r[3], stokMinimum: r[4],
+    id: r[0], 
+    nama: r[1], 
+    stok: Number(r[2]) || 0, 
+    satuan: r[3], 
+    stokMinimum: Number(r[4]) || 0,
     terakhirUpdate: r[5] ? fmtWib(r[5], "dd/MM/yyyy HH:mm") : ""
   }));
 }
@@ -793,7 +812,12 @@ function getPromoList() {
   }
   const data = sh.getDataRange().getValues(); data.shift();
   return data.map(r => ({
-    idPromo: r[0], kodeVoucher: r[1], jenisDiskon: r[2], nilaiDiskon: Number(r[3]), minTransaksi: Number(r[4]), statusAktif: r[5] === "Aktif"
+    idPromo: r[0],
+    kodeVoucher: r[1],
+    jenisDiskon: r[2],
+    nilaiDiskon: Number(r[3]) || 0,
+    minTransaksi: Number(r[4]) || 0,
+    statusAktif: r[5] === "Aktif"
   }));
 }
 
@@ -1260,15 +1284,34 @@ function getTransaksiList(statusFilter) {
   let result = dataHeader.map(r => {
     const items = dataDetail
       .filter(d => d[0] === r[0])
-      .map(d => ({ layanan: d[1], qty: d[2], hargaSatuan: d[3], subtotal: d[4] }));
+      .map(d => ({
+        layanan: d[1],
+        qty: Number(d[2]) || 0,
+        hargaSatuan: Number(d[3]) || 0,
+        subtotal: Number(d[4]) || 0
+      }));
     return {
-      noNota: r[0], tanggal: fmtWib(r[1]),
-      namaPelanggan: r[2], noHp: r[3], total: r[4], status: r[5],
-      estimasi: r[6], petugas: r[7] || "Kasir", tipe: r[8] || "SelfService",
-      statusVoid: r[9] || "None", alasanVoid: r[10] || "", subtotal: Number(r[11]) || Number(r[4]) || 0,
-      diskon: Number(r[12]) || 0, metodeBayar: r[13] || "", statusPembayaran: r[14] || "Lunas",
-      nominalDP: Number(r[15]) || 0, sisaTagihan: Number(r[16]) || 0,
-      referensiPembayaran: r[17] || "", catatan: r[18] || "", tingkatLayanan: r[19] || "Reguler", items: items
+      noNota: r[0],
+      tanggal: fmtWib(r[1]),
+      namaPelanggan: r[2],
+      noHp: r[3],
+      total: Number(r[4]) || 0,
+      status: r[5],
+      estimasi: r[6],
+      petugas: r[7] || "Kasir",
+      tipe: r[8] || "SelfService",
+      statusVoid: r[9] || "None",
+      alasanVoid: r[10] || "",
+      subtotal: Number(r[11]) || Number(r[4]) || 0,
+      diskon: Number(r[12]) || 0,
+      metodeBayar: r[13] || "",
+      statusPembayaran: r[14] || "Lunas",
+      nominalDP: Number(r[15]) || 0,
+      sisaTagihan: Number(r[16]) || 0,
+      referensiPembayaran: r[17] || "",
+      catatan: r[18] || "",
+      tingkatLayanan: r[19] || "Reguler",
+      items: items
     };
   });
 
@@ -1373,8 +1416,16 @@ function getLaporanRange(startDateStr, endDateStr) {
   const rataRata = jumlahTransaksi > 0 ? Math.round(totalOmzet / jumlahTransaksi) : 0;
 
   return {
-    ringkasan: { totalOmzet, jumlahTransaksi, rataRata, selfCount, fullCount },
-    omzetHarian, layananTerlaris, transaksiList: transaksiList.reverse()
+    ringkasan: {
+      totalOmzet: Number(totalOmzet) || 0,
+      jumlahTransaksi: Number(jumlahTransaksi) || 0,
+      rataRata: Number(rataRata) || 0,
+      selfCount: Number(selfCount) || 0,
+      fullCount: Number(fullCount) || 0
+    },
+    omzetHarian,
+    layananTerlaris,
+    transaksiList: transaksiList.reverse()
   };
 }
 
@@ -1386,7 +1437,13 @@ function getPegawaiList() {
   if (!sh) return [];
   const data = sh.getDataRange().getValues();
   data.shift();
-  return data.map(r => ({ id: r[0], nama: r[1], noHp: r[2], jabatan: r[3], status: r[4] || "Aktif" }));
+  return data.map(r => ({
+    id: r[0],
+    nama: r[1],
+    noHp: r[2],
+    jabatan: r[3],
+    status: r[4] || "Aktif"
+  }));
 }
 
 function tambahPegawai(data) {
@@ -1414,19 +1471,38 @@ function getRekapKinerjaPegawai(startDateStr, endDateStr) {
   const dataP = shP ? shP.getDataRange().getValues() : []; dataP.shift();
 
   const pegawaiMap = {};
-  dataP.forEach(r => { pegawaiMap[r[1]] = { id: r[0], nama: r[1], jabatan: r[3], totalTransaksi: 0, totalOmzet: 0 }; });
+  dataP.forEach(r => {
+    pegawaiMap[r[1]] = {
+      id: r[0],
+      nama: r[1],
+      jabatan: r[3],
+      totalTransaksi: 0,
+      totalOmzet: 0
+    };
+  });
 
   dataT.forEach(r => {
     const tgl = fmtWib(r[1], "yyyy-MM-dd");
     if (!startDateStr || !endDateStr || (tgl >= startDateStr && tgl <= endDateStr)) {
       const namaPetugas = r[7] || "Kasir";
       const total = Number(r[4]) || 0;
-      if (!pegawaiMap[namaPetugas]) pegawaiMap[namaPetugas] = { id: "-", nama: namaPetugas, jabatan: "Kasir/Petugas", totalTransaksi: 0, totalOmzet: 0 };
+      if (!pegawaiMap[namaPetugas]) {
+        pegawaiMap[namaPetugas] = { id: "-", nama: namaPetugas, jabatan: "Kasir/Petugas", totalTransaksi: 0, totalOmzet: 0 };
+      }
       pegawaiMap[namaPetugas].totalTransaksi += 1;
       pegawaiMap[namaPetugas].totalOmzet += total;
     }
   });
-  return Object.values(pegawaiMap).sort((a, b) => b.totalOmzet - a.totalOmzet);
+
+  return Object.values(pegawaiMap)
+    .map(p => ({
+      id: p.id,
+      nama: p.nama,
+      jabatan: p.jabatan,
+      totalTransaksi: Number(p.totalTransaksi) || 0,
+      totalOmzet: Number(p.totalOmzet) || 0
+    }))
+    .sort((a, b) => b.totalOmzet - a.totalOmzet);
 }
 
 // ============================================================
@@ -1546,9 +1622,14 @@ function getKasShiftAktif(outlet) {
   for (let i = rows.length - 1; i >= 1; i--) {
     if (rows[i][10] === "Aktif" && (!outlet || rows[i][1] === outlet)) {
       return {
-        idShift: rows[i][0], idOutlet: rows[i][1], namaKasir: rows[i][2], idUser: rows[i][3],
-        waktuBuka: new Date(rows[i][4]).toISOString(), kasAwal: Number(rows[i][6]) || 0,
-        kasAkhirSistem: Number(rows[i][7]) || 0, status: "Buka"
+        idShift: rows[i][0],
+        idOutlet: rows[i][1],
+        namaKasir: rows[i][2],
+        idUser: rows[i][3],
+        waktuBuka: new Date(rows[i][4]).toISOString(),
+        kasAwal: Number(rows[i][6]) || 0,
+        kasAkhirSistem: Number(rows[i][7]) || 0,
+        status: "Buka"
       };
     }
   }
@@ -1654,7 +1735,21 @@ function getRekapKasShift() {
   const sh = SS.getSheetByName(SHEET_KAS_SHIFT);
   if (!sh || sh.getLastRow() < 2) return [];
   const rows = sh.getDataRange().getValues(); rows.shift();
-  return rows.map(function(r) { return { idShift: r[0], idOutlet: r[1], namaKasir: r[2], waktuBuka: fmtWib(r[4]), waktuTutup: r[5] ? fmtWib(r[5]) : "", kasAwal: Number(r[6]) || 0, kasAkhirSistem: Number(r[7]) || 0, kasAkhirFisik: Number(r[8]) || 0, selisihKas: Number(r[9]) || 0, status: r[10], modeTutup: r[11] || "" }; }).reverse();
+  return rows.map(function(r) {
+    return {
+      idShift: r[0],
+      idOutlet: r[1],
+      namaKasir: r[2],
+      waktuBuka: fmtWib(r[4]),
+      waktuTutup: r[5] ? fmtWib(r[5]) : "",
+      kasAwal: Number(r[6]) || 0,
+      kasAkhirSistem: Number(r[7]) || 0,
+      kasAkhirFisik: Number(r[8]) || 0,
+      selisihKas: Number(r[9]) || 0,
+      status: r[10],
+      modeTutup: r[11] || ""
+    };
+  }).reverse();
 }
 
 // ============================================================
