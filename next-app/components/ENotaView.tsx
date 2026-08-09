@@ -4,13 +4,15 @@ import React, { useEffect, useState } from 'react';
 import { ShieldCheck, Printer, Share2, CheckCircle2, RefreshCw, AlertCircle, Sparkles } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
+import { maskPhone } from '@/lib/utils';
 
 interface ENotaViewProps {
   noNota: string;
+  token?: string;
   onBackToApp?: () => void;
 }
 
-export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
+export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [tx, setTx] = useState<Transaksi | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -19,40 +21,28 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
     setLoading(true);
     setErrorMsg('');
     try {
-      let res = await runBackend<{ success?: boolean; error?: boolean; transaksi?: Transaksi; message?: string }>('getTransaksiByNota', noNota);
-      
-      // Fallback untuk deployment Apps Script lama yang belum di-update versi kodenya
-      if (res && (res.error || !res.success) && res.message && res.message.includes('tidak ditemukan')) {
-        const allTx = await runBackend<Transaksi[]>('getTransaksiList');
-        if (Array.isArray(allTx)) {
-          const found = allTx.find(t => t.noNota === noNota);
-          if (found) {
-            setTx(found);
-            setLoading(false);
-            return;
-          }
-        }
-      }
+      // Kirim token ke backend jika ada (untuk URL obfuscation)
+      const res = await runBackend<{ success?: boolean; error?: boolean; transaksi?: Transaksi; message?: string }>(
+        'getTransaksiByNota', noNota, token || ''
+      );
 
       if (res && res.success && res.transaksi) {
         setTx(res.transaksi);
+      } else if (res?.message?.includes('Token')) {
+        // Token invalid — coba tanpa token (fallback untuk link lama tanpa token)
+        const res2 = await runBackend<{ success?: boolean; transaksi?: Transaksi; message?: string }>(
+          'getTransaksiByNota', noNota, ''
+        );
+        if (res2?.success && res2.transaksi) {
+          setTx(res2.transaksi);
+        } else {
+          setErrorMsg('Link e-nota tidak valid atau sudah kedaluwarsa.');
+        }
       } else {
-        setErrorMsg(res?.message || 'Nota transaksi tidak ditemukan atau telah dihapus.');
+        setErrorMsg(res?.message || 'Nota transaksi tidak ditemukan.');
       }
     } catch (err: any) {
-      // Fallback sekunder melalui getTransaksiList jika API error
-      try {
-        const allTx = await runBackend<Transaksi[]>('getTransaksiList');
-        if (Array.isArray(allTx)) {
-          const found = allTx.find(t => t.noNota === noNota);
-          if (found) {
-            setTx(found);
-            setLoading(false);
-            return;
-          }
-        }
-      } catch (e) {}
-      setErrorMsg('Gagal memverifikasi nota dari server database.');
+      setErrorMsg('Gagal memverifikasi nota dari server.');
     } finally {
       setLoading(false);
     }
@@ -101,7 +91,6 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
   };
 
   // Generate deterministic security hash for verification
-  const getSecurityHash = (notaStr: string) => {
     let hash = 0;
     for (let i = 0; i < notaStr.length; i++) {
       hash = (hash << 5) - hash + notaStr.charCodeAt(i);
@@ -189,7 +178,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">PELANGGAN:</span>
-                <span className="font-bold text-slate-700">{tx.namaPelanggan} ({tx.noHp || '-'})</span>
+                <span className="font-bold text-slate-700">{tx.namaPelanggan} ({maskPhone(tx.noHp || '')})</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">KECEPATAN:</span>

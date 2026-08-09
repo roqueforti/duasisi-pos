@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, Check } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
+import { maskPhone } from '@/lib/utils';
 import PrinterModal from '@/components/PrinterModal';
 
 export default function RiwayatView() {
@@ -331,7 +332,7 @@ export default function RiwayatView() {
                     <td className="py-3 px-4 text-slate-500">{tx.tanggal}</td>
                     <td className="py-3 px-4">
                       <div className="font-semibold text-slate-700">{tx.namaPelanggan || '-'}</div>
-                      {tx.noHp && <div className="text-[10px] text-slate-400">{tx.noHp}</div>}
+                      {tx.noHp && <div className="text-[10px] text-slate-400">{maskPhone(tx.noHp)}</div>}
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-600">{tx.petugas || '-'}</td>
                     <td className="py-3 px-4">

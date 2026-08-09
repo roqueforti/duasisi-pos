@@ -295,7 +295,7 @@ export default function PelangganView() {
                 sortedList.map((item) => (
                   <tr key={item.noHp} className="hover:bg-slate-50/80 transition">
                     <td className="py-3.5 px-4 font-mono font-bold text-slate-700">
-                      {item.noHp}
+                      {item.noHp ? maskPhone(item.noHp) : '-'}
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-slate-700 flex items-center gap-1.5">
@@ -353,7 +353,7 @@ export default function PelangganView() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-700">Detail & Edit Data Pelanggan</h3>
-                  <p className="text-[11px] text-slate-500 font-medium">No. HP Primary Key: {selectedCust.noHp}</p>
+                  <p className="text-[11px] text-slate-500 font-medium">No. HP: {maskPhone(selectedCust.noHp)}</p>
                 </div>
               </div>
               <button onClick={() => setShowDetailModal(false)} className="p-1 rounded hover:bg-slate-100">

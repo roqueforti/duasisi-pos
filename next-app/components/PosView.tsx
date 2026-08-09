@@ -384,7 +384,7 @@ export default function PosView() {
 
     setPaymentSubmitting(true);
     try {
-      const res = await runBackend<{ success: boolean; noNota: string; total: number }>('simpanTransaksi', {
+      const res = await runBackend<{ success: boolean; noNota: string; total: number; token?: string }>('simpanTransaksi', {
         namaPelanggan: custName,
         noHp: customer.noHp,
         kasir,
@@ -403,6 +403,7 @@ export default function PosView() {
       const resTotal = Number(res.total) || grandTotal;
       setCompletedOrderData({
         trxId: res.noNota,
+        token: res.token || '',
         kasir,
         pelanggan: custName,
         noHp: customer.noHp,
@@ -1551,7 +1552,7 @@ export default function PosView() {
                   const items = (completedOrderData.items || [])
                     .map((i: any) => `• ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
                     .join('\n');
-                  const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?nota=${noNota}`;
+                  const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?nota=${noNota}${completedOrderData.token ? '&t=' + completedOrderData.token : ''}`;
                   const msg = [
                     `Halo ${nama}! Struk dari Dua SiSi Laundry`,
                     ``,

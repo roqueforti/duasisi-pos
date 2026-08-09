@@ -768,7 +768,8 @@ function simpanTransaksi(data) {
     if (tipe === "FullService") createPipelineForNota(noNota, tipe);
     addAuditLog(petugas, "Transaksi Baru", noNota, "Total Rp " + total.toLocaleString('id-ID') + " (" + (data.metodeBayar || "Tunai") + ", " + statusPembayaran + ")");
     SpreadsheetApp.flush();
-    return { success: true, noNota: noNota, total: total, subtotal: subtotal, diskon: diskon, nominalBayar: nominalBayar, sisaTagihan: sisaTagihan, statusPembayaran: statusPembayaran, jumlahItem: items.length, tipe: tipe };
+    var notaToken = generateNotaToken_(noNota);
+    return { success: true, noNota: noNota, token: notaToken, total: total, subtotal: subtotal, diskon: diskon, nominalBayar: nominalBayar, sisaTagihan: sisaTagihan, statusPembayaran: statusPembayaran, jumlahItem: items.length, tipe: tipe };
   } finally {
     lock.releaseLock();
   }
@@ -1321,7 +1322,43 @@ function getTransaksiList(statusFilter) {
   return result.reverse();
 }
 
-function getTransaksiByNota(noNota) {
+// ── NOTA TOKEN (URL Obfuscation) ─────────────────────────────
+// Token = base64( HMAC-SHA256(noNota + "|" + date, SESSION_SECRET) )
+// Disimpan di Script Properties agar persisten lintas request.
+function generateNotaToken_(noNota) {
+  var secret = getSessionSecret_();
+  var raw = noNota + "|" + Utilities.formatDate(new Date(), TIMEZONE_WIB, "yyyyMMdd");
+  var sig = Utilities.computeHmacSha256Signature(raw, secret);
+  // ambil 8 byte pertama → 16 hex char — cukup untuk obscurity tanpa overhead
+  var hex = sig.slice(0, 8).map(function(b) {
+    return ('0' + (b & 0xFF).toString(16)).slice(-2);
+  }).join('');
+  return hex;
+}
+
+function verifyNotaToken_(noNota, token) {
+  if (!token) return false;
+  // Cek hari ini dan kemarin (toleransi pergantian hari)
+  var secret = getSessionSecret_();
+  var today = Utilities.formatDate(new Date(), TIMEZONE_WIB, "yyyyMMdd");
+  var yesterday = Utilities.formatDate(new Date(Date.now() - 86400000), TIMEZONE_WIB, "yyyyMMdd");
+  for (var i = 0; i < 2; i++) {
+    var date = i === 0 ? today : yesterday;
+    var raw = noNota + "|" + date;
+    var sig = Utilities.computeHmacSha256Signature(raw, secret);
+    var hex = sig.slice(0, 8).map(function(b) {
+      return ('0' + (b & 0xFF).toString(16)).slice(-2);
+    }).join('');
+    if (hex === token) return true;
+  }
+  return false;
+}
+
+function getTransaksiByNota(noNota, token) {
+  // Token opsional — kalau ada, verify. Kalau tidak ada dan bukan PUBLIC, tolak.
+  if (token && !verifyNotaToken_(noNota, token)) {
+    return { success: false, message: "Token e-nota tidak valid atau sudah kedaluwarsa." };
+  }
   const all = getTransaksiList();
   const found = all.find(t => t.noNota === noNota);
   if (!found) return { success: false, message: "Nota " + noNota + " tidak ditemukan di sistem." };

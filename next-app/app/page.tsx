@@ -24,13 +24,16 @@ export default function HomePage() {
   const [currentTab, setCurrentTab] = useState<string>('transaksi');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [publicNotaParam, setPublicNotaParam] = useState<string | null>(null);
+  const [publicNotaToken, setPublicNotaToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const nota = params.get('nota');
+      const t = params.get('t');
       if (nota) {
         setPublicNotaParam(nota);
+        setPublicNotaToken(t);
       }
     }
   }, []);
@@ -49,8 +52,10 @@ export default function HomePage() {
     return (
       <ENotaView
         noNota={publicNotaParam}
+        token={publicNotaToken || undefined}
         onBackToApp={() => {
           setPublicNotaParam(null);
+          setPublicNotaToken(null);
           if (typeof window !== 'undefined') {
             window.history.replaceState({}, '', window.location.pathname);
           }
