@@ -202,11 +202,11 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
                       <div>
                         <div className="font-semibold text-slate-700">{item.layanan}</div>
                         <div className="text-[10px] text-slate-500">
-                          {item.qty} x Rp {Number(item.hargaSatuan || 0).toLocaleString('id-ID')}
+                          {item.qty} x Rp {(Number(item.hargaSatuan || 0) || 0).toLocaleString('id-ID')}
                         </div>
                       </div>
                       <div className="font-bold text-slate-700">
-                        Rp {Number(item.qty * item.hargaSatuan).toLocaleString('id-ID')}
+                        Rp {(Number(item.qty * item.hargaSatuan) || 0).toLocaleString('id-ID')}
                       </div>
                     </div>
                   ))
@@ -220,17 +220,17 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
             <div className="py-3 text-xs space-y-1.5 border-b border-dashed border-stone-300">
               <div className="flex justify-between items-center text-sm font-bold">
                 <span className="text-slate-700">TOTAL PEMBAYARAN:</span>
-                <span className="text-[#1E4648] text-base">Rp {Number(tx.total).toLocaleString('id-ID')}</span>
+                <span className="text-[#1E4648] text-base">Rp {(Number(tx.total) || 0).toLocaleString('id-ID')}</span>
               </div>
               {tx.nominalDP ? (
                 <>
                   <div className="flex justify-between text-slate-600">
                     <span>DP TERBAYAR:</span>
-                    <span className="font-medium text-[#1E4648]">Rp {Number(tx.nominalDP).toLocaleString('id-ID')}</span>
+                    <span className="font-medium text-[#1E4648]">Rp {(Number(tx.nominalDP) || 0).toLocaleString('id-ID')}</span>
                   </div>
                   <div className="flex justify-between text-slate-700 font-bold">
                     <span>SISA TAGIHAN:</span>
-                    <span className="text-rose-600">Rp {Number(tx.sisaTagihan || 0).toLocaleString('id-ID')}</span>
+                    <span className="text-rose-600">Rp {(Number(tx.sisaTagihan || 0) || 0).toLocaleString('id-ID')}</span>
                   </div>
                 </>
               ) : null}
