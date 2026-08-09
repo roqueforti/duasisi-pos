@@ -28,11 +28,20 @@ import {
   Check,
   ChevronRight,
   AlertCircle,
-  Edit3
+  Edit3,
+  Bluetooth,
+  BluetoothOff
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
+import {
+  isBluetoothSupported,
+  getActiveDeviceInfo,
+  requestAndConnectBluetoothDevice,
+  sendRawEscPosData,
+  generateTagEscPos,
+} from '@/lib/bluetoothPrinter';
 
 interface CustomerState {
   nama: string;
@@ -111,6 +120,7 @@ export default function PosView() {
   const [completedOrderData, setCompletedOrderData] = useState<any>(null);
   const [paperSize, setPaperSize] = useState<'58mm' | '80mm' | 'label'>('58mm');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [btPrinting, setBtPrinting] = useState(false);
 
   // Modals for the 8-Step Flow:
   const [showTambahItemModal, setShowTambahItemModal] = useState<boolean>(false);
@@ -415,6 +425,58 @@ export default function PosView() {
       alert(`Transaksi gagal: ${msg}\n\nPastikan Apps Script sudah di-deploy ulang dan koneksi internet stabil.`);
     } finally {
       setPaymentSubmitting(false);
+    }
+  };
+
+  // ── THERMAL LABEL PRINT (Bluetooth) ──────────────────────────
+  const handlePrintThermalLabel = async () => {
+    if (!completedOrderData) return;
+    if (!isBluetoothSupported()) {
+      alert('Browser ini tidak mendukung Web Bluetooth.\nGunakan Chrome / Edge di Android atau Desktop.');
+      return;
+    }
+    setBtPrinting(true);
+    try {
+      // Cek apakah printer sudah terkoneksi
+      const deviceInfo = getActiveDeviceInfo();
+      if (!deviceInfo.connected) {
+        // Belum konek — minta user pilih device
+        setToastMsg('Mencari printer Bluetooth…');
+        await requestAndConnectBluetoothDevice();
+      }
+      // Siapkan data transaksi untuk ESC/POS
+      const txForPrint = {
+        noNota: completedOrderData.trxId,
+        tanggal: completedOrderData.tanggal,
+        namaPelanggan: completedOrderData.pelanggan,
+        noHp: completedOrderData.noHp,
+        total: completedOrderData.total,
+        status: 'Selesai',
+        estimasi: completedOrderData.estimasiSelesai || '',
+        petugas: completedOrderData.kasir,
+        tipe: completedOrderData.tipeLayanan || 'SelfService',
+        tingkatLayanan: 'Reguler',
+        catatan: completedOrderData.catatan || '',
+        items: (completedOrderData.items || []).map((i: any) => ({
+          layanan: i.layanan,
+          qty: Number(i.qty) || 1,
+          hargaSatuan: Number(i.hargaSatuan) || 0,
+          subtotal: (Number(i.qty) || 1) * (Number(i.hargaSatuan) || 0),
+          catatan: i.catatan || '',
+        })),
+      };
+      const escData = generateTagEscPos(txForPrint as any);
+      await sendRawEscPosData(escData);
+      setToastMsg('✅ Label thermal berhasil dicetak!');
+    } catch (err: any) {
+      const msg = err?.message || 'Gagal mencetak';
+      if (msg.includes('User cancelled') || msg.includes('cancelled')) {
+        setToastMsg('Cetak dibatalkan.');
+      } else {
+        alert(`Gagal cetak thermal:\n${msg}`);
+      }
+    } finally {
+      setBtPrinting(false);
     }
   };
 
@@ -1476,27 +1538,36 @@ export default function PosView() {
 
             {/* Action Buttons */}
             <div className="space-y-2">
-              <button
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  setShowPreviewStrukModal(true);
-                }}
-                className="w-full bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Preview & Cetak Struk</span>
-              </button>
-
+              {/* Kirim WA — utama */}
               <button
                 onClick={() => {
                   const phone = completedOrderData.noHp.replace(/^0/, '62').replace(/\D/g, '');
                   const waUrl = `https://wa.me/${phone || ''}?text=${encodeURIComponent(`Halo Kak ${completedOrderData.pelanggan}, ini nota resmi transaksi laundry Dua SiSi POS #${completedOrderData.trxId} sebesar Rp ${(Number(completedOrderData?.total) || 0).toLocaleString('id-ID')}. Terima kasih!`)}`;
                   window.open(waUrl, '_blank');
                 }}
-                className="w-full bg-[#B5C9C9]/20 hover:bg-[#B5C9C9]/30 text-[#1E4648] font-bold py-2.5 rounded-lg text-xs border border-[#B5C9C9] flex items-center justify-center gap-2"
+                className="w-full bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md"
               >
                 <Send className="w-4 h-4" />
-                <span>Kirim ke WhatsApp Pelanggan</span>
+                <span>Kirim Struk ke WhatsApp</span>
+              </button>
+
+              {/* Cetak Label Thermal — cek BT */}
+              <button
+                onClick={handlePrintThermalLabel}
+                disabled={btPrinting}
+                className="w-full bg-[#B5C9C9]/20 hover:bg-[#B5C9C9]/30 disabled:opacity-50 text-[#1E4648] font-bold py-2.5 rounded-lg text-xs border border-[#B5C9C9] flex items-center justify-center gap-2"
+              >
+                {btPrinting ? (
+                  <>
+                    <Bluetooth className="w-4 h-4 animate-pulse" />
+                    <span>Menghubungkan Printer…</span>
+                  </>
+                ) : (
+                  <>
+                    <Printer className="w-4 h-4" />
+                    <span>Cetak Label Thermal</span>
+                  </>
+                )}
               </button>
 
               <button
@@ -1589,11 +1660,15 @@ export default function PosView() {
             {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 shrink-0 mt-3">
               <button
-                onClick={() => alert(`Mengirim cetak struk format ${paperSize} ke Thermal Printer...`)}
-                className="bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-xs"
+                onClick={handlePrintThermalLabel}
+                disabled={btPrinting}
+                className="bg-[#1E4648] hover:bg-[#163536] disabled:opacity-50 text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-xs"
               >
-                <Printer className="w-4 h-4" />
-                <span>Cetak Struk</span>
+                {btPrinting ? (
+                  <><Bluetooth className="w-4 h-4 animate-pulse" /><span>Menghubungkan…</span></>
+                ) : (
+                  <><Printer className="w-4 h-4" /><span>Cetak Label Thermal</span></>
+                )}
               </button>
 
               <button
