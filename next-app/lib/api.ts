@@ -26,3 +26,7 @@ export function runBackendCached<T = any>(
     ttlMs,
   );
 }
+
+// Session stubs — PIN-based auth tidak butuh server session
+export function setBackendSession(_token: string): void {}
+export function clearBackendSession(): void {}
