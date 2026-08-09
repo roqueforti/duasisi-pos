@@ -153,9 +153,9 @@ export default function PelangganView() {
   });
 
   // Summary Metrics
-  const totalPelanggan = pelangganList.length;
-  const repeatCount = pelangganList.filter(p => p.totalOrder > 1).length;
-  const totalOmzetPelanggan = pelangganList.reduce((acc, curr) => acc + curr.totalSpend, 0);
+  const totalPelanggan = pelangganList?.length || 0;
+  const repeatCount = pelangganList?.filter(p => p.totalOrder > 1).length || 0;
+  const totalOmzetPelanggan = pelangganList?.reduce((acc, curr) => acc + (curr.totalSpend || 0), 0) || 0;
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto text-slate-600">
@@ -189,7 +189,7 @@ export default function PelangganView() {
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Pelanggan</div>
-            <div className="text-xl font-bold text-[#1E4648]">{totalPelanggan.toLocaleString('id-ID')} Orang</div>
+            <div className="text-xl font-bold text-[#1E4648]">{(totalPelanggan || 0).toLocaleString('id-ID')} Orang</div>
           </div>
         </div>
 
@@ -199,7 +199,7 @@ export default function PelangganView() {
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Repeat Order (Member)</div>
-            <div className="text-xl font-bold text-[#FF9500]">{repeatCount.toLocaleString('id-ID')} Orang</div>
+            <div className="text-xl font-bold text-[#FF9500]">{(repeatCount || 0).toLocaleString('id-ID')} Orang</div>
           </div>
         </div>
 
@@ -209,7 +209,7 @@ export default function PelangganView() {
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Akumulasi Belanja</div>
-            <div className="text-xl font-bold text-[#1E4648]">Rp {totalOmzetPelanggan.toLocaleString('id-ID')}</div>
+            <div className="text-xl font-bold text-[#1E4648]">Rp {(totalOmzetPelanggan || 0).toLocaleString('id-ID')}</div>
           </div>
         </div>
       </div>

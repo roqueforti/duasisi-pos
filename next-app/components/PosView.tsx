@@ -287,7 +287,7 @@ export default function PosView() {
       const res = await runBackend<{ valid: boolean; kode?: string; nilai?: number; message?: string }>('validasiVoucher', code, subtotalCart);
       if (res.valid && res.nilai !== undefined) {
         setDiskonApplied({ kode: code, nilai: res.nilai });
-        setVoucherMsg({ type: 'success', text: `Voucher ${code} terpasang (Diskon - Rp ${res.nilai.toLocaleString('id-ID')})` });
+        setVoucherMsg({ type: 'success', text: `Voucher ${code} terpasang (Diskon - Rp ${(res.nilai || 0).toLocaleString('id-ID')})` });
       } else {
         setVoucherMsg({ type: 'error', text: res.message || 'Kode voucher tidak valid' });
       }
@@ -562,7 +562,7 @@ export default function PosView() {
                 className="bg-[#B5C9C9]/20 border border-[#B5C9C9] text-[#1E4648] hover:bg-[#B5C9C9]/30 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
               >
                 <Unlock className="w-3.5 h-3.5 text-[#1E4648]" />
-                <span className="hidden sm:inline">Shift (Rp {shiftAktif.kasAwal.toLocaleString('id-ID')})</span>
+                <span className="hidden sm:inline">Shift (Rp {(shiftAktif?.kasAwal || 0).toLocaleString('id-ID')})</span>
               </button>
             ) : (
               <button
@@ -636,7 +636,7 @@ export default function PosView() {
                     <div className="flex items-center justify-between gap-1 min-w-0 max-[380px]:flex-col max-[380px]:items-stretch" onClick={(e) => e.stopPropagation()}>
                       <div className="min-w-0 shrink">
                         <div className="text-[13px] font-bold text-slate-700 leading-none whitespace-nowrap">
-                          Rp {item.hargaSatuan.toLocaleString('id-ID')}
+                          Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
                         </div>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1 inline-block ${
                           isBest ? 'bg-[#FF9500]/15 text-[#FF9500]' : 'bg-slate-100 text-slate-500'
@@ -778,7 +778,7 @@ export default function PosView() {
           </div>
           <div className="min-w-0">
             <div className="text-xs font-bold truncate">
-              {totalCartItems > 0 ? `Total: Rp ${grandTotal.toLocaleString('id-ID')}` : 'Keranjang Kosong'}
+              {totalCartItems > 0 ? `Total: Rp ${(grandTotal || 0).toLocaleString('id-ID')}` : 'Keranjang Kosong'}
             </div>
             <div className="text-[10px] text-[#B5C9C9]/90 truncate">
               {totalCartItems > 0 ? `${totalCartItems} item dipilih` : 'Klik item di atas untuk memilih'}
@@ -851,7 +851,7 @@ export default function PosView() {
                   <div className="flex-1 pr-2">
                     <h4 className="font-bold text-xs text-slate-600 leading-snug">{item.layanan}</h4>
                     <div className="text-[11px] font-bold text-[#1E4648] mt-0.5">
-                      Rp {item.hargaSatuan.toLocaleString('id-ID')} × {item.qty} = Rp {(item.qty * item.hargaSatuan).toLocaleString('id-ID')}
+                      Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')} × {item.qty} = Rp {(item.qty * (item.hargaSatuan || 0)).toLocaleString('id-ID')}
                     </div>
                   </div>
                   <button
@@ -922,19 +922,19 @@ export default function PosView() {
           <div className="space-y-1 text-xs text-slate-500">
             <div className="flex justify-between">
               <span>Subtotal :</span>
-              <span className="font-bold text-slate-600">Rp {subtotalCart.toLocaleString('id-ID')}</span>
+              <span className="font-bold text-slate-600">Rp {(subtotalCart || 0).toLocaleString('id-ID')}</span>
             </div>
             {diskonApplied.nilai > 0 && (
               <div className="flex justify-between text-[#1E4648]">
                 <span>Diskon ({diskonApplied.kode}) :</span>
-                <span className="font-bold">-Rp {diskonApplied.nilai.toLocaleString('id-ID')}</span>
+                <span className="font-bold">-Rp {(diskonApplied?.nilai || 0).toLocaleString('id-ID')}</span>
               </div>
             )}
           </div>
 
           <div className="bg-slate-900 text-white rounded-lg p-3.5 flex justify-between items-center shadow-inner my-1">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Total Tagihan</span>
-            <span className="text-lg font-bold text-[#B5C9C9]">Rp {grandTotal.toLocaleString('id-ID')}</span>
+            <span className="text-lg font-bold text-[#B5C9C9]">Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -952,7 +952,7 @@ export default function PosView() {
               className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3 rounded-lg text-xs sm:text-sm transition flex items-center justify-center gap-2 disabled:opacity-40 shadow-md"
             >
               <CreditCard className="w-4 h-4" />
-              <span>Proses Bayar Rp {grandTotal.toLocaleString('id-ID')}</span>
+              <span>Proses Bayar Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>
             </button>
           </div>
         </div>
@@ -1459,11 +1459,11 @@ export default function PosView() {
               <div className="flex justify-between"><span className="text-slate-500">No. Invoice:</span><span className="font-bold text-slate-700">{completedOrderData.trxId}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Pelanggan:</span><span className="font-bold text-slate-600">{completedOrderData.pelanggan}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Metode Bayar:</span><span className="font-bold text-slate-600">{completedOrderData.metodeBayar}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">Total Dibayar:</span><span className="font-bold text-slate-700">Rp {completedOrderData.total.toLocaleString('id-ID')}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Total Dibayar:</span><span className="font-bold text-slate-700">Rp {(completedOrderData?.total || 0).toLocaleString('id-ID')}</span></div>
               {completedOrderData.metodeBayar === 'Tunai' && (
                 <div className="flex justify-between text-[#1E4648] font-bold pt-1 border-t border-slate-200">
                   <span>Kembalian:</span>
-                  <span className="font-bold">Rp {completedOrderData.kembalian.toLocaleString('id-ID')}</span>
+                  <span className="font-bold">Rp {(completedOrderData?.kembalian || 0).toLocaleString('id-ID')}</span>
                 </div>
               )}
               <div className="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-200/60">

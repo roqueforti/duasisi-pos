@@ -140,16 +140,16 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
   // Section 1: Metrics Calculations
   const todayStrFmt = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const txTodayList = transaksiList.filter(t => t.tanggal && t.tanggal.includes(todayStrFmt.slice(0, 5)));
+  const txTodayList = transaksiList?.filter(t => t.tanggal && t.tanggal.includes(todayStrFmt.slice(0, 5))) || [];
   
-  const totalOrderHariIni = txTodayList.length > 0 ? txTodayList.length : transaksiList.slice(0, 5).length;
+  const totalOrderHariIni = txTodayList.length > 0 ? txTodayList.length : (transaksiList?.slice(0, 5).length || 0);
   const omzetHariIni = txTodayList.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
   
-  const activeOrders = transaksiList.filter(t => t.status !== 'Selesai' && t.status !== 'Batal');
-  const readyPickupOrders = transaksiList.filter(t => t.status === 'Siap Ambil');
+  const activeOrders = transaksiList?.filter(t => t.status !== 'Selesai' && t.status !== 'Batal') || [];
+  const readyPickupOrders = transaksiList?.filter(t => t.status === 'Siap Ambil') || [];
   
-  const lowStockItems = inventoryList.filter(i => i.stok <= i.stokMinimum);
-  const maintenanceMachines = mesinList.filter(m => m.status === 'Maintenance');
+  const lowStockItems = inventoryList?.filter(i => i.stok <= i.stokMinimum) || [];
+  const maintenanceMachines = mesinList?.filter(m => m.status === 'Maintenance') || [];
 
   // Inventory Quick Restock Submit
   const handleRestockSubmit = async () => {
@@ -223,7 +223,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Omzet Hari Ini</div>
-            <div className="text-xl font-bold text-[#1E4648]">Rp {omzetHariIni.toLocaleString('id-ID')}</div>
+            <div className="text-xl font-bold text-[#1E4648]">Rp {(omzetHariIni || 0).toLocaleString('id-ID')}</div>
           </div>
         </div>
 
