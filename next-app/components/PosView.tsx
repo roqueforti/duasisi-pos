@@ -42,6 +42,7 @@ import {
   sendRawEscPosData,
   generateTagEscPos,
 } from '@/lib/bluetoothPrinter';
+import PrinterModal from '@/components/PrinterModal';
 
 interface CustomerState {
   nama: string;
@@ -121,6 +122,7 @@ export default function PosView() {
   const [paperSize, setPaperSize] = useState<'58mm' | '80mm' | 'label'>('58mm');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [btPrinting, setBtPrinting] = useState(false);
+  const [showStrukModal, setShowStrukModal] = useState(false);
 
   // Modals for the 8-Step Flow:
   const [showTambahItemModal, setShowTambahItemModal] = useState<boolean>(false);
@@ -1595,6 +1597,15 @@ export default function PosView() {
                 )}
               </button>
 
+              {/* Cetak Struk — buka PrinterModal */}
+              <button
+                onClick={() => setShowStrukModal(true)}
+                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold py-2.5 rounded-lg text-xs border border-slate-200 flex items-center justify-center gap-2"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Cetak Struk</span>
+              </button>
+
               <button
                 onClick={handleCompleteFlowAndReset}
                 className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-lg text-xs"
@@ -1876,6 +1887,40 @@ export default function PosView() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* PrinterModal untuk Cetak Struk */}
+      {showStrukModal && completedOrderData && (
+        <PrinterModal
+          isOpen={showStrukModal}
+          onClose={() => setShowStrukModal(false)}
+          printType="struk"
+          tx={{
+            noNota: completedOrderData.trxId,
+            tanggal: completedOrderData.tanggal,
+            namaPelanggan: completedOrderData.pelanggan,
+            noHp: completedOrderData.noHp,
+            total: completedOrderData.total,
+            status: 'Selesai',
+            estimasi: completedOrderData.estimasiSelesai || '',
+            petugas: completedOrderData.kasir,
+            tipe: completedOrderData.tipeLayanan || 'SelfService',
+            tingkatLayanan: 'Reguler',
+            catatan: completedOrderData.catatan || '',
+            statusVoid: 'None',
+            metodeBayar: completedOrderData.metodeBayar,
+            nominalDP: completedOrderData.uangBayar,
+            kembalian: completedOrderData.kembalian,
+            items: (completedOrderData.items || []).map((i: any) => ({
+              layanan: i.layanan,
+              qty: Number(i.qty) || 1,
+              hargaSatuan: Number(i.hargaSatuan) || 0,
+              subtotal: (Number(i.qty) || 1) * (Number(i.hargaSatuan) || 0),
+              catatan: i.catatan || '',
+            })),
+          } as any}
+          onPrintSuccess={() => setShowStrukModal(false)}
+        />
       )}
 
     </div>

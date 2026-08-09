@@ -64,8 +64,26 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
     }
   }, [noNota]);
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadPdf = () => {
+    const el = document.getElementById('enota-print-area');
+    if (!el) { window.print(); return; }
+    const printWin = window.open('', '_blank', 'width=500,height=800');
+    if (!printWin) { window.print(); return; }
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>E-Nota ${noNota}</title>
+          <style>
+            body { margin: 0; padding: 16px; font-family: sans-serif; background: #fff; }
+            @media print { @page { size: A5 portrait; margin: 8mm; } }
+          </style>
+        </head>
+        <body>${el.outerHTML}</body>
+      </html>
+    `);
+    printWin.document.close();
+    printWin.onload = () => { printWin.focus(); printWin.print(); };
   };
 
   const handleShare = () => {
@@ -141,7 +159,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
           </div>
 
           {/* THERMAL PDF RECEIPT CONTAINER */}
-          <div className="bg-stone-50 border border-stone-300 rounded-lg p-6 shadow-lg text-slate-600 font-sans relative overflow-hidden print:shadow-none print:border-none print:p-0">
+          <div id="enota-print-area" className="bg-stone-50 border border-stone-300 rounded-lg p-6 shadow-lg text-slate-600 font-sans relative overflow-hidden print:shadow-none print:border-none print:p-0">
             {/* Top Zig-Zag Thermal Paper Decoration */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-[radial-gradient(circle,#cbd5e1_1px,transparent_1px)] [background-size:8px_8px]" />
 
@@ -222,18 +240,30 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
                 <span className="text-slate-700">TOTAL PEMBAYARAN:</span>
                 <span className="text-[#1E4648] text-base">Rp {(Number(tx.total) || 0).toLocaleString('id-ID')}</span>
               </div>
-              {tx.nominalDP ? (
-                <>
-                  <div className="flex justify-between text-slate-600">
-                    <span>DP TERBAYAR:</span>
-                    <span className="font-medium text-[#1E4648]">Rp {(Number(tx.nominalDP) || 0).toLocaleString('id-ID')}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-700 font-bold">
-                    <span>SISA TAGIHAN:</span>
-                    <span className="text-rose-600">Rp {(Number(tx.sisaTagihan || 0) || 0).toLocaleString('id-ID')}</span>
-                  </div>
-                </>
-              ) : null}
+              <div className="flex justify-between text-slate-600">
+                <span>DIBAYAR ({tx.metodeBayar || 'Tunai'}):</span>
+                <span className="font-semibold text-[#1E4648]">
+                  Rp {(Number(tx.nominalDP) || Number(tx.total) || 0).toLocaleString('id-ID')}
+                </span>
+              </div>
+              <div className="flex justify-between font-bold">
+                <span className="text-slate-700">KEMBALI / SISA:</span>
+                <span className={Number(tx.sisaTagihan) > 0 ? 'text-rose-600' : 'text-[#1E4648]'}>
+                  Rp {(Number(tx.sisaTagihan) || 0).toLocaleString('id-ID')}
+                </span>
+              </div>
+              {tx.statusPembayaran && (
+                <div className="flex justify-between text-slate-500">
+                  <span>STATUS BAYAR:</span>
+                  <span className={`font-bold text-xs px-2 py-0.5 rounded-md border ${
+                    tx.statusPembayaran === 'Lunas'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    {tx.statusPembayaran}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Security Digital Seal & Barcode Visual */}
@@ -268,18 +298,18 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
           {/* Action Buttons */}
           <div className="flex items-center gap-2 print:hidden">
             <button
-              onClick={handlePrint}
+              onClick={handleDownloadPdf}
               className="flex-1 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-semibold py-2.5 px-4 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-sm"
             >
               <Printer className="w-4 h-4 text-[#1E4648]" />
-              <span>Cetak / PDF</span>
+              <span>Download PDF</span>
             </button>
             <button
               onClick={handleShare}
               className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-semibold py-2.5 px-4 rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-md"
             >
               <Share2 className="w-4 h-4" />
-              <span>Bagikan Link WA</span>
+              <span>Bagikan WA</span>
             </button>
             {onBackToApp && (
               <button
@@ -287,7 +317,7 @@ export default function ENotaView({ noNota, onBackToApp }: ENotaViewProps) {
                 className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 px-3 rounded-lg text-xs transition shadow-sm"
                 title="Buka POS"
               >
-                Aplikasi
+                App
               </button>
             )}
           </div>

@@ -314,7 +314,7 @@ export function generateReceiptEscPos(tx: Transaksi): Uint8Array {
 export function generateTagEscPos(tx: Transaksi): Uint8Array {
   const builder = new EscPosBuilder();
   const kasir = (tx as any).petugas || (tx as any).kasir || 'Kasir';
-  const proses = tx.tipe === 'FullService' ? 'Dropoff' : 'Self Service';
+  const proses = tx.tipe === 'FullService' ? 'Drop Off' : 'Self Service';
   const tgl = tx.tanggal ? tx.tanggal.substring(0, 16) : '';
 
   tx.items.forEach((item, idx) => {
