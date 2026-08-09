@@ -317,28 +317,31 @@ export function generateTagEscPos(tx: Transaksi): Uint8Array {
   const proses = tx.tipe === 'FullService' ? 'Drop Off' : 'Self Service';
   const tgl = tx.tanggal ? tx.tanggal.substring(0, 16) : '';
 
-  tx.items.forEach((item, idx) => {
-    builder
-      .align('center')
-      .bold(true)
-      .line('DUA SISI LAUNDRY')
-      .bold(false)
-      .line(`Order Tag #${idx + 1}/${tx.items.length}`)
-      .dashedLine(32)
-      .align('left')
-      .line(`Nota  : ${tx.noNota}`)
-      .line(`Nama  : ${tx.namaPelanggan.substring(0, 18)}`)
-      .line(`Kasir : ${kasir.substring(0, 18)}`)
-      .dashedLine(32)
-      .bold(true)
-      .line(item.layanan.substring(0, 30))
-      .bold(false)
-      .line(`Qty   : ${item.qty}`)
-      .line(`Proses: ${proses}`)
-      .line(`Tgl   : ${tgl}`)
-      .dashedLine(32)
-      .feedLines(2);
+  builder
+    .align('center')
+    .bold(true)
+    .line('DUA SISI LAUNDRY')
+    .bold(false)
+    .line('Order Tag')
+    .dashedLine(32)
+    .align('left')
+    .line(`Nota  : ${tx.noNota}`)
+    .line(`Nama  : ${tx.namaPelanggan.substring(0, 18)}`)
+    .line(`Kasir : ${kasir.substring(0, 18)}`)
+    .dashedLine(32);
+
+  // Semua item dirangkum dalam 1 label
+  tx.items.forEach((item) => {
+    builder.bold(true).line(item.layanan.substring(0, 30)).bold(false);
+    builder.line(`  Qty: ${item.qty}`);
   });
+
+  builder
+    .dashedLine(32)
+    .line(`Proses: ${proses}`)
+    .line(`Tgl   : ${tgl}`)
+    .dashedLine(32)
+    .feedLines(2);
 
   return builder.build();
 }
