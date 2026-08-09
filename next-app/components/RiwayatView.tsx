@@ -178,18 +178,33 @@ export default function RiwayatView() {
       return;
     }
 
-    const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : '';
-    const notaUrl = `${baseUrl}?nota=${encodeURIComponent(tx.noNota)}`;
+    const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?nota=${encodeURIComponent(tx.noNota)}`;
+    const itemsStr = (tx.items || []).map((i: any) =>
+      `• ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`
+    ).join('\n');
 
-    const itemsStr = tx.items.map(i => `• ${i.layanan} (x${i.qty}) - Rp ${(i.qty * i.hargaSatuan).toLocaleString('id-ID')}`).join('\n');
-    const msg = `*HALO ${tx.namaPelanggan.toUpperCase()}, STRUK DUA SISI LAUNDRY*\n\n` +
-      `No Nota: *${tx.noNota}*\n` +
-      `Tanggal: ${tx.tanggal}\n` +
-      `Status: *${tx.status}*\n\n` +
-      `*Detail Layanan:*\n${itemsStr}\n\n` +
-      `*TOTAL: Rp ${(tx?.total || 0).toLocaleString('id-ID')}*\n\n` +
-      `*Lihat E-Nota Resmi (Anti-Pemalsuan & Cetak PDF):*\n${notaUrl}\n\n` +
-      `Terima kasih telah mencuci di Dua SiSi Laundry!`;
+    const msg = [
+      `Halo ${tx.namaPelanggan}! 👋 Struk dari Dua SiSi Laundry`,
+      ``,
+      `🧾 No Nota     : ${tx.noNota}`,
+      `📅 Tanggal     : ${tx.tanggal}`,
+      `⚡ Tipe        : ${tx.tipe === 'FullService' ? 'Full Service' : 'Self Service'}`,
+      `📦 Status      : ${tx.status}`,
+      ``,
+      `📋 Detail Layanan:`,
+      itemsStr,
+      ``,
+      `💰 TOTAL       : Rp ${(tx?.total || 0).toLocaleString('id-ID')}`,
+      `💳 Metode Bayar: ${tx.metodeBayar || 'Tunai'}`,
+      ...(tx.sisaTagihan && tx.sisaTagihan > 0
+        ? [`⚠️  Sisa Tagihan: Rp ${(tx.sisaTagihan || 0).toLocaleString('id-ID')}`]
+        : []),
+      ``,
+      `📄 Lihat E-Nota Resmi:`,
+      eNotaUrl,
+      ``,
+      `Terima kasih telah mencuci di Dua SiSi Laundry! 🙏`,
+    ].join('\n');
 
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };

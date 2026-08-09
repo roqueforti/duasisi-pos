@@ -1541,9 +1541,34 @@ export default function PosView() {
               {/* Kirim WA — utama */}
               <button
                 onClick={() => {
-                  const phone = completedOrderData.noHp.replace(/^0/, '62').replace(/\D/g, '');
-                  const waUrl = `https://wa.me/${phone || ''}?text=${encodeURIComponent(`Halo Kak ${completedOrderData.pelanggan}, ini nota resmi transaksi laundry Dua SiSi POS #${completedOrderData.trxId} sebesar Rp ${(Number(completedOrderData?.total) || 0).toLocaleString('id-ID')}. Terima kasih!`)}`;
-                  window.open(waUrl, '_blank');
+                  const phone = (completedOrderData.noHp || '').replace(/^0/, '62').replace(/\D/g, '');
+                  const nama = completedOrderData.pelanggan || 'Pelanggan';
+                  const noNota = completedOrderData.trxId || '';
+                  const tanggal = `${completedOrderData.tanggal || ''}, ${completedOrderData.waktu || ''}`;
+                  const total = (Number(completedOrderData?.total) || 0).toLocaleString('id-ID');
+                  const items = (completedOrderData.items || [])
+                    .map((i: any) => `• ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
+                    .join('\n');
+                  const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?nota=${noNota}`;
+                  const msg = [
+                    `Halo ${nama}! 👋 Struk dari Dua SiSi Laundry`,
+                    ``,
+                    `🧾 No Nota     : ${noNota}`,
+                    `📅 Tanggal     : ${tanggal}`,
+                    `⚡ Kecepatan   : ${completedOrderData.tipeLayanan === 'FullService' ? 'Full Service' : 'Self Service'} • Reguler`,
+                    ``,
+                    `📋 Detail Layanan:`,
+                    items,
+                    ``,
+                    `💰 TOTAL       : Rp ${total}`,
+                    `💳 Metode Bayar: ${completedOrderData.metodeBayar || 'Tunai'}`,
+                    ``,
+                    `📄 Lihat E-Nota Resmi:`,
+                    eNotaUrl,
+                    ``,
+                    `Terima kasih telah mencuci di Dua SiSi Laundry! 🙏`,
+                  ].join('\n');
+                  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                 }}
                 className="w-full bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md"
               >
