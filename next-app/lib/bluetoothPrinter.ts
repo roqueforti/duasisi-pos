@@ -255,6 +255,7 @@ class EscPosBuilder {
 
 export function generateReceiptEscPos(tx: Transaksi): Uint8Array {
   const builder = new EscPosBuilder();
+  const kasir = (tx as any).petugas || (tx as any).kasir || 'Kasir';
 
   builder
     .align('center')
@@ -263,19 +264,19 @@ export function generateReceiptEscPos(tx: Transaksi): Uint8Array {
     .line('DUA SISI LAUNDRY')
     .size(1, 1)
     .bold(false)
-    .line('TIKET MESIN / PRODUKSI')
+    .line('Jl. Pangestu Raya, Karangploso, Malang')
     .dashedLine(32)
     .align('left')
     .twoColumn('No Nota:', tx.noNota, 32)
     .twoColumn('Tanggal:', tx.tanggal, 32)
-    .twoColumn('Pelanggan:', tx.namaPelanggan.substring(0, 16), 32);
+    .twoColumn('Pelanggan:', tx.namaPelanggan.substring(0, 16), 32)
+    .twoColumn('Kasir:', kasir.substring(0, 16), 32);
 
-  builder
-    .dashedLine(32);
+  builder.dashedLine(32);
 
   tx.items.forEach((item) => {
     builder.bold(true).line(item.layanan).bold(false);
-    builder.line(`  Jumlah/Berat: ${item.qty}`);
+    builder.twoColumn(`  ${item.qty} x`, `Rp ${(item.qty * item.hargaSatuan).toLocaleString('id-ID')}`, 32);
     if (item.catatan) {
       builder.line(`  *Note: ${item.catatan}`);
     }
@@ -283,12 +284,28 @@ export function generateReceiptEscPos(tx: Transaksi): Uint8Array {
 
   builder.dashedLine(32);
 
+  if ((tx as any).diskon > 0) {
+    builder.twoColumn('Diskon:', `-Rp ${Number((tx as any).diskon).toLocaleString('id-ID')}`, 32);
+  }
   builder
     .bold(true)
-    .line('BUKAN BUKTI PEMBAYARAN')
-    .bold(false)
+    .twoColumn('TOTAL:', `Rp ${(tx.total || 0).toLocaleString('id-ID')}`, 32)
+    .twoColumn(`Bayar (${(tx as any).metodeBayar || 'Tunai'}):`, `Rp ${Number((tx as any).nominalDP || tx.total).toLocaleString('id-ID')}`, 32);
+  if ((tx as any).kembalian > 0) {
+    builder.twoColumn('Kembali:', `Rp ${Number((tx as any).kembalian).toLocaleString('id-ID')}`, 32);
+  }
+  builder.bold(false);
+
+  builder
+    .dashedLine(32)
     .align('center')
-    .line('Gunakan sebagai penanda cucian')
+    .line('Terima kasih sudah mencuci')
+    .line('di Dua SiSi Laundry!')
+    .line('Kritik & Saran: 0896-8202-0699')
+    .dashedLine(32)
+    .bold(true)
+    .line('Powered by Dua Sisi Laundry POS')
+    .bold(false)
     .feedLines(4);
 
   return builder.build();
@@ -296,6 +313,7 @@ export function generateReceiptEscPos(tx: Transaksi): Uint8Array {
 
 export function generateTagEscPos(tx: Transaksi): Uint8Array {
   const builder = new EscPosBuilder();
+  const kasir = (tx as any).petugas || (tx as any).kasir || 'Kasir';
 
   tx.items.forEach((item, idx) => {
     builder
@@ -304,24 +322,30 @@ export function generateTagEscPos(tx: Transaksi): Uint8Array {
       .size(2, 2)
       .line('DUA SISI LAUNDRY')
       .size(1, 1)
-      .line(`ORDER TAG #${idx + 1} OF ${tx.items.length}`)
+      .bold(false)
+      .line(`TAG #${idx + 1} / ${tx.items.length}`)
       .dashedLine(32)
       .align('left')
       .bold(true)
       .twoColumn('NOTA:', tx.noNota, 32)
       .twoColumn('NAMA:', tx.namaPelanggan.toUpperCase().substring(0, 16), 32)
       .bold(false)
-      .line(`ITEM: ${item.layanan}`)
-      .line(`QTY : ${item.qty}`)
-      .line(`PROSES: ${tx.tingkatLayanan || 'Reguler'}`);
+      .line(`ITEM : ${item.layanan}`)
+      .line(`QTY  : ${item.qty}`)
+      .line(`PROSES: ${tx.tingkatLayanan || 'Reguler'}`)
+      .twoColumn('KASIR:', kasir.substring(0, 16), 32);
 
     if (tx.catatan || item.catatan) {
-      builder.line(`NOTE: ${item.catatan || tx.catatan}`);
+      builder.line(`NOTE : ${item.catatan || tx.catatan}`);
     }
 
     builder
-      .twoColumn('TGL:', tx.tanggal.substring(0, 10), 32)
+      .twoColumn('TGL  :', tx.tanggal.substring(0, 14), 32)
       .dashedLine(32)
+      .align('center')
+      .bold(true)
+      .line('Powered by Dua Sisi Laundry POS')
+      .bold(false)
       .feedLines(3);
   });
 

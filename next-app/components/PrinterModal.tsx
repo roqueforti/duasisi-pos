@@ -11,8 +11,6 @@ import {
   X,
   FileText,
   Tag,
-  Zap,
-  HelpCircle,
 } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import {
@@ -27,8 +25,7 @@ import {
   BluetoothDeviceInfo,
 } from '@/lib/bluetoothPrinter';
 
-export type PrintType = 'struk' | 'label' | 'test' | 'config';
-export type PrintMode = 'thermal' | 'system';
+export type PrintType = 'struk' | 'label';
 
 interface PrinterModalProps {
   isOpen: boolean;
@@ -42,7 +39,7 @@ export default function PrinterModal({
   isOpen,
   onClose,
   tx,
-  printType = 'config',
+  printType: initialPrintType = 'struk',
   onPrintSuccess,
 }: PrinterModalProps) {
   const [deviceInfo, setDeviceInfo] = useState<BluetoothDeviceInfo>({
@@ -50,46 +47,34 @@ export default function PrinterModal({
     name: 'Belum Ada Device',
     connected: false,
   });
-  const [printMode, setPrintMode] = useState<PrintMode>('thermal');
-  const [loading, setLoading] = useState<boolean>(false);
+  const [selectedPrintType, setSelectedPrintType] = useState<PrintType>(initialPrintType);
+  const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [btSupported, setBtSupported] = useState<boolean>(true);
+  const [btSupported, setBtSupported] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
       setBtSupported(isBluetoothSupported());
-      refreshStatus();
-
-      // Read saved print mode preference
-      const savedMode = localStorage.getItem('duasisi_print_mode') as PrintMode;
-      if (savedMode === 'system' || savedMode === 'thermal') {
-        setPrintMode(savedMode);
-      }
+      setDeviceInfo(getActiveDeviceInfo());
+      setErrorMsg(null);
+      setSuccessMsg(null);
+      setSelectedPrintType(initialPrintType);
     }
-  }, [isOpen]);
+  }, [isOpen, initialPrintType]);
 
-  const refreshStatus = () => {
-    const info = getActiveDeviceInfo();
-    setDeviceInfo(info);
-  };
-
-  const handleModeChange = (mode: PrintMode) => {
-    setPrintMode(mode);
-    localStorage.setItem('duasisi_print_mode', mode);
-  };
-
-  const handleConnectBluetooth = async () => {
+  const handleConnect = async () => {
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
     try {
       const info = await requestAndConnectBluetoothDevice();
       setDeviceInfo(info);
-      setSuccessMsg(`Berhasil terhubung ke printer ${info.name}!`);
+      setSuccessMsg(`Terhubung ke ${info.name}`);
     } catch (err: any) {
-      console.error(err);
-      setErrorMsg(err.message || 'Gagal menghubungkan printer Bluetooth.');
+      if (!err.message?.includes('cancelled') && !err.message?.includes('User cancelled')) {
+        setErrorMsg(err.message || 'Gagal menghubungkan printer.');
+      }
     } finally {
       setLoading(false);
     }
@@ -97,11 +82,10 @@ export default function PrinterModal({
 
   const handleDisconnect = async () => {
     setLoading(true);
-    setErrorMsg(null);
     try {
       await disconnectBluetoothDevice();
-      refreshStatus();
-      setSuccessMsg('Koneksi Bluetooth printer telah diputuskan.');
+      setDeviceInfo(getActiveDeviceInfo());
+      setSuccessMsg('Printer diputuskan.');
     } catch (err: any) {
       setErrorMsg(err.message || 'Gagal memutuskan koneksi.');
     } finally {
@@ -114,167 +98,41 @@ export default function PrinterModal({
     setErrorMsg(null);
     setSuccessMsg(null);
     try {
-      if (printMode === 'thermal') {
-        const testData = generateTestPrintEscPos();
-        await sendRawEscPosData(testData);
-        setSuccessMsg('Struk tes print berhasil dikirim ke Bluetooth Thermal Printer!');
-      } else {
-        // System print test fallback
-        const printWindow = window.open('', '_blank', 'width=350,height=400');
-        if (printWindow) {
-          printWindow.document.write(`
-            <html>
-              <head>
-                <title>Tes Print Dua SiSi POS</title>
-                <link rel="stylesheet" href="/duasisi-pos/globals.css" />
-              </head>
-              <body class="print-receipt-body print-receipt-header">
-                <h2>DUA SISI LAUNDRY</h2>
-                <p>--- TES PRINTER SYSTEM ---</p>
-                <p>Status: OK</p>
-                <script>window.onload = function() { window.print(); window.close(); }</script>
-              </body>
-            </html>
-          `);
-          printWindow.document.close();
-        }
-      }
+      if (!deviceInfo.connected) await requestAndConnectBluetoothDevice();
+      await sendRawEscPosData(generateTestPrintEscPos());
+      setSuccessMsg('Tes print berhasil!');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Gagal melakukan tes cetak.');
+      setErrorMsg(err.message || 'Gagal tes print.');
     } finally {
       setLoading(false);
     }
   };
 
-  const executeSystemPrintReceipt = (transaction: Transaksi) => {
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) return;
-
-    const itemsHtml = transaction.items
-      .map(
-        (i) => `
-      <tr>
-        <td class="print-receipt-cell-left">
-          ${i.layanan}<br/>
-          <span class="print-receipt-cell-sub">Jumlah/Berat: ${i.qty}</span>
-          ${i.catatan ? `<br/><small class="print-receipt-cell-note">Catatan: ${i.catatan}</small>` : ''}
-        </td>
-        <td class="print-receipt-cell-right"></td>
-      </tr>
-    `
-      )
-      .join('');
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Tiket Mesin ${transaction.noNota}</title>
-          <link rel="stylesheet" href="/globals.css" />
-        </head>
-        <body class="print-receipt-body">
-          <div class="print-receipt-header">
-            <h2>DUA SISI LAUNDRY</h2>
-            <p><b>TIKET MESIN / PRODUKSI</b></p>
-            <p>Nota: ${transaction.noNota}</p>
-            <p>${transaction.tanggal}</p>
-            <p>Kecepatan: <b>${transaction.tingkatLayanan || 'Reguler'}</b></p>
-          </div>
-          <div class="print-receipt-line"></div>
-          <p>Pelanggan: <b>${transaction.namaPelanggan}</b> ${transaction.noHp ? `(${transaction.noHp})` : ''}</p>
-          <div class="print-receipt-line"></div>
-          <table class="print-receipt-table">${itemsHtml}</table>
-          <div class="print-receipt-line"></div>
-          <div class="print-receipt-line"></div>
-          <div class="print-receipt-footer">
-            <p><b>BUKAN BUKTI PEMBAYARAN</b></p>
-            <p>Gunakan sebagai penanda cucian.</p>
-          </div>
-          <script>
-            window.onload = function() { window.print(); window.close(); }
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
-
-  const executeSystemPrintTag = (transaction: Transaksi) => {
-    const printWindow = window.open('', '_blank', 'width=350,height=400');
-    if (!printWindow) return;
-
-    const tagsHtml = transaction.items
-      .map(
-        (item, idx) => `
-      <div class="print-tag-box">
-        <div class="print-tag-title">DUA SISI LAUNDRY TAG</div>
-        <div class="print-tag-subtitle">ORDER TAG #${idx + 1} OF ${transaction.items.length}</div>
-        <hr class="print-tag-dashed"/>
-        <div class="print-tag-nota">NOTA: ${transaction.noNota}</div>
-        <div class="print-tag-nama">NAMA: ${transaction.namaPelanggan.toUpperCase()}</div>
-        <div class="print-tag-item">ITEM: <b>${item.layanan}</b> (Qty: ${item.qty})</div>
-        <div class="print-tag-proses">PROSES: ${transaction.tingkatLayanan || 'Reguler'}</div>
-        ${transaction.catatan ? `<div class="print-tag-catatan">CATATAN: ${transaction.catatan}</div>` : ''}
-        <hr class="print-tag-dashed"/>
-        <div class="print-tag-tanggal">TGL MASUK: ${transaction.tanggal}</div>
-      </div>
-    `
-      )
-      .join('');
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Tag Cucian - ${transaction.noNota}</title>
-          <link rel="stylesheet" href="/duasisi-pos/globals.css" />
-        </head>
-        <body class="print-tag-body">
-          ${tagsHtml}
-          <script>window.onload = function() { window.print(); window.close(); }</script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
-
-  const handleExecutePrintAction = async () => {
+  const handlePrint = async () => {
     if (!tx) return;
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
-
     try {
-      if (printMode === 'thermal') {
-        if (!deviceInfo.connected) {
-          // Attempt auto reconnect or prompt connect
-          await handleConnectBluetooth();
-        }
-
-        if (printType === 'label') {
-          const tagData = generateTagEscPos(tx);
-          await sendRawEscPosData(tagData);
-          setSuccessMsg('Label Tag Cucian berhasil dicetak ke Bluetooth Printer!');
-        } else {
-          const receiptData = generateReceiptEscPos(tx);
-          await sendRawEscPosData(receiptData);
-          setSuccessMsg('Struk Transaksi berhasil dicetak ke Bluetooth Printer!');
-        }
-      } else {
-        // System Print Window
-        if (printType === 'label') {
-          executeSystemPrintTag(tx);
-        } else {
-          executeSystemPrintReceipt(tx);
-        }
-        setSuccessMsg('Jendela cetak system telah dibuka.');
+      if (!deviceInfo.connected) {
+        const info = await requestAndConnectBluetoothDevice();
+        setDeviceInfo(info);
       }
-
-      if (onPrintSuccess) onPrintSuccess();
-      setTimeout(() => {
-        onClose();
-      }, 1200);
+      const data = selectedPrintType === 'label'
+        ? generateTagEscPos(tx)
+        : generateReceiptEscPos(tx);
+      await sendRawEscPosData(data);
+      setSuccessMsg(selectedPrintType === 'label'
+        ? 'Label tag berhasil dicetak!'
+        : 'Struk berhasil dicetak!');
+      onPrintSuccess?.();
+      setTimeout(onClose, 1200);
     } catch (err: any) {
-      console.error(err);
-      setErrorMsg(err.message || 'Terjadi kesalahan saat mencetak.');
+      if (err.message?.includes('cancelled') || err.message?.includes('User cancelled')) {
+        setErrorMsg('Cetak dibatalkan.');
+      } else {
+        setErrorMsg(err.message || 'Gagal mencetak.');
+      }
     } finally {
       setLoading(false);
     }
@@ -284,109 +142,81 @@ export default function PrinterModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-sm overflow-hidden border border-slate-100">
+
         {/* Header */}
         <div className="bg-[#1E4648] text-white px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#B5C9C9]/200/20 rounded-lg text-[#B5C9C9]">
-              <Printer className="w-5 h-5" />
+            <div className="p-2 bg-white/10 rounded-lg">
+              <Printer className="w-5 h-5 text-[#B5C9C9]" />
             </div>
             <div>
-              <h3 className="font-bold text-sm">Pengecekan & Pemilihan Printer</h3>
-              <p className="text-[11px] text-[#B5C9C9]">Koneksi Bluetooth Thermal Printer</p>
+              <h3 className="font-bold text-sm">Cetak Thermal</h3>
+              <p className="text-[11px] text-[#B5C9C9]">Bluetooth Printer</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-slate-300 hover:text-white p-1 rounded-lg hover:bg-white/10 transition"
-          >
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 transition">
+            <X className="w-5 h-5 text-slate-300" />
           </button>
         </div>
 
-        {/* Content Body */}
-        <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+        <div className="p-5 space-y-4">
+
           {/* Notifications */}
           {errorMsg && (
             <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div className="flex-1">{errorMsg}</div>
+              <span>{errorMsg}</span>
             </div>
           )}
-
           {successMsg && (
             <div className="p-3 rounded-lg bg-[#B5C9C9]/20 border border-[#B5C9C9] text-[#1E4648] text-xs flex items-start gap-2">
               <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div className="flex-1">{successMsg}</div>
+              <span>{successMsg}</span>
             </div>
           )}
 
-          {/* Bluetooth Compatibility Warning */}
+          {/* BT not supported */}
           {!btSupported && (
-            <div className="p-3 bg-[#FF9500]/10 border border-[#FF9500]/30 rounded-lg text-[#FF9500] text-xs flex items-start gap-2">
-              <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#FF9500]" />
-              <div>
-                Browser ini belum mendukung Web Bluetooth API. Anda dapat menggunakan mode <b>Printer System (Standard)</b> atau gunakan peramban Chrome / Edge.
-              </div>
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-xs">
+              Browser tidak mendukung Web Bluetooth. Gunakan Chrome atau Edge.
             </div>
           )}
 
-          {/* Bluetooth Connection Status Card */}
-          <div className={`p-4 rounded-lg border transition ${
-            deviceInfo.connected
-              ? 'bg-[#B5C9C9]/20/50 border-[#B5C9C9]'
-              : 'bg-slate-50 border-slate-200'
-          }`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                Status Koneksi Printer
+          {/* Koneksi Printer */}
+          <div className={`p-4 rounded-lg border ${deviceInfo.connected ? 'bg-[#B5C9C9]/10 border-[#B5C9C9]' : 'bg-slate-50 border-slate-200'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status Printer</span>
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${deviceInfo.connected ? 'bg-[#B5C9C9]/30 text-[#1E4648]' : 'bg-slate-200 text-slate-500'}`}>
+                {deviceInfo.connected ? '● Terhubung' : '○ Belum Terhubung'}
               </span>
-              {deviceInfo.connected ? (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#B5C9C9]/30 text-[#1E4648]">
-                  <span className="w-2 h-2 rounded-full bg-[#B5C9C9]/200 animate-pulse" />
-                  Terhubung
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-200 text-slate-600">
-                  <span className="w-2 h-2 rounded-full bg-slate-400" />
-                  Belum Terhubung
-                </span>
-              )}
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-lg ${
-                deviceInfo.connected ? 'bg-[#B5C9C9]/200 text-white' : 'bg-slate-200 text-slate-600'
-              }`}>
-                {deviceInfo.connected ? <Bluetooth className="w-6 h-6" /> : <BluetoothOff className="w-6 h-6" />}
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`p-2.5 rounded-lg ${deviceInfo.connected ? 'bg-[#1E4648] text-white' : 'bg-slate-200 text-slate-500'}`}>
+                {deviceInfo.connected ? <Bluetooth className="w-5 h-5" /> : <BluetoothOff className="w-5 h-5" />}
               </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-slate-600 text-sm truncate">
-                  {deviceInfo.name}
-                </h4>
-                <p className="text-[11px] text-slate-500 truncate">
-                  {deviceInfo.connected ? 'Thermal Printer Siap Mencetak' : 'Silakan hubungkan printer bluetooth thermal'}
-                </p>
+              <div>
+                <div className="font-bold text-slate-700 text-sm">{deviceInfo.name}</div>
+                <div className="text-[11px] text-slate-500">
+                  {deviceInfo.connected ? 'Siap mencetak' : 'Hubungkan printer thermal'}
+                </div>
               </div>
             </div>
 
-            {/* Connection Actions */}
-            <div className="mt-3 flex items-center gap-2 pt-3 border-t border-slate-200/60">
+            <div className="flex gap-2">
               {btSupported && (
                 <button
-                  type="button"
-                  onClick={handleConnectBluetooth}
+                  onClick={handleConnect}
                   disabled={loading}
                   className="flex-1 flex items-center justify-center gap-1.5 bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-semibold px-3 py-2 rounded-lg transition disabled:opacity-50"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                  <span>{deviceInfo.connected ? 'Ganti / Hubungkan Ulang' : 'Pilih & Hubungkan Thermal Printer'}</span>
+                  <span>{deviceInfo.connected ? 'Ganti / Ulang' : 'Hubungkan Printer'}</span>
                 </button>
               )}
-
               {deviceInfo.connected && (
                 <button
-                  type="button"
                   onClick={handleDisconnect}
                   disabled={loading}
                   className="px-3 py-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs font-semibold transition"
@@ -397,105 +227,87 @@ export default function PrinterModal({
             </div>
           </div>
 
-          {/* Mode Cetak Selection */}
+          {/* Pilih Dokumen */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Pilih Mode Printer
-            </label>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">Pilih Dokumen</label>
             <div className="grid grid-cols-2 gap-2">
               <button
-                type="button"
-                onClick={() => handleModeChange('thermal')}
-                className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
-                  printMode === 'thermal'
-                    ? 'border-[#1E4648] bg-[#B5C9C9]/20/40 text-[#1E4648] ring-1 ring-[#1E4648]'
-                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                onClick={() => setSelectedPrintType('struk')}
+                className={`p-3 rounded-lg border text-left transition ${
+                  selectedPrintType === 'struk'
+                    ? 'border-[#1E4648] bg-[#B5C9C9]/10 ring-1 ring-[#1E4648]'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
                 }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <Zap className="w-4 h-4 text-[#1E4648]" />
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#B5C9C9]/30 text-[#1E4648]">Cepat</span>
-                </div>
-                <div>
-                  <div className="font-bold text-xs">Bluetooth Thermal</div>
-                  <div className="text-[10px] opacity-75">Direct ESC/POS 58mm/80mm</div>
-                </div>
+                <FileText className={`w-4 h-4 mb-1 ${selectedPrintType === 'struk' ? 'text-[#1E4648]' : 'text-slate-500'}`} />
+                <div className={`font-bold text-xs ${selectedPrintType === 'struk' ? 'text-[#1E4648]' : 'text-slate-600'}`}>Struk</div>
+                <div className="text-[10px] text-slate-400">Bukti pembayaran</div>
               </button>
 
               <button
-                type="button"
-                onClick={() => handleModeChange('system')}
-                className={`p-3 rounded-lg border text-left transition flex flex-col justify-between ${
-                  printMode === 'system'
-                    ? 'border-[#1E4648] bg-[#B5C9C9]/20/40 text-[#1E4648] ring-1 ring-[#1E4648]'
-                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                onClick={() => setSelectedPrintType('label')}
+                className={`p-3 rounded-lg border text-left transition ${
+                  selectedPrintType === 'label'
+                    ? 'border-[#FF9500] bg-[#FF9500]/5 ring-1 ring-[#FF9500]'
+                    : 'border-slate-200 bg-white hover:bg-slate-50'
                 }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <Printer className="w-4 h-4 text-slate-600" />
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">Standard</span>
-                </div>
-                <div>
-                  <div className="font-bold text-xs">Printer System</div>
-                  <div className="text-[10px] opacity-75">Pop-up Browser / PDF</div>
-                </div>
+                <Tag className={`w-4 h-4 mb-1 ${selectedPrintType === 'label' ? 'text-[#FF9500]' : 'text-slate-500'}`} />
+                <div className={`font-bold text-xs ${selectedPrintType === 'label' ? 'text-[#FF9500]' : 'text-slate-600'}`}>Label Tag</div>
+                <div className="text-[10px] text-slate-400">Penanda cucian</div>
               </button>
             </div>
           </div>
 
-          {/* Pending Print Job Preview if triggered with tx */}
+          {/* Preview transaksi */}
           {tx && (
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
-                  {printType === 'label' ? <Tag className="w-3.5 h-3.5 text-[#FF9500]" /> : <FileText className="w-3.5 h-3.5 text-[#1E4648]" />}
-                  {printType === 'label' ? 'Dokumen Tag / Label Cucian' : 'Dokumen Struk Transaksi'}
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-600 flex items-center gap-1">
+                  {selectedPrintType === 'label'
+                    ? <Tag className="w-3.5 h-3.5 text-[#FF9500]" />
+                    : <FileText className="w-3.5 h-3.5 text-[#1E4648]" />}
+                  {selectedPrintType === 'label' ? 'Label Tag Cucian' : 'Struk Transaksi'}
                 </span>
-                <span className="text-[11px] font-sans font-bold text-slate-700">{tx.noNota}</span>
+                <span className="font-mono font-bold text-slate-700">{tx.noNota}</span>
               </div>
-              <div className="text-xs text-slate-600">
-                Pelanggan: <span className="font-semibold text-slate-600">{tx.namaPelanggan}</span> ({tx.items?.length || 0} items)
-              </div>
-              <div className="text-xs text-slate-600">
-                Total Transaksi: <span className="font-semibold text-[#1E4648]">Rp {tx.total?.toLocaleString('id-ID')}</span>
-              </div>
+              <div className="text-slate-500">Pelanggan: <span className="font-semibold text-slate-700">{tx.namaPelanggan}</span></div>
+              <div className="text-slate-500">Kasir: <span className="font-semibold text-slate-700">{tx.petugas || '-'}</span></div>
+              <div className="text-slate-500">Total: <span className="font-bold text-[#1E4648]">Rp {(tx.total || 0).toLocaleString('id-ID')}</span></div>
             </div>
           )}
         </div>
 
-        {/* Modal Footer Actions */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
+        {/* Footer */}
+        <div className="px-5 pb-5 flex items-center justify-between gap-2">
           <button
-            type="button"
             onClick={handleTestPrint}
-            disabled={loading}
-            className="px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 bg-slate-100 rounded-lg transition"
+            disabled={loading || !deviceInfo.connected}
+            className="px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition disabled:opacity-40"
           >
             Tes Print
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex gap-2">
             <button
-              type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition"
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
             >
               Batal
             </button>
-
             {tx && (
               <button
-                type="button"
-                onClick={handleExecutePrintAction}
-                disabled={loading || (printMode === 'thermal' && !deviceInfo.connected && !btSupported)}
-                className="flex items-center gap-1.5 bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-bold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition disabled:opacity-50"
+                onClick={handlePrint}
+                disabled={loading || !btSupported}
+                className="flex items-center gap-1.5 bg-[#1E4648] hover:bg-[#163536] disabled:opacity-50 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm transition"
               >
                 <Printer className="w-4 h-4" />
-                <span>{printType === 'label' ? 'Cetak Label Tag' : 'Cetak Struk Now'}</span>
+                <span>{loading ? 'Mencetak…' : selectedPrintType === 'label' ? 'Cetak Label' : 'Cetak Struk'}</span>
               </button>
             )}
           </div>
         </div>
+
       </div>
     </div>
   );
