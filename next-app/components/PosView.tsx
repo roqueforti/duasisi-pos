@@ -296,7 +296,7 @@ export default function PosView() {
       if (code === 'HEMAT10' || code === 'DUASISI') {
         const pot = Math.round(subtotalCart * 0.1);
         setDiskonApplied({ kode: code, nilai: pot });
-        setVoucherMsg({ type: 'success', text: `Voucher ${code} terpasang (Diskon 10% - Rp ${pot.toLocaleString('id-ID')})` });
+        setVoucherMsg({ type: 'success', text: `Voucher ${code} terpasang (Diskon 10% - Rp ${(pot || 0).toLocaleString('id-ID')})` });
       } else {
         setVoucherMsg({ type: 'error', text: 'Kode voucher tidak valid' });
       }
