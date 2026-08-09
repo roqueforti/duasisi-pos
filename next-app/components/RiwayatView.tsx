@@ -144,7 +144,7 @@ export default function RiwayatView() {
     try {
       const result = await runBackend<{ success: boolean; message?: string }>('pelunasanDP', txToLunas.noNota, nominal, pelunasanMetode);
       if (!result?.success) throw new Error(result?.message || 'Pelunasan ditolak backend.');
-      alert(`Pelunasan Rp ${nominal.toLocaleString('id-ID')} untuk nota ${txToLunas.noNota} berhasil!`);
+      alert(`Pelunasan Rp ${(nominal || 0).toLocaleString('id-ID')} untuk nota ${txToLunas.noNota} berhasil!`);
       setShowPelunasanModal(false);
       loadRiwayat();
     } catch (error) {
@@ -164,7 +164,7 @@ export default function RiwayatView() {
     const msg = `*NOTIFIKASI LAUNDRY SIAP DIAMBIL*\n\n` +
       `Halo Sdr/i *${tx.namaPelanggan.toUpperCase()}*,\n` +
       `Cucian Anda dengan No Nota *${tx.noNota}* sudah *SIAP DIAMBIL* di outlet Dua SiSi Laundry.\n\n` +
-      (tx.sisaTagihan ? `Sisa tagihan yang harus dilunasi: *Rp ${tx.sisaTagihan.toLocaleString('id-ID')}*\n\n` : '') +
+      (tx.sisaTagihan ? `Sisa tagihan yang harus dilunasi: *Rp ${(tx?.sisaTagihan || 0).toLocaleString('id-ID')}*\n\n` : '') +
       `Silakan datang ke outlet dengan membawa nota atau bukti pesan ini. Terima kasih!`;
 
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -187,7 +187,7 @@ export default function RiwayatView() {
       `Tanggal: ${tx.tanggal}\n` +
       `Status: *${tx.status}*\n\n` +
       `*Detail Layanan:*\n${itemsStr}\n\n` +
-      `*TOTAL: Rp ${tx.total.toLocaleString('id-ID')}*\n\n` +
+      `*TOTAL: Rp ${(tx?.total || 0).toLocaleString('id-ID')}*\n\n` +
       `*Lihat E-Nota Resmi (Anti-Pemalsuan & Cetak PDF):*\n${notaUrl}\n\n` +
       `Terima kasih telah mencuci di Dua SiSi Laundry!`;
 
@@ -314,10 +314,10 @@ export default function RiwayatView() {
                     <td className="py-3 px-4 text-slate-500">{tx.tanggal}</td>
                     <td className="py-3 px-4 font-semibold text-slate-600">{tx.petugas || '-'}</td>
                     <td className="py-3 px-4">
-                      <div className="font-bold text-[#1E4648]">Rp {tx.total.toLocaleString('id-ID')}</div>
+                      <div className="font-bold text-[#1E4648]">Rp {(tx?.total || 0).toLocaleString('id-ID')}</div>
                       {tx.sisaTagihan && tx.sisaTagihan > 0 ? (
                         <div className="text-[10px] text-rose-600 font-bold">
-                          Sisa: Rp {tx.sisaTagihan.toLocaleString('id-ID')}
+                          Sisa: Rp {(tx?.sisaTagihan || 0).toLocaleString('id-ID')}
                         </div>
                       ) : null}
                     </td>
@@ -403,7 +403,7 @@ export default function RiwayatView() {
               <button onClick={() => setShowVoidModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
             <p className="text-xs text-slate-600 mb-3">
-              Ajukan pembatalan (void) untuk Nota <span className="font-bold">{txToVoid.noNota}</span> (Total Rp {txToVoid.total.toLocaleString('id-ID')}). Permohonan membutuhkan persetujuan Manager/Owner.
+              Ajukan pembatalan (void) untuk Nota <span className="font-bold">{txToVoid.noNota}</span> (Total Rp {(txToVoid?.total || 0).toLocaleString('id-ID')}). Permohonan membutuhkan persetujuan Manager/Owner.
             </p>
             <div className="space-y-3 mb-4 text-xs">
               <div>

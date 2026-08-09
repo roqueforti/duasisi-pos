@@ -1285,7 +1285,7 @@ export default function PosView() {
                       {cartArray.map((i, idx) => (
                         <div key={idx} className="flex justify-between text-slate-700 text-[11px]">
                           <span>{i.layanan} ×{i.qty}</span>
-                          <span className="font-bold">Rp {(i.qty * i.hargaSatuan).toLocaleString('id-ID')}</span>
+                          <span className="font-bold">Rp {(i.qty * (i.hargaSatuan || 0)).toLocaleString('id-ID')}</span>
                         </div>
                       ))}
                     </div>
@@ -1302,7 +1302,7 @@ export default function PosView() {
                     {/* Total Tagihan Banner */}
                     <div className="bg-slate-900 text-white rounded-lg p-4 text-center shadow-inner">
                       <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Tagihan:</span>
-                      <span className="text-2xl sm:text-3xl font-bold text-[#B5C9C9]">Rp {grandTotal.toLocaleString('id-ID')}</span>
+                      <span className="text-2xl sm:text-3xl font-bold text-[#B5C9C9]">Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>
                     </div>
 
                     {/* Metode Pembayaran Selection */}
@@ -1346,8 +1346,8 @@ export default function PosView() {
                         </div>
 
                         <div className="flex gap-1.5 overflow-x-auto">
-                          <button type="button" onClick={() => setUangBayarInput(grandTotal.toString())} className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold rounded-lg text-[10px] shadow-2xs">
-                            Uang Pas (Rp {grandTotal.toLocaleString('id-ID')})
+                          <button type="button" onClick={() => setUangBayarInput((grandTotal || 0).toString())} className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold rounded-lg text-[10px] shadow-2xs">
+                            Uang Pas (Rp {(grandTotal || 0).toLocaleString('id-ID')})
                           </button>
                           <button type="button" onClick={() => setUangBayarInput('50000')} className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold rounded-lg text-[10px] shadow-2xs">
                             Rp 50.000
@@ -1365,17 +1365,17 @@ export default function PosView() {
                               <span>Uang Kurang:</span>
                             </span>
                             <span className="text-sm font-bold text-rose-600">
-                              -Rp {(grandTotal - Number(uangBayarInput)).toLocaleString('id-ID')}
+                              -Rp {((grandTotal || 0) - Number(uangBayarInput || 0)).toLocaleString('id-ID')}
                             </span>
                           </div>
                         )}
 
                         {/* State 2: Kembalian Normal (Emerald Box) */}
-                        {Number(uangBayarInput) >= grandTotal && (
+                        {Number(uangBayarInput) >= (grandTotal || 0) && (
                           <div className="flex justify-between items-center text-xs font-bold text-[#1E4648] bg-[#B5C9C9]/20/90 border border-[#B5C9C9] p-2.5 rounded-lg">
                             <span>Kembalian:</span>
                             <span className="text-base font-bold text-[#1E4648]">
-                              Rp {(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}
+                              Rp {(Number(uangBayarInput || 0) - (grandTotal || 0)).toLocaleString('id-ID')}
                             </span>
                           </div>
                         )}
@@ -1490,7 +1490,7 @@ export default function PosView() {
               <button
                 onClick={() => {
                   const phone = completedOrderData.noHp.replace(/^0/, '62').replace(/\D/g, '');
-                  const waUrl = `https://wa.me/${phone || ''}?text=${encodeURIComponent(`Halo Kak ${completedOrderData.pelanggan}, ini nota resmi transaksi laundry Dua SiSi POS #${completedOrderData.trxId} sebesar Rp ${completedOrderData.total.toLocaleString('id-ID')}. Terima kasih!`)}`;
+                  const waUrl = `https://wa.me/${phone || ''}?text=${encodeURIComponent(`Halo Kak ${completedOrderData.pelanggan}, ini nota resmi transaksi laundry Dua SiSi POS #${completedOrderData.trxId} sebesar Rp ${(Number(completedOrderData?.total) || 0).toLocaleString('id-ID')}. Terima kasih!`)}`;
                   window.open(waUrl, '_blank');
                 }}
                 className="w-full bg-[#B5C9C9]/20 hover:bg-[#B5C9C9]/30 text-[#1E4648] font-bold py-2.5 rounded-lg text-xs border border-[#B5C9C9] flex items-center justify-center gap-2"
@@ -1644,8 +1644,8 @@ export default function PosView() {
           <div className="bg-white rounded-lg p-6 w-full max-w-sm border border-slate-100 shadow-lg">
             <h3 className="text-sm font-bold text-slate-600 mb-3">Tutup Shift & Rekap Kas Laci</h3>
             <div className="space-y-2 text-xs text-slate-600 mb-4 bg-slate-50 p-3 rounded-lg">
-              <div className="flex justify-between"><span>Kas Awal:</span><span className="font-bold text-slate-600">Rp {shiftAktif.kasAwal.toLocaleString('id-ID')}</span></div>
-              <div className="flex justify-between"><span>Waktu Buka:</span><span className="font-bold text-slate-600">{new Date(shiftAktif.waktuBuka).toLocaleTimeString('id-ID')}</span></div>
+              <div className="flex justify-between"><span>Kas Awal:</span><span className="font-bold text-slate-600">Rp {(shiftAktif?.kasAwal || 0).toLocaleString('id-ID')}</span></div>
+              <div className="flex justify-between"><span>Waktu Buka:</span><span className="font-bold text-slate-600">{new Date(shiftAktif?.waktuBuka || Date.now()).toLocaleTimeString('id-ID')}</span></div>
             </div>
             <div className="space-y-3 mb-4">
               <div>

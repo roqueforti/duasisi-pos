@@ -316,7 +316,7 @@ export default function PelangganView() {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right font-bold text-[#1E4648]">
-                      Rp {item.totalSpend.toLocaleString('id-ID')}
+                      Rp {(item?.totalSpend || 0).toLocaleString('id-ID')}
                     </td>
                     <td className="py-3.5 px-4 text-slate-500 text-[11px]">
                       {item.terakhirOrder || '-'}
@@ -428,7 +428,7 @@ export default function PelangganView() {
                 </div>
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Total Belanja:</span>
-                  <span className="font-bold text-[#1E4648]">Rp {selectedCust.totalSpend.toLocaleString('id-ID')}</span>
+                  <span className="font-bold text-[#1E4648]">Rp {(selectedCust?.totalSpend || 0).toLocaleString('id-ID')}</span>
                 </div>
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Terakhir Order:</span>
@@ -456,7 +456,7 @@ export default function PelangganView() {
                       <div key={tx.noNota} className="p-3 bg-white border border-slate-200 rounded-lg space-y-1 text-[11px]">
                         <div className="flex justify-between items-center font-bold text-slate-700">
                           <span className="font-mono text-[#1E4648]">{tx.noNota}</span>
-                          <span>Rp {tx.total.toLocaleString('id-ID')}</span>
+                          <span>Rp {(tx?.total || 0).toLocaleString('id-ID')}</span>
                         </div>
                         <div className="flex justify-between items-center text-slate-500 text-[10px]">
                           <span>{tx.tanggal}</span>

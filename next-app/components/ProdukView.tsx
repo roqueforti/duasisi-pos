@@ -244,7 +244,7 @@ export default function ProdukView() {
                         </span>
                       </td>
                       <td className="py-3 px-4 font-bold text-[#1E4648]">
-                        Rp {item.harga.toLocaleString('id-ID')} / {item.satuan}
+                        Rp {(item?.harga || 0).toLocaleString('id-ID')} / {item.satuan}
                       </td>
                       <td className="py-3 px-4">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.aktif === 'Y' ? 'bg-[#B5C9C9]/20 text-[#1E4648]' : 'bg-slate-100 text-slate-500'}`}>
@@ -284,7 +284,7 @@ export default function ProdukView() {
                   <tr key={prm.idPromo} className="hover:bg-slate-50 transition">
                     <td className="py-3 px-4 font-bold font-sans text-[#1E4648] text-sm">{prm.kodeVoucher}</td>
                     <td className="py-3 px-4 text-slate-600">{prm.jenisDiskon}</td>
-                    <td className="py-3 px-4 font-bold text-[#1E4648]">Rp {prm.nilaiDiskon.toLocaleString('id-ID')}</td>
+                    <td className="py-3 px-4 font-bold text-[#1E4648]">Rp {(prm?.nilaiDiskon || 0).toLocaleString('id-ID')}</td>
                     <td className="py-3 px-4 text-slate-600">Rp {(prm.minTransaksi || 0).toLocaleString('id-ID')}</td>
                     <td className="py-3 px-4">
                       <span className="bg-[#B5C9C9]/20 text-[#1E4648] border border-[#B5C9C9] px-2 py-0.5 rounded text-[10px] font-bold">

@@ -416,7 +416,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             <div className="md:col-span-2 space-y-3">
               <div className="text-xs font-bold text-slate-700 flex justify-between items-center">
                 <span>Grafik Tren Omzet Harian (Rp)</span>
-                <span className="text-[#1E4648] font-bold">Total: Rp {omzetHariIni.toLocaleString('id-ID')}</span>
+                <span className="text-[#1E4648] font-bold">Total: Rp {(omzetHariIni || 0).toLocaleString('id-ID')}</span>
               </div>
               
               <div className="bg-slate-900 text-white rounded-lg p-4 space-y-3 shadow-inner">
@@ -454,7 +454,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                         <div className="font-bold text-slate-600">{l.layanan}</div>
                         <div className="text-[10px] text-slate-400">{l.qty} Transaksi</div>
                       </div>
-                      <span className="font-bold text-[#1E4648]">Rp {l.omzet.toLocaleString('id-ID')}</span>
+                      <span className="font-bold text-[#1E4648]">Rp {(l?.omzet || 0).toLocaleString('id-ID')}</span>
                     </div>
                   ))
                 )}
@@ -497,7 +497,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                       <div className="font-bold text-slate-700">{c.nama}</div>
                       <div className="text-[10px] text-slate-400">{c.noHp} • {c.totalOrder} Order</div>
                     </div>
-                    <span className="font-bold text-[#1E4648]">Rp {c.totalSpend.toLocaleString('id-ID')}</span>
+                    <span className="font-bold text-[#1E4648]">Rp {(c?.totalSpend || 0).toLocaleString('id-ID')}</span>
                   </div>
                 ))}
               </div>
@@ -623,7 +623,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                       <td className="py-2.5 px-3 font-bold text-slate-700">{p.nama}</td>
                       <td className="py-2.5 px-3 text-slate-500">{p.jabatan || 'Kasir/Operator'}</td>
                       <td className="py-2.5 px-3 text-center">{p.totalTransaksi} Order</td>
-                      <td className="py-2.5 px-3 text-right font-bold text-[#1E4648]">Rp {p.totalOmzet.toLocaleString('id-ID')}</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-[#1E4648]">Rp {(p?.totalOmzet || 0).toLocaleString('id-ID')}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -244,7 +244,7 @@ export default function RekapView() {
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs">
               <div className="text-[11px] font-medium text-slate-500 mb-1">Total Omzet Penjualan</div>
               <div className="text-lg font-bold text-[#1E4648]">
-                Rp {ringkasan.totalOmzet.toLocaleString('id-ID')}
+                Rp {(ringkasan?.totalOmzet || 0).toLocaleString('id-ID')}
               </div>
             </div>
 
@@ -258,7 +258,7 @@ export default function RekapView() {
             <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs">
               <div className="text-[11px] font-medium text-slate-500 mb-1">Rata-rata Nilai Nota</div>
               <div className="text-lg font-bold text-slate-600">
-                Rp {ringkasan.rataRata.toLocaleString('id-ID')}
+                Rp {(ringkasan?.rataRata || 0).toLocaleString('id-ID')}
               </div>
             </div>
 
@@ -296,7 +296,7 @@ export default function RekapView() {
                           }} 
                         />
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white drop-shadow-xs">
-                          Rp {item.omzet.toLocaleString('id-ID')}
+                          Rp {(item?.omzet || 0).toLocaleString('id-ID')}
                         </span>
                       </div>
                       <div className="w-16 text-right font-medium text-slate-500 shrink-0">{item.jumlahTransaksi} nota</div>
@@ -340,7 +340,7 @@ export default function RekapView() {
                         <tr key={idx} className="hover:bg-slate-50 transition">
                           <td className="py-2.5 px-4 font-semibold text-slate-600">{row.tanggal}</td>
                           <td className="py-2.5 px-4 text-slate-600">{row.jumlahTransaksi} transaksi</td>
-                          <td className="py-2.5 px-4 text-right font-bold text-[#1E4648]">Rp {row.omzet.toLocaleString('id-ID')}</td>
+                          <td className="py-2.5 px-4 text-right font-bold text-[#1E4648]">Rp {(row?.omzet || 0).toLocaleString('id-ID')}</td>
                         </tr>
                       ))
                     )}
@@ -381,7 +381,7 @@ export default function RekapView() {
                         <tr key={idx} className="hover:bg-slate-50 transition">
                           <td className="py-2.5 px-4 font-semibold text-slate-600">{row.layanan}</td>
                           <td className="py-2.5 px-4 text-center font-bold text-slate-700">{row.qty}</td>
-                          <td className="py-2.5 px-4 text-right font-bold text-[#1E4648]">Rp {row.omzet.toLocaleString('id-ID')}</td>
+                          <td className="py-2.5 px-4 text-right font-bold text-[#1E4648]">Rp {(row?.omzet || 0).toLocaleString('id-ID')}</td>
                         </tr>
                       ))
                     )}
@@ -425,7 +425,7 @@ export default function RekapView() {
                       <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded">Pengajuan Void</span>
                     </div>
                     <p className="text-slate-600">Pelanggan: <span className="font-semibold text-slate-600">{tx.namaPelanggan}</span> ({tx.noHp || '-'})</p>
-                    <p className="text-slate-600">Total Nominal: <span className="font-bold text-rose-700">Rp {tx.total.toLocaleString('id-ID')}</span></p>
+                    <p className="text-slate-600">Total Nominal: <span className="font-bold text-rose-700">Rp {(tx?.total || 0).toLocaleString('id-ID')}</span></p>
                     <p className="text-slate-500 italic">Alasan Void: "{tx.alasanVoid || 'Pembatalan transaksi kasir'}"</p>
                   </div>
 
