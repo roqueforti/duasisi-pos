@@ -1551,22 +1551,22 @@ export default function PosView() {
                     .join('\n');
                   const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?nota=${noNota}`;
                   const msg = [
-                    `Halo ${nama}! 👋 Struk dari Dua SiSi Laundry`,
+                    `Halo ${nama}! Struk dari Dua SiSi Laundry`,
                     ``,
-                    `🧾 No Nota     : ${noNota}`,
-                    `📅 Tanggal     : ${tanggal}`,
-                    `⚡ Kecepatan   : ${completedOrderData.tipeLayanan === 'FullService' ? 'Full Service' : 'Self Service'} • Reguler`,
+                    `No Nota     : ${noNota}`,
+                    `Tanggal     : ${tanggal}`,
+                    `Kecepatan   : ${completedOrderData.tipeLayanan === 'FullService' ? 'Full Service' : 'Self Service'} - Reguler`,
                     ``,
-                    `📋 Detail Layanan:`,
+                    `Detail Layanan:`,
                     items,
                     ``,
-                    `💰 TOTAL       : Rp ${total}`,
-                    `💳 Metode Bayar: ${completedOrderData.metodeBayar || 'Tunai'}`,
+                    `TOTAL       : Rp ${total}`,
+                    `Metode Bayar: ${completedOrderData.metodeBayar || 'Tunai'}`,
                     ``,
-                    `📄 Lihat E-Nota Resmi:`,
+                    `Lihat E-Nota Resmi:`,
                     eNotaUrl,
                     ``,
-                    `Terima kasih telah mencuci di Dua SiSi Laundry! 🙏`,
+                    `Terima kasih telah mencuci di Dua SiSi Laundry!`,
                   ].join('\n');
                   window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                 }}

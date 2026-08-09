@@ -184,26 +184,26 @@ export default function RiwayatView() {
     ).join('\n');
 
     const msg = [
-      `Halo ${tx.namaPelanggan}! 👋 Struk dari Dua SiSi Laundry`,
+      `Halo ${tx.namaPelanggan}! Struk dari Dua SiSi Laundry`,
       ``,
-      `🧾 No Nota     : ${tx.noNota}`,
-      `📅 Tanggal     : ${tx.tanggal}`,
-      `⚡ Tipe        : ${tx.tipe === 'FullService' ? 'Full Service' : 'Self Service'}`,
-      `📦 Status      : ${tx.status}`,
+      `No Nota     : ${tx.noNota}`,
+      `Tanggal     : ${tx.tanggal}`,
+      `Tipe        : ${tx.tipe === 'FullService' ? 'Full Service' : 'Self Service'}`,
+      `Status      : ${tx.status}`,
       ``,
-      `📋 Detail Layanan:`,
+      `Detail Layanan:`,
       itemsStr,
       ``,
-      `💰 TOTAL       : Rp ${(tx?.total || 0).toLocaleString('id-ID')}`,
-      `💳 Metode Bayar: ${tx.metodeBayar || 'Tunai'}`,
+      `TOTAL       : Rp ${(tx?.total || 0).toLocaleString('id-ID')}`,
+      `Metode Bayar: ${tx.metodeBayar || 'Tunai'}`,
       ...(tx.sisaTagihan && tx.sisaTagihan > 0
-        ? [`⚠️  Sisa Tagihan: Rp ${(tx.sisaTagihan || 0).toLocaleString('id-ID')}`]
+        ? [`Sisa Tagihan: Rp ${(tx.sisaTagihan || 0).toLocaleString('id-ID')}`]
         : []),
       ``,
-      `📄 Lihat E-Nota Resmi:`,
+      `Lihat E-Nota Resmi:`,
       eNotaUrl,
       ``,
-      `Terima kasih telah mencuci di Dua SiSi Laundry! 🙏`,
+      `Terima kasih telah mencuci di Dua SiSi Laundry!`,
     ].join('\n');
 
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
