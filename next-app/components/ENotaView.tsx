@@ -21,23 +21,16 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
     setLoading(true);
     setErrorMsg('');
     try {
-      // Kirim token ke backend jika ada (untuk URL obfuscation)
-      const res = await runBackend<{ success?: boolean; error?: boolean; transaksi?: Transaksi; message?: string }>(
-        'getTransaksiByNota', noNota, token || ''
+      // Mode token: kirim token saja (noNota kosong), backend decode dari token
+      // Mode fallback: noNota ada tapi tidak ada token (link lama)
+      const res = await runBackend<{ success?: boolean; transaksi?: Transaksi; message?: string }>(
+        'getTransaksiByNota',
+        noNota || '',   // bisa kosong kalau URL pakai ?t= saja
+        token || ''
       );
 
-      if (res && res.success && res.transaksi) {
+      if (res?.success && res.transaksi) {
         setTx(res.transaksi);
-      } else if (res?.message?.includes('Token')) {
-        // Token invalid — coba tanpa token (fallback untuk link lama tanpa token)
-        const res2 = await runBackend<{ success?: boolean; transaksi?: Transaksi; message?: string }>(
-          'getTransaksiByNota', noNota, ''
-        );
-        if (res2?.success && res2.transaksi) {
-          setTx(res2.transaksi);
-        } else {
-          setErrorMsg('Link e-nota tidak valid atau sudah kedaluwarsa.');
-        }
       } else {
         setErrorMsg(res?.message || 'Nota transaksi tidak ditemukan.');
       }

@@ -1323,45 +1323,57 @@ function getTransaksiList(statusFilter) {
 }
 
 // ── NOTA TOKEN (URL Obfuscation) ─────────────────────────────
-// Token = base64( HMAC-SHA256(noNota + "|" + date, SESSION_SECRET) )
-// Disimpan di Script Properties agar persisten lintas request.
+// Token format: base64url(noNota) + "." + hmac(noNota, secret) [8 bytes hex]
+// Token aktif permanent — tidak expire.
+// URL e-nota: ?t=<token> saja, tanpa noNota terlihat.
+
 function generateNotaToken_(noNota) {
   var secret = getSessionSecret_();
-  var raw = noNota + "|" + Utilities.formatDate(new Date(), TIMEZONE_WIB, "yyyyMMdd");
-  var sig = Utilities.computeHmacSha256Signature(raw, secret);
-  // ambil 8 byte pertama → 16 hex char — cukup untuk obscurity tanpa overhead
+  var b64 = Utilities.base64EncodeWebSafe(noNota).replace(/=+$/, '');
+  var sig = Utilities.computeHmacSha256Signature(noNota, secret);
   var hex = sig.slice(0, 8).map(function(b) {
     return ('0' + (b & 0xFF).toString(16)).slice(-2);
   }).join('');
-  return hex;
+  return b64 + '.' + hex;
 }
 
-function verifyNotaToken_(noNota, token) {
-  if (!token) return false;
-  // Cek hari ini dan kemarin (toleransi pergantian hari)
-  var secret = getSessionSecret_();
-  var today = Utilities.formatDate(new Date(), TIMEZONE_WIB, "yyyyMMdd");
-  var yesterday = Utilities.formatDate(new Date(Date.now() - 86400000), TIMEZONE_WIB, "yyyyMMdd");
-  for (var i = 0; i < 2; i++) {
-    var date = i === 0 ? today : yesterday;
-    var raw = noNota + "|" + date;
-    var sig = Utilities.computeHmacSha256Signature(raw, secret);
-    var hex = sig.slice(0, 8).map(function(b) {
+function decodeNotaToken_(token) {
+  if (!token || token.indexOf('.') === -1) return null;
+  var parts = token.split('.');
+  if (parts.length !== 2) return null;
+  try {
+    var noNota = Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[0])).getDataAsString();
+    var secret = getSessionSecret_();
+    var sig = Utilities.computeHmacSha256Signature(noNota, secret);
+    var expectedHex = sig.slice(0, 8).map(function(b) {
       return ('0' + (b & 0xFF).toString(16)).slice(-2);
     }).join('');
-    if (hex === token) return true;
+    if (parts[1] !== expectedHex) return null;
+    return noNota;
+  } catch (e) {
+    return null;
   }
-  return false;
 }
 
 function getTransaksiByNota(noNota, token) {
-  // Token opsional — kalau ada, verify. Kalau tidak ada dan bukan PUBLIC, tolak.
-  if (token && !verifyNotaToken_(noNota, token)) {
-    return { success: false, message: "Token e-nota tidak valid atau sudah kedaluwarsa." };
+  var resolvedNota = noNota;
+
+  // Kalau ada token, decode untuk dapat noNota (URL mode: ?t=token)
+  if (token && !noNota) {
+    resolvedNota = decodeNotaToken_(token);
+    if (!resolvedNota) return { success: false, message: 'Link e-nota tidak valid.' };
   }
+  // Kalau ada keduanya, verify token cocok dengan noNota
+  if (token && noNota) {
+    var decoded = decodeNotaToken_(token);
+    if (!decoded || decoded !== noNota) return { success: false, message: 'Token e-nota tidak valid.' };
+  }
+
+  if (!resolvedNota) return { success: false, message: 'Parameter nota tidak ditemukan.' };
+
   const all = getTransaksiList();
-  const found = all.find(t => t.noNota === noNota);
-  if (!found) return { success: false, message: "Nota " + noNota + " tidak ditemukan di sistem." };
+  const found = all.find(function(t) { return t.noNota === resolvedNota; });
+  if (!found) return { success: false, message: 'Nota ' + resolvedNota + ' tidak ditemukan di sistem.' };
   return { success: true, transaksi: found };
 }
 

@@ -8,3 +8,19 @@ export function maskPhone(hp: string | undefined | null): string {
   if (digits.length <= 4) return digits;
   return '*'.repeat(digits.length - 4) + digits.slice(-4);
 }
+
+/**
+ * Encode noNota ke URL token — base64url(noNota) saja (tanpa HMAC).
+ * HMAC hanya di-verify di backend GAS. Frontend cukup encode base64.
+ * Format sama: base64url(noNota) + "." + "0000000000000000" (placeholder)
+ * Backend akan verify HMAC-nya sendiri.
+ *
+ * Untuk link dari Riwayat (tidak punya token asli dari GAS),
+ * gunakan format ?nota=noNota saja sebagai fallback.
+ */
+export function eNotaUrl(noNota: string, token?: string): string {
+  const base = 'https://duasisilaundry-pos.vercel.app/';
+  if (token) return `${base}?t=${encodeURIComponent(token)}`;
+  // fallback — noNota visible, tapi masih bisa dibuka
+  return `${base}?nota=${encodeURIComponent(noNota)}`;
+}

@@ -31,8 +31,8 @@ export default function HomePage() {
       const params = new URLSearchParams(window.location.search);
       const nota = params.get('nota');
       const t = params.get('t');
-      if (nota) {
-        setPublicNotaParam(nota);
+      if (nota || t) {
+        setPublicNotaParam(nota || '');
         setPublicNotaToken(t);
       }
     }

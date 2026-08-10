@@ -1552,7 +1552,7 @@ export default function PosView() {
                   const items = (completedOrderData.items || [])
                     .map((i: any) => `• ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
                     .join('\n');
-                  const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?nota=${noNota}${completedOrderData.token ? '&t=' + completedOrderData.token : ''}`;
+                  const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?t=${completedOrderData.token || noNota}`;
                   const msg = [
                     `Halo ${nama}! Struk dari Dua SiSi Laundry`,
                     ``,
