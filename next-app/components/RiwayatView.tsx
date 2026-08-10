@@ -174,18 +174,14 @@ export default function RiwayatView() {
   const handleWhatsAppStruk = (tx: Transaksi) => {
     let rawPhone = (tx.noHp || '').replace(/[^0-9]/g, '');
     if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
-    if (!rawPhone) {
-      alert('Nomor HP / WhatsApp pelanggan tidak tersedia.');
-      return;
-    }
 
     const eNotaUrl = buildENotaUrl(tx.noNota);
     const itemsStr = (tx.items || []).map((i: any) =>
-      `• ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`
+      `- ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`
     ).join('\n');
 
     const msg = [
-      `Halo ${tx.namaPelanggan}! Struk dari Dua SiSi Laundry`,
+      `Halo ${tx.namaPelanggan || 'Pelanggan'}! Struk dari Dua SiSi Laundry`,
       ``,
       `No Nota     : ${tx.noNota}`,
       `Tanggal     : ${tx.tanggal}`,
@@ -207,7 +203,10 @@ export default function RiwayatView() {
       `Terima kasih telah mencuci di Dua SiSi Laundry!`,
     ].join('\n');
 
-    window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+    const waUrl = rawPhone
+      ? `https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, '_blank');
   };
 
   const handlePrintReceipt = (tx: Transaksi) => {
