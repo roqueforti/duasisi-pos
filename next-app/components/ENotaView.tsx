@@ -42,10 +42,10 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
   };
 
   useEffect(() => {
-    if (noNota) {
+    if (noNota || token) {
       fetchNota();
     }
-  }, [noNota]);
+  }, [noNota, token]);
 
   const handleDownloadPdf = () => {
     const el = document.getElementById('enota-print-area');
@@ -84,6 +84,7 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
   };
 
   // Generate deterministic security hash for verification
+  const getSecurityHash = (notaStr: string) => {
     let hash = 0;
     for (let i = 0; i < notaStr.length; i++) {
       hash = (hash << 5) - hash + notaStr.charCodeAt(i);
