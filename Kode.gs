@@ -1295,7 +1295,7 @@ function getTransaksiList(statusFilter) {
       noNota: r[0],
       tanggal: fmtWib(r[1]),
       namaPelanggan: r[2],
-      noHp: r[3],
+      noHp: String(r[3] || ''),
       total: Number(r[4]) || 0,
       status: r[5],
       estimasi: r[6],
@@ -1434,7 +1434,7 @@ function getLaporanRange(startDateStr, endDateStr) {
 
     const items = dataDetail.filter(d => d[0] === r[0]).map(d => ({ layanan: d[1], qty: d[2], subtotal: d[4] }));
     transaksiList.push({
-      noNota: r[0], tanggal: fmtWib(r[1]), namaPelanggan: r[2], noHp: r[3],
+      noNota: r[0], tanggal: fmtWib(r[1]), namaPelanggan: r[2], noHp: String(r[3] || ''),
       total: total, status: r[5], petugas: r[7] || "Kasir", tipe: r[8] || "SelfService",
       statusVoid: r[9] || "None", alasanVoid: r[10] || "", metodeBayar: r[13] || "",
       statusPembayaran: r[14] || "Lunas", nominalDP: Number(r[15]) || 0,

@@ -1061,7 +1061,7 @@ export default function PosView() {
 
               const filtered = customerList.filter((c) => {
                 if (!query) return true;
-                const cleanHp = c.noHp.replace(/[^0-9]/g, '');
+                const cleanHp = String(c.noHp || '').replace(/[^0-9]/g, '');
                 if (cleanQ.length >= 3 && cleanHp.endsWith(cleanQ)) return true;
                 if (cleanQ.length >= 3 && cleanHp.includes(cleanQ)) return true;
                 return c.nama.toLowerCase().includes(query.toLowerCase());
@@ -1544,7 +1544,7 @@ export default function PosView() {
               {/* Kirim WA — utama */}
               <button
                 onClick={() => {
-                  const phone = (completedOrderData.noHp || '').replace(/^0/, '62').replace(/\D/g, '');
+                  const phone = String(completedOrderData.noHp || '').replace(/^0/, '62').replace(/\D/g, '');
                   const nama = completedOrderData.pelanggan || 'Pelanggan';
                   const noNota = completedOrderData.trxId || '';
                   const tanggal = `${completedOrderData.tanggal || ''}, ${completedOrderData.waktu || ''}`;

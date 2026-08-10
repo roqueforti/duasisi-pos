@@ -155,7 +155,7 @@ export default function RiwayatView() {
   };
 
   const handleSendSiapWA = (tx: Transaksi) => {
-    let rawPhone = (tx.noHp || '').replace(/[^0-9]/g, '');
+    let rawPhone = String(tx.noHp || '').replace(/[^0-9]/g, '');
     if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
     if (!rawPhone) {
       alert('Nomor HP pelanggan tidak tersedia.');
@@ -172,7 +172,7 @@ export default function RiwayatView() {
   };
 
   const handleWhatsAppStruk = (tx: Transaksi) => {
-    let rawPhone = (tx.noHp || '').replace(/[^0-9]/g, '');
+    let rawPhone = String(tx.noHp || '').replace(/[^0-9]/g, '');
     if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
 
     const eNotaUrl = buildENotaUrl(tx.noNota);
