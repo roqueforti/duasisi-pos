@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift } from 'lucide-react';
+import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload } from 'lucide-react';
 import { runBackend } from '@/lib/api';
+import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 
 interface LayananItemBackend {
   id: string;
@@ -152,6 +153,53 @@ export default function ProdukView() {
     }
   };
 
+  const handleExportProduk = () => {
+    const rows = layananList.map(l => [l.nama, l.harga, l.satuan, l.tipe, l.aktif === 'Y' ? 'Aktif' : 'Non-Aktif']);
+    downloadCSV('export_produk.csv', toCSV(['Nama Layanan', 'Harga', 'Satuan', 'Tipe', 'Status'], rows));
+  };
+
+  const handleDownloadTemplateProduk = () => {
+    downloadCSV('template_produk_kosong.csv', toCSV(
+      ['Nama Layanan', 'Harga', 'Satuan', 'Tipe', 'Status'],
+      [['Cuci Kiloan', 8000, 'kg', 'SelfService', 'Aktif'], ['Setrika', 5000, 'kg', 'FullService', 'Aktif']]
+    ));
+  };
+
+  const handleImportProduk = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    try {
+      const text = await readFileAsText(file);
+      const rows = parseCSV(text);
+      if (rows.length === 0) { alert('File CSV kosong atau format salah.'); return; }
+      let success = 0, fail = 0;
+      for (const row of rows) {
+        const nama = row['Nama Layanan'] || row['nama'] || '';
+        if (!nama.trim()) { fail++; continue; }
+        const tipeRaw = (row['Tipe'] || row['tipe'] || 'SelfService').trim();
+        const tipeVal: 'SelfService' | 'FullService' = tipeRaw === 'FullService' ? 'FullService' : 'SelfService';
+        const aktifRaw = (row['Status'] || row['status'] || 'Aktif').trim().toLowerCase();
+        const aktifVal = aktifRaw === 'aktif' || aktifRaw === 'y';
+        try {
+          const id = await runBackend('tambahLayanan', {
+            nama: nama.trim(),
+            harga: Number(row['Harga'] || row['harga']) || 0,
+            satuan: (row['Satuan'] || row['satuan'] || 'kg').trim(),
+            icon: '🧺',
+            tipe: tipeVal,
+          });
+          if (id && !aktifVal) await runBackend('toggleAktifLayanan', id, false);
+          success++;
+        } catch { fail++; }
+      }
+      loadProduk();
+      alert(`Import selesai: ${success} berhasil${fail > 0 ? `, ${fail} gagal` : ''}.`);
+    } catch (err) {
+      alert('Gagal membaca file CSV.');
+    }
+  };
+
   return (
     <div className="p-3 md:p-4 space-y-4 w-full">
       <div className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap shadow-xs">
@@ -188,12 +236,25 @@ export default function ProdukView() {
         </div>
 
         {activeSubTab === 'Produk' && (
-          <button
-            onClick={handleOpenAdd}
-            className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
-          >
-            <Plus className="w-3.5 h-3.5" /> Tambah Layanan
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={handleExportProduk} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Export CSV">
+              <Download className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={handleDownloadTemplateProduk} className="px-3 py-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 text-xs font-medium transition" title="Download Template CSV">
+              Template
+            </button>
+            <label className="cursor-pointer px-3 py-1.5 border border-[#B5C9C9] rounded-md text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-medium transition flex items-center gap-1.5" title="Import CSV">
+              <Upload className="w-3.5 h-3.5" />
+              <span>Import</span>
+              <input type="file" accept=".csv" className="hidden" onChange={handleImportProduk} />
+            </label>
+            <button
+              onClick={handleOpenAdd}
+              className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" /> Tambah Layanan
+            </button>
+          </div>
         )}
 
         {activeSubTab === 'Promo' && (

@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, RefreshCw, Trash2, Award, Calendar } from 'lucide-react';
+import { Users, Plus, RefreshCw, Trash2, Award, Calendar, Download, Upload } from 'lucide-react';
 import { runBackend } from '@/lib/api';
+import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 
 interface PegawaiItem {
   id: string;
@@ -65,7 +66,7 @@ export default function PegawaiView() {
       loadData();
     } catch (err) {
       alert('Gagal menambah pegawai');
-    } flex: {
+    } finally {
       setLoading(false);
     }
   };
@@ -80,6 +81,46 @@ export default function PegawaiView() {
     }
   };
 
+  const handleExport = () => {
+    const rows = pegawaiList.map(p => [p.nama, p.jabatan, p.noHp || '', p.status]);
+    downloadCSV('export_pegawai.csv', toCSV(['Nama', 'Jabatan', 'No HP', 'Status'], rows));
+  };
+
+  const handleDownloadTemplate = () => {
+    downloadCSV('template_pegawai_kosong.csv', toCSV(
+      ['Nama', 'Jabatan', 'No HP', 'Status'],
+      [['Budi Santoso', 'Kasir', '081234567890', 'Aktif'], ['Siti Aminah', 'Operator', '082345678901', 'Aktif']]
+    ));
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    try {
+      const text = await readFileAsText(file);
+      const rows = parseCSV(text);
+      if (rows.length === 0) { alert('File CSV kosong atau format salah.'); return; }
+      let success = 0, fail = 0;
+      for (const row of rows) {
+        const nama = row['Nama'] || row['nama'] || '';
+        if (!nama.trim()) { fail++; continue; }
+        try {
+          await runBackend('tambahPegawai', {
+            nama: nama.trim(),
+            jabatan: (row['Jabatan'] || row['jabatan'] || 'Staff').trim(),
+            noHp: (row['No HP'] || row['noHp'] || '').trim(),
+          });
+          success++;
+        } catch { fail++; }
+      }
+      loadData();
+      alert(`Import selesai: ${success} berhasil${fail > 0 ? `, ${fail} gagal` : ''}.`);
+    } catch (err) {
+      alert('Gagal membaca file CSV.');
+    }
+  };
+
   return (
     <div className="p-3 md:p-4 space-y-4 w-full">
       {/* Header & Control */}
@@ -90,13 +131,20 @@ export default function PegawaiView() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={loadData}
-            className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition"
-            title="Refresh"
-          >
+          <button onClick={loadData} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Refresh">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
+          <button onClick={handleExport} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Export CSV">
+            <Download className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={handleDownloadTemplate} className="px-3 py-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 text-xs font-medium transition" title="Download Template CSV">
+            Template
+          </button>
+          <label className="cursor-pointer px-3 py-1.5 border border-[#B5C9C9] rounded-md text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-medium transition flex items-center gap-1.5" title="Import CSV">
+            <Upload className="w-3.5 h-3.5" />
+            <span>Import</span>
+            <input type="file" accept=".csv" className="hidden" onChange={handleImport} />
+          </label>
           <button
             onClick={() => setShowAddModal(true)}
             className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5"
