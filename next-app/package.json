@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && npm run postbuild",
+    "postbuild": "node -e \"require('fs').copyFileSync('public/sw.js', 'out/sw.js'); require('fs').copyFileSync('public/manifest.json', 'out/manifest.json'); console.log('✅ PWA files copied to out/')\"",
     "start": "next start",
     "lint": "eslint"
   },

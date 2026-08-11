@@ -30,23 +30,24 @@ export default function RootLayout({
           httpEquiv="Content-Security-Policy"
           content="default-src 'self' https://script.google.com https://script.googleusercontent.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; frame-src 'self';"
         />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="DuaSiSi POS" />
+        <link rel="apple-touch-icon" href="/assets/icon-512.svg" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                  for(let registration of registrations) {
-                    registration.unregister();
-                  }
-                });
-              }
-              if ('caches' in window) {
-                caches.keys().then(function(names) {
-                  for (let name of names) {
-                    if (name.includes('duasisi-pos-v')) {
-                      caches.delete(name);
-                    }
-                  }
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/duasisi-pos/sw.js', { scope: '/duasisi-pos/' })
+                    .then(function(registration) {
+                      console.log('✅ SW registered:', registration.scope);
+                    })
+                    .catch(function(error) {
+                      console.log('❌ SW registration failed:', error);
+                    });
                 });
               }
             `,
