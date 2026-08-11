@@ -581,10 +581,19 @@ export default function RiwayatView() {
                 <span>Metode Bayar</span>
                 <span className="font-medium text-slate-700">{selectedTx.metodeBayar || 'Tunai'}</span>
               </div>
-              {(Number(selectedTx.sisaTagihan) || 0) > 0 && (
+              <div className="flex justify-between text-slate-500">
+                <span>Dibayar</span>
+                <span className="font-medium text-slate-700">Rp {(Number(selectedTx.nominalDP) || Number(selectedTx.total) || 0).toLocaleString('id-ID')}</span>
+              </div>
+              {(Number(selectedTx.sisaTagihan) || 0) > 0 ? (
                 <div className="flex justify-between font-bold text-rose-600">
                   <span>Sisa Tagihan</span>
                   <span>Rp {(Number(selectedTx.sisaTagihan) || 0).toLocaleString('id-ID')}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-slate-500">
+                  <span>Kembali</span>
+                  <span className="font-medium text-[#1E4648]">Rp {Math.max(0, (Number(selectedTx.nominalDP) || Number(selectedTx.total) || 0) - (Number(selectedTx.total) || 0)).toLocaleString('id-ID')}</span>
                 </div>
               )}
               <div className="flex justify-between text-slate-500">
