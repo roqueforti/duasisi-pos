@@ -1,5 +1,5 @@
-const CACHE_NAME = 'duasisi-pos-v1';
-const RUNTIME_CACHE = 'duasisi-runtime';
+const CACHE_NAME = 'duasisi-pos-v2';
+const RUNTIME_CACHE = 'duasisi-runtime-v2';
 
 // Assets untuk di-cache saat install
 const PRECACHE_ASSETS = [
@@ -9,6 +9,7 @@ const PRECACHE_ASSETS = [
   '/duasisi-pos/assets/logo-emblem-teal.svg',
   '/duasisi-pos/assets/icon-192.svg',
   '/duasisi-pos/assets/icon-512.svg',
+  '/duasisi-pos/manifest.json',
 ];
 
 // Install event - cache assets penting
@@ -99,7 +100,19 @@ self.addEventListener('fetch', (event) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // Fallback offline page
+          // Fallback to index.html for navigation requests
+          if (request.mode === 'navigate') {
+            return caches.match('/duasisi-pos/index.html').then((indexResponse) => {
+              if (indexResponse) {
+                return indexResponse;
+              }
+              return new Response(
+                '<html><body><h1>Offline</h1><p>Aplikasi sedang offline. Silakan periksa koneksi internet Anda.</p></body></html>',
+                { headers: { 'Content-Type': 'text/html' } }
+              );
+            });
+          }
+          // Fallback offline page for other requests
           return new Response(
             '<html><body><h1>Offline</h1><p>Aplikasi sedang offline. Silakan periksa koneksi internet Anda.</p></body></html>',
             { headers: { 'Content-Type': 'text/html' } }
