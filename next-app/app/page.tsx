@@ -16,6 +16,7 @@ import ENotaView from '@/components/ENotaView';
 import PelangganView from '@/components/PelangganView';
 import DashboardView from '@/components/DashboardView';
 import PesananView from '@/components/PesananView';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import { UserRole } from '@/lib/types';
 import { clearBackendSession } from '@/lib/api';
 
@@ -66,6 +67,8 @@ export default function HomePage() {
 
   return (
     <>
+      <PWAInstallPrompt />
+      
       {!currentRole ? (
         <LoginModal onSuccess={handleLoginSuccess} />
       ) : (
