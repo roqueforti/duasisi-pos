@@ -6,8 +6,9 @@ import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { maskPhone, eNotaUrl as buildENotaUrl } from '@/lib/utils';
 import PrinterModal from '@/components/PrinterModal';
+import { UserRole } from '@/lib/types';
 
-export default function RiwayatView() {
+export default function RiwayatView({ currentRole }: { currentRole?: UserRole } = {}) {
   const [filter, setFilter] = useState<'Semua' | 'SelfService' | 'FullService'>('Semua');
   const [search, setSearch] = useState('');
   const [txList, setTxList] = useState<Transaksi[]>([]);
@@ -263,14 +264,16 @@ export default function RiwayatView() {
             )}
           </div>
 
-          <button
-            onClick={openManualModal}
-            className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-sm shrink-0"
-            title="Input Transaksi Manual"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Transaksi Manual</span>
-          </button>
+          {currentRole === 'MANAGER' && (
+            <button
+              onClick={openManualModal}
+              className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-sm shrink-0"
+              title="Input Transaksi Manual"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Transaksi Manual</span>
+            </button>
+          )}
 
           <button
             onClick={loadRiwayat}

@@ -41,7 +41,7 @@ export default function RootLayout({
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/duasisi-pos/sw.js', { scope: '/duasisi-pos/' })
+                  navigator.serviceWorker.register('/sw.js', { scope: '/' })
                     .then(function(registration) {
                       console.log('✅ SW registered:', registration.scope);
                     })

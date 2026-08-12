@@ -43,6 +43,7 @@ import {
   generateTagEscPos,
 } from '@/lib/bluetoothPrinter';
 import PrinterModal from '@/components/PrinterModal';
+import { UserRole } from '@/lib/types';
 
 interface CustomerState {
   nama: string;
@@ -89,7 +90,7 @@ function getLayananStyleConfig(item: LayananItem) {
   return { Icon, iconBg: 'bg-[#B5C9C9]/20', iconColor: 'text-[#1E4648]', dot: 'bg-[#1E4648]' };
 }
 
-export default function PosView() {
+export default function PosView({ currentRole }: { currentRole?: UserRole } = {}) {
   const [layananList, setLayananList] = useState<LayananItem[]>(defaultLayanan);
   const [search, setSearch] = useState('');
   const [selectedCategoryTab, setSelectedCategoryTab] = useState<'Semua' | 'SelfService' | 'Dropoff' | 'MakananMinuman'>('Semua');
@@ -611,13 +612,15 @@ export default function PosView() {
 
           {/* Action Header Buttons */}
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setShowCustomItemModal(true)}
-              className="bg-[#1E4648] hover:bg-[#163536] text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-2xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Baru</span>
-            </button>
+            {currentRole === 'MANAGER' && (
+              <button
+                onClick={() => setShowCustomItemModal(true)}
+                className="bg-[#1E4648] hover:bg-[#163536] text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-2xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Baru</span>
+              </button>
+            )}
 
             {shiftLoading ? (
               <button disabled className="bg-slate-50 border border-slate-200 text-slate-400 px-3 py-2 rounded-lg text-xs font-semibold">

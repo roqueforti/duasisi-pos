@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Plus, RefreshCw, Trash2, Award, Calendar, Download, Upload } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
+import { UserRole } from '@/lib/types';
 
 interface PegawaiItem {
   id: string;
@@ -21,7 +22,7 @@ interface RekapKinerja {
   totalOmzet: number;
 }
 
-export default function PegawaiView() {
+export default function PegawaiView({ currentRole }: { currentRole?: UserRole } = {}) {
   const [pegawaiList, setPegawaiList] = useState<PegawaiItem[]>([]);
   const [kinerjaList, setKinerjaList] = useState<RekapKinerja[]>([]);
   const [loading, setLoading] = useState(false);
@@ -134,23 +135,27 @@ export default function PegawaiView() {
           <button onClick={loadData} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Refresh Data">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={handleExport} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Export Data Pegawai ke CSV">
-            <Download className="w-3.5 h-3.5" />
-          </button>
-          <button onClick={handleDownloadTemplate} className="px-3 py-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 text-xs font-medium transition" title="Download Template Kosong">
-            Template
-          </button>
-          <label className="cursor-pointer px-3 py-1.5 border border-[#B5C9C9] rounded-md text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-medium transition flex items-center gap-1.5" title="Import Data Pegawai dari CSV">
-            <Upload className="w-3.5 h-3.5" />
-            <span>Import</span>
-            <input type="file" accept=".csv" className="hidden" onChange={handleImport} />
-          </label>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" /> Tambah Pegawai
-          </button>
+          {currentRole === 'MANAGER' && (
+            <>
+              <button onClick={handleExport} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Export Data Pegawai ke CSV">
+                <Download className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={handleDownloadTemplate} className="px-3 py-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 text-xs font-medium transition" title="Download Template Kosong">
+                Template
+              </button>
+              <label className="cursor-pointer px-3 py-1.5 border border-[#B5C9C9] rounded-md text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-medium transition flex items-center gap-1.5" title="Import Data Pegawai dari CSV">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Import</span>
+                <input type="file" accept=".csv" className="hidden" onChange={handleImport} />
+              </label>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" /> Tambah Pegawai
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -195,13 +200,17 @@ export default function PegawaiView() {
                       <td className="py-3 px-4 text-slate-600">{p.jabatan}</td>
                       <td className="py-3 px-4 text-slate-500">{p.noHp || '-'}</td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleDeletePegawai(p.id, p.nama)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
-                          title="Hapus"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {currentRole === 'MANAGER' ? (
+                          <button
+                            onClick={() => handleDeletePegawai(p.id, p.nama)}
+                            className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <span className="text-slate-400 text-xs">-</span>
+                        )}
                       </td>
                     </tr>
                   ))

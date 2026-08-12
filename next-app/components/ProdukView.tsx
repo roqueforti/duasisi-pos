@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
+import { UserRole } from '@/lib/types';
 
 interface LayananItemBackend {
   id: string;
@@ -29,7 +30,11 @@ const defaultPromos: PromoVoucher[] = [
   { idPromo: 'PRM-02', kodeVoucher: 'HEMAT20', jenisDiskon: 'Nominal', nilaiDiskon: 20000, minTransaksi: 100000, statusAktif: true }
 ];
 
-export default function ProdukView() {
+interface ProdukViewProps {
+  currentRole?: UserRole;
+}
+
+export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [activeSubTab, setActiveSubTab] = useState<'Produk' | 'Promo' | 'Loyalitas'>('Produk');
   const [layananList, setLayananList] = useState<LayananItemBackend[]>([]);
   const [promoList, setPromoList] = useState<PromoVoucher[]>(defaultPromos);
@@ -237,27 +242,31 @@ export default function ProdukView() {
 
         {activeSubTab === 'Produk' && (
           <div className="flex items-center gap-2">
-            <button onClick={handleExportProduk} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Export Data Layanan ke CSV">
-              <Download className="w-3.5 h-3.5" />
-            </button>
-            <button onClick={handleDownloadTemplateProduk} className="px-3 py-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 text-xs font-medium transition" title="Download Template Kosong">
-              Template
-            </button>
-            <label className="cursor-pointer px-3 py-1.5 border border-[#B5C9C9] rounded-md text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-medium transition flex items-center gap-1.5" title="Import Data Layanan dari CSV">
-              <Upload className="w-3.5 h-3.5" />
-              <span>Import</span>
-              <input type="file" accept=".csv" className="hidden" onChange={handleImportProduk} />
-            </label>
-            <button
-              onClick={handleOpenAdd}
-              className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
-            >
-              <Plus className="w-3.5 h-3.5" /> Tambah Layanan
-            </button>
+            {currentRole === 'MANAGER' && (
+              <>
+                <button onClick={handleExportProduk} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Export Data Layanan ke CSV">
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={handleDownloadTemplateProduk} className="px-3 py-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 text-xs font-medium transition" title="Download Template Kosong">
+                  Template
+                </button>
+                <label className="cursor-pointer px-3 py-1.5 border border-[#B5C9C9] rounded-md text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-medium transition flex items-center gap-1.5" title="Import Data Layanan dari CSV">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Import</span>
+                  <input type="file" accept=".csv" className="hidden" onChange={handleImportProduk} />
+                </label>
+                <button
+                  onClick={handleOpenAdd}
+                  className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Tambah Layanan
+                </button>
+              </>
+            )}
           </div>
         )}
 
-        {activeSubTab === 'Promo' && (
+        {activeSubTab === 'Promo' && currentRole === 'MANAGER' && (
           <button
             onClick={() => setShowPromoModal(true)}
             className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
@@ -313,9 +322,15 @@ export default function ProdukView() {
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right space-x-1">
-                        <button onClick={() => handleOpenEdit(item)} className="p-1 text-slate-500 hover:text-slate-600"><Edit3 className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')} className="p-1 text-[#FF9500] hover:text-[#FF9500]"><RotateCcw className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => handleHapusLayanan(item.id)} className="p-1 text-rose-500 hover:text-rose-700"><Trash2 className="w-3.5 h-3.5" /></button>
+                        {currentRole === 'MANAGER' ? (
+                          <>
+                            <button onClick={() => handleOpenEdit(item)} className="p-1 text-slate-500 hover:text-slate-600"><Edit3 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')} className="p-1 text-[#FF9500] hover:text-[#FF9500]"><RotateCcw className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleHapusLayanan(item.id)} className="p-1 text-rose-500 hover:text-rose-700"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </>
+                        ) : (
+                          <span className="text-slate-400 text-xs">-</span>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -353,9 +368,13 @@ export default function ProdukView() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <button onClick={() => handleHapusPromo(prm.idPromo)} className="p-1 text-rose-500 hover:text-rose-700" title="Hapus Promo">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {currentRole === 'MANAGER' ? (
+                        <button onClick={() => handleHapusPromo(prm.idPromo)} className="p-1 text-rose-500 hover:text-rose-700" title="Hapus Promo">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <span className="text-slate-400 text-xs">-</span>
+                      )}
                     </td>
                   </tr>
                 ))}

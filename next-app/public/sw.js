@@ -3,13 +3,13 @@ const RUNTIME_CACHE = 'duasisi-runtime-v2';
 
 // Assets untuk di-cache saat install
 const PRECACHE_ASSETS = [
-  '/duasisi-pos/',
-  '/duasisi-pos/index.html',
-  '/duasisi-pos/assets/logo-full-white.svg',
-  '/duasisi-pos/assets/logo-emblem-teal.svg',
-  '/duasisi-pos/assets/icon-192.svg',
-  '/duasisi-pos/assets/icon-512.svg',
-  '/duasisi-pos/manifest.json',
+  '/',
+  '/index.html',
+  '/assets/logo-full-white.svg',
+  '/assets/logo-emblem-teal.svg',
+  '/assets/icon-192.svg',
+  '/assets/icon-512.svg',
+  '/manifest.json',
 ];
 
 // Install event - cache assets penting
@@ -47,7 +47,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Skip API routes - always network first
-  if (url.pathname.startsWith('/duasisi-pos/api/')) {
+  if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request).catch(() => {
         return new Response(JSON.stringify({ error: 'Offline' }), {
@@ -102,7 +102,7 @@ self.addEventListener('fetch', (event) => {
           }
           // Fallback to index.html for navigation requests
           if (request.mode === 'navigate') {
-            return caches.match('/duasisi-pos/index.html').then((indexResponse) => {
+            return caches.match('/index.html').then((indexResponse) => {
               if (indexResponse) {
                 return indexResponse;
               }

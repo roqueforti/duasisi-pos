@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Cpu, Plus, RefreshCw, Play, CheckCircle2, Wrench, Trash2, Clock, WashingMachine, Flame } from 'lucide-react';
 import { runBackend } from '@/lib/api';
+import { UserRole } from '@/lib/types';
 
 interface MesinItem {
   id: string;
@@ -14,7 +15,7 @@ interface MesinItem {
   estimasiSelesai?: string;
 }
 
-export default function MesinView() {
+export default function MesinView({ currentRole }: { currentRole?: UserRole } = {}) {
   const [mesinList, setMesinList] = useState<MesinItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -120,12 +121,14 @@ export default function MesinView() {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" /> Tambah Mesin
-          </button>
+          {currentRole === 'MANAGER' && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" /> Tambah Mesin
+            </button>
+          )}
         </div>
       </div>
 
@@ -203,12 +206,16 @@ export default function MesinView() {
                       <CheckCircle2 className="w-3.5 h-3.5" /> Selesai
                     </button>
                   ) : isMaintenance ? (
-                    <button
-                      onClick={() => handleToggleMaintenance(m.id, m.status)}
-                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 rounded-md text-xs transition flex items-center justify-center gap-1"
-                    >
-                      <Wrench className="w-3.5 h-3.5" /> Normal
-                    </button>
+                    currentRole === 'MANAGER' ? (
+                      <button
+                        onClick={() => handleToggleMaintenance(m.id, m.status)}
+                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-1.5 rounded-md text-xs transition flex items-center justify-center gap-1"
+                      >
+                        <Wrench className="w-3.5 h-3.5" /> Normal
+                      </button>
+                    ) : (
+                      <div className="flex-1 text-center py-1.5 text-xs font-semibold text-[#FF9500]">Sedang Maintenance</div>
+                    )
                   ) : (
                     <>
                       <button
@@ -217,22 +224,26 @@ export default function MesinView() {
                       >
                         <Play className="w-3.5 h-3.5" /> Jalankan
                       </button>
-                      <button
-                        onClick={() => handleToggleMaintenance(m.id, m.status)}
-                        className="p-1.5 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-md transition"
-                        title="Set Maintenance"
-                      >
-                        <Wrench className="w-3.5 h-3.5" />
-                      </button>
+                      {currentRole === 'MANAGER' && (
+                        <button
+                          onClick={() => handleToggleMaintenance(m.id, m.status)}
+                          className="p-1.5 border border-slate-200 hover:bg-slate-50 text-slate-500 rounded-md transition"
+                          title="Set Maintenance"
+                        >
+                          <Wrench className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </>
                   )}
-                  <button
-                    onClick={() => handleDelete(m.id, m.nama)}
-                    className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
-                    title="Hapus"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {currentRole === 'MANAGER' && (
+                    <button
+                      onClick={() => handleDelete(m.id, m.nama)}
+                      className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
+                      title="Hapus"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             );

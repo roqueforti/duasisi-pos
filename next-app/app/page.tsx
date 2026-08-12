@@ -91,13 +91,13 @@ export default function HomePage() {
 
             <main className="flex-1 overflow-y-auto bg-slate-50">
               {currentTab === 'dashboard' && <DashboardView currentRole={currentRole} />}
-              {currentTab === 'transaksi' && <PosView />}
-              {currentTab === 'riwayat' && <RiwayatView />}
+              {currentTab === 'transaksi' && <PosView currentRole={currentRole} />}
+              {currentTab === 'riwayat' && <RiwayatView currentRole={currentRole} />}
               {currentTab === 'pesanan' && <PesananView />}
               {currentTab === 'absensi' && <AbsensiView />}
-              {currentTab === 'pelanggan' && <PelangganView />}
-              {currentTab === 'inventory' && <InventoryView />}
-              {currentTab === 'mesin' && <MesinView />}
+              {currentTab === 'pelanggan' && <PelangganView currentRole={currentRole} />}
+              {currentTab === 'inventory' && <InventoryView currentRole={currentRole} />}
+              {currentTab === 'mesin' && <MesinView currentRole={currentRole} />}
               {currentTab === 'pegawai' && <PegawaiView />}
               {currentTab === 'produk' && <ProdukView />}
               {currentTab === 'rekap' && <RekapView />}

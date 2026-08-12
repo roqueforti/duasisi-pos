@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { maskPhone } from '@/lib/utils';
+import { UserRole } from '@/lib/types';
 
 export interface PelangganItem {
   noHp: string;
@@ -44,7 +45,7 @@ export interface TransaksiItemHistory {
   items: { layanan: string; qty: number; subtotal: number }[];
 }
 
-export default function PelangganView() {
+export default function PelangganView({ currentRole }: { currentRole?: UserRole } = {}) {
   const [pelangganList, setPelangganList] = useState<PelangganItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [search, setSearch] = useState<string>('');
@@ -330,8 +331,17 @@ export default function PelangganView() {
                         onClick={() => openDetailModal(item)}
                         className="px-2.5 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-lg font-bold text-[11px] transition inline-flex items-center gap-1 shadow-2xs"
                       >
-                        <Edit3 className="w-3 h-3" />
-                        <span>Detail & Edit</span>
+                        {currentRole === 'MANAGER' ? (
+                          <>
+                            <Edit3 className="w-3 h-3" />
+                            <span>Detail & Edit</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="w-3 h-3" />
+                            <span>Detail</span>
+                          </>
+                        )}
                       </button>
                     </td>
                   </tr>
@@ -353,7 +363,7 @@ export default function PelangganView() {
                   <Users className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-700">Detail & Edit Data Pelanggan</h3>
+                  <h3 className="text-base font-bold text-slate-700">{currentRole === 'MANAGER' ? 'Detail & Edit Data Pelanggan' : 'Detail Data Pelanggan'}</h3>
                   <p className="text-[11px] text-slate-500 font-medium">No. HP: {maskPhone(selectedCust.noHp)}</p>
                 </div>
               </div>
@@ -378,6 +388,7 @@ export default function PelangganView() {
                       type="text"
                       value={editNama}
                       onChange={(e) => setEditNama(e.target.value)}
+                      readOnly={currentRole !== 'MANAGER'}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
                     />
                   </div>
@@ -389,6 +400,7 @@ export default function PelangganView() {
                       value={editNoHp}
                       onChange={(e) => setEditNoHp(e.target.value)}
                       placeholder="08..."
+                      readOnly={currentRole !== 'MANAGER'}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-mono font-bold outline-none focus:border-[#1E4648]"
                     />
                   </div>
@@ -401,6 +413,7 @@ export default function PelangganView() {
                     value={editAlamat}
                     onChange={(e) => setEditAlamat(e.target.value)}
                     placeholder="Alamat rumah / outlet jemput"
+                    readOnly={currentRole !== 'MANAGER'}
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
                   />
                 </div>
@@ -412,6 +425,7 @@ export default function PelangganView() {
                     value={editCatatan}
                     onChange={(e) => setEditCatatan(e.target.value)}
                     placeholder="Misal: Selalu minta tanpa pewangi, lipat baju rapi"
+                    readOnly={currentRole !== 'MANAGER'}
                     className="w-full p-2.5 bg-white border border-slate-200 rounded-lg font-medium outline-none focus:border-[#1E4648]"
                   />
                 </div>
@@ -490,17 +504,19 @@ export default function PelangganView() {
                 onClick={() => setShowDetailModal(false)}
                 className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs transition"
               >
-                Batal
+                {currentRole === 'MANAGER' ? 'Batal' : 'Tutup'}
               </button>
-              <button
-                type="button"
-                onClick={handleSaveCustomerEdit}
-                disabled={savingEdit}
-                className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-md transition"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{savingEdit ? 'Menyimpan...' : 'Simpan Perubahan Data Pelanggan'}</span>
-              </button>
+              {currentRole === 'MANAGER' && (
+                <button
+                  type="button"
+                  onClick={handleSaveCustomerEdit}
+                  disabled={savingEdit}
+                  className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-md transition"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{savingEdit ? 'Menyimpan...' : 'Simpan Perubahan Data Pelanggan'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

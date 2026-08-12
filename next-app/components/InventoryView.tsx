@@ -5,6 +5,7 @@ import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Uploa
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
+import { UserRole } from '@/lib/types';
 
 interface InventoryItem {
   id: string;
@@ -15,7 +16,11 @@ interface InventoryItem {
   terakhirUpdate?: string;
 }
 
-export default function InventoryView() {
+interface InventoryViewProps {
+  currentRole?: UserRole;
+}
+
+export default function InventoryView({ currentRole }: InventoryViewProps = {}) {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   
@@ -138,23 +143,28 @@ export default function InventoryView() {
           <button onClick={loadInventory} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Refresh Data">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          {/* Export data */}
-          <button onClick={handleExport} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Export Data ke CSV">
-            <Download className="w-3.5 h-3.5" />
-          </button>
-          {/* Download template kosong */}
-          <button onClick={handleDownloadTemplate} className="px-3 py-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 text-xs font-medium transition" title="Download Template Kosong">
-            Template
-          </button>
-          {/* Import CSV */}
-          <label className="cursor-pointer px-3 py-1.5 border border-[#B5C9C9] rounded-md text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-medium transition flex items-center gap-1.5" title="Import Data dari CSV">
-            <Upload className="w-3.5 h-3.5" />
-            <span>Import</span>
-            <input type="file" accept=".csv" className="hidden" onChange={handleImport} />
-          </label>
-          <button onClick={() => setShowAddModal(true)} className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5">
-            <Plus className="w-3.5 h-3.5" /> Tambah Bahan
-          </button>
+          
+          {currentRole === 'MANAGER' && (
+            <>
+              {/* Export data */}
+              <button onClick={handleExport} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Export Data ke CSV">
+                <Download className="w-3.5 h-3.5" />
+              </button>
+              {/* Download template kosong */}
+              <button onClick={handleDownloadTemplate} className="px-3 py-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 text-xs font-medium transition" title="Download Template Kosong">
+                Template
+              </button>
+              {/* Import CSV */}
+              <label className="cursor-pointer px-3 py-1.5 border border-[#B5C9C9] rounded-md text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-medium transition flex items-center gap-1.5" title="Import Data dari CSV">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Import</span>
+                <input type="file" accept=".csv" className="hidden" onChange={handleImport} />
+              </label>
+              <button onClick={() => setShowAddModal(true)} className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5">
+                <Plus className="w-3.5 h-3.5" /> Tambah Bahan
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -213,29 +223,33 @@ export default function InventoryView() {
                       </td>
                       <td className="py-3 px-4 text-slate-400">{item.terakhirUpdate || '-'}</td>
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => handleUpdateStok(item.id, -1)}
-                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold"
-                            title="Kurangi Stok"
-                          >
-                            -1
-                          </button>
-                          <button
-                            onClick={() => handleUpdateStok(item.id, 1)}
-                            className="px-2 py-1 bg-[#1E4648] hover:bg-[#163536] text-white rounded text-xs font-bold"
-                            title="Tambah Stok"
-                          >
-                            +1
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item.id, item.nama)}
-                            className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
-                            title="Hapus"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        {currentRole === 'MANAGER' ? (
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleUpdateStok(item.id, -1)}
+                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold"
+                              title="Kurangi Stok"
+                            >
+                              -1
+                            </button>
+                            <button
+                              onClick={() => handleUpdateStok(item.id, 1)}
+                              className="px-2 py-1 bg-[#1E4648] hover:bg-[#163536] text-white rounded text-xs font-bold"
+                              title="Tambah Stok"
+                            >
+                              +1
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item.id, item.nama)}
+                              className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-xs">-</span>
+                        )}
                       </td>
                     </tr>
                   );
