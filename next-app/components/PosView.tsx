@@ -831,51 +831,51 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         updateCart(item, 1);
                       }
                     }}
-                    className={`bg-white rounded-xl border-2 p-4 flex flex-col gap-3 cursor-pointer select-none active:scale-95 transition-transform duration-75 touch-pan-y ${
+                    className={`bg-white rounded-lg border-2 p-3 flex flex-col gap-2.5 cursor-pointer select-none active:scale-95 transition-transform duration-75 touch-pan-y ${
                       qtyInCart > 0
-                        ? 'ring-2 ring-[#1E4648]/50 border-[#1E4648] bg-[#1E4648]/[0.03] shadow-md'
+                        ? 'ring-2 ring-[#1E4648]/50 border-[#1E4648] bg-[#1E4648]/[0.02] shadow-md'
                         : 'border-slate-200/80 shadow-sm hover:border-[#1E4648] hover:shadow-md'
                     }`}
                   >
-                    {/* Nama produk - large & clear */}
+                    {/* Nama produk - clear text */}
                     <div>
-                      <p className="font-bold text-base text-slate-700 leading-snug line-clamp-3 min-h-[60px] flex items-center">
+                      <p className="font-bold text-sm text-slate-700 leading-snug line-clamp-2">
                         {item.layanan}
                       </p>
                     </div>
 
-                    {/* Harga - large & prominent */}
-                    <div className="pt-2 border-t-2 border-slate-100">
-                      <div className="text-2xl font-bold text-[#1E4648] leading-none mb-2">
+                    {/* Harga - prominent */}
+                    <div>
+                      <div className="text-lg font-bold text-[#1E4648] leading-none">
                         Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
                       </div>
                     </div>
 
                     {/* Qty stepper - bottom */}
-                    <div className="flex items-center justify-between gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between gap-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
                       {qtyInCart > 0 ? (
-                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden flex-1">
+                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden flex-1 h-7">
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
-                            className="w-8 h-8 flex items-center justify-center hover:bg-white/20 transition font-bold text-sm"
+                            className="w-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
                           >
-                            <Minus className="w-4 h-4" />
+                            <Minus className="w-3.5 h-3.5" />
                           </button>
-                          <span className="text-sm font-bold px-2 flex-1 text-center">{qtyInCart}</span>
+                          <span className="text-xs font-bold px-1 flex-1 text-center">{qtyInCart}</span>
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                            className="w-8 h-8 flex items-center justify-center hover:bg-white/20 transition font-bold text-sm"
+                            className="w-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
                           >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       ) : (
-                        <div className="w-full h-8 rounded-lg bg-slate-100 border-2 border-slate-300 flex items-center justify-center hover:bg-slate-200 transition">
-                          <Plus className="w-5 h-5 text-slate-500" />
+                        <div className="w-full h-7 rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center hover:bg-slate-200 transition">
+                          <Plus className="w-4 h-4 text-slate-500" />
                         </div>
                       )}
                     </div>
