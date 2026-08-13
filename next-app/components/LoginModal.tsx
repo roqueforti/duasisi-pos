@@ -82,6 +82,8 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
         <div className="mb-6 relative">
           <input
             type="password"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={pin}
             onChange={handlePinChange}
             placeholder="• • • •"
@@ -96,6 +98,62 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
             </div>
           )}
         </div>
+
+        {/* On-screen Numpad (tablet-friendly) */}
+        {!loading && (
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+              <button
+                key={num}
+                type="button"
+                onClick={() => {
+                  const next = pin + num;
+                  if (next.length <= 4) {
+                    setPin(next);
+                    setErrorMsg('');
+                    if (next.length === 4) processPinVerification(next);
+                  }
+                }}
+                disabled={loading || pin.length >= 4}
+                className="py-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-bold text-xl rounded-lg border border-slate-600 transition-all disabled:opacity-40 select-none"
+              >
+                {num}
+              </button>
+            ))}
+            {/* Bottom row: clear left, 0 center, backspace right */}
+            <button
+              type="button"
+              onClick={() => { setPin(''); setErrorMsg(''); }}
+              disabled={loading}
+              className="py-4 bg-slate-800 hover:bg-rose-900 active:bg-rose-800 text-rose-400 font-bold text-sm rounded-lg border border-slate-600 transition-all disabled:opacity-40 select-none"
+            >
+              C
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const next = pin + '0';
+                if (next.length <= 4) {
+                  setPin(next);
+                  setErrorMsg('');
+                  if (next.length === 4) processPinVerification(next);
+                }
+              }}
+              disabled={loading || pin.length >= 4}
+              className="py-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-bold text-xl rounded-lg border border-slate-600 transition-all disabled:opacity-40 select-none"
+            >
+              0
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPin((p) => p.slice(0, -1)); setErrorMsg(''); }}
+              disabled={loading || pin.length === 0}
+              className="py-4 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-300 font-bold text-xl rounded-lg border border-slate-600 transition-all disabled:opacity-40 select-none"
+            >
+              ⌫
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
