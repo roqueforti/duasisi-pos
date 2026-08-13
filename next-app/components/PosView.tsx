@@ -600,13 +600,13 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           
           {/* Search Box */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 md:w-5 md:h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari produk / layanan..."
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200/80 rounded-lg text-xs outline-none focus:border-[#1E4648] focus:bg-white transition"
+              className="w-full pl-9 md:pl-11 pr-4 py-2 md:py-3 bg-slate-50 border border-slate-200/80 rounded-lg text-sm outline-none focus:border-[#1E4648] focus:bg-white transition"
             />
           </div>
 
@@ -615,7 +615,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             {currentRole === 'MANAGER' && (
               <button
                 onClick={() => setShowCustomItemModal(true)}
-                className="bg-[#1E4648] hover:bg-[#163536] text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-2xs"
+                className="bg-[#1E4648] hover:bg-[#163536] text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-1.5 transition shadow-2xs"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Baru</span>
@@ -623,31 +623,31 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             )}
 
             {shiftLoading ? (
-              <button disabled className="bg-slate-50 border border-slate-200 text-slate-400 px-3 py-2 rounded-lg text-xs font-semibold">
+              <button disabled className="bg-slate-50 border border-slate-200 text-slate-400 px-4 py-2.5 rounded-lg text-sm font-semibold">
                 Memuat Shift...
               </button>
             ) : shiftAktif ? (
               <button
                 onClick={() => setShowTutupShiftModal(true)}
-                className="bg-[#B5C9C9]/20 border border-[#B5C9C9] text-[#1E4648] hover:bg-[#B5C9C9]/30 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                className="bg-[#B5C9C9]/20 border border-[#B5C9C9] text-[#1E4648] hover:bg-[#B5C9C9]/30 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition"
               >
-                <Unlock className="w-3.5 h-3.5 text-[#1E4648]" />
+                <Unlock className="w-4 h-4 text-[#1E4648]" />
                 <span className="hidden sm:inline">Shift (Rp {(shiftAktif?.kasAwal || 0).toLocaleString('id-ID')})</span>
               </button>
             ) : (
               <button
                 onClick={() => setShowBukaShiftModal(true)}
-                className="bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
+                className="bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-1.5 transition"
               >
-                <Lock className="w-3.5 h-3.5 text-rose-600" />
+                <Lock className="w-4 h-4 text-rose-600" />
                 <span>Buka Shift</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Category Pills Row (Sajiwa UI Style) */}
-        <div className="px-3 sm:px-4 py-2.5 border-b border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar bg-slate-50/30">
+        {/* Category Pills Row */}
+        <div className="px-3 sm:px-4 py-3 border-b border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar bg-slate-50/30">
           {[
             { id: 'Semua', label: 'Semua Produk' },
             { id: 'SelfService', label: 'Self Service' },
@@ -659,7 +659,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               <button
                 key={tab.id}
                 onClick={() => setSelectedCategoryTab(tab.id as any)}
-                className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 border ${
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition shrink-0 border ${
                   isActive
                     ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-2xs font-bold'
                     : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-700'
@@ -671,33 +671,46 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           })}
         </div>
 
-        {/* STEP 1: Product Cards Grid (Aspect Square 1:1, Compact Font, Tap -> Cart / Double Tap -> Note Modal) */}
+        {/* STEP 1: Product Cards Grid */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 auto-rows-auto sm:auto-rows-fr">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 auto-rows-auto sm:auto-rows-fr">
             {(() => {
               const renderCard = (item: LayananItem, idx: number) => {
                 const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
                 const { Icon, iconBg, iconColor } = getLayananStyleConfig(item);
                 const isBest = idx % 3 === 0;
 
+                // Track pointer start position to distinguish tap vs scroll
+                let pointerStartX = 0;
+                let pointerStartY = 0;
+
                 return (
                   <div
                     key={idx}
-                    // Trigger on pointer-down so the cart responds immediately on tablet/touch.
-                    // The +/- controls below stop propagation and keep their click handlers.
-                    onPointerDown={() => updateCart(item, 1)}
-                    className={`bg-white rounded-lg border p-3 flex flex-col gap-2.5 cursor-pointer select-none active:scale-95 transition-transform duration-75 ${
+                    onPointerDown={(e) => {
+                      pointerStartX = e.clientX;
+                      pointerStartY = e.clientY;
+                    }}
+                    onPointerUp={(e) => {
+                      const dx = Math.abs(e.clientX - pointerStartX);
+                      const dy = Math.abs(e.clientY - pointerStartY);
+                      // Only add to cart if pointer barely moved (tap, not scroll)
+                      if (dx < 8 && dy < 8) {
+                        updateCart(item, 1);
+                      }
+                    }}
+                    className={`bg-white rounded-lg border p-4 flex flex-col gap-3 cursor-pointer select-none active:scale-95 transition-transform duration-75 touch-pan-y ${
                       qtyInCart > 0
                         ? 'ring-2 ring-[#1E4648]/25 border-[#1E4648] bg-[#1E4648]/[0.02]'
                         : 'border-slate-200/80 shadow-2xs hover:border-slate-200 hover:shadow-md'
                     }`}
                   >
                     {/* Icon + Nama produk */}
-                    <div className="flex items-start gap-2">
-                      <div className={`w-7 h-7 rounded-lg ${iconBg} ${iconColor} flex items-center justify-center shrink-0 mt-0.5`}>
-                        <Icon className="w-3.5 h-3.5" />
+                    <div className="flex items-start gap-2.5">
+                      <div className={`w-9 h-9 rounded-lg ${iconBg} ${iconColor} flex items-center justify-center shrink-0 mt-0.5`}>
+                        <Icon className="w-5 h-5" />
                       </div>
-                      <p className="font-semibold text-[11.5px] text-slate-600 leading-snug">
+                      <p className="font-semibold text-sm text-slate-600 leading-snug">
                         {item.layanan}
                       </p>
                     </div>
@@ -705,10 +718,10 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     {/* Harga + badge + stepper */}
                     <div className="flex items-center justify-between gap-1 min-w-0 max-[380px]:flex-col max-[380px]:items-stretch" onClick={(e) => e.stopPropagation()}>
                       <div className="min-w-0 shrink">
-                        <div className="text-[13px] font-bold text-slate-700 leading-none whitespace-nowrap">
+                        <div className="text-base font-bold text-slate-700 leading-none whitespace-nowrap">
                           Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
                         </div>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-1 inline-block ${
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-1 inline-block ${
                           isBest ? 'bg-[#FF9500]/15 text-[#FF9500]' : 'bg-slate-100 text-slate-500'
                         }`}>
                           {isBest ? 'Best' : 'Ready'}
@@ -719,23 +732,25 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden shrink-0 max-[380px]:self-end">
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
+                            onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
-                            className="w-6 h-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
+                            className="w-9 h-9 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-4 h-4" />
                           </button>
-                          <span className="text-xs font-bold px-1 min-w-[18px] text-center">{qtyInCart}</span>
+                          <span className="text-sm font-bold px-2 min-w-[24px] text-center">{qtyInCart}</span>
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
+                            onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                            className="w-6 h-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
+                            className="w-9 h-9 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
                       ) : (
-                        <div className="w-7 h-7 rounded-lg bg-[#1E4648]/10 flex items-center justify-center shrink-0">
-                          <Plus className="w-3.5 h-3.5 text-[#1E4648]" />
+                        <div className="w-9 h-9 rounded-lg bg-[#1E4648]/10 flex items-center justify-center shrink-0">
+                          <Plus className="w-5 h-5 text-[#1E4648]" />
                         </div>
                       )}
                     </div>
@@ -836,21 +851,21 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       )}
 
       {/* Floating Sticky Bottom Bar on Mobile (< 768px) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#1E4648] text-white px-3.5 py-2.5 flex items-center justify-between shadow-lg border-t border-[#B5C9C9]800">
-        <div className="flex items-center gap-2.5 min-w-0" onClick={() => setShowMobileCart(true)}>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#1E4648] text-white px-4 py-3 flex items-center justify-between shadow-lg border-t border-[#B5C9C9]800">
+        <div className="flex items-center gap-3 min-w-0" onClick={() => setShowMobileCart(true)}>
           <div className="relative shrink-0">
-            <ShoppingCart className="w-5 h-5 text-[#B5C9C9]" />
+            <ShoppingCart className="w-6 h-6 text-[#B5C9C9]" />
             {totalCartItems > 0 && (
-              <span className="absolute -top-2 -right-2 bg-[#FF9500] text-white text-[10px] font-bold w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-2xs">
+              <span className="absolute -top-2 -right-2 bg-[#FF9500] text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-2xs">
                 {totalCartItems}
               </span>
             )}
           </div>
           <div className="min-w-0">
-            <div className="text-xs font-bold truncate">
+            <div className="text-sm font-bold truncate">
               {totalCartItems > 0 ? `Total: Rp ${(grandTotal || 0).toLocaleString('id-ID')}` : 'Keranjang Kosong'}
             </div>
-            <div className="text-[10px] text-[#B5C9C9]/90 truncate">
+            <div className="text-xs text-[#B5C9C9]/90 truncate">
               {totalCartItems > 0 ? `${totalCartItems} item dipilih` : 'Klik item di atas untuk memilih'}
             </div>
           </div>
@@ -859,10 +874,10 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         <button
           onClick={() => setShowMobileCart(true)}
           disabled={totalCartItems === 0}
-          className="bg-[#FF9500] hover:bg-[#FF9500] disabled:opacity-40 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shrink-0 shadow-2xs"
+          className="bg-[#FF9500] hover:bg-[#FF9500] disabled:opacity-40 text-white text-sm font-bold px-4 py-2 rounded-lg transition flex items-center gap-1.5 shrink-0 shadow-2xs"
         >
           <span>Lihat Order</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="w-4 h-4" />
         </button>
       </div>
 
@@ -875,14 +890,14 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       )}
 
       {/* STEP 2: RIGHT KERANJANG ORDER PANEL (Selalu Terbuka di Desktop/Tablet) */}
-      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[300px] lg:w-[340px] xl:w-[360px] md:z-auto border border-slate-200/80 rounded-lg shrink-0 overflow-hidden shadow-2xs transition-all duration-200 ${
+      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[320px] lg:w-[360px] xl:w-[400px] md:z-auto border border-slate-200/80 rounded-lg shrink-0 overflow-hidden shadow-2xs transition-all duration-200 ${
         showMobileCart ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 md:translate-y-0 md:opacity-100 hidden md:flex'
       }`}>
         {/* Header Order & Customer Button */}
-        <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-white flex items-center justify-between">
+        <div className="p-4 border-b border-slate-100 bg-white flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4 text-[#1E4648]" />
-            <h2 className="text-sm font-bold text-slate-600">Order Detail</h2>
+            <ShoppingCart className="w-5 h-5 text-[#1E4648]" />
+            <h2 className="text-base font-bold text-slate-600">Order Detail</h2>
           </div>
           <div className="flex items-center gap-1.5">
             <button
@@ -896,57 +911,57 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         </div>
 
         {/* Customer Information Badge */}
-        <div className="px-3.5 py-2.5 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between text-xs">
+        <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Pelanggan:</span>
-            <span className="font-bold text-slate-600">{customer.nama || 'Pelanggan Umum'}</span>
-            {customer.noHp && <span className="text-[10px] text-slate-500 ml-1">({customer.noHp})</span>}
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Pelanggan:</span>
+            <span className="font-bold text-sm text-slate-600">{customer.nama || 'Pelanggan Umum'}</span>
+            {customer.noHp && <span className="text-xs text-slate-500 ml-1">({customer.noHp})</span>}
           </div>
         </div>
 
         {/* Cart Items List */}
-        <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5 bg-slate-50/40">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/40">
           {cartArray.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 py-12">
-              <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-2">
-                <ShoppingCart className="w-6 h-6 text-slate-400" />
+              <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                <ShoppingCart className="w-7 h-7 text-slate-400" />
               </div>
-              <div className="text-xs font-bold text-slate-600">Keranjang Kosong</div>
-              <div className="text-[11px] text-slate-400 mt-0.5">Pilih produk di katalog sebelah kiri</div>
+              <div className="text-sm font-bold text-slate-600">Keranjang Kosong</div>
+              <div className="text-xs text-slate-400 mt-1">Pilih produk di katalog sebelah kiri</div>
             </div>
           ) : (
             cartArray.map((item, idx) => (
-              <div key={idx} className="p-3 bg-white rounded-lg border border-slate-200/80 shadow-2xs space-y-2">
+              <div key={idx} className="p-3.5 bg-white rounded-lg border border-slate-200/80 shadow-2xs space-y-2.5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 pr-2">
-                    <h4 className="font-bold text-xs text-slate-600 leading-snug">{item.layanan}</h4>
-                    <div className="text-[11px] font-bold text-[#1E4648] mt-0.5">
+                    <h4 className="font-bold text-sm text-slate-600 leading-snug">{item.layanan}</h4>
+                    <div className="text-xs font-bold text-[#1E4648] mt-0.5">
                       Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')} × {item.qty} = Rp {(item.qty * (item.hargaSatuan || 0)).toLocaleString('id-ID')}
                     </div>
                   </div>
                   <button
                     onClick={() => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, -item.qty)}
-                    className="text-rose-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition"
+                    className="text-rose-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition"
                     title="Hapus Item"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                   <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/80 rounded-lg p-0.5">
                     <button
                       onClick={() => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, -1)}
-                      className="w-5 h-5 bg-white text-slate-600 font-bold rounded flex items-center justify-center border border-slate-200"
+                      className="w-8 h-8 bg-white text-slate-600 font-bold rounded-md flex items-center justify-center border border-slate-200"
                     >
-                      <Minus className="w-3 h-3" />
+                      <Minus className="w-4 h-4" />
                     </button>
-                    <span className="text-xs font-bold text-slate-600 px-1.5">{item.qty}</span>
+                    <span className="text-sm font-bold text-slate-600 px-2">{item.qty}</span>
                     <button
                       onClick={() => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, 1)}
-                      className="w-5 h-5 bg-[#1E4648] text-white font-bold rounded flex items-center justify-center"
+                      className="w-8 h-8 bg-[#1E4648] text-white font-bold rounded-md flex items-center justify-center"
                     >
-                      <Plus className="w-3 h-3" />
+                      <Plus className="w-4 h-4" />
                     </button>
                   </div>
 
@@ -955,7 +970,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     value={item.catatan || ''}
                     onChange={(e) => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, 0, e.target.value)}
                     placeholder="+ Catatan"
-                    className="text-[11px] px-2 py-0.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-[#1E4648] text-right w-24"
+                    className="text-xs px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-[#1E4648] text-right w-28"
                   />
                 </div>
               </div>
@@ -964,32 +979,32 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         </div>
 
         {/* Voucher Input Box */}
-        <div className="px-3.5 py-2.5 bg-white border-t border-slate-100 space-y-1.5">
-          <div className="flex gap-1.5">
+        <div className="px-4 py-3 bg-white border-t border-slate-100 space-y-2">
+          <div className="flex gap-2">
             <input
               type="text"
               value={voucherInput}
               onChange={(e) => setVoucherInput(e.target.value)}
               placeholder="Kode Voucher (HEMAT10)"
-              className="flex-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold uppercase outline-none focus:border-[#1E4648]"
+              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold uppercase outline-none focus:border-[#1E4648]"
             />
             <button
               onClick={handleApplyVoucher}
-              className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+              className="bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold px-4 py-2 rounded-lg transition"
             >
               Pasang
             </button>
           </div>
           {voucherMsg && (
-            <div className={`text-[10px] font-bold ${voucherMsg.type === 'success' ? 'text-[#1E4648]' : 'text-rose-500'}`}>
+            <div className={`text-xs font-bold ${voucherMsg.type === 'success' ? 'text-[#1E4648]' : 'text-rose-500'}`}>
               {voucherMsg.text}
             </div>
           )}
         </div>
 
         {/* Financial Summary & Process Payment Button */}
-        <div className="p-4 border-t border-slate-200/80 bg-white space-y-2">
-          <div className="space-y-1 text-xs text-slate-500">
+        <div className="p-4 border-t border-slate-200/80 bg-white space-y-3">
+          <div className="space-y-1.5 text-sm text-slate-500">
             <div className="flex justify-between">
               <span>Subtotal :</span>
               <span className="font-bold text-slate-600">Rp {(subtotalCart || 0).toLocaleString('id-ID')}</span>
@@ -1002,26 +1017,26 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             )}
           </div>
 
-          <div className="bg-slate-900 text-white rounded-lg p-3.5 flex justify-between items-center shadow-inner my-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">Total Tagihan</span>
-            <span className="text-lg font-bold text-[#B5C9C9]">Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>
+          <div className="bg-slate-900 text-white rounded-lg p-4 flex justify-between items-center shadow-inner my-1.5">
+            <span className="text-sm font-bold uppercase tracking-wider text-slate-300">Total Tagihan</span>
+            <span className="text-xl font-bold text-[#B5C9C9]">Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>
           </div>
 
           <div className="flex gap-2 pt-2">
             <button
               onClick={clearCart}
               disabled={cartArray.length === 0}
-              className="p-3 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-500 rounded-lg transition disabled:opacity-40 border border-slate-200/80"
+              className="p-3.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-500 rounded-lg transition disabled:opacity-40 border border-slate-200/80"
               title="Kosongkan keranjang"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-5 h-5" />
             </button>
             <button
               onClick={() => setShowDetailTransaksiModal(true)}
               disabled={cartArray.length === 0}
-              className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3 rounded-lg text-xs sm:text-sm transition flex items-center justify-center gap-2 disabled:opacity-40 shadow-md"
+              className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3.5 rounded-lg text-sm transition flex items-center justify-center gap-2 disabled:opacity-40 shadow-md"
             >
-              <CreditCard className="w-4 h-4" />
+              <CreditCard className="w-5 h-5" />
               <span>Proses Bayar Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>
             </button>
           </div>
