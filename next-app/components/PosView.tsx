@@ -1568,12 +1568,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       </button>
                     </>
                   )}
-
-                  {/* Referensi */}
-                  <div className="w-full mt-6">
-                    <label className="block font-bold text-slate-700 mb-2 text-sm">Referensi / No. Transaksi (Optional)</label>
-                    <input type="text" value={refNoInput} onChange={(e) => setRefNoInput(e.target.value)} placeholder="Auto-generated" className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none" />
-                  </div>
                 </div>
               )}
 
