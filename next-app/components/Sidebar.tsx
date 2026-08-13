@@ -75,7 +75,7 @@ export default function Sidebar({
       )}
 
       <aside className={`bg-white text-slate-600 border-r border-slate-200/80 flex flex-col shrink-0 z-[200] fixed lg:static inset-y-0 left-0 transition-all duration-200 overflow-y-auto ${
-        isCollapsed ? 'lg:w-[64px]' : 'lg:w-60'
+        isCollapsed ? 'lg:w-[64px]' : 'lg:w-48'
       } ${isSidebarOpen ? 'w-60 translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         
         {/* Header Logo & Minimize */}

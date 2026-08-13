@@ -1015,7 +1015,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       )}
 
       {/* STEP 2: RIGHT KERANJANG ORDER PANEL (Selalu Terbuka di Desktop/Tablet) */}
-      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[280px] lg:w-[300px] xl:w-[320px] md:z-auto border border-slate-200/80 rounded-lg shrink-0 overflow-hidden shadow-2xs transition-all duration-200 ${
+      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[260px] lg:w-[280px] xl:w-[300px] md:z-auto border border-slate-200/80 rounded-lg shrink-0 overflow-hidden shadow-2xs transition-all duration-200 ${
         showMobileCart ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 md:translate-y-0 md:opacity-100 hidden md:flex'
       }`}>
         {/* Header Order & Customer Button */}

@@ -88,7 +88,7 @@ export default function Navbar({
 
   return (
     <>
-      <header className="h-14 bg-white border-b border-slate-200/80 px-2.5 sm:px-4 md:px-6 flex items-center justify-between shrink-0 z-30">
+      <header className="h-12 bg-white border-b border-slate-200/80 px-2 sm:px-3 md:px-4 flex items-center justify-between shrink-0 z-30">
         <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-initial mr-2">
           <button
             className="lg:hidden text-slate-500 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition shrink-0"
@@ -97,10 +97,10 @@ export default function Navbar({
             <Menu className="w-5 h-5" />
           </button>
           <div className="min-w-0">
-            <h1 className="text-xs sm:text-sm font-bold text-slate-600 truncate whitespace-nowrap max-w-[120px] xs:max-w-[170px] sm:max-w-none">
+            <h1 className="text-xs font-bold text-slate-600 truncate whitespace-nowrap max-w-[100px] xs:max-w-[150px] sm:max-w-none">
               {tabTitles[currentTab] || 'Dua SiSi POS'}
             </h1>
-            <p className="text-[11px] text-slate-400 font-medium hidden md:block truncate">Dashboard • {currentTab}</p>
+            <p className="text-[10px] text-slate-400 font-medium hidden md:block truncate">Dashboard • {currentTab}</p>
           </div>
         </div>
 
@@ -108,7 +108,7 @@ export default function Navbar({
           {/* Bluetooth Thermal Printer Status & Config Button */}
           <button
             onClick={() => setIsPrinterModalOpen(true)}
-            className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition border shrink-0 ${
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold transition border shrink-0 ${
               printerConnected
                 ? 'bg-[#B5C9C9]/20 text-[#1E4648] border-[#B5C9C9] hover:bg-[#B5C9C9]/30'
                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
@@ -129,7 +129,7 @@ export default function Navbar({
           {/* PWA Install Button */}
           <button
             onClick={handleInstallPWA}
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition shrink-0"
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 px-2 py-1 rounded-lg text-xs font-semibold transition shrink-0"
             title="Instal Aplikasi Dua SiSi POS ke HP/PC"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
