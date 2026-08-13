@@ -806,7 +806,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
         {/* STEP 1: Product Cards Grid */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 auto-rows-auto sm:auto-rows-fr">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 auto-rows-auto">
             {(() => {
               const renderCard = (item: LayananItem, idx: number) => {
                 const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
@@ -827,63 +827,57 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     onPointerUp={(e) => {
                       const dx = Math.abs(e.clientX - pointerStartX);
                       const dy = Math.abs(e.clientY - pointerStartY);
-                      // Only add to cart if pointer barely moved (tap, not scroll)
                       if (dx < 8 && dy < 8) {
                         updateCart(item, 1);
                       }
                     }}
-                    className={`bg-white rounded-lg border p-4 flex flex-col gap-3 cursor-pointer select-none active:scale-95 transition-transform duration-75 touch-pan-y ${
+                    className={`bg-white rounded-lg border p-2.5 flex flex-col gap-2 cursor-pointer select-none active:scale-95 transition-transform duration-75 touch-pan-y ${
                       qtyInCart > 0
                         ? 'ring-2 ring-[#1E4648]/25 border-[#1E4648] bg-[#1E4648]/[0.02]'
                         : 'border-slate-200/80 shadow-2xs hover:border-slate-200 hover:shadow-md'
                     }`}
                   >
-                    {/* Icon + Nama produk */}
-                    <div className="flex items-start gap-2.5">
-                      <div className={`w-9 h-9 rounded-lg ${iconBg} ${iconColor} flex items-center justify-center shrink-0 mt-0.5`}>
-                        <Icon className="w-5 h-5" />
+                    {/* Icon + Nama produk - compact */}
+                    <div className="flex items-start gap-1.5">
+                      <div className={`w-7 h-7 rounded-md ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>
+                        <Icon className="w-4 h-4" />
                       </div>
-                      <p className="font-semibold text-sm text-slate-600 leading-snug">
+                      <p className="font-semibold text-xs text-slate-600 leading-tight line-clamp-2">
                         {item.layanan}
                       </p>
                     </div>
 
-                    {/* Harga + badge + stepper */}
-                    <div className="flex items-center justify-between gap-1 min-w-0 max-[380px]:flex-col max-[380px]:items-stretch" onClick={(e) => e.stopPropagation()}>
+                    {/* Harga + stepper - horizontal compact */}
+                    <div className="flex items-center justify-between gap-1 min-w-0" onClick={(e) => e.stopPropagation()}>
                       <div className="min-w-0 shrink">
-                        <div className="text-base font-bold text-slate-700 leading-none whitespace-nowrap">
+                        <div className="text-sm font-bold text-slate-700 leading-none whitespace-nowrap">
                           Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
                         </div>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-1 inline-block ${
-                          isBest ? 'bg-[#FF9500]/15 text-[#FF9500]' : 'bg-slate-100 text-slate-500'
-                        }`}>
-                          {isBest ? 'Best' : 'Ready'}
-                        </span>
                       </div>
 
                       {qtyInCart > 0 ? (
-                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden shrink-0 max-[380px]:self-end">
+                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden shrink-0">
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
-                            className="w-9 h-9 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
+                            className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
                           >
-                            <Minus className="w-4 h-4" />
+                            <Minus className="w-3 h-3" />
                           </button>
-                          <span className="text-sm font-bold px-2 min-w-[24px] text-center">{qtyInCart}</span>
+                          <span className="text-xs font-bold px-1.5 min-w-[18px] text-center">{qtyInCart}</span>
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                            className="w-9 h-9 flex items-center justify-center hover:bg-white/20 transition font-bold text-base"
+                            className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
                           >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-3 h-3" />
                           </button>
                         </div>
                       ) : (
-                        <div className="w-9 h-9 rounded-lg bg-[#1E4648]/10 flex items-center justify-center shrink-0">
-                          <Plus className="w-5 h-5 text-[#1E4648]" />
+                        <div className="w-6 h-6 rounded-md bg-[#1E4648]/10 flex items-center justify-center shrink-0">
+                          <Plus className="w-4 h-4 text-[#1E4648]" />
                         </div>
                       )}
                     </div>
@@ -1023,14 +1017,14 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       )}
 
       {/* STEP 2: RIGHT KERANJANG ORDER PANEL (Selalu Terbuka di Desktop/Tablet) */}
-      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[320px] lg:w-[360px] xl:w-[400px] md:z-auto border border-slate-200/80 rounded-lg shrink-0 overflow-hidden shadow-2xs transition-all duration-200 ${
+      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[280px] lg:w-[300px] xl:w-[320px] md:z-auto border border-slate-200/80 rounded-lg shrink-0 overflow-hidden shadow-2xs transition-all duration-200 ${
         showMobileCart ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 md:translate-y-0 md:opacity-100 hidden md:flex'
       }`}>
         {/* Header Order & Customer Button */}
-        <div className="p-4 border-b border-slate-100 bg-white flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-[#1E4648]" />
-            <h2 className="text-base font-bold text-slate-600">Order Detail</h2>
+        <div className="p-3 border-b border-slate-100 bg-white flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <ShoppingCart className="w-4 h-4 text-[#1E4648]" />
+            <h2 className="text-sm font-bold text-slate-600">Order</h2>
           </div>
           <div className="flex items-center gap-1.5">
             <button
