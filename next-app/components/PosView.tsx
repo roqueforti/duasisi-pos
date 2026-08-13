@@ -1051,8 +1051,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           </div>
         </div>
 
-        {/* Cart Items List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/40">
+        {/* Cart Items List - Simple Text Format */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-1 bg-slate-50/40">
           {cartArray.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 py-12">
               <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
@@ -1063,48 +1063,20 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             </div>
           ) : (
             cartArray.map((item, idx) => (
-              <div key={idx} className="p-3.5 bg-white rounded-lg border border-slate-200/80 shadow-2xs space-y-2.5">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 pr-2">
-                    <h4 className="font-bold text-sm text-slate-600 leading-snug">{item.layanan}</h4>
-                    <div className="text-xs font-bold text-[#1E4648] mt-0.5">
-                      Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')} Ã— {item.qty} = Rp {(item.qty * (item.hargaSatuan || 0)).toLocaleString('id-ID')}
-                    </div>
+              <div key={idx} className="flex items-center justify-between px-3 py-2.5 bg-white border border-slate-200/60 rounded-lg hover:shadow-sm transition group">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-slate-600 leading-tight truncate">{item.layanan}</div>
+                  <div className="text-xs text-slate-500 font-semibold">
+                    Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')} × {item.qty}
                   </div>
-                  <button
-                    onClick={() => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, -item.qty)}
-                    className="text-rose-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition"
-                    title="Hapus Item"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                  <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/80 rounded-lg p-0.5">
-                    <button
-                      onClick={() => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, -1)}
-                      className="w-8 h-8 bg-white text-slate-600 font-bold rounded-md flex items-center justify-center border border-slate-200"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="text-sm font-bold text-slate-600 px-2">{item.qty}</span>
-                    <button
-                      onClick={() => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, 1)}
-                      className="w-8 h-8 bg-[#1E4648] text-white font-bold rounded-md flex items-center justify-center"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <input
-                    type="text"
-                    value={item.catatan || ''}
-                    onChange={(e) => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, 0, e.target.value)}
-                    placeholder="+ Catatan"
-                    className="text-xs px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-[#1E4648] text-right w-28"
-                  />
-                </div>
+                <button
+                  onClick={() => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, -item.qty)}
+                  className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition ml-2 shrink-0 opacity-0 group-hover:opacity-100"
+                  title="Hapus Item"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             ))
           )}
