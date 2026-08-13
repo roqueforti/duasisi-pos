@@ -877,11 +877,38 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         : 'border-slate-200/80 shadow-sm hover:border-[#1E4648] hover:shadow-md'
                     }`}
                   >
-                    {/* Nama produk - clear text */}
-                    <div>
-                      <p className="font-bold text-sm text-slate-700 leading-snug line-clamp-2">
-                        {item.layanan}
-                      </p>
+                    {/* Category Icon Badge + Product Name */}
+                    <div className="flex items-start gap-2">
+                      {(() => {
+                        let IconComp = WashingMachine;
+                        let bgColor = 'bg-[#1E4648]/10';
+                        let textColor = 'text-[#1E4648]';
+                        
+                        if (item.tipe === 'FullService') {
+                          IconComp = Sparkles;
+                          bgColor = 'bg-[#B5C9C9]/20';
+                          textColor = 'text-[#1E4648]';
+                        } else if (item.kategori === 'MakananMinuman') {
+                          IconComp = Coffee;
+                          bgColor = 'bg-[#FF9500]/10';
+                          textColor = 'text-[#FF9500]';
+                        } else if (item.kategori === 'Produk') {
+                          IconComp = Package;
+                          bgColor = 'bg-slate-100';
+                          textColor = 'text-slate-500';
+                        }
+                        
+                        return (
+                          <div className={`w-8 h-8 rounded-lg ${bgColor} flex items-center justify-center shrink-0 flex-none`}>
+                            <IconComp className={`w-4 h-4 ${textColor}`} />
+                          </div>
+                        );
+                      })()}
+                      <div className="flex-1">
+                        <p className="font-bold text-sm text-slate-700 leading-snug line-clamp-2">
+                          {item.layanan}
+                        </p>
+                      </div>
                     </div>
 
                     {/* Harga - prominent */}
@@ -971,10 +998,37 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       }`}
                       onPointerUp={() => updateCart(item, 1)}
                     >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-slate-700 leading-snug">{item.layanan}</p>
-                        <div className="text-sm font-bold text-[#1E4648] mt-1">
-                          Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
+                      <div className="flex-1 min-w-0 flex items-center gap-3">
+                        {(() => {
+                          let IconComp = WashingMachine;
+                          let bgColor = 'bg-[#1E4648]/10';
+                          let textColor = 'text-[#1E4648]';
+                          
+                          if (item.tipe === 'FullService') {
+                            IconComp = Sparkles;
+                            bgColor = 'bg-[#B5C9C9]/20';
+                            textColor = 'text-[#1E4648]';
+                          } else if (item.kategori === 'MakananMinuman') {
+                            IconComp = Coffee;
+                            bgColor = 'bg-[#FF9500]/10';
+                            textColor = 'text-[#FF9500]';
+                          } else if (item.kategori === 'Produk') {
+                            IconComp = Package;
+                            bgColor = 'bg-slate-100';
+                            textColor = 'text-slate-500';
+                          }
+                          
+                          return (
+                            <div className={`w-10 h-10 rounded-lg ${bgColor} flex items-center justify-center shrink-0 flex-none`}>
+                              <IconComp className={`w-5 h-5 ${textColor}`} />
+                            </div>
+                          );
+                        })()}
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-slate-700 leading-snug truncate">{item.layanan}</p>
+                          <div className="text-sm font-bold text-[#1E4648] mt-1">
+                            Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
+                          </div>
                         </div>
                       </div>
 
