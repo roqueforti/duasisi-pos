@@ -806,7 +806,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
         {/* STEP 1: Product Cards Grid */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2.5 auto-rows-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 auto-rows-auto">
             {(() => {
               const renderCard = (item: LayananItem, idx: number) => {
                 const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
@@ -831,53 +831,51 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         updateCart(item, 1);
                       }
                     }}
-                    className={`bg-white rounded-lg border p-2.5 flex flex-col gap-2 cursor-pointer select-none active:scale-95 transition-transform duration-75 touch-pan-y ${
+                    className={`bg-white rounded-xl border-2 p-4 flex flex-col gap-3 cursor-pointer select-none active:scale-95 transition-transform duration-75 touch-pan-y ${
                       qtyInCart > 0
-                        ? 'ring-2 ring-[#1E4648]/25 border-[#1E4648] bg-[#1E4648]/[0.02]'
-                        : 'border-slate-200/80 shadow-2xs hover:border-slate-200 hover:shadow-md'
+                        ? 'ring-2 ring-[#1E4648]/50 border-[#1E4648] bg-[#1E4648]/[0.03] shadow-md'
+                        : 'border-slate-200/80 shadow-sm hover:border-[#1E4648] hover:shadow-md'
                     }`}
                   >
-                    {/* Icon + Nama produk - compact */}
-                    <div className="flex items-start gap-1.5">
-                      <div className={`w-7 h-7 rounded-md ${iconBg} ${iconColor} flex items-center justify-center shrink-0`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <p className="font-semibold text-xs text-slate-600 leading-tight line-clamp-2">
+                    {/* Nama produk - large & clear */}
+                    <div>
+                      <p className="font-bold text-base text-slate-700 leading-snug line-clamp-3 min-h-[60px] flex items-center">
                         {item.layanan}
                       </p>
                     </div>
 
-                    {/* Harga + stepper - horizontal compact */}
-                    <div className="flex items-center justify-between gap-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-                      <div className="min-w-0 shrink">
-                        <div className="text-sm font-bold text-slate-700 leading-none whitespace-nowrap">
-                          Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
-                        </div>
+                    {/* Harga - large & prominent */}
+                    <div className="pt-2 border-t-2 border-slate-100">
+                      <div className="text-2xl font-bold text-[#1E4648] leading-none mb-2">
+                        Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
                       </div>
+                    </div>
 
+                    {/* Qty stepper - bottom */}
+                    <div className="flex items-center justify-between gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
                       {qtyInCart > 0 ? (
-                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden shrink-0">
+                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden flex-1">
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
-                            className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
+                            className="w-8 h-8 flex items-center justify-center hover:bg-white/20 transition font-bold text-sm"
                           >
-                            <Minus className="w-3 h-3" />
+                            <Minus className="w-4 h-4" />
                           </button>
-                          <span className="text-xs font-bold px-1.5 min-w-[18px] text-center">{qtyInCart}</span>
+                          <span className="text-sm font-bold px-2 flex-1 text-center">{qtyInCart}</span>
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                            className="w-6 h-6 flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
+                            className="w-8 h-8 flex items-center justify-center hover:bg-white/20 transition font-bold text-sm"
                           >
-                            <Plus className="w-3 h-3" />
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
                       ) : (
-                        <div className="w-6 h-6 rounded-md bg-[#1E4648]/10 flex items-center justify-center shrink-0">
-                          <Plus className="w-4 h-4 text-[#1E4648]" />
+                        <div className="w-full h-8 rounded-lg bg-slate-100 border-2 border-slate-300 flex items-center justify-center hover:bg-slate-200 transition">
+                          <Plus className="w-5 h-5 text-slate-500" />
                         </div>
                       )}
                     </div>
