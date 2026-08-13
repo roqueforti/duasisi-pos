@@ -34,7 +34,7 @@ const ALLOWED_API_ACTIONS = Object.freeze({
   getLaporanRange: true, getPegawaiList: true, tambahPegawai: true, hapusPegawai: true, getRekapKinerjaPegawai: true,
   clockInPegawai: true, clockOutPegawai: true, getStatusAbsensiHariIni: true, getRekapAbsensi: true,
   getMasterShiftList: true, tambahMasterShift: true, hapusMasterShift: true,
-  getKasShiftAktif: true, openKasShift: true, handoverCheckKasShift: true, closeKasShift: true, getRekapKasShift: true,
+  getKasShiftAktif: true, openKasShift: true, handoverCheckKasShift: true, closeKasShift: true, getRekapKasShift: true, uploadExpensePhoto: true,
   getAuditLogs: true, ajukanVoidTransaksi: true, approveVoidTransaksi: true
 });
 const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true });
@@ -1746,61 +1746,207 @@ function calculateShiftCash_(openedAt) {
   }, 0);
 }
 
+// ============================================================
+// GOOGLE DRIVE SETUP & PERMISSIONS
+// ============================================================
+
 /**
- * EXPENSE PHOTO UPLOAD TO GOOGLE DRIVE
- * Base64 image → PDF creation + Drive upload
- * Returns fileUrl pointing to uploaded file
+ * SETUP GOOGLE DRIVE untuk Shift Expenses folder
+ * Jalankan manual dari Apps Script editor untuk create folder struktur
  */
-function uploadExpensePhoto(fileName, fileData, mimeType, shiftId) {
+function setupGoogleDriveFolders() {
   try {
-    // Base64 decode
-    let decodedData;
-    if (typeof fileData === 'string' && fileData.indexOf(',') !== -1) {
-      // Strip data:image/png;base64, prefix if present
-      const base64String = fileData.split(',')[1] || fileData;
-      decodedData = Utilities.base64Decode(base64String);
-    } else {
-      decodedData = Utilities.base64Decode(String(fileData));
-    }
-
-    const cleanFileName = String(fileName || 'expense_' + Date.now()).replace(/[^\w\s\-\.]/g, '_');
-    const extension = mimeType && mimeType.indexOf('png') !== -1 ? '.png' : mimeType && mimeType.indexOf('jpg') !== -1 ? '.jpg' : '.jpg';
-    const finalFileName = cleanFileName.indexOf('.') === -1 ? cleanFileName + extension : cleanFileName;
-
-    // Get or create Shift Expenses folder in Google Drive
     const rootFolder = DriveApp.getRootFolder();
+    let expensesFolder;
+    
+    // Cek apakah folder sudah ada
     const folders = rootFolder.getFoldersByName('Shift Expenses');
+    if (folders.hasNext()) {
+      expensesFolder = folders.next();
+      return {
+        success: true,
+        folderId: expensesFolder.getId(),
+        folderUrl: expensesFolder.getUrl(),
+        message: '✅ Folder "Shift Expenses" sudah ada di Google Drive root'
+      };
+    }
+    
+    // Create folder baru
+    expensesFolder = rootFolder.createFolder('Shift Expenses');
+    
+    return {
+      success: true,
+      folderId: expensesFolder.getId(),
+      folderUrl: expensesFolder.getUrl(),
+      message: '✅ Folder "Shift Expenses" berhasil dibuat di Google Drive. ID: ' + expensesFolder.getId()
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: '❌ Error setup Google Drive: ' + error.message,
+      troubleshoot: 'Pastikan Anda sudah authorize Apps Script untuk akses Google Drive'
+    };
+  }
+}
+
+/**
+ * TEST UPLOAD - cek apakah upload berhasil
+ * Jalankan dari Apps Script editor untuk verify setup
+ */
+function testDriveUpload() {
+  try {
+    const rootFolder = DriveApp.getRootFolder();
+    const testFileName = 'TEST_UPLOAD_' + new Date().getTime() + '.txt';
+    const testContent = 'Test file upload ke Google Drive - Shift Expenses\nTimestamp: ' + new Date().toISOString();
+    
+    // Cek/create Shift Expenses folder
     let targetFolder;
+    const folders = rootFolder.getFoldersByName('Shift Expenses');
     if (folders.hasNext()) {
       targetFolder = folders.next();
     } else {
       targetFolder = rootFolder.createFolder('Shift Expenses');
     }
+    
+    // Upload test file
+    const blob = Utilities.newBlob(testContent, 'text/plain', testFileName);
+    const uploadedFile = targetFolder.createFile(blob);
+    
+    return {
+      success: true,
+      testFileName: uploadedFile.getName(),
+      fileId: uploadedFile.getId(),
+      folderUrl: targetFolder.getUrl(),
+      fileUrl: uploadedFile.getUrl(),
+      message: '✅ Test upload berhasil! File tersimpan di Google Drive Shift Expenses folder'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: '❌ Test upload gagal: ' + error.message,
+      troubleshoot: 'Periksa browser console untuk detail error'
+    };
+  }
+}
 
-    // Create subFolder for this shift if not exists
-    const shiftFolders = targetFolder.getFoldersByName(String(shiftId || 'Unknown'));
+/**
+ * LIST Shift Expenses folder - cek file yang sudah upload
+ */
+function listShiftExpensesFiles() {
+  try {
+    const rootFolder = DriveApp.getRootFolder();
+    const folders = rootFolder.getFoldersByName('Shift Expenses');
+    
+    if (!folders.hasNext()) {
+      return { success: false, message: 'Folder Shift Expenses tidak ada. Jalankan setupGoogleDriveFolders() dulu.' };
+    }
+    
+    const expensesFolder = folders.next();
+    const files = expensesFolder.getFiles();
+    const fileList = [];
+    
+    while (files.hasNext()) {
+      const file = files.next();
+      fileList.push({
+        name: file.getName(),
+        id: file.getId(),
+        url: file.getUrl(),
+        created: file.getDateCreated(),
+        size: file.getSize()
+      });
+    }
+    
+    return {
+      success: true,
+      folderUrl: expensesFolder.getUrl(),
+      totalFiles: fileList.length,
+      files: fileList.reverse()
+    };
+  } catch (error) {
+    return { success: false, message: 'Error list files: ' + error.message };
+  }
+}
+
+// ============================================================
+// UPDATED uploadExpensePhoto dengan better error handling
+// ============================================================
+
+/**
+ * EXPENSE PHOTO UPLOAD TO GOOGLE DRIVE
+ * Base64 image → Drive upload dengan folder per shift
+ * Returns {success, fileId, fileName, fileUrl, ...}
+ */
+function uploadExpensePhoto(fileName, fileData, mimeType, shiftId) {
+  try {
+    if (!fileName || !fileData || !shiftId) {
+      return { success: false, message: 'Parameter fileName, fileData, dan shiftId wajib diisi' };
+    }
+
+    // Decode base64
+    let decodedData;
+    try {
+      if (typeof fileData === 'string' && fileData.indexOf(',') !== -1) {
+        // Strip data:image/png;base64, prefix if present
+        const base64String = fileData.split(',')[1] || fileData;
+        decodedData = Utilities.base64Decode(base64String);
+      } else {
+        decodedData = Utilities.base64Decode(String(fileData));
+      }
+    } catch (decodeErr) {
+      return { success: false, message: 'Error decode base64: ' + decodeErr.message };
+    }
+
+    // Sanitize filename
+    const cleanFileName = String(fileName || 'expense_' + Date.now()).replace(/[^\w\s\-\.]/g, '_').substring(0, 100);
+    const extension = mimeType && mimeType.indexOf('png') !== -1 ? '.png' : mimeType && mimeType.indexOf('jpg') !== -1 ? '.jpg' : '.jpg';
+    const finalFileName = cleanFileName.indexOf('.') === -1 ? cleanFileName + extension : cleanFileName;
+
+    // Get or create Shift Expenses folder
+    const rootFolder = DriveApp.getRootFolder();
+    let targetFolder = rootFolder;
+    
+    // Find or create "Shift Expenses" folder
+    const expenseFolders = rootFolder.getFoldersByName('Shift Expenses');
+    let expensesFolder;
+    if (expenseFolders.hasNext()) {
+      expensesFolder = expenseFolders.next();
+    } else {
+      expensesFolder = rootFolder.createFolder('Shift Expenses');
+    }
+    targetFolder = expensesFolder;
+
+    // Find or create shift-specific subfolder
+    const shiftFolders = expensesFolder.getFoldersByName(String(shiftId || 'Unknown'));
     if (shiftFolders.hasNext()) {
       targetFolder = shiftFolders.next();
     } else {
-      targetFolder = targetFolder.createFolder(String(shiftId || 'Unknown'));
+      targetFolder = expensesFolder.createFolder(String(shiftId || 'Unknown'));
     }
 
     // Upload file
     const blob = Utilities.newBlob(decodedData, mimeType || 'image/jpeg', finalFileName);
     const uploadedFile = targetFolder.createFile(blob);
+    uploadedFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW); // Optional: share publicly
 
     return {
       success: true,
       fileId: uploadedFile.getId(),
       fileName: uploadedFile.getName(),
       fileUrl: uploadedFile.getUrl(),
+      downloadUrl: uploadedFile.getDownloadUrl(),
       mimeType: uploadedFile.getMimeType(),
-      createdTime: new Date().toISOString()
+      createdTime: new Date().toISOString(),
+      shiftId: String(shiftId),
+      size: uploadedFile.getSize()
     };
   } catch (error) {
     return {
       success: false,
-      message: 'Gagal upload foto ke Google Drive: ' + error.message
+      message: 'Gagal upload foto ke Google Drive: ' + error.message,
+      errorDetails: error.toString()
+    };
+  }
+}
     };
   }
 }
