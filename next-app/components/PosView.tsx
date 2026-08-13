@@ -50,6 +50,7 @@ interface CustomerState {
   noHp: string;
   alamat?: string;
   memberStatus?: string;
+  poin?: number;
 }
 
 const defaultLayanan: LayananItem[] = [
@@ -107,7 +108,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   // Order Details Form State
   const [tipeLayanan, setTipeLayanan] = useState<'SelfService' | 'FullService'>('SelfService');
   const [tingkatLayanan, setTingkatLayanan] = useState<'Reguler' | 'Express' | 'Kilat'>('Reguler');
-  const [estimasiSelesai, setEstimasiSelesai] = useState<string>('Hari ini, 17.00 WIB');
   const [catatanOrderInput, setCatatanOrderInput] = useState<string>('');
 
   // Payment Form State
@@ -138,9 +138,9 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [newCustNoHp, setNewCustNoHp] = useState<string>('');
   const [newCustAlamat, setNewCustAlamat] = useState<string>('');
   const [customerList, setCustomerList] = useState<CustomerState[]>([
-    { nama: 'Budi Santoso', noHp: '081234567890', memberStatus: 'Member Gold', alamat: 'Jl. Melati No. 12' },
-    { nama: 'Siti Rahma', noHp: '085712345678', memberStatus: 'Regular', alamat: 'Jl. Mawar No. 45' },
-    { nama: 'Agus Wijaya', noHp: '082198765432', memberStatus: 'Member Silver', alamat: 'Griya Asri B3/10' },
+    { nama: 'Budi Santoso', noHp: '081234567890', memberStatus: 'Member Gold', alamat: 'Jl. Melati No. 12', poin: 150 },
+    { nama: 'Siti Rahma', noHp: '085712345678', memberStatus: 'Regular', alamat: 'Jl. Mawar No. 45', poin: 45 },
+    { nama: 'Agus Wijaya', noHp: '082198765432', memberStatus: 'Member Silver', alamat: 'Griya Asri B3/10', poin: 80 },
   ]);
   const [staffList, setStaffList] = useState<{ id: string; nama: string; jabatan?: string }[]>([
     { id: '1', nama: 'Kasir 1 (Shift Pagi)' },
@@ -394,7 +394,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         metodeBayar,
         nominalBayar: metodeBayar === 'Tunai' ? bayar : total,
         referensiPembayaran: refNoInput.trim(),
-        estimasiSelesai,
         diskon: diskonApplied.nilai,
         catatan: catatanOrderInput,
         items: cartArray.map((i) => ({ layanan: i.layanan, qty: i.qty, hargaSatuan: i.hargaSatuan }))
@@ -415,7 +414,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         items: cartArray.map(i => ({ ...i, hargaSatuan: Number(i.hargaSatuan) || 0, qty: Number(i.qty) || 0 })),
         catatan: catatanOrderInput,
         tipeLayanan,
-        estimasiSelesai,
         waktu: new Date().toLocaleTimeString('id-ID') + ' WIB',
         tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
       });
@@ -456,7 +454,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         noHp: completedOrderData.noHp,
         total: completedOrderData.total,
         status: 'Selesai',
-        estimasi: completedOrderData.estimasiSelesai || '',
         petugas: completedOrderData.kasir,
         tipe: completedOrderData.tipeLayanan || 'SelfService',
         tingkatLayanan: 'Reguler',
@@ -912,10 +909,17 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
         {/* Customer Information Badge */}
         <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
-          <div>
+          <div className="flex-1">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Pelanggan:</span>
-            <span className="font-bold text-sm text-slate-600">{customer.nama || 'Pelanggan Umum'}</span>
-            {customer.noHp && <span className="text-xs text-slate-500 ml-1">({customer.noHp})</span>}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-sm text-slate-600">{customer.nama || 'Pelanggan Umum'}</span>
+              {customer.noHp && <span className="text-xs text-slate-500">({customer.noHp})</span>}
+              {customer.poin !== undefined && (
+                <span className="inline-flex items-center gap-1 text-xs font-bold bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/30 px-2 py-0.5 rounded">
+                  ⭐ {customer.poin} Poin
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1209,10 +1213,244 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         </div>
       )}
 
-      {/* 4. MODAL "Detail Transaksi & Pembayaran" (Gabungan Sebelum Bayar) */}
+      {/* 4. MODAL "Detail Transaksi & Pembayaran" (Split Layout: Kiri Summary, Kanan Numpad Kalkulator) */}
       {showDetailTransaksiModal && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg p-5 sm:p-6 w-full max-w-2xl border border-slate-100 shadow-lg my-auto max-h-[92vh] flex flex-col">
+        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-2 overflow-hidden">
+          <div className="bg-white rounded-lg w-full h-[95vh] max-w-6xl border border-slate-100 shadow-lg flex flex-col md:flex-row overflow-hidden">
+            
+            {/* LEFT PANEL: Transaction Summary & Details */}
+            <div className="flex-1 flex flex-col overflow-hidden border-r border-slate-200">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-slate-100 shrink-0 bg-slate-50">
+                <div>
+                  <h3 className="text-base font-bold text-slate-600">Detail Transaksi</h3>
+                  <p className="text-xs text-slate-500">Lengkapi data order & customer</p>
+                </div>
+                <button onClick={() => setShowDetailTransaksiModal(false)} className="p-1.5 rounded hover:bg-slate-200"><X className="w-5 h-5 text-slate-400" /></button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+                {/* Customer Type */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-2">Jenis Pelanggan *</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['UMUM', 'MEMBER'] as const).map((type) => (
+                      <button key={type} type="button" onClick={() => setCustomerMode(type)} className={`py-2.5 rounded-lg border font-bold text-sm ${customerMode === type ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-white text-slate-600 border-slate-200'}`}>
+                        {type === 'UMUM' ? 'Pelanggan Biasa' : 'Member'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Customer Source */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-2">Data Pelanggan *</label>
+                  <select value={customerSource} onChange={(e) => setCustomerSource(e.target.value as 'BARU' | 'TERDAFTAR')} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-sm outline-none focus:border-[#1E4648]">
+                    <option value="BARU">Pelanggan Baru</option>
+                    <option value="TERDAFTAR">Pilih Pelanggan Terdaftar</option>
+                  </select>
+                </div>
+
+                {customerSource === 'TERDAFTAR' && (
+                  <select value={customer.noHp} onChange={(e) => { const found = customerList.find((c) => c.noHp === e.target.value); if (found) setCustomer({ ...found, memberStatus: customerMode === 'MEMBER' ? 'Member' : 'Regular' }); }} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-sm outline-none focus:border-[#1E4648]">
+                    <option value="">Pilih pelanggan...</option>
+                    {customerList.map((c) => <option key={c.noHp} value={c.noHp}>{c.nama} - {c.noHp}</option>)}
+                  </select>
+                )}
+
+                {/* Staff Kasir */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-2">Nama Staff Memproses *</label>
+                  <select value={namaKasirInput} onChange={(e) => setNamaKasirInput(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-sm outline-none focus:border-[#1E4648]">
+                    {staffList.map((s) => (
+                      <option key={s.id || s.nama} value={s.nama}>
+                        {s.nama} {s.jabatan ? `(${s.jabatan})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Customer Info */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-2">Nama Pelanggan *</label>
+                    <input type="text" value={customer.nama} disabled={customerSource === 'TERDAFTAR'} onChange={(e) => setCustomer({ ...customer, nama: e.target.value })} placeholder="Nama Pelanggan" className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-sm outline-none focus:border-[#1E4648] disabled:opacity-60" />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-2">No. HP / WhatsApp *</label>
+                    <input type="tel" value={customer.noHp} disabled={customerSource === 'TERDAFTAR'} onChange={(e) => setCustomer({ ...customer, noHp: e.target.value })} placeholder="08..." className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-sm outline-none focus:border-[#1E4648] disabled:opacity-60" />
+                  </div>
+                </div>
+
+                {/* Tipe Layanan */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-2">Tipe Layanan</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setTipeLayanan('SelfService')} className={`py-2.5 rounded-lg font-bold text-sm border ${tipeLayanan === 'SelfService' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-white text-slate-700 border-slate-200'}`}>
+                      Self Service
+                    </button>
+                    <button type="button" onClick={() => setTipeLayanan('FullService')} className={`py-2.5 rounded-lg font-bold text-sm border ${tipeLayanan === 'FullService' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-white text-slate-700 border-slate-200'}`}>
+                      Full Service
+                    </button>
+                  </div>
+                </div>
+
+                {tipeLayanan === 'FullService' && (
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-2">Prioritas Pengerjaan</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['Reguler', 'Express', 'Kilat'] as const).map((priority) => (
+                        <button key={priority} type="button" onClick={() => setTingkatLayanan(priority)} className={`py-2.5 rounded-lg text-sm font-bold border ${tingkatLayanan === priority ? 'bg-[#FF9500] border-[#FF9500] text-white' : 'bg-white border-slate-200 text-slate-600'}`}>
+                          {priority}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Catatan */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-2">Catatan Tambahan Order</label>
+                  <textarea rows={2} value={catatanOrderInput} onChange={(e) => setCatatanOrderInput(e.target.value)} placeholder="Misal: Jemput jam 5 sore" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-medium text-sm outline-none focus:border-[#1E4648]" />
+                </div>
+
+                {/* Item Summary */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                  <div className="font-bold text-slate-600 text-sm border-b border-slate-200 pb-2 mb-2">Ringkasan Item:</div>
+                  <div className="max-h-32 overflow-y-auto space-y-1.5">
+                    {cartArray.map((i, idx) => (
+                      <div key={idx} className="flex justify-between text-slate-700 text-sm">
+                        <span>{i.layanan} ×{i.qty}</span>
+                        <span className="font-bold">Rp {(i.qty * (i.hargaSatuan || 0)).toLocaleString('id-ID')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT PANEL: Payment Calculator (Numpad) */}
+            <div className="w-full md:w-[450px] flex flex-col bg-slate-50">
+              {/* Total Banner */}
+              <div className="bg-slate-900 text-white p-6 text-center shrink-0">
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-1">Total Tagihan:</span>
+                <span className="text-4xl font-bold text-[#B5C9C9]">Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>
+              </div>
+
+              {/* Payment Method Selection */}
+              <div className="p-4 border-b border-slate-200 bg-white">
+                <label className="block font-bold text-slate-700 mb-2 text-sm">Metode Pembayaran *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'Tunai', label: 'Tunai' },
+                    { id: 'QRIS', label: 'QRIS' },
+                    { id: 'Transfer', label: 'Transfer' },
+                    { id: 'Debit', label: 'Debit' },
+                  ].map((m) => (
+                    <button key={m.id} type="button" onClick={() => setMetodeBayar(m.id as any)} className={`py-3 rounded-lg text-sm font-bold border ${metodeBayar === m.id ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-white text-slate-700 border-slate-200'}`}>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tunai: Numpad Calculator */}
+              {metodeBayar === 'Tunai' ? (
+                <div className="flex-1 flex flex-col p-4">
+                  {/* Display Input */}
+                  <div className="mb-4">
+                    <label className="block font-bold text-slate-600 mb-2 text-sm">Uang Diterima:</label>
+                    <input type="text" readOnly value={uangBayarInput ? `Rp ${Number(uangBayarInput).toLocaleString('id-ID')}` : 'Rp 0'} className="w-full px-4 py-4 bg-white border-2 border-slate-300 rounded-lg font-bold text-2xl text-[#1E4648] text-right" />
+                  </div>
+
+                  {/* Quick Buttons */}
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    <button type="button" onClick={() => setUangBayarInput((grandTotal || 0).toString())} className="py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-xs">
+                      Uang Pas
+                    </button>
+                    <button type="button" onClick={() => setUangBayarInput('50000')} className="py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-xs">
+                      50K
+                    </button>
+                    <button type="button" onClick={() => setUangBayarInput('100000')} className="py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-xs">
+                      100K
+                    </button>
+                  </div>
+
+                  {/* Numpad Grid */}
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((num) => (
+                      <button key={num} type="button" onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? num.toString() : prev + num))} className="py-6 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-3xl shadow-sm active:scale-95 transition">
+                        {num}
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => setUangBayarInput('0')} className="py-6 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-3xl shadow-sm active:scale-95 transition">
+                      C
+                    </button>
+                    <button type="button" onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '0'))} className="py-6 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-3xl shadow-sm active:scale-95 transition">
+                      0
+                    </button>
+                    <button type="button" onClick={() => setUangBayarInput((prev) => prev.slice(0, -1) || '0')} className="py-6 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-2xl shadow-sm active:scale-95 transition">
+                      ⌫
+                    </button>
+                  </div>
+
+                  {/* Kembalian Display */}
+                  {Number(uangBayarInput) >= grandTotal && Number(uangBayarInput) > 0 ? (
+                    <div className="bg-emerald-50 border-2 border-emerald-300 rounded-lg p-4 text-center">
+                      <div className="text-xs font-bold text-emerald-700 mb-1">KEMBALIAN:</div>
+                      <div className="text-2xl font-bold text-emerald-600">Rp {(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}</div>
+                    </div>
+                  ) : Number(uangBayarInput) > 0 ? (
+                    <div className="bg-rose-50 border-2 border-rose-300 rounded-lg p-4 text-center">
+                      <div className="text-xs font-bold text-rose-700 mb-1">UANG KURANG:</div>
+                      <div className="text-2xl font-bold text-rose-600">Rp {(grandTotal - Number(uangBayarInput)).toLocaleString('id-ID')}</div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                /* Non-Tunai UI */
+                <div className="flex-1 p-4 flex flex-col items-center justify-center">
+                  {metodeBayar === 'QRIS' && (
+                    <>
+                      <div className="w-40 h-40 bg-white border-2 border-slate-200 rounded-xl flex items-center justify-center mb-4 shadow-sm">
+                        <QrCode className="w-32 h-32 text-slate-600" />
+                      </div>
+                      <div className="text-sm font-bold text-slate-700 mb-4">Scan QRIS Pembayaran Dua SiSi POS</div>
+                      <button type="button" onClick={() => { setQrisStatus('SUCCESS'); alert('Pembayaran QRIS Terverifikasi!'); }} className="px-6 py-3 bg-[#1E4648] text-white rounded-lg text-sm font-bold hover:bg-[#163536]">
+                        Cek Status Pembayaran
+                      </button>
+                    </>
+                  )}
+                  {metodeBayar !== 'QRIS' && (
+                    <>
+                      <div className="text-lg font-bold text-slate-700 mb-2">Pembayaran {metodeBayar}</div>
+                      <div className="text-sm text-slate-500 mb-4">Total: Rp {grandTotal.toLocaleString('id-ID')}</div>
+                      <button type="button" onClick={() => { setQrisStatus('SUCCESS'); alert(`Pembayaran ${metodeBayar} Terverifikasi!`); }} className="px-6 py-3 bg-[#1E4648] text-white rounded-lg text-sm font-bold hover:bg-[#163536]">
+                        Verifikasi Pembayaran
+                      </button>
+                    </>
+                  )}
+
+                  {/* Referensi */}
+                  <div className="w-full mt-6">
+                    <label className="block font-bold text-slate-700 mb-2 text-sm">Referensi / No. Transaksi (Optional)</label>
+                    <input type="text" value={refNoInput} onChange={(e) => setRefNoInput(e.target.value)} placeholder="Auto-generated" className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none" />
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom Action */}
+              <div className="p-4 border-t border-slate-200 bg-white">
+                <button type="button" onClick={handleConfirmPaymentSafe} disabled={paymentSubmitting || (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal)} className={`w-full font-bold py-4 rounded-lg text-base flex items-center justify-center gap-2 shadow-md transition ${paymentSubmitting || (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal) ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#1E4648] hover:bg-[#163536] text-white'}`}>
+                  <span>{paymentSubmitting ? 'Menyimpan...' : 'Konfirmasi & Selesaikan Bayar'}</span>
+                  <CheckCircle2 className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <div>
@@ -1222,12 +1460,9 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               <button onClick={() => setShowDetailTransaksiModal(false)} className="p-1 rounded hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
             </div>
 
-            {/* Scrollable Content: 2-Column Grid on Desktop */}
-            <div className="flex-1 overflow-y-auto pr-1 py-4 text-xs">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                
-                {/* COLUMN 1: DETAIL ORDER */}
-                <div className="space-y-3.5">
+      {/* STEP 6: MODAL "Pembayaran Berhasil" */}
+      {showSuccessModal && completedOrderData && (
+        <div className="fixed inset-0 z-[600] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
                   <div className="font-bold text-slate-600 text-xs uppercase tracking-wider text-[#1E4648] pb-1 border-b border-slate-100 flex items-center gap-1.5">
                     <span>1. Detail Order & Customer</span>
                   </div>
@@ -1336,18 +1571,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       </div>
                     </div>
                   )}
-
-                  {/* Estimasi Selesai */}
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Estimasi Selesai Laundry</label>
-                    <input
-                      type="text"
-                      value={estimasiSelesai}
-                      onChange={(e) => setEstimasiSelesai(e.target.value)}
-                      placeholder="Hari ini, 17.00 WIB"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
-                    />
-                  </div>
 
                   {/* Catatan Tambahan */}
                   <div>
@@ -1464,22 +1687,47 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         )}
                       </div>
                     ) : (
-                      /* Non-Tunai / QRIS UI */
+                      /* Non-Tunai UI */
                       <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center space-y-2">
-                        <div className="w-28 h-28 bg-white border border-slate-200 rounded-lg mx-auto flex items-center justify-center p-2 shadow-xs">
-                          <QrCode className="w-20 h-20 text-slate-600" />
-                        </div>
-                        <div className="text-[11px] font-bold text-slate-600">Scan QRIS Pembayaran Dua SiSi POS</div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setQrisStatus('SUCCESS');
-                            alert('Pembayaran QRIS / Non-Tunai Terverifikasi Berhasil!');
-                          }}
-                          className="px-3 py-1 bg-[#1E4648] text-white rounded-lg text-[11px] font-bold hover:bg-[#1E4648] transition"
-                        >
-                          Cek Status Pembayaran
-                        </button>
+                        {/* QR Code hanya untuk QRIS */}
+                        {metodeBayar === 'QRIS' && (
+                          <>
+                            <div className="w-28 h-28 bg-white border border-slate-200 rounded-lg mx-auto flex items-center justify-center p-2 shadow-xs">
+                              <QrCode className="w-20 h-20 text-slate-600" />
+                            </div>
+                            <div className="text-[11px] font-bold text-slate-600">Scan QRIS Pembayaran Dua SiSi POS</div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setQrisStatus('SUCCESS');
+                                alert('Pembayaran QRIS Terverifikasi Berhasil!');
+                              }}
+                              className="px-3 py-1 bg-[#1E4648] text-white rounded-lg text-[11px] font-bold hover:bg-[#163536] transition"
+                            >
+                              Cek Status Pembayaran
+                            </button>
+                          </>
+                        )}
+                        
+                        {/* Non-QRIS Payment Info */}
+                        {metodeBayar !== 'QRIS' && (
+                          <div className="py-4">
+                            <div className="text-sm font-bold text-slate-700 mb-2">Pembayaran {metodeBayar}</div>
+                            <div className="text-xs text-slate-500">
+                              Total: Rp {grandTotal.toLocaleString('id-ID')}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setQrisStatus('SUCCESS');
+                                alert(`Pembayaran ${metodeBayar} Terverifikasi Berhasil!`);
+                              }}
+                              className="mt-3 px-4 py-2 bg-[#1E4648] text-white rounded-lg text-xs font-bold hover:bg-[#163536] transition"
+                            >
+                              Verifikasi Pembayaran
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1499,33 +1747,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
               </div>
             </div>
-
-            {/* Modal Action Buttons Footer */}
-            <div className="flex gap-3 pt-3 border-t border-slate-100 shrink-0">
-              <button 
-                type="button"
-                onClick={() => setShowDetailTransaksiModal(false)} 
-                className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs transition shrink-0"
-              >
-                Batal
-              </button>
-              <button 
-                type="button"
-                onClick={handleConfirmPaymentSafe}
-                disabled={paymentSubmitting || (metodeBayar === 'Tunai' && Number(uangBayarInput) > 0 && Number(uangBayarInput) < grandTotal)}
-                className={`flex-1 font-bold py-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition ${
-                  paymentSubmitting || (metodeBayar === 'Tunai' && Number(uangBayarInput) > 0 && Number(uangBayarInput) < grandTotal)
-                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-                    : 'bg-[#1E4648] hover:bg-[#163536] text-white'
-                }`}
-              >
-                <span>{paymentSubmitting ? 'Menyimpan Transaksi...' : 'Konfirmasi & Selesaikan Bayar'}</span>
-                <CheckCircle2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* STEP 6: MODAL "Pembayaran Berhasil" */}
       {showSuccessModal && completedOrderData && (

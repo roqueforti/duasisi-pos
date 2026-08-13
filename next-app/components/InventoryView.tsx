@@ -144,6 +144,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
           
+          {/* CSV buttons hanya untuk MANAGER */}
           {currentRole === 'MANAGER' && (
             <>
               {/* Export data */}
@@ -160,10 +161,14 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                 <span>Import</span>
                 <input type="file" accept=".csv" className="hidden" onChange={handleImport} />
               </label>
-              <button onClick={() => setShowAddModal(true)} className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5">
-                <Plus className="w-3.5 h-3.5" /> Tambah Bahan
-              </button>
             </>
+          )}
+          
+          {/* Tambah barang - STAFF dan MANAGER */}
+          {(currentRole === 'STAFF' || currentRole === 'MANAGER') && (
+            <button onClick={() => setShowAddModal(true)} className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5">
+              <Plus className="w-3.5 h-3.5" /> Tambah Bahan
+            </button>
           )}
         </div>
       </div>
@@ -223,7 +228,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                       </td>
                       <td className="py-3 px-4 text-slate-400">{item.terakhirUpdate || '-'}</td>
                       <td className="py-3 px-4 text-right">
-                        {currentRole === 'MANAGER' ? (
+                        {(currentRole === 'STAFF' || currentRole === 'MANAGER') ? (
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => handleUpdateStok(item.id, -1)}
@@ -239,13 +244,16 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                             >
                               +1
                             </button>
-                            <button
-                              onClick={() => handleDelete(item.id, item.nama)}
-                              className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
-                              title="Hapus"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {/* Hapus hanya untuk MANAGER */}
+                            {currentRole === 'MANAGER' && (
+                              <button
+                                onClick={() => handleDelete(item.id, item.nama)}
+                                className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
+                                title="Hapus"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <span className="text-slate-400 text-xs">-</span>
