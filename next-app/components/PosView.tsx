@@ -1351,11 +1351,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
       {/* 4. MODAL "Detail Transaksi & Pembayaran" (Split Layout: Kiri Summary, Kanan Numpad Kalkulator) */}
       {showDetailTransaksiModal && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-2 overflow-hidden">
-          <div className="bg-white rounded-xl w-full h-[95vh] max-w-6xl border border-slate-100 shadow-xl flex flex-col md:flex-row overflow-hidden">
+        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
+          <div className="bg-white rounded-xl w-full h-fit max-h-[95vh] max-w-5xl border border-slate-100 shadow-xl flex flex-col lg:flex-row overflow-hidden my-auto">
             
             {/* LEFT PANEL: Transaction Summary & Details */}
-            <div className="flex-1 flex flex-col overflow-hidden border-r border-slate-200">
+            <div className="flex-1 flex flex-col overflow-hidden border-r border-slate-200 min-w-0">
               {/* Header */}
               <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0 bg-gradient-to-r from-slate-50 to-white">
                 <div>
@@ -1469,7 +1469,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             </div>
 
             {/* RIGHT PANEL: Payment Calculator (Numpad) */}
-            <div className="w-full md:w-[480px] flex flex-col bg-slate-50">
+            <div className="w-full lg:w-[420px] flex flex-col bg-slate-50 shrink-0">
               {/* Total Banner */}
               <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-6 text-center shrink-0 shadow-lg">
                 <span className="text-xs text-slate-300 font-bold uppercase tracking-wider block mb-2">TOTAL TAGIHAN:</span>

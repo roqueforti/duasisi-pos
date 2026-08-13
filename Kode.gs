@@ -1746,6 +1746,70 @@ function calculateShiftCash_(openedAt) {
   }, 0);
 }
 
+/**
+ * EXPENSE PHOTO UPLOAD TO GOOGLE DRIVE
+ * Base64 image → PDF creation + Drive upload
+ * Returns fileUrl pointing to uploaded file
+ */
+function uploadExpensePhoto(fileName, fileData, mimeType, shiftId) {
+  try {
+    // Base64 decode
+    let decodedData;
+    if (typeof fileData === 'string' && fileData.indexOf(',') !== -1) {
+      // Strip data:image/png;base64, prefix if present
+      const base64String = fileData.split(',')[1] || fileData;
+      decodedData = Utilities.base64Decode(base64String);
+    } else {
+      decodedData = Utilities.base64Decode(String(fileData));
+    }
+
+    const cleanFileName = String(fileName || 'expense_' + Date.now()).replace(/[^\w\s\-\.]/g, '_');
+    const extension = mimeType && mimeType.indexOf('png') !== -1 ? '.png' : mimeType && mimeType.indexOf('jpg') !== -1 ? '.jpg' : '.jpg';
+    const finalFileName = cleanFileName.indexOf('.') === -1 ? cleanFileName + extension : cleanFileName;
+
+    // Get or create Shift Expenses folder in Google Drive
+    const rootFolder = DriveApp.getRootFolder();
+    const folders = rootFolder.getFoldersByName('Shift Expenses');
+    let targetFolder;
+    if (folders.hasNext()) {
+      targetFolder = folders.next();
+    } else {
+      targetFolder = rootFolder.createFolder('Shift Expenses');
+    }
+
+    // Create subFolder for this shift if not exists
+    const shiftFolders = targetFolder.getFoldersByName(String(shiftId || 'Unknown'));
+    if (shiftFolders.hasNext()) {
+      targetFolder = shiftFolders.next();
+    } else {
+      targetFolder = targetFolder.createFolder(String(shiftId || 'Unknown'));
+    }
+
+    // Upload file
+    const blob = Utilities.newBlob(decodedData, mimeType || 'image/jpeg', finalFileName);
+    const uploadedFile = targetFolder.createFile(blob);
+
+    return {
+      success: true,
+      fileId: uploadedFile.getId(),
+      fileName: uploadedFile.getName(),
+      fileUrl: uploadedFile.getUrl(),
+      mimeType: uploadedFile.getMimeType(),
+      createdTime: new Date().toISOString()
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Gagal upload foto ke Google Drive: ' + error.message
+    };
+  }
+}
+
+/**
+ * Updated CLOSE KAS SHIFT dengan support PENGELUARAN
+ * - Simpan expense details (desc, amount, category)
+ * - Simpan expense photo URLs
+ */
 function closeKasShift(data) {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -1771,10 +1835,48 @@ function closeKasShift(data) {
     const omzetTunai = calculateShiftCash_(new Date(rows[rowIndex][4]));
     const kasSistem = (Number(rows[rowIndex][6]) || 0) + omzetTunai;
     const now = new Date();
+
+    // Handle pengeluaran (expenses)
+    let expenseDetail = "";
+    if (data.expenses && Array.isArray(data.expenses) && data.expenses.length > 0) {
+      let totalPengeluaran = 0;
+      const expenseLines = data.expenses.map(exp => {
+        const amount = Number(exp.amount) || 0;
+        totalPengeluaran += amount;
+        return `[${exp.kategori || 'Lain-lain'}] ${exp.desc || 'Pengeluaran'}: Rp ${amount.toLocaleString('id-ID')}`;
+      });
+      expenseDetail = "PENGELUARAN:\n" + expenseLines.join("\n") + "\n\nTOTAL PENGELUARAN: Rp " + totalPengeluaran.toLocaleString('id-ID');
+    }
+
+    // Handle expense photos
+    let expensePhotos = "";
+    if (data.expensePhotos && Array.isArray(data.expensePhotos) && data.expensePhotos.length > 0) {
+      const photoUrls = data.expensePhotos.map(photo => photo.fileUrl || photo).join(" | ");
+      expensePhotos = photoUrls;
+    }
+
     sh.getRange(rowIndex + 1, 6).setValue(now);
-    sh.getRange(rowIndex + 1, 8, 1, 9).setValues([[kasSistem, kasFisik, kasFisik - kasSistem, "Ditutup", data.mode, replacement.replacementEmployeeId || "", replacement.replacementName || "", data.mode === "SERAH_TERIMA" ? now : "", data.catatan || ""]]);
-    addAuditLog(data.userName || rows[rowIndex][2] || "Kasir", "Tutup Kas Shift", data.shiftId, "Mode: " + data.mode + "; sistem Rp " + kasSistem.toLocaleString('id-ID') + "; fisik Rp " + kasFisik.toLocaleString('id-ID'));
-    return { success: true, idShift: data.shiftId, kasAkhirSistem: kasSistem, kasAkhirFisik: kasFisik, selisihKas: kasFisik - kasSistem, mode: data.mode };
+    sh.getRange(rowIndex + 1, 8, 1, 9).setValues([[kasSistem, kasFisik, kasFisik - kasSistem, "Ditutup", data.mode, replacement.replacementEmployeeId || "", replacement.replacementName || "", data.mode === "SERAH_TERIMA" ? now : "", (data.catatan || "") + (expenseDetail ? "\n\n" + expenseDetail : "")]]);
+    
+    // Store expense photos if column exists
+    if (sh.getLastColumn() >= 17) {
+      sh.getRange(rowIndex + 1, 17).setValue(expensePhotos);
+    }
+
+    addAuditLog(data.userName || rows[rowIndex][2] || "Kasir", "Tutup Kas Shift", data.shiftId, 
+      "Mode: " + data.mode + "; sistem Rp " + kasSistem.toLocaleString('id-ID') + "; fisik Rp " + kasFisik.toLocaleString('id-ID') + 
+      (expenseDetail ? "; pengeluaran tercatat" : "") + (expensePhotos ? "; foto dokumentasi tersimpan" : ""));
+    
+    return { 
+      success: true, 
+      idShift: data.shiftId, 
+      kasAkhirSistem: kasSistem, 
+      kasAkhirFisik: kasFisik, 
+      selisihKas: kasFisik - kasSistem, 
+      mode: data.mode,
+      expenseDetailSaved: !!expenseDetail,
+      expensePhotosSaved: !!expensePhotos
+    };
   } finally {
     lock.releaseLock();
   }
