@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
@@ -30,7 +30,10 @@ import {
   AlertCircle,
   Edit3,
   Bluetooth,
-  BluetoothOff
+  BluetoothOff,
+  TrendingUp,
+  Camera,
+  RefreshCw,
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
@@ -77,7 +80,7 @@ function getLayananStyleConfig(item: LayananItem) {
   else if (name.includes('Air') || name.includes('Kopi') || name.includes('Teh')) Icon = Coffee;
   else if (name.includes('Setrika') || name.includes('Express') || name.includes('Setrika')) Icon = Sparkles;
 
-  // Subtle color scheme — semua pakai nuansa teal/slate, hanya icon bg yang beda tipis
+  // Subtle color scheme â€” semua pakai nuansa teal/slate, hanya icon bg yang beda tipis
   if (kategori === 'MakananMinuman') {
     return { Icon, iconBg: 'bg-[#FF9500]/10', iconColor: 'text-[#FF9500]', dot: 'bg-orange-400' };
   }
@@ -124,6 +127,12 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [btPrinting, setBtPrinting] = useState(false);
   const [showStrukModal, setShowStrukModal] = useState(false);
+
+  // Expense tracking for shift close
+  const [shiftExpenseDesc, setShiftExpenseDesc] = useState<string>('');
+  const [shiftExpenseAmount, setShiftExpenseAmount] = useState<string>('');
+  const [shiftExpenseCategory, setShiftExpenseCategory] = useState<string>('');
+  const [expensePhotos, setExpensePhotos] = useState<Array<{ file: File; preview: string }>>([]);
 
   // Modals for the 8-Step Flow:
   const [showTambahItemModal, setShowTambahItemModal] = useState<boolean>(false);
@@ -174,7 +183,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     kategori: 'Layanan' as LayananItem['kategori']
   });
 
-  // Fetch Master Data — stale-while-revalidate (instant dari cache, fresh di background)
+  // Fetch Master Data â€” stale-while-revalidate (instant dari cache, fresh di background)
   useEffect(() => {
     // 1. Layanan Catalog
     runBackendCached<any[]>(
@@ -192,7 +201,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           })));
         }
       },
-      10 * 60 * 1000 // 10 menit TTL — katalog jarang berubah
+      10 * 60 * 1000 // 10 menit TTL â€” katalog jarang berubah
     );
 
     // 2. Customers List
@@ -220,7 +229,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           if (data[0]?.nama) setNamaKasirInput(data[0].nama);
         }
       },
-      15 * 60 * 1000 // 15 menit TTL — pegawai sangat jarang berubah
+      15 * 60 * 1000 // 15 menit TTL â€” pegawai sangat jarang berubah
     );
   }, []);
 
@@ -401,6 +410,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       if (!res?.success || !res.noNota) throw new Error('Backend tidak mengembalikan nomor nota');
 
       const resTotal = Number(res.total) || grandTotal;
+      const estimasi = calculateEstimasi(tingkatLayanan);
       setCompletedOrderData({
         trxId: res.noNota,
         token: res.token || '',
@@ -414,6 +424,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         items: cartArray.map(i => ({ ...i, hargaSatuan: Number(i.hargaSatuan) || 0, qty: Number(i.qty) || 0 })),
         catatan: catatanOrderInput,
         tipeLayanan,
+        tingkatLayanan,
+        estimasiSelesai: estimasi,
         waktu: new Date().toLocaleTimeString('id-ID') + ' WIB',
         tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
       });
@@ -430,7 +442,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     }
   };
 
-  // ── THERMAL LABEL PRINT (Bluetooth) ──────────────────────────
+  // â”€â”€ THERMAL LABEL PRINT (Bluetooth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handlePrintThermalLabel = async () => {
     if (!completedOrderData) return;
     if (!isBluetoothSupported()) {
@@ -442,8 +454,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       // Cek apakah printer sudah terkoneksi
       const deviceInfo = getActiveDeviceInfo();
       if (!deviceInfo.connected) {
-        // Belum konek — minta user pilih device
-        setToastMsg('Mencari printer Bluetooth…');
+        // Belum konek â€” minta user pilih device
+        setToastMsg('Mencari printer Bluetoothâ€¦');
         await requestAndConnectBluetoothDevice();
       }
       // Siapkan data transaksi untuk ESC/POS
@@ -454,9 +466,10 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         noHp: completedOrderData.noHp,
         total: completedOrderData.total,
         status: 'Selesai',
+        estimasi: completedOrderData.estimasiSelesai || '',
         petugas: completedOrderData.kasir,
         tipe: completedOrderData.tipeLayanan || 'SelfService',
-        tingkatLayanan: 'Reguler',
+        tingkatLayanan: completedOrderData.tingkatLayanan || 'Reguler',
         catatan: completedOrderData.catatan || '',
         items: (completedOrderData.items || []).map((i: any) => ({
           layanan: i.layanan,
@@ -468,7 +481,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       };
       const escData = generateTagEscPos(txForPrint as any);
       await sendRawEscPosData(escData);
-      setToastMsg('✅ Label thermal berhasil dicetak!');
+      setToastMsg('âœ… Label thermal berhasil dicetak!');
     } catch (err: any) {
       const msg = err?.message || 'Gagal mencetak';
       if (msg.includes('User cancelled') || msg.includes('cancelled')) {
@@ -562,6 +575,130 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       alert(error instanceof Error ? error.message : 'Kas shift gagal ditutup.');
     } finally {
       setShiftSubmitting(false);
+    }
+  };
+
+  // Enhanced Close Shift with Expense & Photo Upload
+  const handleExpensePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          setExpensePhotos(prev => [...prev, { file, preview: reader.result as string }]);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    e.target.value = ''; // Reset input
+  };
+
+  const removeExpensePhoto = (index: number) => {
+    setExpensePhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadPhotoToGoogleDrive = async (file: File): Promise<string | null> => {
+    try {
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.readAsDataURL(file);
+      });
+
+      const result = await runBackend('uploadExpensePhoto', {
+        fileName: file.name,
+        fileData: base64,
+        mimeType: file.type,
+        shiftId: shiftAktif?.idShift || '',
+      });
+
+      return result?.fileUrl || null;
+    } catch (error) {
+      console.error('Failed to upload photo:', error);
+      return null;
+    }
+  };
+
+  const handleCloseShiftWithExpense = async () => {
+    if (!shiftAktif) return;
+    const kasAkhir = Number(kasAkhirFisik);
+    if (!Number.isFinite(kasAkhir) || kasAkhir < 0) {
+      alert('Kas akhir fisik harus berupa angka nol atau lebih.');
+      return;
+    }
+    if (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible) {
+      alert('Clock In staf pengganti harus diverifikasi sebelum serah terima.');
+      return;
+    }
+
+    setShiftSubmitting(true);
+    try {
+      // 1. Upload photos to Google Drive first
+      const photoUrls: string[] = [];
+      if (expensePhotos.length > 0) {
+        for (const photo of expensePhotos) {
+          const url = await uploadPhotoToGoogleDrive(photo.file);
+          if (url) photoUrls.push(url);
+        }
+      }
+
+      // 2. Close shift with expense data
+      const result = await runBackend<{ success: boolean; message?: string; selisihKas?: number }>('closeKasShift', {
+        shiftId: shiftAktif.idShift,
+        mode: closeShiftMode,
+        kasAkhir,
+        replacementEmployeeId: closeShiftMode === 'SERAH_TERIMA' ? replacementEmployeeId : '',
+        handoverConfirmed: closeShiftMode === 'SERAH_TERIMA',
+        userName: shiftAktif.namaKasir,
+        // Expense data
+        expenseDesc: shiftExpenseDesc.trim(),
+        expenseAmount: Number(shiftExpenseAmount) || 0,
+        expenseCategory: shiftExpenseCategory,
+        expensePhotos: photoUrls,
+      });
+
+      if (!result?.success) throw new Error(result?.message || 'Kas shift gagal ditutup.');
+      
+      // Reset states
+      setShiftAktif(null);
+      setShowTutupShiftModal(false);
+      setKasAkhirFisik('');
+      setReplacementEmployeeId('');
+      setHandoverResult(null);
+      setShiftExpenseDesc('');
+      setShiftExpenseAmount('');
+      setShiftExpenseCategory('');
+      setExpensePhotos([]);
+      
+      setToastMsg(`Kas shift ditutup berhasil! Selisih kas Rp ${(result.selisihKas || 0).toLocaleString('id-ID')}.`);
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : 'Kas shift gagal ditutup.');
+    } finally {
+      setShiftSubmitting(false);
+    }
+  };
+
+  // Helper: Calculate estimasi selesai berdasarkan tingkatLayanan
+  const calculateEstimasi = (tingkat: 'Reguler' | 'Express' | 'Kilat'): string => {
+    const now = new Date();
+    
+    if (tingkat === 'Reguler') {
+      // +2 hari
+      const target = new Date(now);
+      target.setDate(target.getDate() + 2);
+      return target.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    } else if (tingkat === 'Express') {
+      // +1 hari
+      const target = new Date(now);
+      target.setDate(target.getDate() + 1);
+      return target.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    } else {
+      // Kilat: dinamis berdasarkan durasi produk (default 6 jam)
+      const target = new Date(now);
+      target.setHours(target.getHours() + 6);
+      return `Hari ini, ${target.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
     }
   };
 
@@ -916,7 +1053,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               {customer.noHp && <span className="text-xs text-slate-500">({customer.noHp})</span>}
               {customer.poin !== undefined && (
                 <span className="inline-flex items-center gap-1 text-xs font-bold bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/30 px-2 py-0.5 rounded">
-                  ⭐ {customer.poin} Poin
+                  â­ {customer.poin} Poin
                 </span>
               )}
             </div>
@@ -940,7 +1077,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                   <div className="flex-1 pr-2">
                     <h4 className="font-bold text-sm text-slate-600 leading-snug">{item.layanan}</h4>
                     <div className="text-xs font-bold text-[#1E4648] mt-0.5">
-                      Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')} × {item.qty} = Rp {(item.qty * (item.hargaSatuan || 0)).toLocaleString('id-ID')}
+                      Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')} Ã— {item.qty} = Rp {(item.qty * (item.hargaSatuan || 0)).toLocaleString('id-ID')}
                     </div>
                   </div>
                   <button
@@ -1126,7 +1263,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                   {query && filtered.length === 1 && (
                     <div className="p-3 bg-[#B5C9C9]/20 border-2 border-[#B5C9C9] rounded-lg space-y-2">
                       <div className="text-[10px] font-bold text-[#1E4648] uppercase tracking-wider">
-                        Ditemukan 1 Kecocokan — Mohon Cocokkan Nama Pelanggan:
+                        Ditemukan 1 Kecocokan â€” Mohon Cocokkan Nama Pelanggan:
                       </div>
                       <div className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-[#B5C9C9]">
                         <div>
@@ -1169,7 +1306,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         >
                           <div>
                             <div className="text-xs font-bold text-slate-600">{c.nama}</div>
-                            <div className="text-[11px] font-mono text-slate-500">{maskHp(c.noHp)} {c.alamat ? `• ${c.alamat}` : ''}</div>
+                            <div className="text-[11px] font-mono text-slate-500">{maskHp(c.noHp)} {c.alamat ? `â€¢ ${c.alamat}` : ''}</div>
                           </div>
                           <span className="text-[10px] font-bold px-2 py-0.5 bg-[#B5C9C9]/30 text-[#1E4648] rounded-full">
                             {c.memberStatus || 'Pelanggan'}
@@ -1321,7 +1458,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                   <div className="max-h-32 overflow-y-auto space-y-1.5">
                     {cartArray.map((i, idx) => (
                       <div key={idx} className="flex justify-between text-slate-700 text-sm">
-                        <span>{i.layanan} ×{i.qty}</span>
+                        <span>{i.layanan} Ã—{i.qty}</span>
                         <span className="font-bold">Rp {(i.qty * (i.hargaSatuan || 0)).toLocaleString('id-ID')}</span>
                       </div>
                     ))}
@@ -1391,7 +1528,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       0
                     </button>
                     <button type="button" onClick={() => setUangBayarInput((prev) => prev.slice(0, -1) || '0')} className="py-6 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-2xl shadow-sm active:scale-95 transition">
-                      ⌫
+                      âŒ«
                     </button>
                   </div>
 
@@ -1451,302 +1588,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           </div>
         </div>
       )}
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
-              <div>
-                <h3 className="text-base font-bold text-slate-600">Detail Transaksi & Pembayaran</h3>
-                <p className="text-[11px] text-slate-500 font-medium">Lengkapi rincian order & pilih metode pembayaran</p>
-              </div>
-              <button onClick={() => setShowDetailTransaksiModal(false)} className="p-1 rounded hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
-            </div>
-
-      {/* STEP 6: MODAL "Pembayaran Berhasil" */}
-      {showSuccessModal && completedOrderData && (
-        <div className="fixed inset-0 z-[600] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-                  <div className="font-bold text-slate-600 text-xs uppercase tracking-wider text-[#1E4648] pb-1 border-b border-slate-100 flex items-center gap-1.5">
-                    <span>1. Detail Order & Customer</span>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Jenis Pelanggan *</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(['UMUM', 'MEMBER'] as const).map((type) => (
-                        <button key={type} type="button" onClick={() => setCustomerMode(type)} className={`py-2 rounded-lg border font-bold text-[11px] ${customerMode === type ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-white text-slate-600 border-slate-200'}`}>
-                          {type === 'UMUM' ? 'Pelanggan Biasa' : 'Member'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Data Pelanggan *</label>
-                    <select value={customerSource} onChange={(e) => setCustomerSource(e.target.value as 'BARU' | 'TERDAFTAR')} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]">
-                      <option value="BARU">Pelanggan Baru</option>
-                      <option value="TERDAFTAR">Pilih Pelanggan Terdaftar</option>
-                    </select>
-                  </div>
-
-                  {customerSource === 'TERDAFTAR' && (
-                    <select value={customer.noHp} onChange={(e) => { const found = customerList.find((c) => c.noHp === e.target.value); if (found) setCustomer({ ...found, memberStatus: customerMode === 'MEMBER' ? 'Member' : 'Regular' }); }} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]">
-                      <option value="">Pilih pelanggan...</option>
-                      {customerList.map((c) => <option key={c.noHp} value={c.noHp}>{c.nama} - {c.noHp}</option>)}
-                    </select>
-                  )}
-
-                  {/* Staff Kasir Selector / Input */}
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Nama Staff Memproses *</label>
-                    <select
-                      value={namaKasirInput}
-                      onChange={(e) => setNamaKasirInput(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
-                    >
-                      {staffList.map((s) => (
-                        <option key={s.id || s.nama} value={s.nama}>
-                          {s.nama} {s.jabatan ? `(${s.jabatan})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Customer Info */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">Nama Pelanggan *</label>
-                      <input type="text" value={customer.nama} disabled={customerSource === 'TERDAFTAR'} onChange={(e) => setCustomer({ ...customer, nama: e.target.value })} placeholder="Nama Pelanggan" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648] disabled:opacity-60" />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">No. HP / WhatsApp *</label>
-                      <input type="tel" value={customer.noHp} disabled={customerSource === 'TERDAFTAR'} onChange={(e) => setCustomer({ ...customer, noHp: e.target.value })} placeholder="08..." className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648] disabled:opacity-60" />
-                    </div>
-                  </div>
-
-                  {/* Tipe Layanan Selection */}
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Tipe Layanan</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setTipeLayanan('SelfService')}
-                        className={`py-2 px-2.5 rounded-lg font-bold transition text-center text-[11px] border ${
-                          tipeLayanan === 'SelfService' 
-                            ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs' 
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        Self Service (Cuci Sendiri)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setTipeLayanan('FullService')}
-                        className={`py-2 px-2.5 rounded-lg font-bold transition text-center text-[11px] border ${
-                          tipeLayanan === 'FullService' 
-                            ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs' 
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        Full Service (Terima Beres)
-                      </button>
-                    </div>
-                  </div>
-
-                  {tipeLayanan === 'FullService' && (
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">Prioritas Pengerjaan</label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {(['Reguler', 'Express', 'Kilat'] as const).map((priority) => (
-                          <button
-                            key={priority}
-                            type="button"
-                            onClick={() => setTingkatLayanan(priority)}
-                            className={`py-2 rounded-lg text-[11px] font-bold border transition ${
-                              tingkatLayanan === priority
-                                ? 'bg-[#FF9500] border-[#FF9500] text-white'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
-                          >
-                            {priority}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Catatan Tambahan */}
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Catatan Tambahan Order</label>
-                    <textarea
-                      rows={2}
-                      value={catatanOrderInput}
-                      onChange={(e) => setCatatanOrderInput(e.target.value)}
-                      placeholder="Misal: Jemput jam 5 sore, pisahkan baju putih"
-                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:border-[#1E4648]"
-                    />
-                  </div>
-
-                  {/* Readonly Item List Summary */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5">
-                    <div className="font-bold text-slate-600 border-b border-slate-200 pb-1">Ringkasan Item:</div>
-                    <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
-                      {cartArray.map((i, idx) => (
-                        <div key={idx} className="flex justify-between text-slate-700 text-[11px]">
-                          <span>{i.layanan} ×{i.qty}</span>
-                          <span className="font-bold">Rp {(i.qty * (i.hargaSatuan || 0)).toLocaleString('id-ID')}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* COLUMN 2: PEMBAYARAN */}
-                <div className="space-y-3.5 flex flex-col justify-between">
-                  <div className="space-y-3.5">
-                    <div className="font-bold text-slate-600 text-xs uppercase tracking-wider text-[#1E4648] pb-1 border-b border-slate-100">
-                      2. Pembayaran Transaksi
-                    </div>
-
-                    {/* Total Tagihan Banner */}
-                    <div className="bg-slate-900 text-white rounded-lg p-4 text-center shadow-inner">
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Tagihan:</span>
-                      <span className="text-2xl sm:text-3xl font-bold text-[#B5C9C9]">Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>
-                    </div>
-
-                    {/* Metode Pembayaran Selection */}
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1.5">Metode Pembayaran *</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { id: 'Tunai', label: 'Tunai' },
-                          { id: 'QRIS', label: 'QRIS' },
-                          { id: 'Transfer', label: 'Transfer Bank' },
-                          { id: 'Debit', label: 'Debit / Kartu' },
-                        ].map((m) => (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => setMetodeBayar(m.id as any)}
-                            className={`py-2 px-2 rounded-lg text-xs font-bold transition border text-center ${
-                              metodeBayar === m.id 
-                                ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs' 
-                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                            }`}
-                          >
-                            {m.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Conditional Tunai Input, Uang Kurang Warning, & Kembalian */}
-                    {metodeBayar === 'Tunai' ? (
-                      <div className="bg-[#f8fafc] border-2 border-slate-200 rounded-lg p-3.5 space-y-2.5 shadow-2xs">
-                        <div className="flex justify-between items-center gap-2">
-                          <label className="font-bold text-slate-600">Jumlah Uang Diterima (Rp):</label>
-                          <input
-                            type="number"
-                            value={uangBayarInput}
-                            onChange={(e) => setUangBayarInput(e.target.value)}
-                            placeholder={grandTotal.toString()}
-                            className="w-36 px-3 py-1.5 bg-white border-2 border-slate-200 rounded-lg font-bold text-[#1E4648] outline-none text-right focus:border-[#1E4648]"
-                          />
-                        </div>
-
-                        <div className="flex gap-1.5 overflow-x-auto">
-                          <button type="button" onClick={() => setUangBayarInput((grandTotal || 0).toString())} className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold rounded-lg text-[10px] shadow-2xs">
-                            Uang Pas (Rp {(grandTotal || 0).toLocaleString('id-ID')})
-                          </button>
-                          <button type="button" onClick={() => setUangBayarInput('50000')} className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold rounded-lg text-[10px] shadow-2xs">
-                            Rp 50.000
-                          </button>
-                          <button type="button" onClick={() => setUangBayarInput('100000')} className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold rounded-lg text-[10px] shadow-2xs">
-                            Rp 100.000
-                          </button>
-                        </div>
-
-                        {/* State 1: Uang Kurang Warning (Red Alert) */}
-                        {Number(uangBayarInput) > 0 && Number(uangBayarInput) < grandTotal && (
-                          <div className="flex justify-between items-center text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 p-2.5 rounded-lg">
-                            <span className="flex items-center gap-1.5">
-                              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                              <span>Uang Kurang:</span>
-                            </span>
-                            <span className="text-sm font-bold text-rose-600">
-                              -Rp {((grandTotal || 0) - Number(uangBayarInput || 0)).toLocaleString('id-ID')}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* State 2: Kembalian Normal (Emerald Box) */}
-                        {Number(uangBayarInput) >= (grandTotal || 0) && (
-                          <div className="flex justify-between items-center text-xs font-bold text-[#1E4648] bg-[#B5C9C9]/20/90 border border-[#B5C9C9] p-2.5 rounded-lg">
-                            <span>Kembalian:</span>
-                            <span className="text-base font-bold text-[#1E4648]">
-                              Rp {(Number(uangBayarInput || 0) - (grandTotal || 0)).toLocaleString('id-ID')}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      /* Non-Tunai UI */
-                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center space-y-2">
-                        {/* QR Code hanya untuk QRIS */}
-                        {metodeBayar === 'QRIS' && (
-                          <>
-                            <div className="w-28 h-28 bg-white border border-slate-200 rounded-lg mx-auto flex items-center justify-center p-2 shadow-xs">
-                              <QrCode className="w-20 h-20 text-slate-600" />
-                            </div>
-                            <div className="text-[11px] font-bold text-slate-600">Scan QRIS Pembayaran Dua SiSi POS</div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setQrisStatus('SUCCESS');
-                                alert('Pembayaran QRIS Terverifikasi Berhasil!');
-                              }}
-                              className="px-3 py-1 bg-[#1E4648] text-white rounded-lg text-[11px] font-bold hover:bg-[#163536] transition"
-                            >
-                              Cek Status Pembayaran
-                            </button>
-                          </>
-                        )}
-                        
-                        {/* Non-QRIS Payment Info */}
-                        {metodeBayar !== 'QRIS' && (
-                          <div className="py-4">
-                            <div className="text-sm font-bold text-slate-700 mb-2">Pembayaran {metodeBayar}</div>
-                            <div className="text-xs text-slate-500">
-                              Total: Rp {grandTotal.toLocaleString('id-ID')}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setQrisStatus('SUCCESS');
-                                alert(`Pembayaran ${metodeBayar} Terverifikasi Berhasil!`);
-                              }}
-                              className="mt-3 px-4 py-2 bg-[#1E4648] text-white rounded-lg text-xs font-bold hover:bg-[#163536] transition"
-                            >
-                              Verifikasi Pembayaran
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Referensi / No Transaksi */}
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">Referensi / No. Transaksi (Optional)</label>
-                      <input
-                        type="text"
-                        value={refNoInput}
-                        onChange={(e) => setRefNoInput(e.target.value)}
-                        placeholder="Auto-generated (#TRX-XXXXXX)"
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
 
       {/* STEP 6: MODAL "Pembayaran Berhasil" */}
       {showSuccessModal && completedOrderData && (
@@ -1780,7 +1621,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
             {/* Action Buttons */}
             <div className="space-y-2">
-              {/* Kirim WA — utama */}
+              {/* Kirim WA â€” utama */}
               <button
                 onClick={() => {
                   const phone = String(completedOrderData.noHp || '').replace(/^0/, '62').replace(/\D/g, '');
@@ -1789,7 +1630,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                   const tanggal = `${completedOrderData.tanggal || ''}, ${completedOrderData.waktu || ''}`;
                   const total = (Number(completedOrderData?.total) || 0).toLocaleString('id-ID');
                   const items = (completedOrderData.items || [])
-                    .map((i: any) => `• ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
+                    .map((i: any) => `â€¢ ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
                     .join('\n');
                   const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?t=${completedOrderData.token || noNota}`;
                   const msg = [
@@ -1818,7 +1659,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 <span>Kirim Struk ke WhatsApp</span>
               </button>
 
-              {/* Cetak Label Thermal — cek BT */}
+              {/* Cetak Label Thermal â€” cek BT */}
               <button
                 onClick={handlePrintThermalLabel}
                 disabled={btPrinting}
@@ -1827,7 +1668,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 {btPrinting ? (
                   <>
                     <Bluetooth className="w-4 h-4 animate-pulse" />
-                    <span>Menghubungkan Printer…</span>
+                    <span>Menghubungkan Printerâ€¦</span>
                   </>
                 ) : (
                   <>
@@ -1837,7 +1678,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 )}
               </button>
 
-              {/* Cetak Struk — buka PrinterModal */}
+              {/* Cetak Struk â€” buka PrinterModal */}
               <button
                 onClick={() => setShowStrukModal(true)}
                 className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold py-2.5 rounded-lg text-xs border border-slate-200 flex items-center justify-center gap-2"
@@ -1891,7 +1732,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               <div className="text-center font-bold">
                 <div className="text-sm font-bold">DUA SISI LAUNDRY</div>
                 <div>Express & Coin Laundry</div>
-                <div className="text-[10px] font-normal text-slate-600">Jl. Pemuda No. 88, Jakarta • Telp: 0812345678</div>
+                <div className="text-[10px] font-normal text-slate-600">Jl. Pemuda No. 88, Jakarta â€¢ Telp: 0812345678</div>
                 <div className="border-b border-dashed border-slate-400 my-2" />
               </div>
 
@@ -1941,7 +1782,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 className="bg-[#1E4648] hover:bg-[#163536] disabled:opacity-50 text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-xs"
               >
                 {btPrinting ? (
-                  <><Bluetooth className="w-4 h-4 animate-pulse" /><span>Menghubungkan…</span></>
+                  <><Bluetooth className="w-4 h-4 animate-pulse" /><span>Menghubungkanâ€¦</span></>
                 ) : (
                   <><Printer className="w-4 h-4" /><span>Cetak Label Thermal</span></>
                 )}
@@ -1989,90 +1830,242 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         </div>
       )}
 
-      {/* Tutup Shift Modal */}
+      {/* Enhanced Tutup Shift Modal with Summary & Expense Upload */}
       {showTutupShiftModal && shiftAktif && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm border border-slate-100 shadow-lg">
-            <h3 className="text-sm font-bold text-slate-600 mb-3">Tutup Shift & Rekap Kas Laci</h3>
-            <div className="space-y-2 text-xs text-slate-600 mb-4 bg-slate-50 p-3 rounded-lg">
-              <div className="flex justify-between"><span>Kas Awal:</span><span className="font-bold text-slate-600">Rp {(shiftAktif?.kasAwal || 0).toLocaleString('id-ID')}</span></div>
-              <div className="flex justify-between"><span>Waktu Buka:</span><span className="font-bold text-slate-600">{new Date(shiftAktif?.waktuBuka || Date.now()).toLocaleTimeString('id-ID')}</span></div>
-            </div>
-            <div className="space-y-3 mb-4">
+        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-100 shadow-lg flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Mode Penutupan</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { setCloseShiftMode('SERAH_TERIMA'); setHandoverResult(null); }}
-                    className={`rounded-lg border px-2 py-2 text-[11px] font-bold ${closeShiftMode === 'SERAH_TERIMA' ? 'bg-[#1E4648] border-[#1E4648] text-white' : 'border-slate-200 text-slate-600'}`}
-                  >
-                    Serah Terima
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCloseShiftMode('TUTUP_HARIAN'); setHandoverResult(null); }}
-                    className={`rounded-lg border px-2 py-2 text-[11px] font-bold ${closeShiftMode === 'TUTUP_HARIAN' ? 'bg-rose-600 border-rose-600 text-white' : 'border-slate-200 text-slate-600'}`}
-                  >
-                    Tutup Hari Ini
-                  </button>
-                </div>
+                <h3 className="text-lg font-bold text-slate-600">Tutup Shift & Rekap Kas Laci</h3>
+                <p className="text-sm text-slate-500">Shift dimulai {new Date(shiftAktif?.waktuBuka || Date.now()).toLocaleDateString('id-ID')} - {new Date(shiftAktif?.waktuBuka || Date.now()).toLocaleTimeString('id-ID')}</p>
               </div>
+              <button onClick={() => setShowTutupShiftModal(false)} className="p-2 rounded hover:bg-slate-200">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
 
-              {closeShiftMode === 'SERAH_TERIMA' ? (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Staf Shift Pengganti</label>
-                  <div className="flex gap-2">
-                    <select
-                      value={replacementEmployeeId}
-                      onChange={(event) => { setReplacementEmployeeId(event.target.value); setHandoverResult(null); }}
-                      className="min-w-0 flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#1E4648]"
-                    >
-                      <option value="">Pilih staf...</option>
-                      {staffList.filter((staff) => staff.id !== shiftAktif.idUser).map((staff) => (
-                        <option key={staff.id} value={staff.id}>{staff.nama}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleCheckHandover}
-                      disabled={shiftSubmitting || !replacementEmployeeId}
-                      className="px-3 py-2 rounded-lg bg-slate-100 text-[#1E4648] disabled:opacity-50 text-[11px] font-bold"
-                    >
-                      Verifikasi
-                    </button>
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+                {/* LEFT COLUMN: Summary & Settings */}
+                <div className="space-y-6">
+                  {/* Rangkuman Shift */}
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-[#1E4648]" />
+                      Rangkuman Pemasukan Shift
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Kas Awal Shift:</span>
+                        <span className="font-bold text-slate-700">Rp {(shiftAktif?.kasAwal || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Total Omzet Tunai:</span>
+                        <span className="font-bold text-[#1E4648]">Rp {(shiftAktif?.totalOmzetTunai || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Pemasukan Non-Tunai:</span>
+                        <span className="font-bold text-slate-600 text-xs">(Data dari sistem)</span>
+                      </div>
+                      <hr className="border-slate-300" />
+                      <div className="flex justify-between text-base">
+                        <span className="font-bold text-slate-700">Total Omzet Shift:</span>
+                        <span className="font-bold text-[#1E4648]">Rp {(shiftAktif?.totalOmzetTunai || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-bold text-slate-700">Ekspektasi Kas Akhir:</span>
+                        <span className="font-bold text-slate-700">Rp {((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0)).toLocaleString('id-ID')}</span>
+                      </div>
+                    </div>
                   </div>
-                  {handoverResult && (
-                    <p className={`mt-1.5 rounded-md px-2 py-1.5 text-[11px] font-semibold ${handoverResult.eligible ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-                      {handoverResult.message}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-800">
-                  Gunakan hanya untuk shift terakhir saat operasional outlet benar-benar selesai.
-                </p>
-              )}
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Total Fisik Kas di Laci (Rp)</label>
-                <input
-                  type="number"
-                  value={kasAkhirFisik}
-                  onChange={(e) => setKasAkhirFisik(e.target.value)}
-                  placeholder="Hitung jumlah uang fisik di laci"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#1E4648]"
-                />
+                  {/* Mode Penutupan */}
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Mode Penutupan</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => { setCloseShiftMode('SERAH_TERIMA'); setHandoverResult(null); }}
+                        className={`rounded-lg border px-4 py-3 text-sm font-bold transition ${closeShiftMode === 'SERAH_TERIMA' ? 'bg-[#1E4648] border-[#1E4648] text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                      >
+                        Serah Terima Shift
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCloseShiftMode('TUTUP_HARIAN'); setHandoverResult(null); }}
+                        className={`rounded-lg border px-4 py-3 text-sm font-bold transition ${closeShiftMode === 'TUTUP_HARIAN' ? 'bg-rose-600 border-rose-600 text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                      >
+                        Tutup Hari Ini
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Conditional: Staff Pengganti */}
+                  {closeShiftMode === 'SERAH_TERIMA' && (
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2">Staf Shift Pengganti</label>
+                      <div className="flex gap-3">
+                        <select
+                          value={replacementEmployeeId}
+                          onChange={(event) => { setReplacementEmployeeId(event.target.value); setHandoverResult(null); }}
+                          className="flex-1 px-3 py-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:border-[#1E4648]"
+                        >
+                          <option value="">Pilih staf pengganti...</option>
+                          {staffList.filter((staff) => staff.id !== shiftAktif.idUser).map((staff) => (
+                            <option key={staff.id} value={staff.id}>{staff.nama}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handleCheckHandover}
+                          disabled={shiftSubmitting || !replacementEmployeeId}
+                          className="px-4 py-2.5 rounded-lg bg-[#1E4648] text-white disabled:opacity-50 text-sm font-bold"
+                        >
+                          Verifikasi
+                        </button>
+                      </div>
+                      {handoverResult && (
+                        <p className={`mt-2 rounded-lg px-3 py-2 text-sm font-bold ${handoverResult.eligible ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
+                          {handoverResult.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Kas Fisik */}
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Total Fisik Kas di Laci (Rp)</label>
+                    <input
+                      type="number"
+                      value={kasAkhirFisik}
+                      onChange={(e) => setKasAkhirFisik(e.target.value)}
+                      placeholder="Hitung jumlah uang fisik di laci kas"
+                      className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:border-[#1E4648]"
+                    />
+                    {kasAkhirFisik && (
+                      <div className={`mt-2 p-3 rounded-lg text-sm font-bold ${
+                        (Number(kasAkhirFisik) || 0) === ((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0)) 
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
+                      }`}>
+                        Selisih: Rp {((Number(kasAkhirFisik) || 0) - ((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0))).toLocaleString('id-ID')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIGHT COLUMN: Expense & Upload */}
+                <div className="space-y-6">
+                  {/* Input Pengeluaran */}
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2">
+                      <Receipt className="w-4 h-4 text-rose-600" />
+                      Pengeluaran Shift (Opsional)
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Deskripsi Pengeluaran</label>
+                        <input
+                          type="text"
+                          value={shiftExpenseDesc}
+                          onChange={(e) => setShiftExpenseDesc(e.target.value)}
+                          placeholder="Contoh: Beli deterjen, bayar listrik, dll"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-[#1E4648]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Jumlah Pengeluaran (Rp)</label>
+                        <input
+                          type="number"
+                          value={shiftExpenseAmount}
+                          onChange={(e) => setShiftExpenseAmount(e.target.value)}
+                          placeholder="0"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-[#1E4648]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-600 mb-1">Kategori</label>
+                        <select
+                          value={shiftExpenseCategory}
+                          onChange={(e) => setShiftExpenseCategory(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-[#1E4648]"
+                        >
+                          <option value="">Pilih kategori...</option>
+                          <option value="Operasional">Operasional</option>
+                          <option value="Maintenance">Maintenance</option>
+                          <option value="Supplies">Supplies</option>
+                          <option value="Lainnya">Lainnya</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Upload Foto Bukti */}
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-blue-600" />
+                      Upload Foto Bukti Pengeluaran
+                    </h4>
+                    <div className="space-y-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleExpensePhotoUpload}
+                        className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-[#1E4648] file:text-white hover:file:bg-[#163536]"
+                      />
+                      <p className="text-xs text-slate-500">Upload foto nota, struk, atau bukti pengeluaran lainnya (JPG, PNG)</p>
+                      
+                      {expensePhotos.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-bold text-slate-600">{expensePhotos.length} foto siap upload:</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {expensePhotos.map((photo, idx) => (
+                              <div key={idx} className="relative group">
+                                <img src={photo.preview} alt={`Bukti ${idx + 1}`} className="w-full h-20 object-cover rounded-lg border border-slate-200" />
+                                <button
+                                  type="button"
+                                  onClick={() => removeExpensePhoto(idx)}
+                                  className="absolute -top-1 -right-1 w-6 h-6 bg-rose-500 text-white rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => setShowTutupShiftModal(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">Batal</button>
-              <button
-                onClick={handleCloseShift}
-                disabled={shiftSubmitting || (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible)}
-                className="flex-1 bg-rose-600 disabled:opacity-50 text-white rounded-lg text-xs font-bold py-2"
+
+            {/* Footer Actions */}
+            <div className="flex gap-3 p-6 border-t border-slate-100 bg-slate-50">
+              <button 
+                onClick={() => setShowTutupShiftModal(false)} 
+                className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-bold transition"
               >
-                {shiftSubmitting ? 'Memproses...' : 'Tutup Shift Kasir'}
+                Batal
+              </button>
+              <button
+                onClick={handleCloseShiftWithExpense}
+                disabled={shiftSubmitting || (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible)}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold py-2.5 flex items-center justify-center gap-2 transition"
+              >
+                {shiftSubmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Memproses...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    Tutup Shift & Simpan Data
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -2142,7 +2135,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             noHp: completedOrderData.noHp,
             total: completedOrderData.total,
             status: 'Selesai',
-            estimasi: completedOrderData.estimasiSelesai || '',
             petugas: completedOrderData.kasir,
             tipe: completedOrderData.tipeLayanan || 'SelfService',
             tingkatLayanan: 'Reguler',
