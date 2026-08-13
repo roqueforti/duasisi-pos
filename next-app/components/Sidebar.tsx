@@ -8,7 +8,6 @@ import {
   History, 
   Clock, 
   Package, 
-  Cpu, 
   Users, 
   Tag, 
   BarChart3, 
@@ -179,10 +178,6 @@ export default function Sidebar({
           <button className={navClass('inventory')} onClick={() => handleNavClick('inventory')} title="Inventory">
             <Package className={`w-[18px] h-[18px] shrink-0 ${iconClass('inventory')}`} />
             {!isCollapsed && <span>Stok Inventory</span>}
-          </button>
-          <button className={navClass('mesin')} onClick={() => handleNavClick('mesin')} title="Status Mesin">
-            <Cpu className={`w-[18px] h-[18px] shrink-0 ${iconClass('mesin')}`} />
-            {!isCollapsed && <span>Status Mesin</span>}
           </button>
 
           {currentRole === 'MANAGER' && (

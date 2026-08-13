@@ -8,7 +8,6 @@ import PosView from '@/components/PosView';
 import RiwayatView from '@/components/RiwayatView';
 import AbsensiView from '@/components/AbsensiView';
 import InventoryView from '@/components/InventoryView';
-import MesinView from '@/components/MesinView';
 import PegawaiView from '@/components/PegawaiView';
 import ProdukView from '@/components/ProdukView';
 import RekapView from '@/components/RekapView';
@@ -97,7 +96,6 @@ export default function HomePage() {
               {currentTab === 'absensi' && <AbsensiView />}
               {currentTab === 'pelanggan' && <PelangganView currentRole={currentRole} />}
               {currentTab === 'inventory' && <InventoryView currentRole={currentRole} />}
-              {currentTab === 'mesin' && <MesinView currentRole={currentRole} />}
               {currentTab === 'pegawai' && <PegawaiView />}
               {currentTab === 'produk' && <ProdukView />}
               {currentTab === 'rekap' && <RekapView />}

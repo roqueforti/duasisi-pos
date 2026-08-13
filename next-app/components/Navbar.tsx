@@ -19,7 +19,6 @@ const tabTitles: Record<string, string> = {
   pesanan: 'Manajemen Pesanan Drop-off',
   absensi: 'Absensi Shift Presensi',
   inventory: 'Inventory Stok Bahan',
-  mesin: 'Status Mesin Cuci & Dryer',
   pegawai: 'Pegawai & Kinerja',
   produk: 'Produk & Layanan',
   rekap: 'Laporan Omzet & Analytics',
