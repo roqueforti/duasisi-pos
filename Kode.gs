@@ -1947,9 +1947,6 @@ function uploadExpensePhoto(fileName, fileData, mimeType, shiftId) {
     };
   }
 }
-    };
-  }
-}
 
 /**
  * Updated CLOSE KAS SHIFT dengan support PENGELUARAN
