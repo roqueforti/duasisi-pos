@@ -166,6 +166,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [showTutupShiftModal, setShowTutupShiftModal] = useState<boolean>(false);
   const [showCustomItemModal, setShowCustomItemModal] = useState<boolean>(false);
   const [showMobileCart, setShowMobileCart] = useState<boolean>(false);
+  const [catalogViewMode, setCatalogViewMode] = useState<'grid' | 'list'>('grid');
 
   // Shift & Kas State
   const [shiftAktif, setShiftAktif] = useState<ShiftKasir | null>(null);
@@ -779,34 +780,73 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           </div>
         </div>
 
-        {/* Category Pills Row */}
-        <div className="px-3 sm:px-4 py-3 border-b border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar bg-slate-50/30">
-          {[
-            { id: 'Semua', label: 'Semua Produk' },
-            { id: 'SelfService', label: 'Self Service' },
-            { id: 'Dropoff', label: 'Drop-off' },
-            { id: 'MakananMinuman', label: 'Makanan & Minuman' },
-          ].map((tab) => {
-            const isActive = selectedCategoryTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedCategoryTab(tab.id as any)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition shrink-0 border ${
-                  isActive
-                    ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-2xs font-bold'
-                    : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-700'
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+        {/* Category Pills Row & View Toggle */}
+        <div className="px-3 sm:px-4 py-3 border-b border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar bg-slate-50/30 justify-between flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            {[
+              { id: 'Semua', label: 'Semua Produk' },
+              { id: 'SelfService', label: 'Self Service' },
+              { id: 'Dropoff', label: 'Drop-off' },
+              { id: 'MakananMinuman', label: 'Makanan & Minuman' },
+            ].map((tab) => {
+              const isActive = selectedCategoryTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedCategoryTab(tab.id as any)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition shrink-0 border ${
+                    isActive
+                      ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-2xs font-bold'
+                      : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-100 hover:text-slate-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1.5 ml-auto shrink-0">
+            <button
+              onClick={() => setCatalogViewMode('grid')}
+              className={`p-2 rounded-lg border transition ${
+                catalogViewMode === 'grid'
+                  ? 'bg-[#1E4648] border-[#1E4648] text-white'
+                  : 'bg-white border-slate-200/80 text-slate-400 hover:text-slate-600'
+              }`}
+              title="Tampilan Grid"
+            >
+              <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
+                <div className="bg-current rounded-sm" />
+                <div className="bg-current rounded-sm" />
+                <div className="bg-current rounded-sm" />
+                <div className="bg-current rounded-sm" />
+              </div>
+            </button>
+            <button
+              onClick={() => setCatalogViewMode('list')}
+              className={`p-2 rounded-lg border transition ${
+                catalogViewMode === 'list'
+                  ? 'bg-[#1E4648] border-[#1E4648] text-white'
+                  : 'bg-white border-slate-200/80 text-slate-400 hover:text-slate-600'
+              }`}
+              title="Tampilan List"
+            >
+              <div className="w-4 h-4 flex flex-col gap-0.5">
+                <div className="h-0.5 bg-current" />
+                <div className="h-0.5 bg-current" />
+                <div className="h-0.5 bg-current" />
+              </div>
+            </button>
+          </div>
         </div>
 
-        {/* STEP 1: Product Cards Grid */}
+        {/* STEP 1: Product Cards Grid or List */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 auto-rows-auto">
+          {catalogViewMode === 'grid' ? (
+            // GRID VIEW
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 auto-rows-auto">
             {(() => {
               const renderCard = (item: LayananItem, idx: number) => {
                 const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
@@ -913,7 +953,88 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               }
               return filteredAll.map(renderCard);
             })()}
-          </div>
+            </div>
+          ) : (
+            // LIST VIEW
+            <div className="space-y-2">
+              {(() => {
+                const renderListItem = (item: LayananItem) => {
+                  const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
+
+                  return (
+                    <div
+                      key={item.layanan}
+                      className={`flex items-center justify-between p-4 bg-white rounded-lg border-2 cursor-pointer select-none transition hover:shadow-md ${
+                        qtyInCart > 0
+                          ? 'ring-2 ring-[#1E4648]/50 border-[#1E4648] bg-[#1E4648]/[0.02]'
+                          : 'border-slate-200/80 hover:border-[#1E4648]'
+                      }`}
+                      onPointerUp={() => updateCart(item, 1)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-slate-700 leading-snug">{item.layanan}</p>
+                        <div className="text-sm font-bold text-[#1E4648] mt-1">
+                          Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
+                        </div>
+                      </div>
+
+                      {qtyInCart > 0 ? (
+                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden ml-4 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
+                            className="w-8 h-8 flex items-center justify-center hover:bg-white/20 transition font-bold text-sm"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="text-sm font-bold px-3">{qtyInCart}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
+                            className="w-8 h-8 flex items-center justify-center hover:bg-white/20 transition font-bold text-sm"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center hover:bg-slate-200 transition ml-4 shrink-0">
+                          <Plus className="w-5 h-5 text-slate-500" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                };
+
+                const filterLower = search.toLowerCase().trim();
+                const filteredAll = (layananList || []).filter((i) => i.layanan.toLowerCase().includes(filterLower));
+
+                if (selectedCategoryTab !== 'Semua') {
+                  const tabFiltered = filteredAll.filter((i) => {
+                    if (selectedCategoryTab === 'SelfService') return i.tipe === 'SelfService' && i.kategori !== 'MakananMinuman';
+                    if (selectedCategoryTab === 'Dropoff') return i.tipe === 'FullService';
+                    if (selectedCategoryTab === 'MakananMinuman') return i.kategori === 'MakananMinuman';
+                    return true;
+                  });
+
+                  if (tabFiltered.length === 0) {
+                    return (
+                      <div className="col-span-full text-center py-12 text-slate-400 text-xs">
+                        Tidak ada produk ditemukan dalam kategori ini.
+                      </div>
+                    );
+                  }
+                  return tabFiltered.map(renderListItem);
+                }
+
+                if (filteredAll.length === 0) {
+                  return (
+                    <div className="col-span-full text-center py-12 text-slate-400 text-xs">
+                      Tidak ada produk ditemukan.
+                    </div>
+                  );
+                }
+                return filteredAll.map(renderListItem);
+              })()}
+            </div>
+          )}
         </div>
       </div>
 
