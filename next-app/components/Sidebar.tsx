@@ -38,6 +38,20 @@ export default function Sidebar({
 }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
+  // Auto-collapse on tablet landscape (<=1280px)
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 1280) {
+        setIsCollapsed(true);
+      } else {
+        setIsCollapsed(false);
+      }
+    };
+    handleResize(); // trigger on mount
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleNavClick = (tabKey: string) => {
     if (tabKey === 'transaksi' && currentRole === 'MANAGER') {
       alert('Fitur POS Kasir hanya untuk Staff/Kasir');

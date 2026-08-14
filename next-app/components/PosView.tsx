@@ -996,7 +996,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
           {catalogViewMode === 'grid' ? (
             // GRID VIEW
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 auto-rows-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 auto-rows-auto">
             {(() => {
               const renderCard = (item: LayananItem, idx: number) => {
                 const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
@@ -1779,7 +1779,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             </div>
 
             {/* RIGHT PANEL: Payment Calculator (Numpad) */}
-            <div className="w-full lg:w-[420px] flex flex-col bg-slate-50 shrink-0">
+            <div className="w-full lg:w-[360px] xl:w-[420px] flex flex-col bg-slate-50 shrink-0">
               {/* Total Banner */}
               <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-6 text-center shrink-0 shadow-lg">
                 <span className="text-xs text-slate-300 font-bold uppercase tracking-wider block mb-2">TOTAL TAGIHAN:</span>
