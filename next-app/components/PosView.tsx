@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
@@ -871,7 +871,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         updateCart(item, 1);
                       }
                     }}
-                    className={`bg-white rounded-lg border-2 p-3 flex flex-col gap-2.5 cursor-pointer select-none active:scale-95 transition-transform duration-75 touch-pan-y ${
+                    className={`bg-white rounded-lg border-2 p-3 flex flex-col gap-2 cursor-pointer select-none active:scale-95 transition-transform duration-75 touch-pan-y ${
                       qtyInCart > 0
                         ? 'ring-2 ring-[#1E4648]/50 border-[#1E4648] bg-[#1E4648]/[0.02] shadow-md'
                         : 'border-slate-200/80 shadow-sm hover:border-[#1E4648] hover:shadow-md'
@@ -881,68 +881,68 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     <div className="flex items-start gap-2">
                       {(() => {
                         let IconComp = WashingMachine;
-                        let bgColor = 'bg-[#1E4648]/10';
-                        let textColor = 'text-[#1E4648]';
+                        let bgColor = 'bg-[#1E4648]';
+                        let textColor = 'text-white';
                         
                         if (item.tipe === 'FullService') {
                           IconComp = Sparkles;
-                          bgColor = 'bg-[#B5C9C9]/20';
-                          textColor = 'text-[#1E4648]';
+                          bgColor = 'bg-[#FF9500]';
+                          textColor = 'text-white';
                         } else if (item.kategori === 'MakananMinuman') {
                           IconComp = Coffee;
-                          bgColor = 'bg-[#FF9500]/10';
-                          textColor = 'text-[#FF9500]';
+                          bgColor = 'bg-orange-500';
+                          textColor = 'text-white';
                         } else if (item.kategori === 'Produk') {
                           IconComp = Package;
-                          bgColor = 'bg-slate-100';
-                          textColor = 'text-slate-500';
+                          bgColor = 'bg-slate-400';
+                          textColor = 'text-white';
                         }
                         
                         return (
-                          <div className={`w-8 h-8 rounded-lg ${bgColor} flex items-center justify-center shrink-0 flex-none`}>
-                            <IconComp className={`w-4 h-4 ${textColor}`} />
+                          <div className={`w-7 h-7 rounded-md ${bgColor} flex items-center justify-center shrink-0 flex-none`}>
+                            <IconComp className={`w-3.5 h-3.5 ${textColor}`} />
                           </div>
                         );
                       })()}
-                      <div className="flex-1">
-                        <p className="font-bold text-sm text-slate-700 leading-snug line-clamp-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-xs text-slate-700 leading-tight line-clamp-2">
                           {item.layanan}
                         </p>
                       </div>
                     </div>
 
                     {/* Harga - prominent */}
-                    <div>
-                      <div className="text-lg font-bold text-[#1E4648] leading-none">
+                    <div className="pt-1">
+                      <div className="text-base font-bold text-[#1E4648] leading-tight">
                         Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
                       </div>
                     </div>
 
                     {/* Qty stepper - bottom */}
-                    <div className="flex items-center justify-between gap-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between gap-1 pt-2" onClick={(e) => e.stopPropagation()}>
                       {qtyInCart > 0 ? (
-                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden flex-1 h-7">
+                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden flex-1 h-6">
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
-                            className="w-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
+                            className="w-6 flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3 h-3" />
                           </button>
-                          <span className="text-xs font-bold px-1 flex-1 text-center">{qtyInCart}</span>
+                          <span className="text-xs font-bold flex-1 text-center">{qtyInCart}</span>
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                            className="w-7 flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
+                            className="w-6 flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3 h-3" />
                           </button>
                         </div>
                       ) : (
-                        <div className="w-full h-7 rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center hover:bg-slate-200 transition">
-                          <Plus className="w-4 h-4 text-slate-500" />
+                        <div className="w-full h-6 rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center hover:bg-slate-200 transition">
+                          <Plus className="w-3.5 h-3.5 text-slate-400" />
                         </div>
                       )}
                     </div>
@@ -985,18 +985,30 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             // LIST VIEW
             <div className="space-y-2">
               {(() => {
-                const renderListItem = (item: LayananItem) => {
+                const renderListItem = (item: LayananItem, idx: number) => {
                   const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
+                  let pointerStartX = 0;
+                  let pointerStartY = 0;
 
                   return (
                     <div
-                      key={item.layanan}
-                      className={`flex items-center justify-between p-4 bg-white rounded-lg border-2 cursor-pointer select-none transition hover:shadow-md ${
+                      key={`${item.layanan}-${idx}`}
+                      onPointerDown={(e) => {
+                        pointerStartX = e.clientX;
+                        pointerStartY = e.clientY;
+                      }}
+                      onPointerUp={(e) => {
+                        const dx = Math.abs(e.clientX - pointerStartX);
+                        const dy = Math.abs(e.clientY - pointerStartY);
+                        if (dx < 8 && dy < 8) {
+                          updateCart(item, 1);
+                        }
+                      }}
+                      className={`flex items-center justify-between p-4 bg-white rounded-lg border-2 cursor-pointer select-none transition hover:shadow-md touch-pan-y ${
                         qtyInCart > 0
                           ? 'ring-2 ring-[#1E4648]/50 border-[#1E4648] bg-[#1E4648]/[0.02]'
                           : 'border-slate-200/80 hover:border-[#1E4648]'
                       }`}
-                      onPointerUp={() => updateCart(item, 1)}
                     >
                       <div className="flex-1 min-w-0 flex items-center gap-3">
                         {(() => {
@@ -1006,35 +1018,42 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           
                           if (item.tipe === 'FullService') {
                             IconComp = Sparkles;
-                            bgColor = 'bg-[#B5C9C9]/20';
-                            textColor = 'text-[#1E4648]';
+                            bgColor = 'bg-[#FF9500]';
+                            textColor = 'text-white';
                           } else if (item.kategori === 'MakananMinuman') {
                             IconComp = Coffee;
-                            bgColor = 'bg-[#FF9500]/10';
-                            textColor = 'text-[#FF9500]';
+                            bgColor = 'bg-orange-500';
+                            textColor = 'text-white';
                           } else if (item.kategori === 'Produk') {
                             IconComp = Package;
-                            bgColor = 'bg-slate-100';
-                            textColor = 'text-slate-500';
+                            bgColor = 'bg-slate-400';
+                            textColor = 'text-white';
                           }
                           
                           return (
-                            <div className={`w-10 h-10 rounded-lg ${bgColor} flex items-center justify-center shrink-0 flex-none`}>
+                            <div className={`w-10 h-10 rounded-md ${bgColor} flex items-center justify-center shrink-0 flex-none`}>
                               <IconComp className={`w-5 h-5 ${textColor}`} />
                             </div>
                           );
                         })()}
-                        <div className="min-w-0">
-                          <p className="font-bold text-sm text-slate-700 leading-snug truncate">{item.layanan}</p>
-                          <div className="text-sm font-bold text-[#1E4648] mt-1">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-sm text-slate-700 leading-tight truncate">{item.layanan}</p>
+                          <div className="text-xs text-slate-500 font-semibold mt-0.5">
                             Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
                           </div>
                         </div>
                       </div>
 
                       {qtyInCart > 0 ? (
-                        <div className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden ml-4 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <div 
+                          className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden ml-4 shrink-0" 
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onPointerUp={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <button
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
                             className="w-8 h-8 flex items-center justify-center hover:bg-white/20 transition font-bold text-sm"
                           >
@@ -1042,6 +1061,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           </button>
                           <span className="text-sm font-bold px-3">{qtyInCart}</span>
                           <button
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onPointerUp={(e) => e.stopPropagation()}
                             onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
                             className="w-8 h-8 flex items-center justify-center hover:bg-white/20 transition font-bold text-sm"
                           >

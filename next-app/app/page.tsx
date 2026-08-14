@@ -39,7 +39,7 @@ export default function HomePage() {
 
   const handleLoginSuccess = (role: UserRole, label: string) => {
     setCurrentRole(role);
-    setCurrentTab('transaksi');
+    setCurrentTab(role === 'MANAGER' ? 'dashboard' : 'transaksi');
   };
 
   const handleLogout = () => {

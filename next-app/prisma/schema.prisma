@@ -18,6 +18,7 @@ model Employee {
   aktif     Boolean  @default(true)
 
   shifts       Shift[]
+  shiftsSebagaiPengganti Shift[] @relation("ShiftPengganti")
   absensiList  Absensi[]
   pipelineSteps PipelineStep[]
 
@@ -97,10 +98,33 @@ model Shift {
   waktuBuka       DateTime  @map("waktu_buka") @db.Timestamptz
   waktuTutup      DateTime? @map("waktu_tutup") @db.Timestamptz
   catatan         String?
-
+  pemasukanNonTunai Decimal? @map("pemasukan_non_tunai")
+  ekspektasiKasAkhir Decimal? @map("ekspektasi_kas_akhir")
+  modePenutupan   String?  @map("mode_penutupan") // 'Serah Terima' | 'Tutup Hari Ini'
+  idStafPengganti String?  @map("id_staf_pengganti") @db.Uuid
+  
   employee        Employee? @relation(fields: [idPegawai], references: [id])
+  stafPengganti   Employee? @relation("ShiftPengganti", fields: [idStafPengganti], references: [id])
+  expenses        Expense[]
 
   @@map("shifts")
+}
+
+// =============================================
+// PENGELUARAN (EXPENSE)
+// =============================================
+model Expense {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  idShift     String?  @map("id_shift") @db.Uuid
+  deskripsi   String
+  jumlah      Decimal
+  kategori    String?
+  fotoBukti   String?  @map("foto_bukti")
+
+  shift       Shift?   @relation(fields: [idShift], references: [id])
+
+  @@map("expenses")
 }
 
 // =============================================
