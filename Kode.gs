@@ -1961,7 +1961,12 @@ function closeKasShift(data) {
     if (!sh) return { success: false, message: "Sheet KasShift belum tersedia." };
     const rows = sh.getDataRange().getValues();
     let rowIndex = -1;
-    for (let i = 1; i < rows.length; i++) if (rows[i][0] === data.shiftId && rows[i][10] === "Aktif") { rowIndex = i; break; }
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]) === String(data.shiftId) && rows[i][10] === "Aktif") { 
+        rowIndex = i; 
+        break; 
+      }
+    }
     if (rowIndex < 0) return { success: false, message: "Kas shift aktif tidak ditemukan." };
     if (["SERAH_TERIMA", "TUTUP_HARIAN"].indexOf(data.mode) === -1) return { success: false, message: "Mode penutupan tidak valid." };
 
