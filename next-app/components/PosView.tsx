@@ -168,6 +168,12 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [showMobileCart, setShowMobileCart] = useState<boolean>(false);
   const [catalogViewMode, setCatalogViewMode] = useState<'grid' | 'list'>('grid');
 
+  // Strict Mode Lock Screen State
+  const [lockScreenStep, setLockScreenStep] = useState<1 | 2>(1);
+  const [clockInShift, setClockInShift] = useState('Pagi');
+  const [clockInCatatan, setClockInCatatan] = useState('');
+  const [clockInSubmitting, setClockInSubmitting] = useState(false);
+
   // Shift & Kas State
   const [shiftAktif, setShiftAktif] = useState<ShiftKasir | null>(null);
   const [shiftLoading, setShiftLoading] = useState(true);
@@ -521,6 +527,28 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     }
   };
 
+  const handleClockIn = async () => {
+    const selectedStaff = staffList.find((staff) => staff.nama === namaKasirInput) || staffList[0];
+    if (!selectedStaff) {
+      alert('Pilih nama kasir terlebih dahulu.');
+      return;
+    }
+    setClockInSubmitting(true);
+    try {
+      const res = await runBackend<{ success: boolean; message: string }>('clockInPegawai', selectedStaff.nama, clockInShift, clockInCatatan);
+      if (res && res.success) {
+        setLockScreenStep(2);
+      } else {
+        throw new Error(res?.message || 'Gagal Clock In.');
+      }
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : 'Terjadi kesalahan saat Clock In.');
+    } finally {
+      setClockInSubmitting(false);
+    }
+  };
+
   const handleCheckHandover = async () => {
     if (!shiftAktif || !replacementEmployeeId) {
       alert('Pilih staf shift pengganti terlebih dahulu.');
@@ -713,6 +741,128 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     setCompletedOrderData(null);
     setToastMsg(`Transaksi #${trxId} berhasil disimpan! Siap terima order berikutnya.`);
   };
+
+  if (!shiftLoading && !shiftAktif) {
+    return (
+      <div className="h-full flex items-center justify-center bg-slate-100 p-4 relative overflow-hidden">
+        {/* Background Decorative Pattern */}
+        <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#1E4648 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+        
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200/60 w-full max-w-md overflow-hidden relative z-10">
+          <div className="bg-[#1E4648] p-6 text-center text-white">
+            <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/20 shadow-inner">
+              <Lock className="w-8 h-8 text-teal-100" />
+            </div>
+            <h2 className="text-xl font-bold mb-1">Layar Terkunci</h2>
+            <p className="text-teal-100 text-sm">Selesaikan {lockScreenStep === 1 ? 'Absensi' : 'Kas Awal'} untuk membuka POS</p>
+          </div>
+
+          <div className="p-6">
+            {/* Progress Indicator */}
+            <div className="flex items-center gap-2 mb-8 px-4">
+              <div className={`flex-1 h-1.5 rounded-full ${lockScreenStep >= 1 ? 'bg-[#1E4648]' : 'bg-slate-200'}`} />
+              <div className={`flex-1 h-1.5 rounded-full transition-colors duration-500 ${lockScreenStep === 2 ? 'bg-[#1E4648]' : 'bg-slate-200'}`} />
+            </div>
+
+            {lockScreenStep === 1 ? (
+              <div className="space-y-4 animate-fade-in">
+                <h3 className="font-bold text-slate-700 text-center mb-6">Langkah 1: Absensi (Clock In)</h3>
+                
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Kasir</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <select
+                      value={namaKasirInput}
+                      onChange={(e) => setNamaKasirInput(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all appearance-none"
+                    >
+                      {staffList.map((s) => (
+                        <option key={s.id} value={s.nama}>{s.nama} {s.jabatan ? `— ${s.jabatan}` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Jadwal Shift</label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <select
+                      value={clockInShift}
+                      onChange={(e) => setClockInShift(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all appearance-none"
+                    >
+                      <option value="Pagi">Pagi (08:00 - 16:00)</option>
+                      <option value="Siang">Siang (12:00 - 20:00)</option>
+                      <option value="Sore">Sore (15:00 - 22:00)</option>
+                      <option value="Full Day">Full Day</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleClockIn}
+                  disabled={clockInSubmitting}
+                  className="w-full mt-6 bg-[#1E4648] hover:bg-[#163536] disabled:opacity-50 text-white rounded-xl text-sm font-bold py-3.5 shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+                >
+                  {clockInSubmitting ? (
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <span>Lanjut Clock In</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 animate-fade-in">
+                <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => setLockScreenStep(1)}>
+                  <button className="p-1.5 hover:bg-slate-100 rounded-lg transition"><ArrowRight className="w-4 h-4 text-slate-400 rotate-180" /></button>
+                  <h3 className="font-bold text-slate-700">Langkah 2: Hitung Kas Laci</h3>
+                </div>
+                
+                <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-4 text-amber-800 text-xs font-medium leading-relaxed mb-4 flex gap-3 items-start">
+                  <AlertCircle className="w-5 h-5 shrink-0 text-amber-500" />
+                  <p>Harap hitung fisik uang kertas dan koin di laci Anda saat ini, lalu masukkan totalnya di bawah. Jumlah ini akan menjadi modal awal shift Anda.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Total Fisik Uang Laci (Rp)</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">Rp</div>
+                    <input
+                      type="number"
+                      value={kasAwalInput}
+                      onChange={(e) => setKasAwalInput(e.target.value)}
+                      placeholder="Contoh: 150000"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-bold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleOpenShift}
+                  disabled={shiftSubmitting}
+                  className="w-full mt-6 bg-[#FF9500] hover:bg-[#E58600] disabled:opacity-50 text-white rounded-xl text-sm font-bold py-3.5 shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+                >
+                  {shiftSubmitting ? (
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Unlock className="w-5 h-5" />
+                      <span>Buka POS Sekarang</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col md:flex-row gap-3 p-3 sm:p-4 bg-slate-50 relative overflow-hidden text-slate-600">
