@@ -88,6 +88,47 @@ function resetDatabaseOperasional() {
   }
 }
 
+/**
+ * HARD RESET: Hapus SELURUH data di semua sheet (termasuk Layanan, Pegawai, Produk) kecuali Header baris 1.
+ * Sangat berbahaya, gunakan dengan hati-hati saat ingin memulai database dari 0.
+ */
+function resetDatabaseTotal() {
+  const lock = LockService.getDocumentLock();
+  lock.waitLock(30000);
+  try {
+    const sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+    let count = 0;
+    
+    // 1. Bersihkan semua isi sheet (kecuali baris pertama / header)
+    for (let i = 0; i < sheets.length; i++) {
+      const sh = sheets[i];
+      const lastRow = sh.getLastRow();
+      const lastCol = sh.getMaxColumns();
+      
+      if (lastRow > 1 && lastCol > 0) {
+        sh.getRange(2, 1, lastRow - 1, lastCol).clearContent();
+        count++;
+      }
+    }
+    
+    // 2. Reset ID Counter di Script Properties (Hati-hati: PIN JANGAN DIHAPUS)
+    const props = PropertiesService.getScriptProperties();
+    const allKeys = props.getKeys();
+    for (let i = 0; i < allKeys.length; i++) {
+      if (allKeys[i].indexOf("ID_COUNTER") !== -1) {
+        props.deleteProperty(allKeys[i]);
+      }
+    }
+    
+    SpreadsheetApp.flush();
+    return { success: true, message: "HARD RESET BERHASIL! Seluruh data pada " + count + " sheet telah dihapus, counter ID di-reset ke 0." };
+  } catch (err) {
+    return { success: false, message: "Gagal reset total: " + err.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function clearDataRows_(sheetName) {
   const sheet = SS.getSheetByName(sheetName);
   if (!sheet) return;

@@ -57,17 +57,16 @@ interface CustomerState {
 }
 
 const defaultLayanan: LayananItem[] = [
-  { layanan: 'Cuci + Kering 7,5 Kg (45 Mnt)', hargaSatuan: 18000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
-  { layanan: 'Cuci 7,5 Kg', hargaSatuan: 10000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
-  { layanan: 'Pengering (15 Menit)', hargaSatuan: 5000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
-  { layanan: 'Cuci + Kering 4,5 Kg (45 Mnt)', hargaSatuan: 13000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
-  { layanan: 'Cuci 4,5 Kg', hargaSatuan: 7000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
-  { layanan: 'Layanan Setrika Uap Express', hargaSatuan: 12000, tipe: 'FullService', satuan: 'paket', kategori: 'Layanan Tambahan' },
-  { layanan: 'Deterjen Cair', hargaSatuan: 1000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Produk' },
-  { layanan: 'Softener Premium', hargaSatuan: 1000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Produk' },
-  { layanan: 'Kresek Besar', hargaSatuan: 1000, tipe: 'SelfService', satuan: 'pcs', kategori: 'Produk' },
-  { layanan: 'Air Mineral 600ml', hargaSatuan: 3000, tipe: 'SelfService', satuan: 'botol', kategori: 'MakananMinuman' },
-  { layanan: 'Kopi Hitam / Teh Warm', hargaSatuan: 4000, tipe: 'SelfService', satuan: 'cangkir', kategori: 'MakananMinuman' },
+  { layanan: 'Dummy 1', hargaSatuan: 10000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
+  { layanan: 'Dummy 2', hargaSatuan: 15000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
+  { layanan: 'Dummy 3', hargaSatuan: 20000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
+  { layanan: 'Dummy 4', hargaSatuan: 5000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
+  { layanan: 'Dummy 5', hargaSatuan: 12000, tipe: 'FullService', satuan: 'paket', kategori: 'Layanan Tambahan' },
+  { layanan: 'Dummy 6', hargaSatuan: 1000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Produk' },
+  { layanan: 'Dummy 7', hargaSatuan: 2000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Produk' },
+  { layanan: 'Dummy 8', hargaSatuan: 3000, tipe: 'SelfService', satuan: 'pcs', kategori: 'Produk' },
+  { layanan: 'Dummy 9', hargaSatuan: 5000, tipe: 'SelfService', satuan: 'botol', kategori: 'MakananMinuman' },
+  { layanan: 'Dummy 10', hargaSatuan: 7000, tipe: 'SelfService', satuan: 'cangkir', kategori: 'MakananMinuman' },
 ];
 
 function getLayananStyleConfig(item: LayananItem) {
@@ -206,6 +205,9 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               ? 'MakananMinuman'
               : item.tipe === 'FullService' ? 'Layanan Tambahan' : 'Layanan',
           })));
+        } else {
+          // Fallback to default/dummy data if database is completely empty
+          setLayananList(defaultLayanan);
         }
       },
       10 * 60 * 1000 // 10 menit TTL â€” katalog jarang berubah
@@ -215,7 +217,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     runBackendCached<any[]>(
       'getDaftarPelanggan',
       (data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setCustomerList(data.map((c) => ({
             nama: c.nama,
             noHp: c.noHp,
@@ -231,7 +233,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     runBackendCached<any[]>(
       'getPegawaiList',
       (data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setStaffList(data);
           if (data[0]?.nama) setNamaKasirInput(data[0].nama);
         }

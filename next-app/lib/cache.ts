@@ -1,11 +1,12 @@
 /**
- * localStorage cache dengan stale-while-revalidate pattern.
- * - Langsung return data dari cache (instant)
- * - Fetch fresh data di background
- * - Update cache setelah fresh data datang
+ * In-memory cache dengan stale-while-revalidate pattern.
+ * - Berjalan "sewajarnya" (hanya hidup selama tab browser belum direfresh)
+ * - Jika di-refresh (F5), cache langsung hilang (full online)
+ * - Langsung return data dari cache memori (instant)
+ * - Fetch fresh data di background jika cache sudah expired
  */
 
-const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 menit
+const DEFAULT_TTL_MS = 1 * 60 * 1000; // Dikurangi jadi 1 menit agar lebih real-time
 
 interface CacheEntry<T> {
   data: T;
@@ -13,60 +14,44 @@ interface CacheEntry<T> {
   ttl: number;
 }
 
+// Global memory cache (hilang kalau direfresh)
+const memoryCache = new Map<string, CacheEntry<any>>();
+
 function cacheKey(action: string): string {
   return `pos_cache_${action}`;
 }
 
 export function readCache<T>(action: string): T | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(cacheKey(action));
-    if (!raw) return null;
-    const entry: CacheEntry<T> = JSON.parse(raw);
-    return entry.data;
-  } catch {
-    return null;
+  const key = cacheKey(action);
+  if (memoryCache.has(key)) {
+    return memoryCache.get(key)!.data as T;
   }
+  return null;
 }
 
 export function isCacheStale(action: string): boolean {
-  if (typeof window === 'undefined') return true;
-  try {
-    const raw = localStorage.getItem(cacheKey(action));
-    if (!raw) return true;
-    const entry: CacheEntry<unknown> = JSON.parse(raw);
-    return Date.now() - entry.timestamp > entry.ttl;
-  } catch {
-    return true;
-  }
+  const key = cacheKey(action);
+  if (!memoryCache.has(key)) return true;
+  
+  const entry = memoryCache.get(key)!;
+  return Date.now() - entry.timestamp > entry.ttl;
 }
 
 export function writeCache<T>(action: string, data: T, ttl = DEFAULT_TTL_MS): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const entry: CacheEntry<T> = { data, timestamp: Date.now(), ttl };
-    localStorage.setItem(cacheKey(action), JSON.stringify(entry));
-  } catch {
-    // localStorage mungkin penuh, ignore
-  }
+  const key = cacheKey(action);
+  memoryCache.set(key, { data, timestamp: Date.now(), ttl });
 }
 
 export function clearCache(action?: string): void {
-  if (typeof window === 'undefined') return;
   if (action) {
-    localStorage.removeItem(cacheKey(action));
+    memoryCache.delete(cacheKey(action));
   } else {
-    Object.keys(localStorage)
-      .filter((k) => k.startsWith('pos_cache_'))
-      .forEach((k) => localStorage.removeItem(k));
+    memoryCache.clear();
   }
 }
 
 /**
- * Stale-while-revalidate fetch.
- * 1. Kalau ada cache → langsung panggil onData(cachedData) SEKARANG (instant)
- * 2. Kalau cache stale / tidak ada → fetch dari backend
- * 3. Setelah fetch selesai → panggil onData lagi dengan data fresh + update cache
+ * Mem-fetch data dengan prioritas Cache In-Memory
  */
 export function cachedFetch<T>(
   action: string,
@@ -77,16 +62,16 @@ export function cachedFetch<T>(
   const cached = readCache<T>(action);
 
   if (cached !== null) {
-    // Instant render dari cache
+    // Render instan dari memori
     onData(cached, true);
 
     if (!isCacheStale(action)) {
-      // Cache masih fresh, tidak perlu fetch
+      // Cache memori masih fresh (belum 1 menit), tidak perlu hit backend
       return;
     }
   }
 
-  // Fetch di background (tidak blocking)
+  // Hit backend di background (non-blocking)
   fetcher()
     .then((fresh) => {
       writeCache(action, fresh, ttl);
@@ -94,6 +79,5 @@ export function cachedFetch<T>(
     })
     .catch((err) => {
       console.warn(`[cache] Background fetch failed for ${action}:`, err);
-      // Tetap pakai cache lama kalau fetch gagal
     });
 }
