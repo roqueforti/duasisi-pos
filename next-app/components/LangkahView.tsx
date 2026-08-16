@@ -61,19 +61,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
     }
   };
 
-  const moveUp = (index: number) => {
-    if (index === 0) return;
-    const newSteps = [...steps];
-    [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
-    handleSaveAll(newSteps);
-  };
 
-  const moveDown = (index: number) => {
-    if (index === steps.length - 1) return;
-    const newSteps = [...steps];
-    [newSteps[index + 1], newSteps[index]] = [newSteps[index], newSteps[index + 1]];
-    handleSaveAll(newSteps);
-  };
 
   const handleDelete = async (index: number) => {
     const isConfirmed = await showConfirm('Hapus langkah ini dari Master Data? (Perubahan akan langsung disimpan)');
@@ -156,12 +144,12 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
       <div className="bg-white rounded-lg border border-slate-200/80 shadow-2xs overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center gap-2">
           <Settings className="w-4 h-4 text-[#1E4648]" />
-          <h2 className="font-bold text-slate-700 text-sm">Urutan Standar Master Langkah</h2>
+          <h2 className="font-bold text-slate-700 text-sm">Daftar Master Langkah</h2>
         </div>
         
         <div className="p-4">
           <p className="text-xs text-slate-500 mb-4">
-            Master langkah di bawah ini akan muncul sebagai opsi <i>dropdown</i> saat Anda menambahkan langkah pengerjaan ke suatu layanan / produk (Menu Manajemen Produk).
+            Daftar langkah di bawah ini akan muncul sebagai opsi <i>checklist</i> saat Anda mengatur langkah pengerjaan untuk suatu layanan / produk (di Menu Manajemen Produk).
           </p>
 
           {loading ? (
@@ -181,21 +169,9 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
               </button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {steps.map((step, index) => (
                 <div key={index} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg hover:border-[#1E4648]/30 transition group">
-                  <div className="flex flex-col gap-1 w-8 items-center text-slate-400">
-                    <button onClick={() => moveUp(index)} disabled={index === 0} className="hover:text-[#1E4648] disabled:opacity-30">
-                      <ArrowUp className="w-4 h-4" />
-                    </button>
-                    <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 w-5 h-5 flex items-center justify-center rounded">
-                      {step.step}
-                    </span>
-                    <button onClick={() => moveDown(index)} disabled={index === steps.length - 1} className="hover:text-[#1E4648] disabled:opacity-30">
-                      <ArrowDown className="w-4 h-4" />
-                    </button>
-                  </div>
-                  
                   <div className="flex-1">
                     <h3 className="font-bold text-slate-700 text-sm">{step.nama}</h3>
                     <div className="flex gap-2 mt-1">
