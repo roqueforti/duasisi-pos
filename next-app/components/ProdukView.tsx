@@ -60,6 +60,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   
   // Pipeline Steps selection
   const [customPipelineSteps, setCustomPipelineSteps] = useState<CustomPipelineStep[]>([]);
+  const [masterPipelineSteps, setMasterPipelineSteps] = useState<CustomPipelineStep[]>([]);
+  const [showMasterStepModal, setShowMasterStepModal] = useState(false);
 
   // Add Promo Modal State
   const [showPromoModal, setShowPromoModal] = useState(false);
@@ -96,6 +98,17 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
   // Priority Config Logic (Removed)
+  const loadMasterPipelineSteps = async () => {
+    try {
+      const data = await runBackend<CustomPipelineStep[]>('getPipelineConfigData');
+      if (Array.isArray(data)) {
+        setMasterPipelineSteps(data);
+      }
+    } catch (err) {
+      console.error('Gagal memuat master langkah:', err);
+    }
+  };
+
   const loadPromo = async () => {
     try {
       const data = await runBackend<PromoVoucher[]>('getPromoList');
@@ -114,13 +127,12 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
-
-
   useEffect(() => {
     loadProduk();
     loadPromo();
     loadPoinConfig();
     loadKategori();
+    loadMasterPipelineSteps();
   }, []);
 
   const handleOpenAdd = () => {
@@ -499,8 +511,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         </div>
       )}
 
-
-
       {showModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm">
@@ -589,13 +599,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         </div>
                       ))
                     )}
-                    <button onClick={async () => {
-                      const namaLangkah = await showPrompt("Masukkan nama langkah baru:", "Dicuci, Disetrika, dsb");
-                      if (namaLangkah) {
-                        setCustomPipelineSteps(prev => [...prev, { step: prev.length + 1, nama: namaLangkah, needStaff: false, needMesin: false }]);
-                      }
-                    }} className="mt-2 w-full py-1.5 border border-dashed border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md text-[11px] font-bold transition flex justify-center items-center gap-1">
-                      <Plus className="w-3.5 h-3.5" /> Tambah Langkah
+                    <button onClick={(e) => { e.preventDefault(); setShowMasterStepModal(true); }} className="w-full py-2.5 mt-2 border border-dashed border-slate-300 rounded-lg text-slate-500 font-bold hover:bg-slate-50 hover:text-[#1E4648] hover:border-[#1E4648] transition flex items-center justify-center gap-1.5 shadow-2xs">
+                      <Plus className="w-4 h-4" />
+                      <span>Tambah Langkah</span>
                     </button>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-1">Atur urutan proses spesifik untuk produk ini.</p>
@@ -612,6 +618,65 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
             <div className="flex gap-2">
               <button onClick={() => setShowModal(false)} className="bg-slate-100 text-slate-600 px-3 py-2 rounded-md text-xs font-semibold">Batal</button>
               <button onClick={handleSave} className="flex-1 bg-[#1E4648] text-white font-semibold py-2 rounded-md text-xs transition">Simpan</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pilih Master Langkah */}
+      {showMasterStepModal && (
+        <div className="fixed inset-0 z-[110] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-5 sm:p-6 w-full max-w-sm border border-slate-100 shadow-xl relative">
+            <button onClick={() => setShowMasterStepModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 rounded p-1">
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-lg font-bold text-slate-800 mb-1">Pilih Master Langkah</h3>
+            <p className="text-xs text-slate-500 mb-4 border-b border-slate-100 pb-3">
+              Pilih langkah pengerjaan yang sudah didefinisikan sebelumnya.
+            </p>
+
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+              {masterPipelineSteps.length === 0 ? (
+                <div className="text-center py-6 text-slate-400 text-xs italic">
+                  Belum ada master langkah. Silakan tambahkan di menu Manajemen Langkah.
+                </div>
+              ) : (
+                masterPipelineSteps.map((mst, i) => (
+                  <button 
+                    key={i} 
+                    onClick={() => {
+                      setCustomPipelineSteps(prev => [...prev, { 
+                        step: prev.length + 1, 
+                        nama: mst.nama, 
+                        needStaff: mst.needStaff, 
+                        needMesin: mst.needMesin 
+                      }]);
+                      setShowMasterStepModal(false);
+                    }}
+                    className="w-full text-left p-3 rounded-lg border border-slate-200 hover:border-[#1E4648] hover:bg-slate-50 transition group flex flex-col gap-1"
+                  >
+                    <span className="font-bold text-slate-700 group-hover:text-[#1E4648]">{mst.nama}</span>
+                    <div className="flex gap-2">
+                      {mst.needStaff && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-semibold">Wajib Staff</span>}
+                      {mst.needMesin && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 font-semibold">Wajib Mesin</span>}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <button 
+                onClick={async () => {
+                  const namaLangkah = await showPrompt("Masukkan nama langkah manual:", "Contoh: Lipat Ekstra");
+                  if (namaLangkah) {
+                    setCustomPipelineSteps(prev => [...prev, { step: prev.length + 1, nama: namaLangkah.trim(), needStaff: false, needMesin: false }]);
+                    setShowMasterStepModal(false);
+                  }
+                }}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs transition"
+              >
+                + Tambah Manual Saja
+              </button>
             </div>
           </div>
         </div>

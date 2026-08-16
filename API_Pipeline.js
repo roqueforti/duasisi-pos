@@ -8,6 +8,44 @@
 // ============================================================
 // PIPELINE ENGINE
 // ============================================================
+
+const SHEET_PIPELINE_CONFIG = "Config Pipeline";
+
+function getPipelineConfigData() {
+  let sh = SS.getSheetByName(SHEET_PIPELINE_CONFIG);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_PIPELINE_CONFIG);
+    sh.appendRow(["Step", "Nama Step", "Need Staff", "Need Mesin"]);
+    sh.appendRow([1, "Dicuci", "FALSE", "TRUE"]);
+    sh.appendRow([2, "Dikeringkan", "FALSE", "TRUE"]);
+    sh.appendRow([3, "Disetrika", "TRUE", "FALSE"]);
+    sh.appendRow([4, "Siap Diambil", "FALSE", "FALSE"]);
+  }
+  const data = sh.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  data.shift();
+  return data.map(r => ({
+    step: Number(r[0]) || 0,
+    nama: r[1] || "",
+    needStaff: r[2] === true || r[2] === "TRUE" || r[2] === "true",
+    needMesin: r[3] === true || r[3] === "TRUE" || r[3] === "true"
+  })).sort((a, b) => a.step - b.step);
+}
+
+function savePipelineConfigData(steps) {
+  let sh = SS.getSheetByName(SHEET_PIPELINE_CONFIG);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_PIPELINE_CONFIG);
+  }
+  sh.clear();
+  sh.appendRow(["Step", "Nama Step", "Need Staff", "Need Mesin"]);
+  if (Array.isArray(steps)) {
+    steps.forEach((s, idx) => {
+      sh.appendRow([idx + 1, s.nama, s.needStaff ? "TRUE" : "FALSE", s.needMesin ? "TRUE" : "FALSE"]);
+    });
+  }
+  return { success: true, message: "Master pipeline berhasil disimpan." };
+}
 function createPipelineForNota(noNota, tipe, items, petugas) {
   let sh = SS.getSheetByName(SHEET_PIPELINE);
   if (!sh) {

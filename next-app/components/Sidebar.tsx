@@ -225,6 +225,10 @@ export default function Sidebar({
                 <FolderOpen className={`w-[18px] h-[18px] shrink-0 ${iconClass('kategori')}`} />
                 {!isCollapsed && <span>Manajemen Kategori</span>}
               </button>
+              <button className={navClass('langkah')} onClick={() => handleNavClick('langkah')} title="Langkah Pengerjaan">
+                <GitMerge className={`w-[18px] h-[18px] shrink-0 ${iconClass('langkah')}`} />
+                {!isCollapsed && <span>Manajemen Langkah</span>}
+              </button>
               <button className={navClass('keamanan')} onClick={() => handleNavClick('keamanan')} title="Keamanan">
                 <ShieldCheck className={`w-[18px] h-[18px] shrink-0 ${iconClass('keamanan')}`} />
                 {!isCollapsed && <span>Manajemen Keamanan</span>}
