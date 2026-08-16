@@ -23,6 +23,7 @@ function getLayananList(tipeFilter) {
       icon: r[4] || "🧺", 
       tipe: r[6] || "SelfService",
       kategori: r[8] || "Self Service",
+      idInventory: r[9] || null,
       kategoriWarna: katMap[r[8] || "Self Service"] || "bg-slate-100 text-slate-800 border-slate-200",
       pipelineSteps: pipelineSteps
     };
@@ -50,6 +51,7 @@ function getLayananListAll() {
       aktif: r[5], 
       tipe: r[6] === undefined || r[6] === null ? "" : r[6],
       kategori: r[8] || "Self Service",
+      idInventory: r[9] || null,
       kategoriWarna: katMap[r[8] || "Self Service"] || "bg-slate-100 text-slate-800 border-slate-200",
       pipelineSteps: pipelineSteps
     };
@@ -60,7 +62,7 @@ function tambahLayanan(data) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   const id = generateId("SVC");
   const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : "";
-  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe !== undefined ? data.tipe : "", pSteps, data.kategori || "Self Service"]);
+  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe !== undefined ? data.tipe : "", pSteps, data.kategori || "Self Service", data.idInventory || ""]);
   return { success: true, id: id };
 }
 
@@ -70,7 +72,7 @@ function updateLayanan(id, data) {
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
       const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : (rows[i][7] || "");
-      sh.getRange(i + 1, 2, 1, 8).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8]]]);
+      sh.getRange(i + 1, 2, 1, 9).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8], data.idInventory !== undefined ? data.idInventory : (rows[i][9] || "")]]);
       return { success: true };
     }
   }

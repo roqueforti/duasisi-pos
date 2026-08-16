@@ -206,6 +206,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             satuan: item.satuan || 'paket',
             kategori: (item.kategori as any) || 'Self Service',
             kategoriWarna: item.kategoriWarna,
+            idInventory: item.idInventory || null,
           })) : defaultLayanan);
         } else {
           setLayananList(defaultLayanan);
@@ -318,6 +319,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           qty: newQty,
           tipe: layanan.tipe,
           satuan: layanan.satuan,
+          idInventory: layanan.idInventory || null,
           catatan: catatanOverride !== undefined ? catatanOverride : (existing?.catatan || '')
         }
       };
@@ -438,7 +440,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         diskon: diskonApplied.nilai,
         catatan: catatanOrderInput,
         items: cartArray.map((i) => {
-          return { layanan: i.layanan, qty: i.qty, hargaSatuan: i.hargaSatuan };
+          return { layanan: i.layanan, qty: i.qty, hargaSatuan: i.hargaSatuan, idInventory: i.idInventory };
         })
       });
       if (!res?.success || !res.noNota) throw new Error('Backend tidak mengembalikan nomor nota');

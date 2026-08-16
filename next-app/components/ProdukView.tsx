@@ -16,7 +16,15 @@ interface LayananItemBackend {
   aktif: string;
   tipe: 'SelfService' | 'FullService' | '';
   kategori?: string;
+  idInventory?: string | null;
   pipelineSteps?: any[];
+}
+
+interface InventoryItem {
+  id: string;
+  nama: string;
+  stok: number;
+  satuan: string;
 }
 
 export interface CustomPipelineStep {
@@ -45,6 +53,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const { showAlert, showConfirm, showPrompt } = useDialog();
   const [activeSubTab, setActiveSubTab] = useState<'Produk' | 'Promo' | 'Loyalitas'>('Produk');
   const [layananList, setLayananList] = useState<LayananItemBackend[]>([]);
+  const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
   const [promoList, setPromoList] = useState<PromoVoucher[]>(defaultPromos);
   const [loading, setLoading] = useState(false);
   const [filterKategori, setFilterKategori] = useState<string>('Semua');
@@ -57,6 +66,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [satuan, setSatuan] = useState('kg');
   const [icon, setIcon] = useState('🧺');
   const [tipe, setTipe] = useState<'SelfService' | 'FullService' | ''>('');
+  const [idInventory, setIdInventory] = useState<string>('');
   const [kategori, setKategori] = useState<string>('Self Service');
   const [kategoriList, setKategoriList] = useState<{id: string, nama: string, aktif: string}[]>([]);
   
@@ -86,6 +96,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadInventory = async () => {
+    try {
+      const data = await runBackend<InventoryItem[]>('getInventoryList');
+      if (Array.isArray(data)) setInventoryList(data);
+    } catch (err) {
+      console.error('Gagal memuat inventory:', err);
     }
   };
 
@@ -131,6 +150,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   useEffect(() => {
     loadProduk();
+    loadInventory();
     loadPromo();
     loadPoinConfig();
     loadKategori();
@@ -139,7 +159,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   const handleOpenAdd = () => {
     setEditingId(null);
-    setNama(''); setHarga(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service');
+    setNama(''); setHarga(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service'); setIdInventory('');
     setCustomPipelineSteps([]);
     setShowModal(true);
   };
@@ -151,6 +171,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     setSatuan(item.satuan || 'kg');
     setIcon(item.icon || '🧺');
     setTipe(item.tipe || '');
+    setIdInventory(item.idInventory || '');
     setKategori(item.kategori || 'Self Service');
     setCustomPipelineSteps(item.pipelineSteps ? (item.pipelineSteps as CustomPipelineStep[]) : []);
     setShowModal(true);
@@ -159,7 +180,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const handleSave = async () => {
     if (!nama.trim() || !harga.trim()) { await showAlert('Nama dan harga wajib diisi!', 'warning'); return; }
     const payloadPipeline = customPipelineSteps.map((s, i) => ({ ...s, step: i + 1 }));
-    const payload = { nama: nama.trim(), harga: Number(harga) || 0, satuan, icon, tipe, kategori, pipelineSteps: tipe === 'FullService' ? payloadPipeline : [] };
+    const payload = { nama: nama.trim(), harga: Number(harga) || 0, satuan, icon, tipe, idInventory: tipe === '' ? idInventory : null, kategori, pipelineSteps: tipe === 'FullService' ? payloadPipeline : [] };
     setLoading(true);
     try {
       if (editingId) {
@@ -566,6 +587,19 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">Mengelompokkan layanan pada daftar antrean dan laporan.</p>
               </div>
+
+              {tipe === '' && (
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Pautkan ke Inventory (Opsional)</label>
+                  <select value={idInventory} onChange={(e) => setIdInventory(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                    <option value="">-- Tidak Dipautkan --</option>
+                    {inventoryList.map(inv => (
+                      <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">Stok item inventory yang dipilih akan otomatis berkurang ketika produk ini terjual.</p>
+                </div>
+              )}
 
               {tipe === 'FullService' && (
                 <div>

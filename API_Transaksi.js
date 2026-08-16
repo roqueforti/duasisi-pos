@@ -58,6 +58,12 @@ function simpanTransaksi(data) {
     const duplicate = sh.getDataRange().getValues().some(function(row, index) { return index > 0 && String(row[0]) === noNota; });
     if (duplicate) throw new Error("Nomor nota sudah digunakan.");
 
+    items.forEach(function(item) {
+      if (item.idInventory) {
+        updateStokInventory(item.idInventory, -Number(item.qty));
+      }
+    });
+
     detailRows.forEach(function(row) { row[0] = noNota; });
     shD.getRange(shD.getLastRow() + 1, 1, detailRows.length, 5).setValues(detailRows);
     sh.appendRow([

@@ -5,11 +5,12 @@ export type KecepatanLayanan = 'Reguler' | 'Express' | 'Kilat';
 export interface LayananItem {
   layanan: string;
   hargaSatuan: number;
-  tipe: 'SelfService' | 'FullService';
+  tipe: 'SelfService' | 'FullService' | '';
   satuan?: string;
   icon?: string;
   kategori?: string;
   kategoriWarna?: string;
+  idInventory?: string | null;
 }
 
 export interface CartItem {
@@ -17,7 +18,8 @@ export interface CartItem {
   hargaSatuan: number;
   qty: number;
   catatan?: string;
-  kategori?: 'Self Service' | 'Drop Off' | 'Add On' | 'Makanan dan Minuman';
+  kategori?: 'Self Service' | 'Drop Off' | 'Add On' | 'Makanan dan Minuman' | string;
+  idInventory?: string | null;
 }
 
 export interface TransaksiItem {
