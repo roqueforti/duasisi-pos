@@ -569,3 +569,54 @@ function resetAndSeed6Bulan() {
 
   return seedData6Bulan();
 }
+
+// ============================================================
+// KEAMANAN PIN MANAGEMENT
+// ============================================================
+function changePin(role, oldPin, newPin) {
+  const props = PropertiesService.getScriptProperties();
+  
+  if (!newPin || newPin.length !== 4 || isNaN(newPin)) {
+    return { success: false, message: "PIN baru harus 4 digit angka." };
+  }
+
+  // Jika yang diganti Manager, cek old PIN manager
+  if (role === "MANAGER") {
+    const currentManagerPin = props.getProperty("PIN_MANAGER") || "8888"; // PIN_MANAGER dari Config
+    if (oldPin !== currentManagerPin) {
+      return { success: false, message: "PIN Lama salah!" };
+    }
+    props.setProperty("PIN_MANAGER", newPin);
+    return { success: true, message: "PIN Manager berhasil diperbarui." };
+  }
+  
+  // Jika ganti PIN staff (hanya boleh jika yang request sudah login sebagai manager dari frontend, API auth check sudah lewat)
+  if (role === "STAFF") {
+    props.setProperty("PIN_STAFF", newPin);
+    return { success: true, message: "PIN Staff berhasil diperbarui." };
+  }
+
+  return { success: false, message: "Role tidak valid." };
+}
+
+function recoverPin() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const currentManagerPin = props.getProperty("PIN_MANAGER") || "8888";
+    
+    // Kirim email ke akun google apps script owner
+    const emailTo = Session.getEffectiveUser().getEmail();
+    if (!emailTo) {
+      return { success: false, message: "Tidak bisa mendapatkan email pemilik script." };
+    }
+
+    const subject = "🔑 Pemulihan PIN Manager - POS Dua Sisi Laundry";
+    const body = `Halo!\n\nIni adalah email otomatis dari sistem POS Dua Sisi Laundry.\n\nPIN Manager Anda saat ini adalah: ${currentManagerPin}\n\nHarap jaga kerahasiaan PIN ini.\n\nTerima kasih.`;
+
+    MailApp.sendEmail(emailTo, subject, body);
+
+    return { success: true, message: "Email berisi PIN pemulihan berhasil dikirim ke pemilik sistem." };
+  } catch (err) {
+    return { success: false, message: "Gagal mengirim email: " + err.message };
+  }
+}

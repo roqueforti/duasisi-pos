@@ -90,13 +90,33 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
             maxLength={4}
             autoFocus
             disabled={loading}
-            className="w-full text-center text-3xl font-bold tracking-[14px] py-3.5 px-4 bg-slate-900 text-white placeholder-slate-500 border border-slate-700 rounded-lg outline-none focus:border-[#B5C9C9]400 focus:bg-slate-950 transition-all shadow-inner font-sans"
+            className="w-full text-center text-3xl font-bold tracking-[14px] py-3.5 px-4 bg-slate-900 text-white placeholder-slate-500 border border-slate-700 rounded-lg outline-none focus:border-[#B5C9C9] focus:bg-slate-950 transition-all shadow-inner font-sans"
           />
           {loading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B5C9C9]">
               <Loader2 className="w-5 h-5 animate-spin" />
             </div>
           )}
+        </div>
+
+        <div className="flex justify-center mt-2">
+          <button 
+            type="button"
+            disabled={loading}
+            onClick={async () => {
+              if (window.confirm("Kirim email pemulihan PIN ke Owner sistem?")) {
+                try {
+                  const res = await runBackend<{success: boolean, message: string}>("recoverPin");
+                  alert(res?.message || "Permintaan dikirim.");
+                } catch (e: any) {
+                  alert(e.message || "Gagal memanggil API");
+                }
+              }
+            }}
+            className="text-xs text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-4"
+          >
+            Lupa PIN Manager?
+          </button>
         </div>
 
         {/* On-screen Numpad (tablet-friendly) */}

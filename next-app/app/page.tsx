@@ -19,6 +19,7 @@ import MenuGeneratorView from '@/components/MenuGeneratorView';
 import KategoriView from '@/components/KategoriView';
 import ShiftView from '@/components/ShiftView';
 import PipelineView from '@/components/PipelineView';
+import KeamananView from '@/components/KeamananView';
 import { UserRole } from '@/lib/types';
 import { clearBackendSession } from '@/lib/api';
 
@@ -107,6 +108,7 @@ export default function HomePage() {
               {currentTab === 'pipeline' && <PipelineView currentRole={currentRole} />}
               {currentTab === 'menu' && <MenuGeneratorView />}
               {currentTab === 'rekap' && <RekapView />}
+              {currentTab === 'keamanan' && <KeamananView currentRole={currentRole} />}
             </main>
           </div>
         </div>

@@ -22,6 +22,7 @@ const tabTitles: Record<string, string> = {
   pegawai: 'Pegawai & Kinerja',
   produk: 'Produk & Layanan',
   rekap: 'Laporan Omzet & Analytics',
+  keamanan: 'Manajemen Keamanan',
 };
 
 export default function Navbar({

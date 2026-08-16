@@ -18,7 +18,8 @@ import {
   ChevronRight,
   ClipboardList,
   FolderOpen,
-  GitMerge
+  GitMerge,
+  ShieldCheck
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -224,6 +225,10 @@ export default function Sidebar({
               <button className={navClass('kategori')} onClick={() => handleNavClick('kategori')} title="Kategori">
                 <FolderOpen className={`w-[18px] h-[18px] shrink-0 ${iconClass('kategori')}`} />
                 {!isCollapsed && <span>Manajemen Kategori</span>}
+              </button>
+              <button className={navClass('keamanan')} onClick={() => handleNavClick('keamanan')} title="Keamanan">
+                <ShieldCheck className={`w-[18px] h-[18px] shrink-0 ${iconClass('keamanan')}`} />
+                {!isCollapsed && <span>Manajemen Keamanan</span>}
               </button>
               <button className={navClass('menu')} onClick={() => handleNavClick('menu')} title="Desain Menu">
                 <LayoutDashboard className={`w-[18px] h-[18px] shrink-0 ${iconClass('menu')}`} />
