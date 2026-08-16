@@ -164,13 +164,17 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     setShowModal(true);
   };
 
-  const handleOpenEdit = (item: LayananItemBackend & { kategori?: any }) => {
+  const handleOpenEdit = (item: LayananItemBackend) => {
     setEditingId(item.id);
     setNama(item.nama);
     setHarga(item.harga.toString());
     setSatuan(item.satuan || 'kg');
     setIcon(item.icon || '🧺');
-    setTipe(item.tipe || '');
+    
+    // Sanitize tipe to ensure it matches the dropdown options
+    const validTipe = ['SelfService', 'FullService'].includes(item.tipe || '') ? item.tipe : '';
+    setTipe(validTipe as '' | 'SelfService' | 'FullService');
+    
     setIdInventory(item.idInventory || '');
     setKategori(item.kategori || 'Self Service');
     setCustomPipelineSteps(item.pipelineSteps ? (item.pipelineSteps as CustomPipelineStep[]) : []);
@@ -287,9 +291,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       for (const row of rows) {
         const nama = row['Nama Layanan'] || row['nama'] || '';
         if (!nama.trim()) { fail++; continue; }
-        const tipeRaw = (row['Tipe'] || row['tipe'] || 'SelfService').trim();
-        const tipeVal: 'SelfService' | 'FullService' = tipeRaw === 'FullService' ? 'FullService' : 'SelfService';
-        const aktifRaw = (row['Status'] || row['status'] || 'Aktif').trim().toLowerCase();
+        const tipeRaw = String(row['Tipe'] || row['tipe'] || 'SelfService').trim();
+        let tipeVal: 'SelfService' | 'FullService' | '' = 'SelfService';
+        if (tipeRaw.toLowerCase().includes('bukan') || tipeRaw.toLowerCase() === 'kosong' || tipeRaw === '') {
+          tipeVal = '';
+        } else if (tipeRaw === 'FullService' || tipeRaw.toLowerCase().includes('drop off')) {
+          tipeVal = 'FullService';
+        }
+        
+        const aktifRaw = String(row['Status'] || row['status'] || 'Aktif').trim().toLowerCase();
         const aktifVal = aktifRaw === 'aktif' || aktifRaw === 'y';
         try {
           const id = await runBackend('tambahLayanan', {
