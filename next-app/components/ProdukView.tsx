@@ -14,7 +14,8 @@ interface LayananItemBackend {
   satuan: string;
   icon: string;
   aktif: string;
-  tipe: 'SelfService' | 'FullService';
+  tipe: 'SelfService' | 'FullService' | '';
+  kategori?: string;
   pipelineSteps?: any[];
 }
 
@@ -241,14 +242,14 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   };
 
   const handleExportProduk = () => {
-    const rows = layananList.map(l => [l.nama, l.harga, l.tipe, l.aktif === 'Y' ? 'Aktif' : 'Non-Aktif']);
-    downloadCSV('export_produk.csv', toCSV(['Nama Layanan', 'Harga', 'Tipe', 'Status'], rows));
+    const rows = layananList.map(l => [l.nama, l.kategori || 'Self Service', l.harga, l.tipe || 'Bukan Layanan', l.aktif === 'Y' ? 'Aktif' : 'Non-Aktif']);
+    downloadCSV('export_produk.csv', toCSV(['Nama Layanan', 'Kategori', 'Harga', 'Tipe', 'Status'], rows));
   };
 
   const handleDownloadTemplateProduk = () => {
     downloadCSV('template_produk_kosong.csv', toCSV(
-      ['Nama Layanan', 'Harga', 'Tipe', 'Status'],
-      [['Cuci Karpet', 15000, 'SelfService', 'Aktif']]
+      ['Nama Layanan', 'Kategori', 'Harga', 'Tipe', 'Status'],
+      [['Cuci Karpet', 'Self Service', 15000, 'SelfService', 'Aktif']]
     ));
   };
 
@@ -271,10 +272,11 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         try {
           const id = await runBackend('tambahLayanan', {
             nama: String(row['Nama Layanan'] || row['nama'] || '').trim(),
+            kategori: String(row['Kategori'] || row['kategori'] || 'Self Service').trim(),
             harga: Number(row['Harga'] || row['harga']) || 0,
             satuan: '',
             icon: '🧺',
-            tipe: tipeVal,
+            tipe: (row['Tipe'] || row['tipe'] || '').trim(),
           });
           if (id && !aktifVal) await runBackend('toggleAktifLayanan', id, false);
           success++;
@@ -368,7 +370,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                  <th className="py-3 px-4">Layanan</th>
+                  <th className="py-3 px-4">Nama Produk / Layanan</th>
+                  <th className="py-3 px-4">Kategori</th>
                   <th className="py-3 px-4">Tipe</th>
                   <th className="py-3 px-4">Tarif</th>
                   <th className="py-3 px-4">Status</th>
@@ -380,6 +383,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                   Array.from({ length: 4 }).map((_, idx) => (
                     <tr key={idx} className="animate-pulse">
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-32" /></td>
+                      <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-12" /></td>
@@ -387,16 +391,19 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                     </tr>
                   ))
                 ) : layananList.length === 0 ? (
-                  <tr><td colSpan={5} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
+                  <tr><td colSpan={6} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
                 ) : (
                   layananList.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50 transition">
                       <td className="py-3 px-4 font-semibold text-slate-600 flex items-center gap-2">
                         <span>{item.nama}</span>
                       </td>
+                      <td className="py-3 px-4 text-slate-500 font-medium">
+                        {item.kategori || '-'}
+                      </td>
                       <td className="py-3 px-4">
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                          {item.tipe}
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${!item.tipe ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-600'}`}>
+                          {item.tipe || 'Bukan Layanan'}
                         </span>
                       </td>
                       <td className="py-3 px-4 font-bold text-[#1E4648]">
