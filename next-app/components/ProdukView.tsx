@@ -225,24 +225,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
-  const handleAutoLinkInventory = async (item: LayananItemBackend) => {
-    setLoading(true);
-    try {
-      await runBackend('updateLayanan', item.id, {
-        ...item,
-        tipe: '',
-        idInventory: ''
-      });
-      loadProduk();
-      clearCache('getInventoryList');
-      await showAlert('Produk berhasil dipautkan ke Stok Inventory!', 'success');
-    } catch (err) {
-      await showAlert('Gagal memautkan ke inventory', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSavePromo = async () => {
     if (!kodePromo.trim()) { await showAlert('Kode promo wajib diisi!', 'warning'); return; }
     const payload = {
@@ -473,13 +455,45 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                       </td>
                       <td className="py-3 px-4">
                         {(!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '') ? (
-                          item.idInventory ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100">Tersambung</span>
-                          ) : (
-                            <button onClick={() => handleAutoLinkInventory(item)} className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 transition shadow-sm border border-orange-200">
-                              Pautkan Stok
-                            </button>
-                          )
+                          <select
+                            value={item.idInventory || ''}
+                            onChange={async (e) => {
+                              const newVal = e.target.value;
+                              if (newVal === '') return;
+                              const isConfirmed = await showConfirm(
+                                newVal === 'auto' 
+                                  ? 'Buat item stok baru secara otomatis untuk produk ini?' 
+                                  : 'Ubah pautan inventory untuk produk ini?'
+                              );
+                              if (!isConfirmed) return;
+                              setLoading(true);
+                              try {
+                                await runBackend('updateLayanan', item.id, {
+                                  ...item,
+                                  tipe: '',
+                                  idInventory: newVal === 'auto' ? '' : newVal
+                                });
+                                loadProduk();
+                                clearCache('getInventoryList');
+                                await showAlert('Pautan inventory berhasil disimpan!', 'success');
+                              } catch (err) {
+                                await showAlert('Gagal memautkan ke inventory', 'error');
+                              } finally {
+                                setLoading(false);
+                              }
+                            }}
+                            className={`w-36 text-[10px] p-1 border rounded outline-none cursor-pointer truncate ${
+                              item.idInventory 
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 font-bold' 
+                                : 'bg-orange-50 border-orange-200 text-orange-700 font-bold'
+                            }`}
+                          >
+                            {!item.idInventory && <option value="">-- Belum Terpaut --</option>}
+                            <option value="auto">+ Buat Baru Otomatis</option>
+                            {inventoryList.map(inv => (
+                              <option key={inv.id} value={inv.id}>{inv.nama}</option>
+                            ))}
+                          </select>
                         ) : (
                           <span className="text-slate-300 text-xs">-</span>
                         )}
