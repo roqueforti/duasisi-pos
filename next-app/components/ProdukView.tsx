@@ -241,14 +241,14 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   };
 
   const handleExportProduk = () => {
-    const rows = layananList.map(l => [l.nama, l.harga, l.satuan, l.tipe, l.aktif === 'Y' ? 'Aktif' : 'Non-Aktif']);
-    downloadCSV('export_produk.csv', toCSV(['Nama Layanan', 'Harga', 'Satuan', 'Tipe', 'Status'], rows));
+    const rows = layananList.map(l => [l.nama, l.harga, l.tipe, l.aktif === 'Y' ? 'Aktif' : 'Non-Aktif']);
+    downloadCSV('export_produk.csv', toCSV(['Nama Layanan', 'Harga', 'Tipe', 'Status'], rows));
   };
 
   const handleDownloadTemplateProduk = () => {
     downloadCSV('template_produk_kosong.csv', toCSV(
-      ['Nama Layanan', 'Harga', 'Satuan', 'Tipe', 'Status'],
-      [['Cuci Kiloan', 8000, 'kg', 'SelfService', 'Aktif'], ['Setrika', 5000, 'kg', 'FullService', 'Aktif']]
+      ['Nama Layanan', 'Harga', 'Tipe', 'Status'],
+      [['Cuci Karpet', 15000, 'SelfService', 'Aktif']]
     ));
   };
 
@@ -270,9 +270,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         const aktifVal = aktifRaw === 'aktif' || aktifRaw === 'y';
         try {
           const id = await runBackend('tambahLayanan', {
-            nama: nama.trim(),
+            nama: String(row['Nama Layanan'] || row['nama'] || '').trim(),
             harga: Number(row['Harga'] || row['harga']) || 0,
-            satuan: (row['Satuan'] || row['satuan'] || 'kg').trim(),
+            satuan: '',
             icon: '🧺',
             tipe: tipeVal,
           });
@@ -370,7 +370,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
                   <th className="py-3 px-4">Layanan</th>
                   <th className="py-3 px-4">Tipe</th>
-                  <th className="py-3 px-4">Tarif Satuan</th>
+                  <th className="py-3 px-4">Tarif</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4 text-right">Aksi</th>
                 </tr>
@@ -400,7 +400,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         </span>
                       </td>
                       <td className="py-3 px-4 font-bold text-[#1E4648]">
-                        Rp {(item?.harga || 0).toLocaleString('id-ID')} / {item.satuan}
+                        Rp {(item?.harga || 0).toLocaleString('id-ID')}
                       </td>
                       <td className="py-3 px-4">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.aktif === 'Y' ? 'bg-[#B5C9C9]/20 text-[#1E4648]' : 'bg-slate-100 text-slate-500'}`}>
