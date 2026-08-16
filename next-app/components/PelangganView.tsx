@@ -23,6 +23,7 @@ import { runBackend, runBackendCached } from '@/lib/api';
 import { maskPhone } from '@/lib/utils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
+import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 
 export interface PelangganItem {
   noHp: string;
@@ -135,6 +136,60 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
     }
   };
 
+  const handleExportCSV = () => {
+    if (pelangganList.length === 0) return;
+    const rows = pelangganList.map(p => [
+      p.noHp,
+      p.nama,
+      p.alamat || '',
+      p.totalOrder.toString(),
+      p.totalSpend.toString(),
+      p.saldoPoin.toString(),
+      p.catatan || ''
+    ]);
+    downloadCSV('export_pelanggan.csv', toCSV(['No HP', 'Nama', 'Alamat', 'Total Order', 'Total Belanja', 'Saldo Poin', 'Catatan'], rows));
+  };
+
+  const handleDownloadTemplate = () => {
+    downloadCSV('template_pelanggan_kosong.csv', toCSV(['No HP', 'Nama', 'Alamat (Opsional)'], [['081234567890', 'Budi Santoso', 'Jl. Merdeka No. 1']]));
+  };
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = ''; // reset
+
+    try {
+      setLoading(true);
+      const text = await readFileAsText(file);
+      const rows = parseCSV(text);
+      if (rows.length === 0) { await showAlert('File CSV kosong atau format salah.', 'warning'); return; }
+
+      const payload = rows.map(r => ({
+        hp: r['No HP'] || r['no hp'] || r['hp'] || '',
+        nama: r['Nama'] || r['nama'] || r['Nama Pelanggan'] || ''
+      })).filter(r => r.hp && r.nama);
+
+      if (payload.length === 0) {
+        await showAlert('Format kolom tidak sesuai. Pastikan ada kolom "No HP" dan "Nama".', 'error');
+        return;
+      }
+
+      const res = await runBackend<{success: boolean, added?: number, updated?: number, msg?: string}>('importPelangganBatch', payload);
+      if (res && res.success) {
+        await showAlert(`Import berhasil! ${res.added} pelanggan baru ditambahkan, ${res.updated} data diperbarui.`, 'success');
+        loadDataPelanggan();
+      } else {
+        await showAlert(res?.msg || 'Gagal melakukan import data', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      await showAlert('Terjadi kesalahan saat memproses CSV.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter & Sort Logic
   const filteredList = pelangganList.filter((item) => {
     const q = search.trim().toLowerCase();
@@ -172,14 +227,35 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
           </div>
         </div>
 
-        <button
-          onClick={loadDataPelanggan}
-          disabled={loading}
-          className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition self-start sm:self-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh Data</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {currentRole === 'MANAGER' && (
+            <>
+              <button onClick={handleExportCSV} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-lg text-xs transition" title="Export ke CSV">
+                Export
+              </button>
+              <div className="relative group">
+                <label className="cursor-pointer px-3 py-2 bg-slate-100 hover:bg-[#1E4648] hover:text-white text-slate-600 font-semibold rounded-lg text-xs transition flex items-center gap-1.5" title="Import dari CSV">
+                  Import
+                  <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
+                </label>
+                <div className="absolute top-full right-0 mt-1 hidden group-hover:block w-48 bg-white border border-slate-200 shadow-xl rounded-md p-2 z-50">
+                  <p className="text-[10px] text-slate-500 mb-2">Import data massal via CSV.</p>
+                  <button onClick={handleDownloadTemplate} className="w-full text-left px-2 py-1.5 hover:bg-slate-50 text-[10px] text-[#1E4648] font-bold rounded">
+                    ⬇️ Download Template CSV
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          <button
+            onClick={loadDataPelanggan}
+            disabled={loading}
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition self-start sm:self-auto"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh Data</span>
+          </button>
+        </div>
       </div>
 
       {/* Overview Cards */}

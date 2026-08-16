@@ -220,3 +220,50 @@ function getRiwayatPelangganByHp(noHp) {
     return t;
   });
 }
+
+function importPelangganBatch(payload) {
+  if (!Array.isArray(payload) || payload.length === 0) return { success: false, msg: "Data kosong" };
+  
+  let shP = SS.getSheetByName(SHEET_PELANGGAN);
+  if (!shP) {
+    shP = SS.insertSheet(SHEET_PELANGGAN);
+    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin"]);
+  }
+
+  const data = shP.getDataRange().getValues();
+  const hpIndexMap = {}; 
+  
+  for (let i = 1; i < data.length; i++) {
+    const rowHp = normalizePhone(data[i][0]);
+    if (rowHp) hpIndexMap[rowHp] = i;
+  }
+
+  const now = new Date();
+  let addedCount = 0;
+  let updatedCount = 0;
+  let newDataRows = [];
+
+  payload.forEach(item => {
+    if (!item.hp || !item.nama) return;
+    const cleanHp = normalizePhone(item.hp);
+    if (!cleanHp || cleanHp.length < 9) return;
+
+    if (hpIndexMap.hasOwnProperty(cleanHp)) {
+      const rIdx = hpIndexMap[cleanHp];
+      if (!data[rIdx][1] || data[rIdx][1].toString().trim() === "") {
+        shP.getRange(rIdx + 1, 2).setValue(item.nama);
+        updatedCount++;
+      }
+    } else {
+      newDataRows.push([cleanHp, item.nama, "", now, 0, 0, "", "", 0]);
+      addedCount++;
+      hpIndexMap[cleanHp] = data.length + newDataRows.length - 1; 
+    }
+  });
+
+  if (newDataRows.length > 0) {
+    shP.getRange(data.length + 1, 1, newDataRows.length, newDataRows[0].length).setValues(newDataRows);
+  }
+
+  return { success: true, added: addedCount, updated: updatedCount };
+}
