@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { runBackend } from '@/lib/api';
 import { UserRole } from '@/lib/types';
-import { GitMerge, Plus, Save, Trash2, ArrowUp, ArrowDown, X, Settings, Edit3 } from 'lucide-react';
+import { GitMerge, Plus, Save, Trash2, ArrowUp, ArrowDown, X, Settings, Edit3, User, Cpu, CheckCircle } from 'lucide-react';
 import { useDialog } from '@/components/DialogProvider';
 
 export interface MasterPipelineStep {
@@ -169,31 +169,42 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 p-2">
               {steps.map((step, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg hover:border-[#1E4648]/30 transition group">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-700 text-sm">{step.nama}</h3>
-                    <div className="flex gap-2 mt-1">
+                <div key={index} className="relative bg-white rounded-xl border border-slate-100 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col">
+                  {/* Color accent bar at the top */}
+                  <div className={`h-1.5 w-full ${step.needStaff ? 'bg-orange-300' : step.needMesin ? 'bg-teal-400' : 'bg-slate-300'}`}></div>
+                  
+                  <div className="p-5 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs ${step.needStaff ? 'bg-orange-50 text-orange-500' : step.needMesin ? 'bg-teal-50 text-teal-600' : 'bg-slate-50 text-slate-500'}`}>
+                        {step.needStaff ? <User className="w-6 h-6" /> : step.needMesin ? <Cpu className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}
+                      </div>
+                      
+                      {/* Action buttons (hidden by default, shown on group hover) */}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1.5">
+                        <button onClick={() => handleOpenEdit(index)} className="p-1.5 text-slate-400 hover:text-[#1E4648] hover:bg-slate-50 rounded-lg transition" title="Edit">
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(index)} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Hapus">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <h3 className="font-bold text-slate-700 text-base mb-1.5">{step.nama}</h3>
+                    
+                    <div className="mt-auto pt-4 flex flex-wrap gap-2">
                       {step.needStaff && (
-                        <span className="px-2 py-0.5 bg-[#FF9500]/10 text-[#FF9500] text-[10px] font-bold uppercase rounded">Wajib Isi Staff</span>
+                        <span className="px-3 py-1 bg-orange-50 text-orange-600 text-[10px] font-bold uppercase rounded-full tracking-wide">Wajib Isi Staff</span>
                       )}
                       {step.needMesin && (
-                        <span className="px-2 py-0.5 bg-[#1E4648]/10 text-[#1E4648] text-[10px] font-bold uppercase rounded">Wajib Pilih Mesin</span>
+                        <span className="px-3 py-1 bg-teal-50 text-teal-600 text-[10px] font-bold uppercase rounded-full tracking-wide">Wajib Pilih Mesin</span>
                       )}
                       {!step.needStaff && !step.needMesin && (
-                        <span className="text-[10px] text-slate-400 font-semibold italic">Tanpa aturan khusus</span>
+                        <span className="px-3 py-1 bg-slate-50 text-slate-500 text-[10px] font-bold uppercase rounded-full tracking-wide">Tanpa Aturan Khusus</span>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => handleOpenEdit(index)} className="p-2 bg-white border border-slate-200 text-slate-500 hover:text-[#1E4648] hover:border-[#1E4648] rounded-md transition shadow-2xs">
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleDelete(index)} className="p-2 bg-white border border-slate-200 text-rose-400 hover:text-white hover:bg-rose-500 hover:border-rose-500 rounded-md transition shadow-2xs">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
               ))}
