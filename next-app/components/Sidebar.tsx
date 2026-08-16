@@ -18,7 +18,8 @@ import {
   ChevronRight,
   ClipboardList,
   GitMerge,
-  ShieldCheck
+  ShieldCheck,
+  FolderOpen
 } from 'lucide-react';
 import { useDialog } from '@/components/DialogProvider';
 
