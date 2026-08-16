@@ -592,12 +592,12 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Pautkan ke Inventory (Opsional)</label>
                   <select value={idInventory} onChange={(e) => setIdInventory(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
-                    <option value="">-- Tidak Dipautkan --</option>
+                    <option value="">-- Buat Otomatis di Inventory (Default) --</option>
                     {inventoryList.map(inv => (
                       <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
                     ))}
                   </select>
-                  <p className="text-[10px] text-slate-400 mt-1">Stok item inventory yang dipilih akan otomatis berkurang ketika produk ini terjual.</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Jika dibiarkan default, sistem akan membuat item inventory baru secara otomatis.</p>
                 </div>
               )}
 

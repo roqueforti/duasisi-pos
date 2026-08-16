@@ -62,7 +62,16 @@ function tambahLayanan(data) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   const id = generateId("SVC");
   const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : "";
-  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe !== undefined ? data.tipe : "", pSteps, data.kategori || "Self Service", data.idInventory || ""]);
+  let idInv = data.idInventory || "";
+  
+  if (data.tipe === "" && !idInv) {
+    const invRes = tambahInventory({ nama: data.nama, stok: 0, satuan: data.satuan, stokMinimum: 0 });
+    if (invRes.success) {
+      idInv = invRes.id;
+    }
+  }
+
+  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe !== undefined ? data.tipe : "", pSteps, data.kategori || "Self Service", idInv]);
   return { success: true, id: id };
 }
 
@@ -72,7 +81,16 @@ function updateLayanan(id, data) {
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
       const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : (rows[i][7] || "");
-      sh.getRange(i + 1, 2, 1, 9).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8], data.idInventory !== undefined ? data.idInventory : (rows[i][9] || "")]]);
+      let idInv = data.idInventory !== undefined ? data.idInventory : (rows[i][9] || "");
+      
+      if (data.tipe === "" && !idInv) {
+        const invRes = tambahInventory({ nama: data.nama, stok: 0, satuan: data.satuan, stokMinimum: 0 });
+        if (invRes.success) {
+          idInv = invRes.id;
+        }
+      }
+
+      sh.getRange(i + 1, 2, 1, 9).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8], idInv]]);
       return { success: true };
     }
   }
