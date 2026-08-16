@@ -918,7 +918,7 @@ function simpanTransaksi(data) {
     ]);
 
     simpanPelangganJikaBaru(data.namaPelanggan || data.pelanggan, data.noHp, data.alamat || "", total, data.catatanPelanggan || "");
-    if (tipe === "FullService") createPipelineForNota(noNota, tipe, items);
+    if (tipe === "FullService") createPipelineForNota(noNota, tipe, items, petugas);
     addAuditLog(petugas, "Transaksi Baru", noNota, "Total Rp " + total.toLocaleString('id-ID') + " (" + (data.metodeBayar || "Tunai") + ", " + statusPembayaran + ")");
     SpreadsheetApp.flush();
     var notaToken = generateNotaToken_(noNota);
@@ -1258,7 +1258,7 @@ function getRiwayatPelangganByHp(noHp) {
 // ============================================================
 // PIPELINE ENGINE
 // ============================================================
-function createPipelineForNota(noNota, tipe, items) {
+function createPipelineForNota(noNota, tipe, items, petugas) {
   let sh = SS.getSheetByName(SHEET_PIPELINE);
   if (!sh) {
     sh = SS.insertSheet(SHEET_PIPELINE);
@@ -1281,13 +1281,16 @@ function createPipelineForNota(noNota, tipe, items) {
 
     if (requiredSteps.size > 0) {
       config = config.filter(c => requiredSteps.has(c.step));
-      // Fallback if somehow no step 1, but we trust the user config
     }
   }
 
+  const now = new Date();
+  // Langkah paling awal (default): Pesanan Diterima
+  sh.appendRow([generateId("PIP"), noNota, 0, "Pesanan Diterima", "Selesai", petugas || "Kasir", "", now, now, "Otomatis oleh sistem"]);
+
   config.forEach((c, idx) => {
     const status = idx === 0 ? "Aktif" : "Pending";
-    const waktuMulai = idx === 0 ? new Date() : "";
+    const waktuMulai = idx === 0 ? now : "";
     sh.appendRow([generateId("PIP"), noNota, c.step, c.nama, status, "", "", waktuMulai, "", ""]);
   });
 }
