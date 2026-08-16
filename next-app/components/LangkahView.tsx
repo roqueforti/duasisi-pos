@@ -119,7 +119,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-4xl mx-auto text-slate-600">
+    <div className="p-3 md:p-4 space-y-4 w-full text-slate-600">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-lg border border-slate-200/80 shadow-2xs">
         <div className="flex items-center gap-3">
@@ -169,42 +169,36 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 p-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {steps.map((step, index) => (
-                <div key={index} className="relative bg-white rounded-xl border border-slate-100 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.1)] hover:-translate-y-1 transition-all duration-300 overflow-hidden group flex flex-col">
-                  {/* Color accent bar at the top */}
-                  <div className={`h-1.5 w-full ${step.needStaff ? 'bg-orange-300' : step.needMesin ? 'bg-teal-400' : 'bg-slate-300'}`}></div>
-                  
-                  <div className="p-5 flex-1 flex flex-col">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs ${step.needStaff ? 'bg-orange-50 text-orange-500' : step.needMesin ? 'bg-teal-50 text-teal-600' : 'bg-slate-50 text-slate-500'}`}>
-                        {step.needStaff ? <User className="w-6 h-6" /> : step.needMesin ? <Cpu className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}
-                      </div>
-                      
-                      {/* Action buttons (hidden by default, shown on group hover) */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1.5">
-                        <button onClick={() => handleOpenEdit(index)} className="p-1.5 text-slate-400 hover:text-[#1E4648] hover:bg-slate-50 rounded-lg transition" title="Edit">
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(index)} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Hapus">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                <div key={index} className="flex items-center justify-between p-3.5 bg-white border border-slate-200 rounded-lg hover:border-[#1E4648]/40 hover:shadow-sm transition-all group">
+                  <div className="flex items-center gap-3.5">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border transition-colors ${step.needStaff ? 'bg-orange-50 text-orange-500 border-orange-100' : step.needMesin ? 'bg-teal-50 text-teal-600 border-teal-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                      {step.needStaff ? <User className="w-5 h-5" /> : step.needMesin ? <Cpu className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-700 text-sm">{step.nama}</h3>
+                      <div className="flex flex-wrap gap-2 mt-1.5">
+                        {step.needStaff && (
+                          <span className="px-2 py-0.5 bg-slate-50 text-slate-600 border border-slate-200 text-[10px] font-bold rounded">Wajib Isi Staff</span>
+                        )}
+                        {step.needMesin && (
+                          <span className="px-2 py-0.5 bg-slate-50 text-slate-600 border border-slate-200 text-[10px] font-bold rounded">Wajib Pilih Mesin</span>
+                        )}
+                        {!step.needStaff && !step.needMesin && (
+                          <span className="text-[10px] text-slate-400 font-medium italic">Tanpa aturan khusus</span>
+                        )}
                       </div>
                     </div>
-                    
-                    <h3 className="font-bold text-slate-700 text-base mb-1.5">{step.nama}</h3>
-                    
-                    <div className="mt-auto pt-4 flex flex-wrap gap-2">
-                      {step.needStaff && (
-                        <span className="px-3 py-1 bg-orange-50 text-orange-600 text-[10px] font-bold uppercase rounded-full tracking-wide">Wajib Isi Staff</span>
-                      )}
-                      {step.needMesin && (
-                        <span className="px-3 py-1 bg-teal-50 text-teal-600 text-[10px] font-bold uppercase rounded-full tracking-wide">Wajib Pilih Mesin</span>
-                      )}
-                      {!step.needStaff && !step.needMesin && (
-                        <span className="px-3 py-1 bg-slate-50 text-slate-500 text-[10px] font-bold uppercase rounded-full tracking-wide">Tanpa Aturan Khusus</span>
-                      )}
-                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleOpenEdit(index)} className="p-1.5 text-slate-400 hover:text-[#1E4648] hover:bg-slate-50 rounded-md transition" title="Edit">
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(index)} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-md transition" title="Hapus">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
