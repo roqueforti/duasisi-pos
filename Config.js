@@ -235,7 +235,6 @@ function savePriorityConfig(config) {
     return { success: false, message: err.toString() };
   }
 }
-}
 
 function updateMasterShift(id, data) {
   const sh = SS.getSheetByName(SHEET_SHIFT);
