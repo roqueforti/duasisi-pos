@@ -276,7 +276,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
             harga: Number(row['Harga'] || row['harga']) || 0,
             satuan: '',
             icon: '🧺',
-            tipe: (row['Tipe'] || row['tipe'] || '').trim(),
+            tipe: (row['Tipe'] || row['tipe'] || '').trim().toLowerCase() === 'bukan layanan' ? '' : (row['Tipe'] || row['tipe'] || '').trim(),
           });
           if (id && !aktifVal) await runBackend('toggleAktifLayanan', id, false);
           success++;
@@ -402,8 +402,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         {item.kategori || '-'}
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${!item.tipe ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-600'}`}>
-                          {item.tipe || 'Bukan Layanan'}
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${!item.tipe || (item.tipe as string).toLowerCase() === 'bukan layanan' ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-600'}`}>
+                          {!item.tipe || (item.tipe as string).toLowerCase() === 'bukan layanan' ? 'Bukan Layanan' : item.tipe}
                         </span>
                       </td>
                       <td className="py-3 px-4 font-bold text-[#1E4648]">
