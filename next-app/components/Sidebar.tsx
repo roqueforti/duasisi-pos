@@ -61,7 +61,7 @@ export default function Sidebar({
       await showAlert('Fitur POS Kasir hanya untuk Staff/Kasir', 'warning');
       return;
     }
-    if (['pegawai', 'produk', 'kategori', 'shift', 'pipeline', 'rekap', 'keamanan', 'menu'].includes(tabKey) && currentRole !== 'MANAGER') {
+    if (['pegawai', 'produk', 'kategori', 'shift', 'rekap', 'keamanan', 'menu'].includes(tabKey) && currentRole !== 'MANAGER') {
       await showAlert('Akses Ditolak — Khusus Manager/Owner', 'error');
       return;
     }
@@ -215,10 +215,7 @@ export default function Sidebar({
                 <Clock className={`w-[18px] h-[18px] shrink-0 ${iconClass('shift')}`} />
                 {!isCollapsed && <span>Shift & Absensi</span>}
               </button>
-              <button className={navClass('pipeline')} onClick={() => handleNavClick('pipeline')} title="Drop Off Pipeline">
-                <GitMerge className={`w-[18px] h-[18px] shrink-0 ${iconClass('pipeline')}`} />
-                {!isCollapsed && <span>Manajemen Drop Off</span>}
-              </button>
+
               <button className={navClass('produk')} onClick={() => handleNavClick('produk')} title="Produk">
                 <Tag className={`w-[18px] h-[18px] shrink-0 ${iconClass('produk')}`} />
                 {!isCollapsed && <span>Manajemen Produk</span>}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap } from 'lucide-react';
+import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
@@ -15,7 +15,14 @@ interface LayananItemBackend {
   icon: string;
   aktif: string;
   tipe: 'SelfService' | 'FullService';
-  pipelineSteps?: number[];
+  pipelineSteps?: any[];
+}
+
+export interface CustomPipelineStep {
+  step: number;
+  nama: string;
+  needStaff: boolean;
+  needMesin: boolean;
 }
 
 interface PromoVoucher {
@@ -52,8 +59,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [kategoriList, setKategoriList] = useState<{id: string, nama: string, aktif: string}[]>([]);
   
   // Pipeline Steps selection
-  const [masterPipelineSteps, setMasterPipelineSteps] = useState<{step: number, nama: string}[]>([]);
-  const [selectedPipelineSteps, setSelectedPipelineSteps] = useState<number[]>([]);
+  const [customPipelineSteps, setCustomPipelineSteps] = useState<CustomPipelineStep[]>([]);
 
   // Add Promo Modal State
   const [showPromoModal, setShowPromoModal] = useState(false);
@@ -110,27 +116,19 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
-  const loadPipelineSteps = async () => {
-    try {
-      const data = await runBackend<{step: number, nama: string}[]>('getPipelineConfigData');
-      if (Array.isArray(data)) setMasterPipelineSteps(data);
-    } catch(err) {
-      console.error(err);
-    }
-  };
+
 
   useEffect(() => {
     loadProduk();
     loadPromo();
     loadPoinConfig();
     loadKategori();
-    loadPipelineSteps();
   }, []);
 
   const handleOpenAdd = () => {
     setEditingId(null);
     setNama(''); setHarga(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service');
-    setSelectedPipelineSteps([]);
+    setCustomPipelineSteps([]);
     setShowModal(true);
   };
 
@@ -142,13 +140,14 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     setIcon(item.icon || '🧺');
     setTipe(item.tipe || '');
     setKategori(item.kategori || 'Self Service');
-    setSelectedPipelineSteps(item.pipelineSteps ? item.pipelineSteps.map(Number) : []);
+    setCustomPipelineSteps(item.pipelineSteps ? (item.pipelineSteps as CustomPipelineStep[]) : []);
     setShowModal(true);
   };
 
   const handleSave = async () => {
     if (!nama.trim() || !harga.trim()) { await showAlert('Nama dan harga wajib diisi!', 'warning'); return; }
-    const payload = { nama: nama.trim(), harga: Number(harga) || 0, satuan, icon, tipe, kategori, pipelineSteps: tipe === 'FullService' ? selectedPipelineSteps : [] };
+    const payloadPipeline = customPipelineSteps.map((s, i) => ({ ...s, step: i + 1 }));
+    const payload = { nama: nama.trim(), harga: Number(harga) || 0, satuan, icon, tipe, kategori, pipelineSteps: tipe === 'FullService' ? payloadPipeline : [] };
     setLoading(true);
     try {
       if (editingId) {
@@ -551,26 +550,68 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 <p className="text-[10px] text-slate-400 mt-1">Mengelompokkan layanan pada daftar antrean dan laporan.</p>
               </div>
 
-              {tipe === 'FullService' && masterPipelineSteps.length > 0 && (
+              {tipe === 'FullService' && (
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Langkah Pengerjaan (Pipeline)</label>
-                  <div className="space-y-1.5 p-3 bg-slate-50 border border-slate-200 rounded-md">
-                    {masterPipelineSteps.map(step => (
-                      <label key={step.step} className="flex items-center gap-2 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={selectedPipelineSteps.includes(step.step)}
-                          onChange={e => {
-                            if (e.target.checked) setSelectedPipelineSteps(prev => [...prev, step.step]);
-                            else setSelectedPipelineSteps(prev => prev.filter(s => s !== step.step));
-                          }}
-                          className="rounded border-slate-300 text-[#1E4648] focus:ring-[#1E4648]"
-                        />
-                        <span className="text-xs text-slate-700">{step.step}. {step.nama}</span>
-                      </label>
-                    ))}
+                  <div className="space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-md">
+                    {customPipelineSteps.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic">Belum ada langkah pipeline.</p>
+                    ) : (
+                      customPipelineSteps.map((step, idx) => (
+                        <div key={idx} className="flex flex-col gap-2 p-2.5 bg-white border border-slate-200 rounded-md shadow-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-slate-700">Langkah {idx + 1}: {step.nama}</span>
+                            <div className="flex gap-1">
+                              <button onClick={() => {
+                                if (idx > 0) {
+                                  const newArr = [...customPipelineSteps];
+                                  [newArr[idx - 1], newArr[idx]] = [newArr[idx], newArr[idx - 1]];
+                                  setCustomPipelineSteps(newArr);
+                                }
+                              }} className="p-1 text-slate-400 hover:text-slate-600" title="Naik"><ArrowUp className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => {
+                                if (idx < customPipelineSteps.length - 1) {
+                                  const newArr = [...customPipelineSteps];
+                                  [newArr[idx + 1], newArr[idx]] = [newArr[idx], newArr[idx + 1]];
+                                  setCustomPipelineSteps(newArr);
+                                }
+                              }} className="p-1 text-slate-400 hover:text-slate-600" title="Turun"><ArrowDown className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => {
+                                setCustomPipelineSteps(customPipelineSteps.filter((_, i) => i !== idx));
+                              }} className="p-1 text-rose-400 hover:text-rose-600" title="Hapus"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </div>
+                          <div className="flex gap-4 text-[10px] text-slate-500 font-semibold">
+                            <label className="flex items-center gap-1.5 cursor-pointer">
+                              <input type="checkbox" checked={step.needStaff} onChange={e => {
+                                const newArr = [...customPipelineSteps];
+                                newArr[idx].needStaff = e.target.checked;
+                                setCustomPipelineSteps(newArr);
+                              }} className="rounded border-slate-300 text-[#1E4648] focus:ring-[#1E4648]" />
+                              Wajib Input Pegawai
+                            </label>
+                            <label className="flex items-center gap-1.5 cursor-pointer">
+                              <input type="checkbox" checked={step.needMesin} onChange={e => {
+                                const newArr = [...customPipelineSteps];
+                                newArr[idx].needMesin = e.target.checked;
+                                setCustomPipelineSteps(newArr);
+                              }} className="rounded border-slate-300 text-[#1E4648] focus:ring-[#1E4648]" />
+                              Wajib Pilih Mesin
+                            </label>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    <button onClick={async () => {
+                      const namaLangkah = await showPrompt("Masukkan nama langkah baru:", "Dicuci, Disetrika, dsb");
+                      if (namaLangkah) {
+                        setCustomPipelineSteps(prev => [...prev, { step: prev.length + 1, nama: namaLangkah, needStaff: false, needMesin: false }]);
+                      }
+                    }} className="mt-2 w-full py-1.5 border border-dashed border-slate-300 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md text-[11px] font-bold transition flex justify-center items-center gap-1">
+                      <Plus className="w-3.5 h-3.5" /> Tambah Langkah
+                    </button>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">Pilih langkah apa saja yang harus dilewati produk ini.</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Atur urutan proses spesifik untuk produk ini.</p>
                 </div>
               )}
 

@@ -1,62 +1,9 @@
 // ============================================================
 // PIPELINE CONFIG
 // ============================================================
-function getLegacyPipelineConfig_(tipe) {
-  if (tipe === "FullService") {
-    return [
-      { step: 1, nama: "Diterima",           icon: "📥", needStaff: false, needMesin: false },
-      { step: 2, nama: "Timbang & Sorting",   icon: "⚖️", needStaff: true,  needMesin: false },
-      { step: 3, nama: "Cuci",                icon: "🫧", needStaff: true,  needMesin: true  },
-      { step: 4, nama: "Pengeringan",          icon: "♨️", needStaff: true,  needMesin: true  },
-      { step: 5, nama: "Setrika",              icon: "👔", needStaff: true,  needMesin: false },
-      { step: 6, nama: "Lipat & Packing",      icon: "📦", needStaff: true,  needMesin: false },
-      { step: 7, nama: "Siap Ambil",           icon: "✅", needStaff: false, needMesin: false },
-      { step: 8, nama: "Selesai",              icon: "🏁", needStaff: false, needMesin: false }
-    ];
-  }
-  // SelfService
-  return [
-    { step: 1, nama: "Diterima",  icon: "📥", needStaff: false, needMesin: false },
-    { step: 2, nama: "Washer",    icon: "🫧", needStaff: false, needMesin: true  },
-    { step: 3, nama: "Dryer",     icon: "♨️", needStaff: false, needMesin: true  },
-    { step: 4, nama: "Selesai",   icon: "🏁", needStaff: false, needMesin: false }
-  ];
-}
-
-function getPipelineConfigData() {
-  const props = PropertiesService.getScriptProperties();
-  const raw = props.getProperty("PIPELINE_FULLSERVICE");
-  if (raw) {
-    try {
-      return JSON.parse(raw);
-    } catch(e) {}
-  }
-  return [
-    { step: 1, nama: "Diterima", needStaff: false, needMesin: false },
-    { step: 2, nama: "Dicuci", needStaff: true, needMesin: true },
-    { step: 3, nama: "Dikeringkan", needStaff: true, needMesin: true },
-    { step: 4, nama: "Disetrika", needStaff: true, needMesin: false },
-    { step: 5, nama: "Siap Diambil", needStaff: false, needMesin: false },
-    { step: 6, nama: "Selesai", needStaff: false, needMesin: false }
-  ];
-}
-
-function savePipelineConfigData(configArray) {
-  try {
-    const props = PropertiesService.getScriptProperties();
-    props.setProperty("PIPELINE_FULLSERVICE", JSON.stringify(configArray));
-    return { success: true, message: "Konfigurasi Drop Off berhasil disimpan!" };
-  } catch (err) {
-    return { success: false, message: err.toString() };
-  }
-}
-
-function getPipelineConfig(tipe) {
-  if (tipe === "FullService") {
-    return getPipelineConfigData();
-  }
-  return getLegacyPipelineConfig_(tipe);
-}
+// ============================================================
+// PIPELINE ENGINE
+// ============================================================
 
 // ============================================================
 // PIPELINE ENGINE
@@ -68,22 +15,37 @@ function createPipelineForNota(noNota, tipe, items, petugas) {
     sh.appendRow(["ID", "No Nota", "Step", "Nama Step", "Status", "Assigned Staff", "Mesin ID", "Waktu Mulai", "Waktu Selesai", "Catatan"]);
   }
 
-  let config = getPipelineConfig(tipe);
+  let config = [];
 
   if (tipe === "FullService" && items && items.length > 0) {
-    // Extract required steps based on products bought
     const allLayanan = getLayananListAll();
-    const requiredSteps = new Set();
-    
     items.forEach(item => {
       const lay = allLayanan.find(l => l.nama === item.layanan);
       if (lay && Array.isArray(lay.pipelineSteps)) {
-        lay.pipelineSteps.forEach(s => requiredSteps.add(Number(s)));
+        lay.pipelineSteps.forEach(s => {
+          if (typeof s === 'object' && s.nama) {
+            if (!config.find(c => String(c.nama).toLowerCase() === String(s.nama).toLowerCase())) {
+              config.push({ step: config.length + 1, nama: s.nama, needStaff: !!s.needStaff, needMesin: !!s.needMesin });
+            }
+          }
+        });
       }
     });
+  }
 
-    if (requiredSteps.size > 0) {
-      config = config.filter(c => requiredSteps.has(c.step));
+  if (config.length === 0) {
+    if (tipe === "FullService") {
+       config = [
+         { step: 1, nama: "Dicuci" },
+         { step: 2, nama: "Dikeringkan" },
+         { step: 3, nama: "Disetrika" },
+         { step: 4, nama: "Siap Diambil" }
+       ];
+    } else {
+       config = [
+         { step: 1, nama: "Washer", needMesin: true },
+         { step: 2, nama: "Dryer", needMesin: true }
+       ];
     }
   }
 
