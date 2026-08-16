@@ -43,11 +43,13 @@ export interface TransaksiItemHistory {
   status: string;
   tipe: string;
   items: { layanan: string; qty: number; subtotal: number }[];
+  pipeline?: { namaStep: string; status: string; assignedStaff?: string; mesinId?: string }[];
 }
 
 export default function PelangganView({ currentRole }: { currentRole?: UserRole } = {}) {
   const [pelangganList, setPelangganList] = useState<PelangganItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [poinRate, setPoinRate] = useState<number>(10000);
   const [search, setSearch] = useState<string>('');
   const [sortBy, setSortBy] = useState<'terakhir' | 'order' | 'spend'>('terakhir');
 
@@ -64,17 +66,19 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
 
-  const loadDataPelanggan = () => {
+  const loadDataPelanggan = async () => {
     setLoading(true);
-    runBackendCached<PelangganItem[]>(
-      'getDaftarPelanggan',
-      (data, fromCache) => {
-        if (Array.isArray(data)) setPelangganList(data);
-        if (!fromCache) setLoading(false);
-      },
-      5 * 60 * 1000
-    );
-    setLoading(false);
+    try {
+      const data = await runBackend<PelangganItem[]>('getDaftarPelanggan');
+      if (Array.isArray(data)) setPelangganList(data);
+      
+      const conf = await runBackend<{ rate: number; value: number }>('getPoinConfig');
+      if (conf && conf.rate) setPoinRate(conf.rate);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -391,6 +395,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                       readOnly={currentRole !== 'MANAGER'}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
                     />
+                    <p className="text-[10px] text-slate-400 mt-1">Sesuai nama KTP atau nama panggilan akrab.</p>
                   </div>
 
                   <div>
@@ -403,6 +408,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                       readOnly={currentRole !== 'MANAGER'}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-mono font-bold outline-none focus:border-[#1E4648]"
                     />
+                    <p className="text-[10px] text-slate-400 mt-1">Format: 08xxxxxxxx. Digunakan untuk kirim resi E-Struk via WhatsApp.</p>
                   </div>
                 </div>
 
@@ -416,6 +422,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                     readOnly={currentRole !== 'MANAGER'}
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
                   />
+                  <p className="text-[10px] text-slate-400 mt-1">Diperlukan terutama jika sering memesan layanan Delivery/Jemput Antar.</p>
                 </div>
 
                 <div>
@@ -428,11 +435,12 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                     readOnly={currentRole !== 'MANAGER'}
                     className="w-full p-2.5 bg-white border border-slate-200 rounded-lg font-medium outline-none focus:border-[#1E4648]"
                   />
+                  <p className="text-[10px] text-slate-400 mt-1">Instruksi otomatis yang selalu muncul setiap kali pelanggan ini memesan.</p>
                 </div>
               </div>
 
               {/* Readonly Summary Stats Badges */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-[11px]">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-[11px]">
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Daftar Pertama:</span>
                   <span className="font-bold text-slate-600">{selectedCust.tglDaftar || '-'}</span>
@@ -444,6 +452,10 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Total Belanja:</span>
                   <span className="font-bold text-[#1E4648]">Rp {(selectedCust?.totalSpend || 0).toLocaleString('id-ID')}</span>
+                </div>
+                <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
+                  <span className="text-slate-500 block">Estimasi Poin:</span>
+                  <span className="font-bold text-[#FF9500]">{Math.floor((selectedCust?.totalSpend || 0) / poinRate)}</span>
                 </div>
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Terakhir Order:</span>
@@ -487,6 +499,17 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                               <span key={i} className="bg-slate-100 px-1.5 py-0.5 rounded">
                                 {it.layanan} ×{it.qty}
                               </span>
+                            ))}
+                          </div>
+                        )}
+                        {tx.tipe === 'FullService' && tx.pipeline && tx.pipeline.length > 0 && (
+                          <div className="pt-1 mt-1 border-t border-slate-100 flex flex-col gap-1 text-[9px]">
+                            <span className="font-bold text-slate-500 uppercase tracking-wider">Log Produksi Dropoff:</span>
+                            {tx.pipeline.map((p, i) => (
+                              <div key={i} className="flex justify-between text-slate-500">
+                                <span>- {p.namaStep} {p.status === 'Selesai' ? '✓' : ''}</span>
+                                <span className="font-semibold">{p.assignedStaff || p.mesinId || '-'}</span>
+                              </div>
                             ))}
                           </div>
                         )}

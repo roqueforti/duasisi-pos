@@ -8,6 +8,20 @@ import {
 import { runBackend } from '@/lib/api';
 import { Transaksi, AuditLog } from '@/lib/types';
 
+interface RekapKasShift {
+  idShift: string;
+  idOutlet: string;
+  namaKasir: string;
+  waktuBuka: string;
+  waktuTutup: string;
+  kasAwal: number;
+  kasAkhirSistem: number;
+  kasAkhirFisik: number;
+  selisihKas: number;
+  status: string;
+  modeTutup: string;
+}
+
 interface LaporanResponse {
   ringkasan: {
     totalOmzet: number;
@@ -42,12 +56,13 @@ export default function RekapView() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<LaporanResponse | null>(null);
 
-  // Active Tab: 'Laporan' | 'ApprovalVoid' | 'AuditTrail'
-  const [activeTab, setActiveTab] = useState<'Laporan' | 'ApprovalVoid' | 'AuditTrail'>('Laporan');
+  // Active Tab: 'Laporan' | 'ApprovalVoid' | 'AuditTrail' | 'KasShift'
+  const [activeTab, setActiveTab] = useState<'Laporan' | 'ApprovalVoid' | 'AuditTrail' | 'KasShift'>('Laporan');
 
   // Void Approval State
   const [pendingVoidList, setPendingVoidList] = useState<Transaksi[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [kasShiftList, setKasShiftList] = useState<RekapKasShift[]>([]);
 
   const loadLaporan = async () => {
     setLoading(true);
@@ -73,9 +88,17 @@ export default function RekapView() {
     } catch (e) {}
   };
 
+  const loadKasShift = async () => {
+    try {
+      const kasList = await runBackend<RekapKasShift[]>('getRekapKasShift');
+      if (Array.isArray(kasList)) setKasShiftList(kasList);
+    } catch (e) {}
+  };
+
   useEffect(() => {
     loadLaporan();
     loadAuditLogs();
+    loadKasShift();
   }, []);
 
   const handleApproveVoid = async (noNota: string, isApproved: boolean) => {
@@ -183,6 +206,15 @@ export default function RekapView() {
             >
               <History className="w-3.5 h-3.5" />
               <span>Log Audit Sistem</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('KasShift')}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
+                activeTab === 'KasShift' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+              <span>Rekap Kas Shift</span>
             </button>
           </div>
         </div>
@@ -478,6 +510,60 @@ export default function RekapView() {
                       <td className="py-2.5 px-4 font-semibold text-slate-600">{log.namaUser}</td>
                       <td className="py-2.5 px-4 text-slate-700">{log.jenisAktivitas}</td>
                       <td className="py-2.5 px-4 text-slate-500">{log.referensi || '-'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: REKAP KAS SHIFT */}
+      {activeTab === 'KasShift' && (
+        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
+          <div className="px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-600 flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-[#1E4648]" />
+            <span>Rekap Tutup Kasir (Kas Shift)</span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                  <th className="py-2.5 px-4">Waktu Buka / Tutup</th>
+                  <th className="py-2.5 px-4">Kasir</th>
+                  <th className="py-2.5 px-4 text-right">Kas Awal</th>
+                  <th className="py-2.5 px-4 text-right">Kas Akhir Fisik</th>
+                  <th className="py-2.5 px-4 text-right">Selisih</th>
+                  <th className="py-2.5 px-4 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {kasShiftList.length === 0 ? (
+                  <tr><td colSpan={6} className="py-8 text-center text-slate-400">Belum ada data shift kasir</td></tr>
+                ) : (
+                  kasShiftList.map((shift, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50 transition">
+                      <td className="py-2.5 px-4">
+                        <div className="text-slate-600 font-semibold">{shift.waktuBuka}</div>
+                        <div className="text-slate-400 text-[10px]">{shift.waktuTutup || 'Belum ditutup'}</div>
+                      </td>
+                      <td className="py-2.5 px-4 font-semibold text-slate-600">{shift.namaKasir}</td>
+                      <td className="py-2.5 px-4 text-right text-slate-600">Rp {(shift.kasAwal || 0).toLocaleString('id-ID')}</td>
+                      <td className="py-2.5 px-4 text-right text-slate-600">Rp {(shift.kasAkhirFisik || 0).toLocaleString('id-ID')}</td>
+                      <td className="py-2.5 px-4 text-right font-bold">
+                        <span className={shift.selisihKas === 0 ? 'text-emerald-600' : shift.selisihKas > 0 ? 'text-amber-600' : 'text-rose-600'}>
+                          {shift.selisihKas > 0 ? '+' : ''}{shift.selisihKas.toLocaleString('id-ID')}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-center">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          shift.status === 'Aktif' ? 'bg-[#1E4648] text-white' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {shift.status}
+                        </span>
+                      </td>
                     </tr>
                   ))
                 )}

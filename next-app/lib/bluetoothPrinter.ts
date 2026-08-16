@@ -253,7 +253,7 @@ class EscPosBuilder {
   }
 }
 
-export function generateReceiptEscPos(tx: Transaksi): Uint8Array {
+export function generateReceiptEscPos(tx: Transaksi, poinRate: number = 10000): Uint8Array {
   const builder = new EscPosBuilder();
   const kasir = (tx as any).petugas || (tx as any).kasir || 'Kasir';
 
@@ -295,6 +295,11 @@ export function generateReceiptEscPos(tx: Transaksi): Uint8Array {
     builder.twoColumn('Kembali:', `Rp ${Number((tx as any).kembalian).toLocaleString('id-ID')}`, 32);
   }
   builder.bold(false);
+
+  if (Math.floor((tx.total || 0) / poinRate) > 0) {
+    builder.dashedLine(32);
+    builder.twoColumn('Poin Didapat:', `+${Math.floor((tx.total || 0) / poinRate)} Poin`, 32);
+  }
 
   builder
     .dashedLine(32)

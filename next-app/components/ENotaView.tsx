@@ -16,6 +16,7 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
   const [loading, setLoading] = useState<boolean>(true);
   const [tx, setTx] = useState<Transaksi | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [poinRate, setPoinRate] = useState<number>(10000);
 
   const fetchNota = async () => {
     setLoading(true);
@@ -34,6 +35,11 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
       } else {
         setErrorMsg(res?.message || 'Nota transaksi tidak ditemukan.');
       }
+
+      try {
+        const conf = await runBackend<{rate: number, value: number}>('getPoinConfig');
+        if (conf && conf.rate) setPoinRate(conf.rate);
+      } catch (e) {}
     } catch (err: any) {
       setErrorMsg('Gagal memverifikasi nota dari server.');
     } finally {
@@ -223,6 +229,22 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
                 <span className="text-slate-700">TOTAL PEMBAYARAN:</span>
                 <span className="text-[#1E4648] text-base">Rp {(Number(tx.total) || 0).toLocaleString('id-ID')}</span>
               </div>
+              {(tx as any).diskon > 0 && (
+                <div className="flex justify-between text-slate-600">
+                  <span>DISKON:</span>
+                  <span className="font-semibold text-emerald-600">
+                    -Rp {(Number((tx as any).diskon) || 0).toLocaleString('id-ID')}
+                  </span>
+                </div>
+              )}
+              {Math.floor(Number(tx.total) / poinRate) > 0 && (
+                <div className="flex justify-between text-slate-600">
+                  <span>POIN DIDAPAT:</span>
+                  <span className="font-semibold text-[#FF9500]">
+                    +{Math.floor(Number(tx.total) / poinRate)} Poin
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-slate-600">
                 <span>DIBAYAR ({tx.metodeBayar || 'Tunai'}):</span>
                 <span className="font-semibold text-[#1E4648]">

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload } from 'lucide-react';
+import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
@@ -25,17 +25,14 @@ interface PromoVoucher {
   statusAktif: boolean;
 }
 
-const defaultPromos: PromoVoucher[] = [
-  { idPromo: 'PRM-01', kodeVoucher: 'LAUNDRYMEMBER', jenisDiskon: 'Nominal', nilaiDiskon: 10000, minTransaksi: 50000, statusAktif: true },
-  { idPromo: 'PRM-02', kodeVoucher: 'HEMAT20', jenisDiskon: 'Nominal', nilaiDiskon: 20000, minTransaksi: 100000, statusAktif: true }
-];
+const defaultPromos: PromoVoucher[] = [];
 
 interface ProdukViewProps {
   currentRole?: UserRole;
 }
 
 export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
-  const [activeSubTab, setActiveSubTab] = useState<'Produk' | 'Promo' | 'Loyalitas'>('Produk');
+  const [activeSubTab, setActiveSubTab] = useState<'Produk' | 'Promo' | 'Loyalitas' | 'Prioritas'>('Produk');
   const [layananList, setLayananList] = useState<LayananItemBackend[]>([]);
   const [promoList, setPromoList] = useState<PromoVoucher[]>(defaultPromos);
   const [loading, setLoading] = useState(false);
@@ -59,6 +56,10 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [poinRate, setPoinRate] = useState('10000');
   const [poinValue, setPoinValue] = useState('1000');
 
+  // Priority Settings
+  const [priorityLevels, setPriorityLevels] = useState<any[]>([]);
+  const [prioritySaving, setPrioritySaving] = useState(false);
+
   const loadProduk = async () => {
     setLoading(true);
     try {
@@ -71,8 +72,76 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
+  const loadPoinConfig = async () => {
+    try {
+      const config = await runBackend<{rate: number, value: number}>('getPoinConfig');
+      if (config) {
+        setPoinRate(config.rate.toString());
+        setPoinValue(config.value.toString());
+      }
+    } catch (err) {
+      console.error('Gagal memuat konfigurasi poin:', err);
+    }
+  };
+
+  const loadPriorityConfig = async () => {
+    try {
+      const config = await runBackend<any[]>('getPriorityConfig');
+      if (Array.isArray(config)) {
+        setPriorityLevels(config);
+      }
+    } catch (err) {
+      console.error('Gagal memuat konfigurasi prioritas:', err);
+    }
+  };
+
+  const handleSavePriority = async () => {
+    setPrioritySaving(true);
+    try {
+      const cleanLevels = priorityLevels.map(p => ({
+        id: p.id || `p_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        nama: p.nama,
+        sla: Number(p.sla),
+        multiplier: Number(p.multiplier)
+      }));
+      await runBackend('savePriorityConfig', cleanLevels);
+      setPriorityLevels(cleanLevels);
+      alert('Pengaturan prioritas berhasil disimpan!');
+    } catch (err) {
+      alert('Gagal menyimpan pengaturan prioritas');
+    } finally {
+      setPrioritySaving(false);
+    }
+  };
+
+  const handleAddPriorityLevel = () => {
+    setPriorityLevels([...priorityLevels, { id: `p_${Date.now()}`, nama: 'Level Baru', sla: 24, multiplier: 1 }]);
+  };
+
+  const handleRemovePriorityLevel = (idx: number) => {
+    setPriorityLevels(priorityLevels.filter((_, i) => i !== idx));
+  };
+
+  const handlePriorityChange = (idx: number, field: string, value: string | number) => {
+    const newLevels = [...priorityLevels];
+    newLevels[idx] = { ...newLevels[idx], [field]: value };
+    setPriorityLevels(newLevels);
+  };
+
+  const loadPromo = async () => {
+    try {
+      const data = await runBackend<PromoVoucher[]>('getPromoList');
+      if (Array.isArray(data) && data.length > 0) setPromoList(data);
+    } catch (err) {
+      console.error('Gagal memuat promo:', err);
+    }
+  };
+
   useEffect(() => {
     loadProduk();
+    loadPromo();
+    loadPoinConfig();
+    loadPriorityConfig();
   }, []);
 
   const handleOpenAdd = () => {
@@ -141,7 +210,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       await runBackend('tambahPromo', payload);
       setShowPromoModal(false);
       setKodePromo('');
-      loadProduk();
+      loadPromo();
       alert(`Promo ${payload.kodeVoucher} berhasil ditambahkan ke database!`);
     } catch (err) {
       alert('Gagal menyimpan promo ke backend');
@@ -152,7 +221,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     if (!confirm('Yakin hapus voucher promo ini?')) return;
     try {
       await runBackend('hapusPromo', id);
-      loadProduk();
+      loadPromo();
     } catch (err) {
       alert('Gagal menghapus promo');
     }
@@ -236,6 +305,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
             >
               <Gift className="w-3.5 h-3.5" />
               <span>Program Poin Loyalitas</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab('Prioritas')}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
+                activeSubTab === 'Prioritas' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Prioritas & SLA</span>
             </button>
           </div>
         </div>
@@ -411,15 +489,83 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 onChange={(e) => setPoinValue(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] font-bold"
               />
+              <p className="text-[10px] text-slate-400 mt-1">Nominal potongan harga yang diberikan untuk setiap penukaran 1 Poin.</p>
             </div>
           </div>
 
           <button
-            onClick={() => alert('Pengaturan poin loyalitas berhasil disimpan!')}
+            onClick={async () => {
+              try {
+                const res = await runBackend<{success: boolean, message: string}>('savePoinConfig', Number(poinRate) || 10000, Number(poinValue) || 1000);
+                alert(res?.message || 'Pengaturan poin loyalitas berhasil disimpan!');
+              } catch (err) {
+                alert('Gagal menyimpan konfigurasi poin!');
+              }
+            }}
             className="w-full bg-[#1E4648] text-white font-semibold py-2 rounded-md transition"
           >
             Simpan Konfigurasi Poin
           </button>
+        </div>
+      )}
+
+      {/* =========================================
+            TAB PRIORITAS & SLA
+        ========================================= */}
+      {activeSubTab === 'Prioritas' && (
+        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm p-4 md:p-5">
+          <div className="max-w-3xl">
+            <h2 className="text-sm font-extrabold text-slate-700 mb-2">Pengaturan Prioritas & SLA Dinamis</h2>
+            <p className="text-xs text-slate-500 mb-6">Tambahkan level prioritas layanan sebanyak apa pun yang Anda mau. Waktu selesai (SLA) dihitung dari saat pesanan masuk, dan Pengali Harga akan dikalikan dengan subtotal dari item kategori Layanan (produk fisik dikecualikan).</p>
+            
+            <div className="space-y-4">
+              {priorityLevels.map((level, idx) => (
+                <div key={level.id || idx} className="grid grid-cols-12 gap-3 p-4 border border-slate-200 rounded-lg bg-slate-50 relative items-start group">
+                  <div className="col-span-12 sm:col-span-4">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Level</label>
+                    <input type="text" value={level.nama} onChange={e => handlePriorityChange(idx, 'nama', e.target.value)} placeholder="e.g. Super VIP" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:border-[#1E4648] outline-none" />
+                    <p className="text-[10px] text-slate-400 mt-1">Contoh: Reguler, Express, Kilat.</p>
+                  </div>
+                  <div className="col-span-6 sm:col-span-3">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">SLA Waktu (Jam)</label>
+                    <input type="number" value={level.sla} onChange={e => handlePriorityChange(idx, 'sla', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:border-[#1E4648] outline-none" />
+                    <p className="text-[10px] text-slate-400 mt-1">Estimasi pengerjaan sejak pesanan dibuat.</p>
+                  </div>
+                  <div className="col-span-6 sm:col-span-3">
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Pengali Harga (x)</label>
+                    <input type="number" step="0.1" value={level.multiplier} onChange={e => handlePriorityChange(idx, 'multiplier', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:border-[#1E4648] outline-none" />
+                    <p className="text-[10px] text-slate-400 mt-1">Isi 1 untuk harga normal, 2 untuk harga dua kali lipat.</p>
+                  </div>
+                  <div className="col-span-12 sm:col-span-2 flex items-center justify-end sm:mt-5">
+                    <button 
+                      onClick={() => handleRemovePriorityLevel(idx)} 
+                      className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition"
+                      title="Hapus Level"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              
+              <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                <button 
+                  onClick={handleAddPriorityLevel}
+                  className="bg-white border-2 border-dashed border-slate-300 hover:border-[#1E4648] hover:text-[#1E4648] text-slate-500 px-4 py-2.5 rounded-lg text-xs font-bold transition flex justify-center items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> Tambah Level Prioritas
+                </button>
+                <button 
+                  onClick={handleSavePriority}
+                  disabled={prioritySaving}
+                  className="bg-[#1E4648] hover:bg-[#163536] text-white px-6 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {prioritySaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+                  {prioritySaving ? 'Menyimpan...' : 'Simpan Semua Pengaturan'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -435,15 +581,41 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Nama Layanan *</label>
                 <input type="text" value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Cuci Karpet..." className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                <p className="text-[10px] text-slate-400 mt-1">Nama yang akan tampil di struk dan kasir.</p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Kategori *</label>
+                <select value={kategori} onChange={(e) => setKategori(e.target.value as any)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                  <option value="Layanan">Layanan Utama (Cuci, Lipat, dll)</option>
+                  <option value="Layanan Tambahan">Layanan Tambahan (Setrika, Parfum, dll)</option>
+                  <option value="Produk">Produk Fisik (Tas, Gantungan, dll)</option>
+                  <option value="MakananMinuman">Makanan/Minuman</option>
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">Pengali harga (SLA) hanya berlaku untuk Layanan & Layanan Tambahan.</p>
+              </div>
+
+              {kategori.includes('Layanan') && (
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Harga (Rp) *</label>
-                  <input type="number" value={harga} onChange={(e) => setHarga(e.target.value)} placeholder="15000" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                  <label className="block font-semibold text-slate-700 mb-1">Tipe Layanan</label>
+                  <select value={tipe} onChange={(e) => setTipe(e.target.value as 'SelfService' | 'FullService')} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                    <option value="SelfService">Self Service (Cuci Sendiri)</option>
+                    <option value="FullService">Full Service (Cuci & Setrika)</option>
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">Mengelompokkan layanan pada daftar antrean dan laporan.</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Harga *</label>
+                  <input type="number" value={harga} onChange={(e) => setHarga(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                  <p className="text-[10px] text-slate-400 mt-1">Harga dasar per satuan.</p>
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Satuan</label>
-                  <input type="text" value={satuan} onChange={(e) => setSatuan(e.target.value)} placeholder="kg / item / m²" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                  <input type="text" value={satuan} onChange={(e) => setSatuan(e.target.value)} placeholder="paket / kg" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                  <p className="text-[10px] text-slate-400 mt-1">Contoh: kg, pc, paket.</p>
                 </div>
               </div>
             </div>
@@ -468,14 +640,17 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Kode Voucher *</label>
                 <input type="text" value={kodePromo} onChange={(e) => setKodePromo(e.target.value)} placeholder="LAUNDRYMEMBER" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] uppercase font-sans font-bold" />
+                <p className="text-[10px] text-slate-400 mt-1">Kode unik yang dimasukkan kasir saat checkout.</p>
               </div>
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Nilai Potongan Diskon (Rp) *</label>
                 <input type="number" value={nilaiDiskon} onChange={(e) => setNilaiDiskon(e.target.value)} placeholder="10000" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                <p className="text-[10px] text-slate-400 mt-1">Nominal potongan harga tetap.</p>
               </div>
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Syarat Minimum Transaksi (Rp)</label>
                 <input type="number" value={minTx} onChange={(e) => setMinTx(e.target.value)} placeholder="50000" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                <p className="text-[10px] text-slate-400 mt-1">Kosongkan atau isi 0 jika tanpa syarat belanja minimal.</p>
               </div>
             </div>
 

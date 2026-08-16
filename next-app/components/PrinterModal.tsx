@@ -24,6 +24,7 @@ import {
   generateTestPrintEscPos,
   BluetoothDeviceInfo,
 } from '@/lib/bluetoothPrinter';
+import { runBackend } from '@/lib/api';
 
 export type PrintType = 'struk' | 'label';
 
@@ -52,6 +53,7 @@ export default function PrinterModal({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [btSupported, setBtSupported] = useState(true);
+  const [poinRate, setPoinRate] = useState(10000);
 
   useEffect(() => {
     if (isOpen) {
@@ -60,6 +62,10 @@ export default function PrinterModal({
       setErrorMsg(null);
       setSuccessMsg(null);
       setSelectedPrintType(initialPrintType);
+      
+      runBackend<{rate: number, value: number}>('getPoinConfig')
+        .then(res => { if (res && res.rate) setPoinRate(res.rate); })
+        .catch(() => {});
     }
   }, [isOpen, initialPrintType]);
 
@@ -120,7 +126,7 @@ export default function PrinterModal({
       }
       const data = selectedPrintType === 'label'
         ? generateTagEscPos(tx)
-        : generateReceiptEscPos(tx);
+        : generateReceiptEscPos(tx, poinRate);
       await sendRawEscPosData(data);
       setSuccessMsg(selectedPrintType === 'label'
         ? 'Label tag berhasil dicetak!'

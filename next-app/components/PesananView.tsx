@@ -63,8 +63,10 @@ export default function PesananView() {
       ]);
       setOrders(Array.isArray(orderData) ? orderData : []);
       setMachines(Array.isArray(machineData) ? machineData : []);
-      setStaff(Array.isArray(staffData) ? staffData : []);
-      if (staffData?.[0]?.nama) setStaffName((current) => current || staffData[0].nama);
+      
+      const activeStaff = Array.isArray(staffData) ? staffData.filter((s: any) => s.status !== 'Resign' && s.status !== 'Non-Aktif') : [];
+      setStaff(activeStaff);
+      if (activeStaff?.[0]?.nama) setStaffName((current) => current || activeStaff[0].nama);
     } catch (loadError) {
       console.error(loadError);
       setError('Data pesanan belum dapat dimuat. Periksa koneksi backend dan sesi login.');

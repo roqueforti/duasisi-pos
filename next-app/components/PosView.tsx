@@ -97,6 +97,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [layananList, setLayananList] = useState<LayananItem[]>(defaultLayanan);
   const [search, setSearch] = useState('');
   const [selectedCategoryTab, setSelectedCategoryTab] = useState<'Semua' | 'SelfService' | 'Dropoff' | 'MakananMinuman'>('Semua');
+  const [poinRate, setPoinRate] = useState<number>(10000);
   
   // 1. Cart & Order State
   const [cart, setCart] = useState<{ [key: string]: CartItem }>({});
@@ -109,8 +110,13 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
   // Order Details Form State
   const [tipeLayanan, setTipeLayanan] = useState<'SelfService' | 'FullService'>('SelfService');
-  const [tingkatLayanan, setTingkatLayanan] = useState<'Reguler' | 'Express' | 'Kilat'>('Reguler');
+  const [tingkatLayanan, setTingkatLayanan] = useState<string>('Reguler');
   const [catatanOrderInput, setCatatanOrderInput] = useState<string>('');
+  
+  // Priority Config
+  const [priorityLevels, setPriorityLevels] = useState<any[]>([
+    { id: 'p1', nama: 'Reguler', sla: 48, multiplier: 1 }
+  ]);
 
   // Payment Form State
   const [namaKasirInput, setNamaKasirInput] = useState('Kasir 1');
@@ -196,7 +202,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       'getLayananListAll',
       (data) => {
         if (Array.isArray(data) && data.length > 0) {
-          setLayananList(data.map((item) => ({
+          const activeData = data.filter(item => item.aktif === 'Y');
+          setLayananList(activeData.length > 0 ? activeData.map((item) => ({
             layanan: item.nama,
             hargaSatuan: Number(item.harga),
             tipe: item.tipe || 'SelfService',
@@ -204,9 +211,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             kategori: item.kategori === 'MakananMinuman'
               ? 'MakananMinuman'
               : item.tipe === 'FullService' ? 'Layanan Tambahan' : 'Layanan',
-          })));
+          })) : defaultLayanan);
         } else {
-          // Fallback to default/dummy data if database is completely empty
           setLayananList(defaultLayanan);
         }
       },
@@ -234,12 +240,26 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       'getPegawaiList',
       (data) => {
         if (Array.isArray(data)) {
-          setStaffList(data);
-          if (data[0]?.nama) setNamaKasirInput(data[0].nama);
+          const activeStaff = data.filter((s: any) => s.status !== 'Resign' && s.status !== 'Non-Aktif');
+          setStaffList(activeStaff);
+          if (activeStaff[0]?.nama) setNamaKasirInput(activeStaff[0].nama);
         }
       },
       15 * 60 * 1000 // 15 menit TTL â€” pegawai sangat jarang berubah
     );
+
+    // 4. Poin Config
+    runBackend<{rate: number, value: number}>('getPoinConfig').then(res => {
+      if (res && res.rate) setPoinRate(res.rate);
+    }).catch(() => {});
+
+    // 5. Priority Config
+    runBackend<any[]>('getPriorityConfig').then(res => {
+      if (Array.isArray(res) && res.length > 0) {
+        setPriorityLevels(res);
+        setTingkatLayanan(res[0].nama);
+      }
+    }).catch(() => {});
   }, []);
 
   const refreshActiveShift = useCallback(async () => {
@@ -263,7 +283,17 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   // Calculate totals
   const cartArray = Object.values(cart);
   const totalCartItems = cartArray.reduce((acc, curr) => acc + curr.qty, 0);
-  const subtotalCart = cartArray.reduce((acc, curr) => acc + (curr.qty * curr.hargaSatuan), 0);
+  
+  // Apply Multiplier for Services if Priority is selected
+  const activePriority = priorityLevels.find(p => p.nama === tingkatLayanan) || priorityLevels[0];
+  const multiplier = activePriority?.multiplier || 1;
+
+  const subtotalCart = cartArray.reduce((acc, curr) => {
+    const isLayanan = curr.kategori === 'Layanan' || curr.kategori === 'Layanan Tambahan';
+    const m = isLayanan ? multiplier : 1;
+    return acc + (curr.qty * curr.hargaSatuan * m);
+  }, 0);
+  
   const grandTotal = Math.max(0, subtotalCart - diskonApplied.nilai);
 
   // Toast Auto Clear
@@ -413,7 +443,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         referensiPembayaran: refNoInput.trim(),
         diskon: diskonApplied.nilai,
         catatan: catatanOrderInput,
-        items: cartArray.map((i) => ({ layanan: i.layanan, qty: i.qty, hargaSatuan: i.hargaSatuan }))
+        items: cartArray.map((i) => {
+          const isLayanan = i.kategori === 'Layanan' || i.kategori === 'Layanan Tambahan';
+          const m = isLayanan ? multiplier : 1;
+          return { layanan: i.layanan, qty: i.qty, hargaSatuan: i.hargaSatuan * m };
+        })
       });
       if (!res?.success || !res.noNota) throw new Error('Backend tidak mengembalikan nomor nota');
 
@@ -429,7 +463,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         total: resTotal,
         uangBayar: Number(bayar) || resTotal,
         kembalian: Math.max(0, (Number(bayar) || resTotal) - resTotal),
-        items: cartArray.map(i => ({ ...i, hargaSatuan: Number(i.hargaSatuan) || 0, qty: Number(i.qty) || 0 })),
+        items: cartArray.map(i => {
+          const isLayanan = i.kategori === 'Layanan' || i.kategori === 'Layanan Tambahan';
+          const m = isLayanan ? multiplier : 1;
+          return { ...i, hargaSatuan: (Number(i.hargaSatuan) || 0) * m, qty: Number(i.qty) || 0 };
+        }),
         catatan: catatanOrderInput,
         tipeLayanan,
         tingkatLayanan,
@@ -711,25 +749,17 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   };
 
   // Helper: Calculate estimasi selesai berdasarkan tingkatLayanan
-  const calculateEstimasi = (tingkat: 'Reguler' | 'Express' | 'Kilat'): string => {
+  const calculateEstimasi = (tingkatNama: string): string => {
     const now = new Date();
+    const target = new Date(now);
     
-    if (tingkat === 'Reguler') {
-      // +2 hari
-      const target = new Date(now);
-      target.setDate(target.getDate() + 2);
-      return target.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    } else if (tingkat === 'Express') {
-      // +1 hari
-      const target = new Date(now);
-      target.setDate(target.getDate() + 1);
-      return target.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    } else {
-      // Kilat: dinamis berdasarkan durasi produk (default 6 jam)
-      const target = new Date(now);
-      target.setHours(target.getHours() + 6);
-      return `Hari ini, ${target.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
-    }
+    const priority = priorityLevels.find(p => p.nama === tingkatNama) || priorityLevels[0];
+    const hoursToAdd = priority?.sla || 48;
+    
+    target.setHours(target.getHours() + hoursToAdd);
+    
+    return target.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) 
+      + ' ' + target.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
   };
 
   // Step 8: Return to POS Main Page
@@ -1467,6 +1497,12 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 <span className="font-bold">-Rp {(diskonApplied?.nilai || 0).toLocaleString('id-ID')}</span>
               </div>
             )}
+            {Math.floor(grandTotal / poinRate) > 0 && (
+              <div className="flex justify-between text-[#FF9500]">
+                <span>Estimasi Poin :</span>
+                <span className="font-bold">+{Math.floor(grandTotal / poinRate)} Poin</span>
+              </div>
+            )}
           </div>
 
           <div className="bg-slate-900 text-white rounded-lg p-4 flex justify-between items-center shadow-inner my-1.5">
@@ -1664,10 +1700,10 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       {/* 4. MODAL "Detail Transaksi & Pembayaran" (Split Layout: Kiri Summary, Kanan Numpad Kalkulator) */}
       {showDetailTransaksiModal && (
         <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
-          <div className="bg-white rounded-xl w-full h-fit max-h-[95vh] max-w-5xl border border-slate-100 shadow-xl flex flex-col lg:flex-row overflow-hidden my-auto">
+          <div className="bg-white rounded-xl w-full h-fit max-h-[95vh] max-w-5xl border border-slate-100 shadow-xl flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden my-auto">
             
             {/* LEFT PANEL: Transaction Summary & Details */}
-            <div className="flex-1 flex flex-col overflow-hidden border-r border-slate-200 min-w-0">
+            <div className="flex-none lg:flex-1 flex flex-col overflow-visible lg:overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-200 min-w-0">
               {/* Header */}
               <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0 bg-gradient-to-r from-slate-50 to-white">
                 <div>
@@ -1680,7 +1716,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               </div>
 
               {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              <div className="flex-none lg:flex-1 overflow-visible lg:overflow-y-auto p-5 space-y-5">
                 {/* Customer Type */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-3">Jenis Pelanggan *</label>
@@ -1749,10 +1785,19 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 {tipeLayanan === 'FullService' && (
                   <div>
                     <label className="block font-bold text-slate-700 mb-2">Prioritas Pengerjaan</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['Reguler', 'Express', 'Kilat'] as const).map((priority) => (
-                        <button key={priority} type="button" onClick={() => setTingkatLayanan(priority)} className={`py-2.5 rounded-lg text-sm font-bold border ${tingkatLayanan === priority ? 'bg-[#FF9500] border-[#FF9500] text-white' : 'bg-white border-slate-200 text-slate-600'}`}>
-                          {priority}
+                    <div className="flex flex-wrap gap-2">
+                      {priorityLevels.map((priority) => (
+                        <button 
+                          key={priority.id || priority.nama} 
+                          type="button" 
+                          onClick={() => setTingkatLayanan(priority.nama)} 
+                          className={`flex-1 min-w-[80px] py-2.5 rounded-lg text-sm font-bold border transition ${
+                            tingkatLayanan === priority.nama 
+                              ? 'bg-[#FF9500] border-[#FF9500] text-white' 
+                              : 'bg-white border-slate-200 text-slate-600 hover:border-[#FF9500] hover:text-[#FF9500]'
+                          }`}
+                        >
+                          {priority.nama}
                         </button>
                       ))}
                     </div>

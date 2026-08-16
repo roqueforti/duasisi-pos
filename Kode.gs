@@ -35,7 +35,9 @@ const ALLOWED_API_ACTIONS = Object.freeze({
   clockInPegawai: true, clockOutPegawai: true, getStatusAbsensiHariIni: true, getRekapAbsensi: true,
   getMasterShiftList: true, tambahMasterShift: true, hapusMasterShift: true,
   getKasShiftAktif: true, openKasShift: true, handoverCheckKasShift: true, closeKasShift: true, getRekapKasShift: true, uploadExpensePhoto: true,
-  getAuditLogs: true, ajukanVoidTransaksi: true, approveVoidTransaksi: true
+  getAuditLogs: true, ajukanVoidTransaksi: true, approveVoidTransaksi: true,
+  getPoinConfig: true, savePoinConfig: true,
+  getPriorityConfig: true, savePriorityConfig: true
 });
 const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true });
 const MANAGER_API_ACTIONS = Object.freeze({
@@ -45,7 +47,8 @@ const MANAGER_API_ACTIONS = Object.freeze({
   tambahPromo: true, hapusPromo: true,
   tambahPegawai: true, hapusPegawai: true,
   tambahMasterShift: true, hapusMasterShift: true,
-  getLaporanRange: true, getAuditLogs: true, approveVoidTransaksi: true, getRekapKasShift: true
+  getLaporanRange: true, getAuditLogs: true, approveVoidTransaksi: true, getRekapKasShift: true,
+  savePoinConfig: true
 });
 
 /**
@@ -1118,8 +1121,10 @@ function getRiwayatPelangganByHp(noHp) {
 
   return filtered.map(r => {
     const items = dataDetail.filter(d => d[0] === r[0]).map(d => ({ layanan: d[1], qty: d[2], subtotal: d[4] }));
+    const tipe = r[8] || "SelfService";
+    const pipeline = tipe === "FullService" ? getPipelineSteps(r[0]) : undefined;
     return {
-      noNota: r[0], tanggal: fmtWib(r[1]), total: r[4], status: r[5], tipe: r[8] || "SelfService", items: items
+      noNota: r[0], tanggal: fmtWib(r[1]), total: r[4], status: r[5], tipe: tipe, items: items, pipeline: pipeline
     };
   }).reverse();
 }
@@ -2268,5 +2273,53 @@ function resetAndSeed6Bulan() {
     shD.clear();
     shD.appendRow(["No Nota", "Layanan", "Qty", "Harga Satuan", "Subtotal"]);
   }
+
   return seedData6Bulan();
 }
+
+// ============================================================
+// POIN CONFIGURATION
+// ============================================================
+function getPoinConfig() {
+  const props = PropertiesService.getScriptProperties();
+  return {
+    rate: Number(props.getProperty("POIN_RATE") || 10000),
+    value: Number(props.getProperty("POIN_VALUE") || 1000)
+  };
+}
+
+function savePoinConfig(rate, value) {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty("POIN_RATE", String(rate || 10000));
+  props.setProperty("POIN_VALUE", String(value || 1000));
+  return { success: true, message: "Konfigurasi poin berhasil disimpan!" };
+}
+
+// ============================================================
+// PRIORITY CONFIGURATION
+// ============================================================
+function getPriorityConfig() {
+  const props = PropertiesService.getScriptProperties();
+  const raw = props.getProperty("PRIORITY_LEVELS");
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch(e) {}
+  }
+  return [
+    { id: "p1", nama: "Reguler", sla: 48, multiplier: 1.0 },
+    { id: "p2", nama: "Express", sla: 24, multiplier: 1.5 },
+    { id: "p3", nama: "Kilat", sla: 6, multiplier: 2.0 }
+  ];
+}
+
+function savePriorityConfig(config) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    props.setProperty("PRIORITY_LEVELS", JSON.stringify(config));
+    return { success: true, message: "Level prioritas berhasil disimpan!" };
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
+}
+

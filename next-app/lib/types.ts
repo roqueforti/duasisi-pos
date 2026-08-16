@@ -16,6 +16,7 @@ export interface CartItem {
   hargaSatuan: number;
   qty: number;
   catatan?: string;
+  kategori?: 'Layanan' | 'Layanan Tambahan' | 'Produk' | 'MakananMinuman';
 }
 
 export interface TransaksiItem {

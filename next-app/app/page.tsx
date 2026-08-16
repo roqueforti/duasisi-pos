@@ -15,6 +15,7 @@ import ENotaView from '@/components/ENotaView';
 import PelangganView from '@/components/PelangganView';
 import DashboardView from '@/components/DashboardView';
 import PesananView from '@/components/PesananView';
+import MenuGeneratorView from '@/components/MenuGeneratorView';
 import { UserRole } from '@/lib/types';
 import { clearBackendSession } from '@/lib/api';
 
@@ -96,8 +97,9 @@ export default function HomePage() {
               {currentTab === 'absensi' && <AbsensiView />}
               {currentTab === 'pelanggan' && <PelangganView currentRole={currentRole} />}
               {currentTab === 'inventory' && <InventoryView currentRole={currentRole} />}
-              {currentTab === 'pegawai' && <PegawaiView />}
-              {currentTab === 'produk' && <ProdukView />}
+              {currentTab === 'pegawai' && <PegawaiView currentRole={currentRole} />}
+              {currentTab === 'produk' && <ProdukView currentRole={currentRole} />}
+              {currentTab === 'menu' && <MenuGeneratorView />}
               {currentTab === 'rekap' && <RekapView />}
             </main>
           </div>

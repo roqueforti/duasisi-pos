@@ -284,6 +284,7 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
                   placeholder="Contoh: Rina Rahmawati"
                   className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">Nama yang akan tercetak di struk sebagai petugas kasir.</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Jabatan</label>
@@ -294,6 +295,7 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
                   placeholder="Kasir / Operator / Staff"
                   className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">Peran utama pegawai di toko.</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">No HP / WhatsApp</label>
@@ -304,6 +306,7 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
                   placeholder="08..."
                   className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">Format: 08xxxxxxxx. Digunakan untuk notifikasi jadwal shift.</p>
               </div>
             </div>
             <div className="flex justify-end gap-2">

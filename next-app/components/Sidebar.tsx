@@ -16,7 +16,8 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ChevronRight,
-  ClipboardList
+  ClipboardList,
+  Cpu
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -173,20 +174,20 @@ export default function Sidebar({
                 {!isCollapsed && <span>POS Kasir</span>}
                 {!isCollapsed && currentTab === 'transaksi' && <ChevronRight className="w-3.5 h-3.5 ml-auto text-slate-400" />}
               </button>
-              <button className={navClass('riwayat')} onClick={() => handleNavClick('riwayat')} title="Riwayat">
-                <History className={`w-[18px] h-[18px] shrink-0 ${iconClass('riwayat')}`} />
-                {!isCollapsed && <span>Riwayat Transaksi</span>}
-              </button>
-              <button className={navClass('pesanan')} onClick={() => handleNavClick('pesanan')} title="Pesanan Drop-off">
-                <ClipboardList className={`w-[18px] h-[18px] shrink-0 ${iconClass('pesanan')}`} />
-                {!isCollapsed && <span>Pesanan Drop-off</span>}
-              </button>
-              <button className={navClass('absensi')} onClick={() => handleNavClick('absensi')} title="Absensi">
-                <Clock className={`w-[18px] h-[18px] shrink-0 ${iconClass('absensi')}`} />
-                {!isCollapsed && <span>Absensi Staf</span>}
-              </button>
             </>
           )}
+          <button className={navClass('riwayat')} onClick={() => handleNavClick('riwayat')} title="Riwayat">
+            <History className={`w-[18px] h-[18px] shrink-0 ${iconClass('riwayat')}`} />
+            {!isCollapsed && <span>Riwayat Transaksi</span>}
+          </button>
+          <button className={navClass('pesanan')} onClick={() => handleNavClick('pesanan')} title="Pesanan Drop-off">
+            <ClipboardList className={`w-[18px] h-[18px] shrink-0 ${iconClass('pesanan')}`} />
+            {!isCollapsed && <span>Pesanan Drop-off</span>}
+          </button>
+          <button className={navClass('absensi')} onClick={() => handleNavClick('absensi')} title="Absensi">
+            <Clock className={`w-[18px] h-[18px] shrink-0 ${iconClass('absensi')}`} />
+            {!isCollapsed && <span>Absensi Staf</span>}
+          </button>
           <button className={navClass('pelanggan')} onClick={() => handleNavClick('pelanggan')} title="Data Pelanggan">
             <Users className={`w-[18px] h-[18px] shrink-0 ${iconClass('pelanggan')}`} />
             {!isCollapsed && <span>Data Pelanggan</span>}
@@ -210,6 +211,10 @@ export default function Sidebar({
               <button className={navClass('produk')} onClick={() => handleNavClick('produk')} title="Produk">
                 <Tag className={`w-[18px] h-[18px] shrink-0 ${iconClass('produk')}`} />
                 {!isCollapsed && <span>Manajemen Produk</span>}
+              </button>
+              <button className={navClass('menu')} onClick={() => handleNavClick('menu')} title="Desain Menu">
+                <LayoutDashboard className={`w-[18px] h-[18px] shrink-0 ${iconClass('menu')}`} />
+                {!isCollapsed && <span>Menu Digital</span>}
               </button>
               <button className={navClass('rekap')} onClick={() => handleNavClick('rekap')} title="Laporan">
                 <BarChart3 className={`w-[18px] h-[18px] shrink-0 ${iconClass('rekap')}`} />

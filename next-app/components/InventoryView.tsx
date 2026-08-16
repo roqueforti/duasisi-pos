@@ -283,6 +283,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                   placeholder="Contoh: Deterjen Cair"
                   className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">Nama bahan baku, produk, atau perlengkapan.</p>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -304,6 +305,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                     placeholder="pcs / liter"
                     className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
                   />
+                  <p className="text-[10px] text-slate-400 mt-1">Contoh: liter, pcs, botol.</p>
                 </div>
               </div>
               <div>
@@ -315,6 +317,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                   placeholder="5"
                   className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">Tanda peringatan (Menipis) akan muncul jika stok di bawah angka ini.</p>
               </div>
             </div>
             <div className="flex justify-end gap-2">

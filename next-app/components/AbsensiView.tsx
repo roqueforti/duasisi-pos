@@ -43,8 +43,11 @@ export default function AbsensiView() {
 
       if (Array.isArray(rekapRes)) setRekap(rekapRes);
       if (Array.isArray(pegawaiRes) && pegawaiRes.length > 0) {
-        setPegawaiList(pegawaiRes);
-        setNamaPegawai(pegawaiRes[0].nama);
+        const activeStaff = pegawaiRes.filter((s: any) => s.status !== 'Resign' && s.status !== 'Non-Aktif');
+        setPegawaiList(activeStaff);
+        if (activeStaff.length > 0) {
+          setNamaPegawai(activeStaff[0].nama);
+        }
       } else {
         setPegawaiList([
           { nama: 'Siti Rahma', jabatan: 'Kasir', role: 'STAFF' },

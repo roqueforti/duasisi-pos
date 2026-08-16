@@ -608,7 +608,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 mt-4 pt-3 border-t border-slate-100">
+            <div className="flex gap-2 mt-4 pt-3 border-t border-slate-100 flex-wrap">
               <button
                 onClick={() => { handleWhatsAppStruk(selectedTx); }}
                 className="flex-1 flex items-center justify-center gap-1.5 bg-[#1E4648] text-white text-xs font-bold py-2.5 rounded-lg hover:bg-[#163536] transition"

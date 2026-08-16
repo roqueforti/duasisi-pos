@@ -105,6 +105,8 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   const [selectedRestockItem, setSelectedRestockItem] = useState<InventoryItem | null>(null);
   const [restockQty, setRestockQty] = useState<string>('5');
 
+  // Kasir Shift Info
+  const [kasShiftInfo, setKasShiftInfo] = useState<{ kasAwal?: number; waktuBuka?: string; status?: string } | null>(null);
   const fetchDashboardData = async () => {
     setLoading(true);
 
@@ -129,6 +131,17 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         .catch(() => {});
 
       runBackendCached<KinerjaPegawai[]>('getRekapKinerjaPegawai', (kin) => { if (Array.isArray(kin)) setKinerjaStaff(kin); }, 10 * 60 * 1000);
+    } else {
+      // Kasir: fetch active shift info
+      runBackend<any>('getKasShiftAktif', 'OUTLET-UTAMA')
+        .then((shift) => {
+          if (shift && shift.status === 'Aktif') {
+            setKasShiftInfo({ kasAwal: shift.kasAwal, waktuBuka: shift.waktuBuka, status: 'Aktif' });
+          } else {
+            setKasShiftInfo(null);
+          }
+        })
+        .catch(() => {});
     }
 
     setLoading(false);
@@ -631,14 +644,20 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             </div>
           </div>
         ) : (
-          /* KASIR VIEW: PERSONAL SHIFT SUMMARY CARD ONLY */
+          /* KASIR VIEW: PERSONAL SHIFT SUMMARY CARD */
           <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <div>
-              <div className="font-bold text-slate-700">Sesi Shift Aktif Kasir: Kasir 1 (Shift Pagi)</div>
-              <div className="text-[11px] text-slate-500">Jam Masuk: 07.00 WIB • Modal Kas Awal: Rp 100.000</div>
+              <div className="font-bold text-slate-700">
+                {kasShiftInfo ? `Sesi Shift Aktif — Dibuka: ${kasShiftInfo.waktuBuka || '-'}` : 'Belum ada shift aktif'}
+              </div>
+              <div className="text-[11px] text-slate-500">
+                {kasShiftInfo ? `Modal Kas Awal: Rp ${(kasShiftInfo.kasAwal || 0).toLocaleString('id-ID')}` : 'Silakan buka shift dari layar POS Kasir.'}
+              </div>
             </div>
-            <span className="px-3 py-1.5 bg-[#B5C9C9]/30 text-[#1E4648] font-bold rounded-lg text-xs">
-              Shift Berlangsung Aktif
+            <span className={`px-3 py-1.5 font-bold rounded-lg text-xs ${
+              kasShiftInfo ? 'bg-[#B5C9C9]/30 text-[#1E4648]' : 'bg-slate-200 text-slate-500'
+            }`}>
+              {kasShiftInfo ? 'Shift Berlangsung Aktif' : 'Belum Buka Shift'}
             </span>
           </div>
         )}
