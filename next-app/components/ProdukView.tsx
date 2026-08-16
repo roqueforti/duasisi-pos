@@ -45,6 +45,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [satuan, setSatuan] = useState('kg');
   const [icon, setIcon] = useState('🧺');
   const [tipe, setTipe] = useState<'SelfService' | 'FullService'>('SelfService');
+  const [kategori, setKategori] = useState<'Layanan' | 'Layanan Tambahan' | 'Produk' | 'MakananMinuman'>('Layanan');
 
   // Add Promo Modal State
   const [showPromoModal, setShowPromoModal] = useState(false);
@@ -146,23 +147,24 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   const handleOpenAdd = () => {
     setEditingId(null);
-    setNama(''); setHarga(''); setSatuan('kg'); setIcon('🧺'); setTipe('SelfService');
+    setNama(''); setHarga(''); setSatuan('kg'); setIcon('🧺'); setTipe('SelfService'); setKategori('Layanan');
     setShowModal(true);
   };
 
-  const handleOpenEdit = (item: LayananItemBackend) => {
+  const handleOpenEdit = (item: LayananItemBackend & { kategori?: any }) => {
     setEditingId(item.id);
     setNama(item.nama);
     setHarga(item.harga.toString());
     setSatuan(item.satuan || 'kg');
     setIcon(item.icon || '🧺');
     setTipe(item.tipe || 'SelfService');
+    setKategori(item.kategori || 'Layanan');
     setShowModal(true);
   };
 
   const handleSave = async () => {
     if (!nama.trim() || !harga.trim()) { alert('Nama dan harga wajib diisi!'); return; }
-    const payload = { nama: nama.trim(), harga: Number(harga) || 0, satuan, icon, tipe };
+    const payload = { nama: nama.trim(), harga: Number(harga) || 0, satuan, icon, tipe, kategori };
     setLoading(true);
     try {
       if (editingId) {
