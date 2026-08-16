@@ -573,7 +573,15 @@ function resetAndSeed6Bulan() {
 // ============================================================
 // KEAMANAN PIN MANAGEMENT
 // ============================================================
-function changePin(role, oldPin, newPin) {
+
+function getSecuritySettings() {
+  const props = PropertiesService.getScriptProperties();
+  return {
+    emailManager: props.getProperty("EMAIL_MANAGER") || ""
+  };
+}
+
+function saveSecuritySettings(role, oldPin, newPin, emailManager) {
   const props = PropertiesService.getScriptProperties();
   
   if (!newPin || newPin.length !== 4 || isNaN(newPin)) {
@@ -582,15 +590,18 @@ function changePin(role, oldPin, newPin) {
 
   // Jika yang diganti Manager, cek old PIN manager
   if (role === "MANAGER") {
-    const currentManagerPin = props.getProperty("PIN_MANAGER") || "8888"; // PIN_MANAGER dari Config
+    const currentManagerPin = props.getProperty("PIN_MANAGER") || "8888";
     if (oldPin !== currentManagerPin) {
       return { success: false, message: "PIN Lama salah!" };
     }
     props.setProperty("PIN_MANAGER", newPin);
-    return { success: true, message: "PIN Manager berhasil diperbarui." };
+    if (emailManager !== undefined) {
+      props.setProperty("EMAIL_MANAGER", emailManager);
+    }
+    return { success: true, message: "PIN Manager & Pengaturan berhasil diperbarui." };
   }
   
-  // Jika ganti PIN staff (hanya boleh jika yang request sudah login sebagai manager dari frontend, API auth check sudah lewat)
+  // Jika ganti PIN staff
   if (role === "STAFF") {
     props.setProperty("PIN_STAFF", newPin);
     return { success: true, message: "PIN Staff berhasil diperbarui." };
@@ -599,23 +610,26 @@ function changePin(role, oldPin, newPin) {
   return { success: false, message: "Role tidak valid." };
 }
 
-function recoverPin() {
+function recoverPin(emailInput) {
   try {
     const props = PropertiesService.getScriptProperties();
     const currentManagerPin = props.getProperty("PIN_MANAGER") || "8888";
+    const registeredEmail = props.getProperty("EMAIL_MANAGER") || "";
     
-    // Kirim email ke akun google apps script owner
-    const emailTo = Session.getEffectiveUser().getEmail();
-    if (!emailTo) {
-      return { success: false, message: "Tidak bisa mendapatkan email pemilik script." };
+    if (!registeredEmail) {
+      return { success: false, message: "Email Manager belum didaftarkan di sistem. Hubungi developer." };
+    }
+    
+    if (!emailInput || emailInput.toLowerCase() !== registeredEmail.toLowerCase()) {
+      return { success: false, message: "Alamat email tidak cocok dengan yang terdaftar di sistem." };
     }
 
     const subject = "🔑 Pemulihan PIN Manager - POS Dua Sisi Laundry";
     const body = `Halo!\n\nIni adalah email otomatis dari sistem POS Dua Sisi Laundry.\n\nPIN Manager Anda saat ini adalah: ${currentManagerPin}\n\nHarap jaga kerahasiaan PIN ini.\n\nTerima kasih.`;
 
-    MailApp.sendEmail(emailTo, subject, body);
+    MailApp.sendEmail(registeredEmail, subject, body);
 
-    return { success: true, message: "Email berisi PIN pemulihan berhasil dikirim ke pemilik sistem." };
+    return { success: true, message: "Email berisi PIN pemulihan berhasil dikirim!" };
   } catch (err) {
     return { success: false, message: "Gagal mengirim email: " + err.message };
   }

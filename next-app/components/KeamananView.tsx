@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { runBackend } from '@/lib/api';
 import { UserRole } from '@/lib/types';
-import { ShieldCheck, KeyRound, Save } from 'lucide-react';
+import { ShieldCheck, KeyRound, Save, Mail } from 'lucide-react';
 
 export default function KeamananView({ currentRole }: { currentRole?: UserRole }) {
   const [loading, setLoading] = useState(false);
@@ -11,9 +11,28 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
   // Manager PIN State
   const [oldManagerPin, setOldManagerPin] = useState('');
   const [newManagerPin, setNewManagerPin] = useState('');
+  const [emailManager, setEmailManager] = useState('');
   
   // Staff PIN State
   const [newStaffPin, setNewStaffPin] = useState('');
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    setLoading(true);
+    try {
+      const res = await runBackend<{emailManager: string}>('getSecuritySettings');
+      if (res && res.emailManager) {
+        setEmailManager(res.emailManager);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChangeManagerPin = async () => {
     if (oldManagerPin.length !== 4 || newManagerPin.length !== 4) {
@@ -24,16 +43,20 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
       alert('PIN hanya boleh berisi angka!');
       return;
     }
+    if (!emailManager || !emailManager.includes('@')) {
+      alert('Email pemulihan tidak valid!');
+      return;
+    }
     
     setLoading(true);
     try {
-      const res = await runBackend<{success: boolean, message: string}>('changePin', 'MANAGER', oldManagerPin, newManagerPin);
+      const res = await runBackend<{success: boolean, message: string}>('saveSecuritySettings', 'MANAGER', oldManagerPin, newManagerPin, emailManager);
       if (res && res.success) {
-        alert('PIN Manager berhasil diubah!');
+        alert('Pengaturan Keamanan Manager berhasil diubah!');
         setOldManagerPin('');
         setNewManagerPin('');
       } else {
-        alert(res?.message || 'Gagal mengubah PIN Manager.');
+        alert(res?.message || 'Gagal mengubah pengaturan Manager.');
       }
     } catch (err: any) {
       alert('Terjadi kesalahan: ' + err.message);
@@ -54,7 +77,7 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
 
     setLoading(true);
     try {
-      const res = await runBackend<{success: boolean, message: string}>('changePin', 'STAFF', '', newStaffPin);
+      const res = await runBackend<{success: boolean, message: string}>('saveSecuritySettings', 'STAFF', '', newStaffPin);
       if (res && res.success) {
         alert('PIN Staff berhasil diubah!');
         setNewStaffPin('');
@@ -84,7 +107,7 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
           <ShieldCheck className="w-6 h-6 text-[#1E4648]" />
           Manajemen Keamanan
         </h1>
-        <p className="text-sm text-slate-500 mt-1">Kelola PIN akses untuk Manager dan Staff (Kasir).</p>
+        <p className="text-sm text-slate-500 mt-1">Kelola PIN akses dan pengaturan pemulihan (Lupa PIN).</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
@@ -93,11 +116,25 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
           <h3 className="font-bold text-slate-700 flex items-center gap-2 pb-2 border-b border-slate-100">
             <KeyRound className="w-5 h-5 text-rose-500" />
-            Ubah PIN Manager
+            Pengaturan Keamanan Manager
           </h3>
-          <p className="text-[11px] text-slate-400">Gunakan PIN ini untuk mengakses menu manajemen dan merestui void transaksi.</p>
+          <p className="text-[11px] text-slate-400">PIN untuk mengakses menu manajemen, serta email untuk pemulihan jika lupa PIN.</p>
           
           <div>
+            <label className="block text-xs font-bold text-slate-600 mb-1">Email Pemulihan</label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="email"
+                value={emailManager}
+                onChange={e => setEmailManager(e.target.value)}
+                placeholder="email@contoh.com"
+                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400/20 font-medium"
+              />
+            </div>
+          </div>
+
+          <div className="pt-2">
             <label className="block text-xs font-bold text-slate-600 mb-1">PIN Lama (4 digit)</label>
             <input
               type="password"
@@ -125,11 +162,11 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
 
           <button
             onClick={handleChangeManagerPin}
-            disabled={loading || oldManagerPin.length !== 4 || newManagerPin.length !== 4}
+            disabled={loading || oldManagerPin.length !== 4 || newManagerPin.length !== 4 || !emailManager}
             className="w-full mt-2 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold py-2 rounded-lg text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <Save className="w-4 h-4" />
-            Update PIN Manager
+            Simpan Pengaturan
           </button>
         </div>
 

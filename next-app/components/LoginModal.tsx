@@ -100,23 +100,12 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
         </div>
 
         <div className="flex justify-center mt-2">
-          <button 
-            type="button"
-            disabled={loading}
-            onClick={async () => {
-              if (window.confirm("Kirim email pemulihan PIN ke Owner sistem?")) {
-                try {
-                  const res = await runBackend<{success: boolean, message: string}>("recoverPin");
-                  alert(res?.message || "Permintaan dikirim.");
-                } catch (e: any) {
-                  alert(e.message || "Gagal memanggil API");
-                }
-              }
-            }}
+          <a 
+            href="/lupa-pin"
             className="text-xs text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-4"
           >
             Lupa PIN Manager?
-          </button>
+          </a>
         </div>
 
         {/* On-screen Numpad (tablet-friendly) */}

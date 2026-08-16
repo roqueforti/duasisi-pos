@@ -42,7 +42,7 @@ const ALLOWED_API_ACTIONS = Object.freeze({
   getKategoriList: true, tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true,
   getAbsensiConfig: true, saveAbsensiConfig: true, updateMasterShift: true,
   getPipelineConfigData: true, savePipelineConfigData: true,
-  changePin: true, recoverPin: true
+  saveSecuritySettings: true, getSecuritySettings: true, recoverPin: true
 });
 const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true, recoverPin: true });
 const MANAGER_API_ACTIONS = Object.freeze({
@@ -57,7 +57,7 @@ const MANAGER_API_ACTIONS = Object.freeze({
   tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true,
   saveAbsensiConfig: true, updateMasterShift: true,
   getPipelineConfigData: true, savePipelineConfigData: true,
-  changePin: true
+  saveSecuritySettings: true, getSecuritySettings: true
 });
 
 /**
