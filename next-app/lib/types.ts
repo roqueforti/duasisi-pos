@@ -24,6 +24,7 @@ export interface TransaksiItem {
   layanan: string;
   qty: number;
   hargaSatuan: number;
+  subtotal?: number;
   catatan?: string;
 }
 
