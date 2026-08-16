@@ -49,6 +49,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   // Add Promo Modal State
   const [showPromoModal, setShowPromoModal] = useState(false);
+  const [editingPromoId, setEditingPromoId] = useState<string | null>(null);
   const [kodePromo, setKodePromo] = useState('');
   const [nilaiDiskon, setNilaiDiskon] = useState('10000');
   const [minTx, setMinTx] = useState('50000');
@@ -209,14 +210,26 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       minTransaksi: Number(minTx) || 0
     };
     try {
-      await runBackend('tambahPromo', payload);
+      if (editingPromoId) {
+        await runBackend('editPromo', editingPromoId, payload);
+      } else {
+        await runBackend('tambahPromo', payload);
+      }
       setShowPromoModal(false);
       setKodePromo('');
       loadPromo();
-      alert(`Promo ${payload.kodeVoucher} berhasil ditambahkan ke database!`);
+      alert(`Promo ${payload.kodeVoucher} berhasil disimpan ke database!`);
     } catch (err) {
       alert('Gagal menyimpan promo ke backend');
     }
+  };
+
+  const handleOpenEditPromo = (prm: PromoVoucher) => {
+    setEditingPromoId(prm.idPromo);
+    setKodePromo(prm.kodeVoucher);
+    setNilaiDiskon(prm.nilaiDiskon.toString());
+    setMinTx(prm.minTransaksi?.toString() || '0');
+    setShowPromoModal(true);
   };
 
   const handleHapusPromo = async (id: string) => {
@@ -348,7 +361,11 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
         {activeSubTab === 'Promo' && currentRole === 'MANAGER' && (
           <button
-            onClick={() => setShowPromoModal(true)}
+            onClick={() => {
+              setEditingPromoId(null);
+              setKodePromo(''); setNilaiDiskon('10000'); setMinTx('50000');
+              setShowPromoModal(true);
+            }}
             className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" /> Buat Voucher Promo
@@ -447,11 +464,16 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         Berlaku
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-3 px-4 text-right space-x-1">
                       {currentRole === 'MANAGER' ? (
-                        <button onClick={() => handleHapusPromo(prm.idPromo)} className="p-1 text-rose-500 hover:text-rose-700" title="Hapus Promo">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <>
+                          <button onClick={() => handleOpenEditPromo(prm)} className="p-1 text-slate-500 hover:text-slate-600" title="Edit Promo">
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleHapusPromo(prm.idPromo)} className="p-1 text-rose-500 hover:text-rose-700" title="Hapus Promo">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
                       ) : (
                         <span className="text-slate-400 text-xs">-</span>
                       )}
@@ -634,7 +656,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm">
             <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-slate-600">Buat Voucher Promo Baru</h3>
+              <h3 className="text-sm font-bold text-slate-600">{editingPromoId ? 'Edit Voucher Promo' : 'Buat Voucher Promo Baru'}</h3>
               <button onClick={() => setShowPromoModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
             </div>
 

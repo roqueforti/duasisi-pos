@@ -44,7 +44,7 @@ const MANAGER_API_ACTIONS = Object.freeze({
   tambahLayanan: true, updateLayanan: true, toggleAktifLayanan: true, hapusLayanan: true,
   tambahInventory: true, hapusInventory: true,
   tambahMesin: true, hapusMesin: true,
-  tambahPromo: true, hapusPromo: true,
+  tambahPromo: true, hapusPromo: true, editPromo: true,
   tambahPegawai: true, hapusPegawai: true,
   tambahMasterShift: true, hapusMasterShift: true,
   getLaporanRange: true, getAuditLogs: true, approveVoidTransaksi: true, getRekapKasShift: true,
@@ -876,6 +876,23 @@ function tambahPromo(data) {
   const kode = String(data.kodeVoucher).trim().toUpperCase();
   sh.appendRow([id, kode, data.jenisDiskon || "Nominal", Number(data.nilaiDiskon) || 0, Number(data.minTransaksi) || 0, "Aktif"]);
   return { success: true, idPromo: id };
+}
+
+function editPromo(id, data) {
+  const sh = SS.getSheetByName(SHEET_PROMO);
+  if (!sh) return { success: false, message: "Sheet Promo tidak ditemukan" };
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
+      if (data.kodeVoucher) sh.getRange(i + 1, 2).setValue(String(data.kodeVoucher).trim().toUpperCase());
+      if (data.jenisDiskon) sh.getRange(i + 1, 3).setValue(data.jenisDiskon);
+      if (data.nilaiDiskon !== undefined) sh.getRange(i + 1, 4).setValue(Number(data.nilaiDiskon));
+      if (data.minTransaksi !== undefined) sh.getRange(i + 1, 5).setValue(Number(data.minTransaksi));
+      if (data.statusAktif !== undefined) sh.getRange(i + 1, 6).setValue(data.statusAktif ? "Aktif" : "Non-Aktif");
+      return { success: true };
+    }
+  }
+  return { success: false, message: "Promo tidak ditemukan" };
 }
 
 function hapusPromo(id) {
