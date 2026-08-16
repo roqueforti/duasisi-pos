@@ -5,6 +5,7 @@ import { Clock, LogIn, LogOut, RefreshCw, UserCheck } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { Pegawai } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
+import { formatTime } from '@/lib/utils';
 
 interface AbsensiRecord {
   id: string;
@@ -138,7 +139,7 @@ export default function AbsensiView() {
               {shiftList.length > 0 ? (
                 shiftList.map((s, idx) => (
                   <option key={idx} value={s.nama}>
-                    {s.nama} ({s.jamMasuk} - {s.jamKeluar})
+                    {s.nama} ({formatTime(s.jamMasuk)} - {formatTime(s.jamKeluar)})
                   </option>
                 ))
               ) : (

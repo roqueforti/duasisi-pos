@@ -24,3 +24,19 @@ export function eNotaUrl(noNota: string, token?: string): string {
   // fallback — noNota visible, tapi masih bisa dibuka
   return `${base}?nota=${encodeURIComponent(noNota)}`;
 }
+
+/**
+ * Format string ISO date/time menjadi HH.mm
+ */
+export function formatTime(timeStr: string | undefined | null): string {
+  if (!timeStr) return '';
+  try {
+    const d = new Date(timeStr);
+    if (isNaN(d.getTime())) return timeStr;
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}.${mm}`;
+  } catch (e) {
+    return timeStr;
+  }
+}
