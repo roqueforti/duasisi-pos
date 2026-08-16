@@ -19,6 +19,23 @@ interface AbsensiConfig {
   toleransiTelatMenit: number;
 }
 
+const formatShiftTime = (timeStr: string) => {
+  if (!timeStr) return '-';
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(timeStr)) return timeStr.substring(0, 5);
+  
+  if (timeStr.includes('T') || timeStr.includes('-')) {
+    const d = new Date(timeStr);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleTimeString('id-ID', {
+        timeZone: 'Asia/Jakarta', 
+        hour: '2-digit', 
+        minute: '2-digit'
+      }).replace('.', ':');
+    }
+  }
+  return timeStr;
+};
+
 export default function ShiftView({ currentRole }: { currentRole?: UserRole }) {
   const [shifts, setShifts] = useState<MasterShift[]>([]);
   const [config, setConfig] = useState<AbsensiConfig>({ jamBuka: '07:00', toleransiTelatMenit: 15 });
@@ -75,8 +92,8 @@ export default function ShiftView({ currentRole }: { currentRole?: UserRole }) {
   const handleOpenEdit = (item: MasterShift) => {
     setEditingId(item.id);
     setNamaShift(item.nama);
-    setJamMasuk(item.jamMasuk);
-    setJamKeluar(item.jamKeluar);
+    setJamMasuk(formatShiftTime(item.jamMasuk));
+    setJamKeluar(formatShiftTime(item.jamKeluar));
     setKeterangan(item.keterangan || '');
     setShowModal(true);
   };
@@ -222,8 +239,8 @@ export default function ShiftView({ currentRole }: { currentRole?: UserRole }) {
                     shifts.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/50 transition">
                         <td className="px-5 py-3 font-semibold text-slate-800">{item.nama}</td>
-                        <td className="px-5 py-3 font-mono text-[#1E4648]">{item.jamMasuk}</td>
-                        <td className="px-5 py-3 font-mono text-[#FF9500]">{item.jamKeluar}</td>
+                        <td className="px-5 py-3 font-mono text-[#1E4648]">{formatShiftTime(item.jamMasuk)}</td>
+                        <td className="px-5 py-3 font-mono text-[#FF9500]">{formatShiftTime(item.jamKeluar)}</td>
                         <td className="px-5 py-3 text-slate-500">{item.keterangan || '-'}</td>
                         <td className="px-5 py-3 text-right space-x-1">
                           <button
