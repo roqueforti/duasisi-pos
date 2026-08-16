@@ -32,7 +32,7 @@ function simpanPelangganJikaBaru(nama, noHp, alamat, totalBelanja, catatan) {
   let shP = SS.getSheetByName(SHEET_PELANGGAN);
   if (!shP) {
     shP = SS.insertSheet(SHEET_PELANGGAN);
-    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan"]);
+    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin"]);
   }
 
   const data = shP.getDataRange().getValues();
@@ -48,6 +48,9 @@ function simpanPelangganJikaBaru(nama, noHp, alamat, totalBelanja, catatan) {
 
   const now = new Date();
   const spend = Number(totalBelanja) || 0;
+  const props = PropertiesService.getScriptProperties();
+  const poinRate = Number(props.getProperty("POIN_RATE") || 10000);
+  const poinAdded = poinRate > 0 ? Math.floor(spend / poinRate) : 0;
 
   if (foundRowIdx > 0) {
     // Update existing customer stats
@@ -56,6 +59,7 @@ function simpanPelangganJikaBaru(nama, noHp, alamat, totalBelanja, catatan) {
     const currentTxCount = Number(data[foundRowIdx - 1][4]) || 0;
     const currentSpend = Number(data[foundRowIdx - 1][5]) || 0;
     const currentNotes = data[foundRowIdx - 1][7] || "";
+    const currentPoin = Number(data[foundRowIdx - 1][8]) || 0;
 
     if (nama && nama.trim()) shP.getRange(foundRowIdx, 2).setValue(nama.trim());
     if (alamat && alamat.trim()) shP.getRange(foundRowIdx, 3).setValue(alamat.trim());
@@ -63,10 +67,11 @@ function simpanPelangganJikaBaru(nama, noHp, alamat, totalBelanja, catatan) {
     shP.getRange(foundRowIdx, 6).setValue(currentSpend + spend);
     shP.getRange(foundRowIdx, 7).setValue(now);
     if (catatan && catatan.trim()) shP.getRange(foundRowIdx, 8).setValue(catatan.trim());
+    shP.getRange(foundRowIdx, 9).setValue(currentPoin + poinAdded);
   } else {
     // Insert new customer record
-    // ["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan"]
-    shP.appendRow([cleanHp, nama ? nama.trim() : "Pelanggan Baru", alamat || "", now, 1, spend, now, catatan || ""]);
+    // ["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin"]
+    shP.appendRow([cleanHp, nama ? nama.trim() : "Pelanggan Baru", alamat || "", now, 1, spend, now, catatan || "", poinAdded]);
   }
 }
 
@@ -113,7 +118,8 @@ function cariPelangganByHp(queryStr) {
         totalSpend: totalSpend,
         terakhirOrder: terakhir,
         catatan: catatan,
-        isRepeatOrder: totalTx > 1
+        isRepeatOrder: totalTx > 1,
+        saldoPoin: Number(r[8]) || 0
       });
     }
   });
@@ -152,7 +158,8 @@ function getDaftarPelanggan() {
       totalSpend: Number(r[5]) || 0,
       terakhirOrder: r[6] ? fmtWib(r[6], "dd/MM/yyyy HH:mm") : "",
       catatan: r[7] || "",
-      isRepeatOrder: (Number(r[4]) || 0) > 1
+      isRepeatOrder: (Number(r[4]) || 0) > 1,
+      saldoPoin: Number(r[8]) || 0
     };
   });
 }

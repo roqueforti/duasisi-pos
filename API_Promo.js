@@ -83,14 +83,12 @@ function validasiVoucher(kodeInput, subtotal) {
 function getPoinConfig() {
   const props = PropertiesService.getScriptProperties();
   return {
-    rate: Number(props.getProperty("POIN_RATE") || 10000),
-    value: Number(props.getProperty("POIN_VALUE") || 1000)
+    rate: Number(props.getProperty("POIN_RATE") || 10000)
   };
 }
 
-function savePoinConfig(rate, value) {
+function savePoinConfig(rate) {
   const props = PropertiesService.getScriptProperties();
   props.setProperty("POIN_RATE", String(rate || 10000));
-  props.setProperty("POIN_VALUE", String(value || 1000));
   return { success: true, message: "Konfigurasi poin berhasil disimpan!" };
 }

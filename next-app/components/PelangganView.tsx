@@ -74,7 +74,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
       const data = await runBackend<PelangganItem[]>('getDaftarPelanggan');
       if (Array.isArray(data)) setPelangganList(data);
       
-      const conf = await runBackend<{ rate: number; value: number }>('getPoinConfig');
+      const conf = await runBackend<{ rate: number }>('getPoinConfig');
       if (conf && conf.rate) setPoinRate(conf.rate);
     } catch (err) {
       console.error('Failed to load data:', err);

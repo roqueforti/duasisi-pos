@@ -70,7 +70,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   // Loyalty Settings
   const [poinRate, setPoinRate] = useState('10000');
-  const [poinValue, setPoinValue] = useState('1000');
 
   // Priority Settings (Removed)
 
@@ -88,10 +87,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   const loadPoinConfig = async () => {
     try {
-      const config = await runBackend<{rate: number, value: number}>('getPoinConfig');
+      const config = await runBackend<{rate: number}>('getPoinConfig');
       if (config) {
         setPoinRate(config.rate.toString());
-        setPoinValue(config.value.toString());
       }
     } catch (err) {
       console.error('Gagal memuat konfigurasi poin:', err);
@@ -483,23 +481,12 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
               />
               <p className="text-[10px] text-slate-400 mt-1">Setiap kelipatan nominal di atas, pelanggan mendapat 1 Poin.</p>
             </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Nilai Tukar 1 Poin (Rp)</label>
-              <input
-                type="number"
-                value={poinValue}
-                onChange={(e) => setPoinValue(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] font-bold"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">Nominal potongan harga yang diberikan untuk setiap penukaran 1 Poin.</p>
-            </div>
           </div>
 
           <button
             onClick={async () => {
               try {
-                const res = await runBackend<{success: boolean, message: string}>('savePoinConfig', Number(poinRate) || 10000, Number(poinValue) || 1000);
+                const res = await runBackend<{success: boolean, message: string}>('savePoinConfig', Number(poinRate) || 10000);
                 await showAlert(res?.message || 'Pengaturan poin loyalitas berhasil disimpan!', 'success');
               } catch (err) {
                 await showAlert('Gagal menyimpan konfigurasi poin!', 'error');

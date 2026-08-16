@@ -39,7 +39,7 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
       }
 
       try {
-        const conf = await runBackend<{rate: number, value: number}>('getPoinConfig');
+        const conf = await runBackend<{rate: number}>('getPoinConfig');
         if (conf && conf.rate) setPoinRate(conf.rate);
       } catch (e) {}
     } catch (err: any) {

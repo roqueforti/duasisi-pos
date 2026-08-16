@@ -63,7 +63,7 @@ export default function PrinterModal({
       setSuccessMsg(null);
       setSelectedPrintType(initialPrintType);
       
-      runBackend<{rate: number, value: number}>('getPoinConfig')
+      runBackend<{rate: number}>('getPoinConfig')
         .then(res => { if (res && res.rate) setPoinRate(res.rate); })
         .catch(() => {});
     }

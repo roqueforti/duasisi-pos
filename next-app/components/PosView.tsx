@@ -255,7 +255,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     );
 
     // 4. Poin Config
-    runBackend<{rate: number, value: number}>('getPoinConfig').then(res => {
+    runBackend<{rate: number}>('getPoinConfig').then(res => {
       if (res && res.rate) setPoinRate(res.rate);
     }).catch(() => {});
 
