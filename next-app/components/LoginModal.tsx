@@ -99,14 +99,6 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
           )}
         </div>
 
-        <div className="flex justify-center mt-2">
-          <a 
-            href="/lupa-pin"
-            className="text-xs text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-4"
-          >
-            Lupa PIN Manager?
-          </a>
-        </div>
 
         {/* On-screen Numpad (tablet-friendly) */}
         {!loading && (
