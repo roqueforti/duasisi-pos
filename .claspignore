@@ -1,6 +1,7 @@
 **/**
 !*.js
 !appsscript.json
+sw.js
 next-app/**
 node_modules/**
 .git/**
