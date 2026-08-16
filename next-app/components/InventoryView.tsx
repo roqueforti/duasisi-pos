@@ -6,6 +6,7 @@ import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
+import { useDialog } from '@/components/DialogProvider';
 
 interface InventoryItem {
   id: string;
@@ -21,6 +22,7 @@ interface InventoryViewProps {
 }
 
 export default function InventoryView({ currentRole }: InventoryViewProps = {}) {
+  const { showAlert, showConfirm } = useDialog();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   
@@ -49,7 +51,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   }, []);
 
   const handleAdd = async () => {
-    if (!nama.trim()) { alert('Masukkan nama barang!'); return; }
+    if (!nama.trim()) { await showAlert('Masukkan nama barang!', 'warning'); return; }
     setLoading(true);
     try {
       await runBackend('tambahInventory', {
@@ -63,7 +65,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
       setNama(''); setStok('');
       loadInventory();
     } catch (err) {
-      alert('Gagal menambah barang');
+      await showAlert('Gagal menambah barang', 'error');
     } finally {
       setLoading(false);
     }
@@ -74,17 +76,18 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
       await runBackend('updateStokInventory', id, delta);
       loadInventory();
     } catch (err) {
-      alert('Gagal mengupdate stok');
+      await showAlert('Gagal mengupdate stok', 'error');
     }
   };
 
   const handleDelete = async (id: string, namaBarang: string) => {
-    if (!confirm(`Hapus barang ${namaBarang}?`)) return;
+    const isConfirmed = await showConfirm(`Hapus barang ${namaBarang}?`);
+    if (!isConfirmed) return;
     try {
       await runBackend('hapusInventory', id);
       loadInventory();
     } catch (err) {
-      alert('Gagal menghapus barang');
+      await showAlert('Gagal menghapus barang', 'error');
     }
   };
 
@@ -107,7 +110,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     try {
       const text = await readFileAsText(file);
       const rows = parseCSV(text);
-      if (rows.length === 0) { alert('File CSV kosong atau format salah.'); return; }
+      if (rows.length === 0) { await showAlert('File CSV kosong atau format salah.', 'warning'); return; }
       let success = 0, fail = 0;
       for (const row of rows) {
         const nama = row['Nama Barang'] || row['nama'] || '';
@@ -124,9 +127,9 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
       }
       clearCache('getInventoryList');
       loadInventory();
-      alert(`Import selesai: ${success} berhasil${fail > 0 ? `, ${fail} gagal` : ''}.`);
+      await showAlert(`Import selesai: ${success} berhasil${fail > 0 ? `, ${fail} gagal` : ''}.`, 'success');
     } catch (err) {
-      alert('Gagal membaca file CSV.');
+      await showAlert('Gagal membaca file CSV.', 'error');
     }
   };
 

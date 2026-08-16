@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { UserRole } from '@/lib/types';
+import { useDialog } from '@/components/DialogProvider';
 import { Clock, Edit2, Trash2, Plus, Save, X, Settings2 } from 'lucide-react';
 
 interface MasterShift {
@@ -37,6 +38,7 @@ const formatShiftTime = (timeStr: string) => {
 };
 
 export default function ShiftView({ currentRole }: { currentRole?: UserRole }) {
+  const { showAlert, showConfirm } = useDialog();
   const [shifts, setShifts] = useState<MasterShift[]>([]);
   const [config, setConfig] = useState<AbsensiConfig>({ jamBuka: '07:00', toleransiTelatMenit: 15 });
   const [loading, setLoading] = useState(true);
@@ -72,9 +74,9 @@ export default function ShiftView({ currentRole }: { currentRole?: UserRole }) {
     setLoading(true);
     try {
       await runBackend('saveAbsensiConfig', config.jamBuka, Number(config.toleransiTelatMenit));
-      alert('Pengaturan absensi berhasil disimpan!');
+      await showAlert('Pengaturan absensi berhasil disimpan!', 'success');
     } catch (err) {
-      alert('Gagal menyimpan pengaturan absensi.');
+      await showAlert('Gagal menyimpan pengaturan absensi.', 'error');
     } finally {
       setLoading(false);
     }
@@ -100,7 +102,7 @@ export default function ShiftView({ currentRole }: { currentRole?: UserRole }) {
 
   const handleSaveShift = async () => {
     if (!namaShift.trim() || !jamMasuk || !jamKeluar) {
-      alert('Nama, jam masuk, dan jam keluar wajib diisi!');
+      await showAlert('Nama, jam masuk, dan jam keluar wajib diisi!', 'warning');
       return;
     }
     setLoading(true);
@@ -122,20 +124,23 @@ export default function ShiftView({ currentRole }: { currentRole?: UserRole }) {
       }
       setShowModal(false);
       loadData();
+      await showAlert('Shift berhasil disimpan!', 'success');
     } catch (err) {
-      alert('Gagal menyimpan shift.');
+      await showAlert('Gagal menyimpan shift.', 'error');
       setLoading(false);
     }
   };
 
   const handleDeleteShift = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus shift ini?')) return;
+    const isConfirmed = await showConfirm('Yakin ingin menghapus shift ini?');
+    if (!isConfirmed) return;
     setLoading(true);
     try {
       await runBackend('hapusMasterShift', id);
       loadData();
+      await showAlert('Shift berhasil dihapus!', 'success');
     } catch (err) {
-      alert('Gagal menghapus shift.');
+      await showAlert('Gagal menghapus shift.', 'error');
       setLoading(false);
     }
   };

@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
+import { useDialog } from '@/components/DialogProvider';
 
 interface DashboardViewProps {
   currentRole: UserRole;
@@ -85,6 +86,7 @@ interface KinerjaPegawai {
 }
 
 export default function DashboardView({ currentRole }: DashboardViewProps) {
+  const { showAlert } = useDialog();
   const isManager = currentRole === 'MANAGER';
   const [loading, setLoading] = useState<boolean>(false);
   const [dateRange, setDateRange] = useState<'7d' | '30d' | 'month'>('7d');
@@ -169,16 +171,16 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     if (!selectedRestockItem) return;
     const delta = Number(restockQty) || 0;
     if (delta <= 0) {
-      alert('Masukkan jumlah stok valid!');
+      await showAlert('Masukkan jumlah stok valid!', 'warning');
       return;
     }
     try {
       await runBackend('updateStokInventory', selectedRestockItem.id, delta);
-      alert(`Berhasil menambah stok +${delta} ${selectedRestockItem.satuan} untuk ${selectedRestockItem.nama}`);
+      await showAlert(`Berhasil menambah stok +${delta} ${selectedRestockItem.satuan} untuk ${selectedRestockItem.nama}`, 'success');
       setSelectedRestockItem(null);
       fetchDashboardData();
     } catch {
-      alert('Gagal memperbarui stok inventory');
+      await showAlert('Gagal memperbarui stok inventory', 'error');
     }
   };
 

@@ -5,6 +5,7 @@ import { ShieldCheck, Printer, Share2, CheckCircle2, RefreshCw, AlertCircle, Spa
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
 import { maskPhone } from '@/lib/utils';
+import { useDialog } from '@/components/DialogProvider';
 
 interface ENotaViewProps {
   noNota: string;
@@ -13,6 +14,7 @@ interface ENotaViewProps {
 }
 
 export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps) {
+  const { showAlert } = useDialog();
   const [loading, setLoading] = useState<boolean>(true);
   const [tx, setTx] = useState<Transaksi | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -75,7 +77,7 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
     printWin.onload = () => { printWin.focus(); printWin.print(); };
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     const url = window.location.href;
     if (navigator.share) {
       navigator.share({
@@ -85,7 +87,7 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
       }).catch(() => {});
     } else {
       navigator.clipboard.writeText(url);
-      alert('Link E-Nota Resmi berhasil disalin ke clipboard!');
+      await showAlert('Link E-Nota Resmi berhasil disalin ke clipboard!', 'success');
     }
   };
 

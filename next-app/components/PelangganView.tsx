@@ -22,6 +22,7 @@ import {
 import { runBackend, runBackendCached } from '@/lib/api';
 import { maskPhone } from '@/lib/utils';
 import { UserRole } from '@/lib/types';
+import { useDialog } from '@/components/DialogProvider';
 
 export interface PelangganItem {
   noHp: string;
@@ -47,6 +48,7 @@ export interface TransaksiItemHistory {
 }
 
 export default function PelangganView({ currentRole }: { currentRole?: UserRole } = {}) {
+  const { showAlert } = useDialog();
   const [pelangganList, setPelangganList] = useState<PelangganItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [poinRate, setPoinRate] = useState<number>(10000);
@@ -113,7 +115,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const handleSaveCustomerEdit = async () => {
     if (!selectedCust) return;
     if (!editNama.trim() || !editNoHp.trim()) {
-      alert('Nama dan No. HP pelanggan wajib diisi!');
+      await showAlert('Nama dan No. HP pelanggan wajib diisi!', 'warning');
       return;
     }
     setSavingEdit(true);
@@ -127,14 +129,14 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
         editCatatan.trim()
       );
       if (res && res.success) {
-        alert(res.message || 'Data pelanggan berhasil diperbarui!');
+        await showAlert(res.message || 'Data pelanggan berhasil diperbarui!', 'success');
         setShowDetailModal(false);
         loadDataPelanggan();
       } else {
-        alert(res?.message || 'Gagal memperbarui data pelanggan');
+        await showAlert(res?.message || 'Gagal memperbarui data pelanggan', 'error');
       }
     } catch (err) {
-      alert('Terjadi kesalahan saat memperbarui pelanggan');
+      await showAlert('Terjadi kesalahan saat memperbarui pelanggan', 'error');
     } finally {
       setSavingEdit(false);
     }

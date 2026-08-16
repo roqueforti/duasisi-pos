@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { runBackend } from '@/lib/api';
 import { UserRole } from '@/lib/types';
 import { ShieldCheck, KeyRound, Save, Mail } from 'lucide-react';
+import { useDialog } from '@/components/DialogProvider';
 
 export default function KeamananView({ currentRole }: { currentRole?: UserRole }) {
+  const { showAlert } = useDialog();
   const [loading, setLoading] = useState(false);
   
   // Manager PIN State
@@ -36,15 +38,15 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
 
   const handleChangeManagerPin = async () => {
     if (oldManagerPin.length !== 4 || newManagerPin.length !== 4) {
-      alert('PIN harus tepat 4 digit!');
+      await showAlert('PIN harus tepat 4 digit!', 'warning');
       return;
     }
     if (isNaN(Number(oldManagerPin)) || isNaN(Number(newManagerPin))) {
-      alert('PIN hanya boleh berisi angka!');
+      await showAlert('PIN hanya boleh berisi angka!', 'warning');
       return;
     }
     if (!emailManager || !emailManager.includes('@')) {
-      alert('Email pemulihan tidak valid!');
+      await showAlert('Email pemulihan tidak valid!', 'warning');
       return;
     }
     
@@ -52,14 +54,14 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
     try {
       const res = await runBackend<{success: boolean, message: string}>('saveSecuritySettings', 'MANAGER', oldManagerPin, newManagerPin, emailManager);
       if (res && res.success) {
-        alert('Pengaturan Keamanan Manager berhasil diubah!');
+        await showAlert('Pengaturan Keamanan Manager berhasil diubah!', 'success');
         setOldManagerPin('');
         setNewManagerPin('');
       } else {
-        alert(res?.message || 'Gagal mengubah pengaturan Manager.');
+        await showAlert(res?.message || 'Gagal mengubah pengaturan Manager.', 'error');
       }
     } catch (err: any) {
-      alert('Terjadi kesalahan: ' + err.message);
+      await showAlert('Terjadi kesalahan: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -67,11 +69,11 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
 
   const handleChangeStaffPin = async () => {
     if (newStaffPin.length !== 4) {
-      alert('PIN harus tepat 4 digit!');
+      await showAlert('PIN harus tepat 4 digit!', 'warning');
       return;
     }
     if (isNaN(Number(newStaffPin))) {
-      alert('PIN hanya boleh berisi angka!');
+      await showAlert('PIN hanya boleh berisi angka!', 'warning');
       return;
     }
 
@@ -79,13 +81,13 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
     try {
       const res = await runBackend<{success: boolean, message: string}>('saveSecuritySettings', 'STAFF', '', newStaffPin);
       if (res && res.success) {
-        alert('PIN Staff berhasil diubah!');
+        await showAlert('PIN Staff berhasil diubah!', 'success');
         setNewStaffPin('');
       } else {
-        alert(res?.message || 'Gagal mengubah PIN Staff.');
+        await showAlert(res?.message || 'Gagal mengubah PIN Staff.', 'error');
       }
     } catch (err: any) {
-      alert('Terjadi kesalahan: ' + err.message);
+      await showAlert('Terjadi kesalahan: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }

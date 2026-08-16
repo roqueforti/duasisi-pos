@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { Transaksi, AuditLog } from '@/lib/types';
+import { useDialog } from '@/components/DialogProvider';
 
 interface RekapKasShift {
   idShift: string;
@@ -44,6 +45,7 @@ interface LaporanResponse {
 }
 
 export default function RekapView() {
+  const { showAlert, showConfirm, showPrompt } = useDialog();
   const todayObj = new Date();
   const todayStr = todayObj.toISOString().substring(0, 10);
   
@@ -103,26 +105,27 @@ export default function RekapView() {
 
   const handleApproveVoid = async (noNota: string, isApproved: boolean) => {
     const actionStr = isApproved ? 'menyetujui' : 'menolak';
-    if (!confirm(`Konfirmasi ${actionStr} pembatalan (void) nota ${noNota}?`)) return;
-    const catatan = window.prompt(`Catatan keputusan (${actionStr}) *:`);
+    const isConfirmed = await showConfirm(`Konfirmasi ${actionStr} pembatalan (void) nota ${noNota}?`);
+    if (!isConfirmed) return;
+    const catatan = await showPrompt(`Catatan keputusan (${actionStr}) *:`);
     if (!catatan?.trim()) {
-      alert('Catatan keputusan wajib diisi.');
+      await showAlert('Catatan keputusan wajib diisi.', 'warning');
       return;
     }
 
     try {
       const result = await runBackend<{ success: boolean; message?: string }>('approveVoidTransaksi', noNota, isApproved, 'Manager / Owner', 'MANAGER', catatan.trim());
       if (!result?.success) throw new Error(result?.message || 'Approval gagal disimpan');
-      alert(`Berhasil ${actionStr} void nota ${noNota}`);
+      await showAlert(`Berhasil ${actionStr} void nota ${noNota}`, 'success');
       loadLaporan();
     } catch (error) {
       console.error(error);
-      alert(`Gagal memproses void nota ${noNota}. Silakan coba lagi.`);
+      await showAlert(`Gagal memproses void nota ${noNota}. Silakan coba lagi.`, 'error');
     }
   };
 
-  const handleExportCSV = () => {
-    if (!data || !data.omzetHarian) { alert('Tidak ada data laporan untuk diekspor!'); return; }
+  const handleExportCSV = async () => {
+    if (!data || !data.omzetHarian) { await showAlert('Tidak ada data laporan untuk diekspor!', 'warning'); return; }
     
     let csv = 'Tanggal,Jumlah Transaksi,Total Omzet\n';
     data.omzetHarian.forEach(row => {
@@ -145,12 +148,13 @@ export default function RekapView() {
   const maxOmzetHarian = Math.max(...omzetHarian.map(o => o.omzet), 100000);
 
   const handleRunSeeder6Bulan = async () => {
-    if (!confirm('Generate ~300-500 data sampel transaksi acak selama 6 bulan terakhir ke database Google Sheets? (Data transaksi lama akan di-reset).')) return;
+    const isConfirmed = await showConfirm('Generate ~300-500 data sampel transaksi acak selama 6 bulan terakhir ke database Google Sheets? (Data transaksi lama akan di-reset).');
+    if (!isConfirmed) return;
     setLoading(true);
     try {
       const res = await runBackend<any>('resetAndSeed6Bulan');
       if (res && res.success) {
-        alert(`✅ ${res.message}`);
+        await showAlert(`✅ ${res.message}`, 'success');
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
         const startStr = sixMonthsAgo.toISOString().substring(0, 10);
@@ -160,10 +164,10 @@ export default function RekapView() {
         const resLap = await runBackend<LaporanResponse>('getLaporanRange', startStr, endStr);
         if (resLap && resLap.ringkasan) setData(resLap);
       } else {
-        alert(res?.message || 'Gagal meng-generate data seeder. Pastikan Apps Script sudah di-deploy ulang versi terbaru.');
+        await showAlert(res?.message || 'Gagal meng-generate data seeder. Pastikan Apps Script sudah di-deploy ulang versi terbaru.', 'error');
       }
     } catch (err: any) {
-      alert(`Gagal terhubung ke server seeder: ${err?.message || 'Timeout/Koneksi terputus'}`);
+      await showAlert(`Gagal terhubung ke server seeder: ${err?.message || 'Timeout/Koneksi terputus'}`, 'error');
     } finally {
       setLoading(false);
     }

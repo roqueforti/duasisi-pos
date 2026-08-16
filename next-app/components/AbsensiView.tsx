@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, LogIn, LogOut, RefreshCw, UserCheck } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { Pegawai } from '@/lib/types';
+import { useDialog } from '@/components/DialogProvider';
 
 interface AbsensiRecord {
   id: string;
@@ -24,6 +25,7 @@ interface MasterShift {
 }
 
 export default function AbsensiView() {
+  const { showAlert } = useDialog();
   const [pegawaiList, setPegawaiList] = useState<Pegawai[]>([]);
   const [shiftList, setShiftList] = useState<MasterShift[]>([]);
   const [namaPegawai, setNamaPegawai] = useState('');
@@ -72,30 +74,30 @@ export default function AbsensiView() {
   }, []);
 
   const handleClockIn = async () => {
-    if (!namaPegawai.trim()) { alert('Pilih nama pegawai!'); return; }
+    if (!namaPegawai.trim()) { await showAlert('Pilih nama pegawai!', 'warning'); return; }
     setLoading(true);
     try {
-      const res = await runBackend('clockInPegawai', namaPegawai.trim(), shift, catatan.trim());
-      alert(res.message || 'Clock In Berhasil');
+      const res = await runBackend<{message: string}>('clockInPegawai', namaPegawai.trim(), shift, catatan.trim());
+      await showAlert(res.message || 'Clock In Berhasil', 'success');
       setCatatan('');
       loadInitialData();
     } catch (err) {
-      alert('Gagal Clock In');
+      await showAlert('Gagal Clock In', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleClockOut = async () => {
-    if (!namaPegawai.trim()) { alert('Pilih nama pegawai!'); return; }
+    if (!namaPegawai.trim()) { await showAlert('Pilih nama pegawai!', 'warning'); return; }
     setLoading(true);
     try {
-      const res = await runBackend('clockOutPegawai', namaPegawai.trim(), catatan.trim());
-      alert(res.message || 'Clock Out Berhasil');
+      const res = await runBackend<{message: string}>('clockOutPegawai', namaPegawai.trim(), catatan.trim());
+      await showAlert(res.message || 'Clock Out Berhasil', 'success');
       setCatatan('');
       loadInitialData();
     } catch (err) {
-      alert('Gagal Clock Out');
+      await showAlert('Gagal Clock Out', 'error');
     } finally {
       setLoading(false);
     }

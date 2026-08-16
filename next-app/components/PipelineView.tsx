@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { runBackend } from '@/lib/api';
 import { UserRole } from '@/lib/types';
 import { GitMerge, Plus, Save, Trash2, ArrowUp, ArrowDown, X, Settings } from 'lucide-react';
+import { useDialog } from '@/components/DialogProvider';
 
 interface PipelineStep {
   step: number;
@@ -13,6 +14,7 @@ interface PipelineStep {
 }
 
 export default function PipelineView({ currentRole }: { currentRole?: UserRole }) {
+  const { showAlert, showConfirm } = useDialog();
   const [steps, setSteps] = useState<PipelineStep[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,8 +50,9 @@ export default function PipelineView({ currentRole }: { currentRole?: UserRole }
       const updated = newSteps.map((s, idx) => ({ ...s, step: idx + 1 }));
       await runBackend('savePipelineConfigData', updated);
       setSteps(updated);
+      await showAlert('Urutan pipeline berhasil disimpan!', 'success');
     } catch (err) {
-      alert('Gagal menyimpan urutan pipeline.');
+      await showAlert('Gagal menyimpan urutan pipeline.', 'error');
       loadData(); // Revert
     } finally {
       setLoading(false);
@@ -70,8 +73,9 @@ export default function PipelineView({ currentRole }: { currentRole?: UserRole }
     handleSaveAll(newSteps);
   };
 
-  const handleDelete = (index: number) => {
-    if (!confirm('Hapus langkah ini? (Perubahan akan langsung disimpan)')) return;
+  const handleDelete = async (index: number) => {
+    const isConfirmed = await showConfirm('Hapus langkah ini? (Perubahan akan langsung disimpan)');
+    if (!isConfirmed) return;
     const newSteps = steps.filter((_, i) => i !== index);
     handleSaveAll(newSteps);
   };
@@ -92,9 +96,9 @@ export default function PipelineView({ currentRole }: { currentRole?: UserRole }
     setShowModal(true);
   };
 
-  const handleSaveModal = () => {
+  const handleSaveModal = async () => {
     if (!namaStep.trim()) {
-      alert('Nama langkah harus diisi');
+      await showAlert('Nama langkah harus diisi', 'warning');
       return;
     }
     const newSteps = [...steps];

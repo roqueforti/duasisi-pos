@@ -5,6 +5,7 @@ import { Menu, LogOut, Wifi, WifiOff, Download, Printer } from 'lucide-react';
 import { UserRole } from '@/lib/types';
 import PrinterModal from '@/components/PrinterModal';
 import { getActiveDeviceInfo } from '@/lib/bluetoothPrinter';
+import { useDialog } from '@/components/DialogProvider';
 
 interface NavbarProps {
   currentTab: string;
@@ -31,6 +32,7 @@ export default function Navbar({
   onToggleSidebar,
   onLogout,
 }: NavbarProps) {
+  const { showAlert } = useDialog();
   const [clockStr, setClockStr] = useState<string>('');
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -83,7 +85,7 @@ export default function Navbar({
         setDeferredPrompt(null);
       }
     } else {
-      alert('Untuk menginstal PWA Dua SiSi POS:\n\n• Chrome/Edge: Klik titik tiga (⋮) → "Install DuaSiSi POS" atau "Add to Home Screen"\n• Safari iOS: Klik Share → "Add to Home Screen"');
+      await showAlert('Untuk menginstal PWA Dua SiSi POS:\n\n• Chrome/Edge: Klik titik tiga (⋮) → "Install DuaSiSi POS" atau "Add to Home Screen"\n• Safari iOS: Klik Share → "Add to Home Screen"', 'info', 'Cara Instalasi');
     }
   };
 

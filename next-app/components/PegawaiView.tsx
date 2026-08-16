@@ -5,6 +5,7 @@ import { Users, Plus, RefreshCw, Trash2, Award, Calendar, Download, Upload } fro
 import { runBackend } from '@/lib/api';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
+import { useDialog } from '@/components/DialogProvider';
 
 interface PegawaiItem {
   id: string;
@@ -23,6 +24,7 @@ interface RekapKinerja {
 }
 
 export default function PegawaiView({ currentRole }: { currentRole?: UserRole } = {}) {
+  const { showAlert, showConfirm } = useDialog();
   const [pegawaiList, setPegawaiList] = useState<PegawaiItem[]>([]);
   const [kinerjaList, setKinerjaList] = useState<RekapKinerja[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,7 +56,7 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
   }, []);
 
   const handleAddPegawai = async () => {
-    if (!nama.trim()) { alert('Nama pegawai wajib diisi!'); return; }
+    if (!nama.trim()) { await showAlert('Nama pegawai wajib diisi!', 'warning'); return; }
     setLoading(true);
     try {
       await runBackend('tambahPegawai', {
@@ -65,20 +67,23 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
       setShowAddModal(false);
       setNama(''); setNoHp('');
       loadData();
+      await showAlert('Pegawai berhasil ditambahkan!', 'success');
     } catch (err) {
-      alert('Gagal menambah pegawai');
+      await showAlert('Gagal menambah pegawai', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeletePegawai = async (id: string, namaPegawai: string) => {
-    if (!confirm(`Hapus pegawai ${namaPegawai}?`)) return;
+    const isConfirmed = await showConfirm(`Hapus pegawai ${namaPegawai}?`);
+    if (!isConfirmed) return;
     try {
       await runBackend('hapusPegawai', id);
       loadData();
+      await showAlert('Pegawai berhasil dihapus.', 'success');
     } catch (err) {
-      alert('Gagal menghapus pegawai');
+      await showAlert('Gagal menghapus pegawai', 'error');
     }
   };
 
@@ -101,7 +106,7 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
     try {
       const text = await readFileAsText(file);
       const rows = parseCSV(text);
-      if (rows.length === 0) { alert('File CSV kosong atau format salah.'); return; }
+      if (rows.length === 0) { await showAlert('File CSV kosong atau format salah.', 'warning'); return; }
       let success = 0, fail = 0;
       for (const row of rows) {
         const nama = row['Nama'] || row['nama'] || '';
@@ -116,9 +121,9 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
         } catch { fail++; }
       }
       loadData();
-      alert(`Import selesai: ${success} berhasil${fail > 0 ? `, ${fail} gagal` : ''}.`);
+      await showAlert(`Import selesai: ${success} berhasil${fail > 0 ? `, ${fail} gagal` : ''}.`, 'info');
     } catch (err) {
-      alert('Gagal membaca file CSV.');
+      await showAlert('Gagal membaca file CSV.', 'error');
     }
   };
 

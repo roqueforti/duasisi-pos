@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Cpu, Plus, RefreshCw, Play, CheckCircle2, Wrench, Trash2, Clock, WashingMachine, Flame } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { UserRole } from '@/lib/types';
+import { useDialog } from '@/components/DialogProvider';
 
 interface MesinItem {
   id: string;
@@ -16,6 +17,7 @@ interface MesinItem {
 }
 
 export default function MesinView({ currentRole }: { currentRole?: UserRole } = {}) {
+  const { showAlert, showConfirm } = useDialog();
   const [mesinList, setMesinList] = useState<MesinItem[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -46,15 +48,16 @@ export default function MesinView({ currentRole }: { currentRole?: UserRole } = 
   }, []);
 
   const handleAddMesin = async () => {
-    if (!nama.trim()) { alert('Masukkan nama mesin!'); return; }
+    if (!nama.trim()) { await showAlert('Masukkan nama mesin!', 'warning'); return; }
     setLoading(true);
     try {
       await runBackend('tambahMesin', { nama: nama.trim(), tipe });
       setShowAddModal(false);
       setNama('');
       loadMesin();
+      await showAlert('Mesin berhasil ditambahkan!', 'success');
     } catch (err) {
-      alert('Gagal menambah mesin');
+      await showAlert('Gagal menambah mesin', 'error');
     } finally {
       setLoading(false);
     }
@@ -68,8 +71,9 @@ export default function MesinView({ currentRole }: { currentRole?: UserRole } = 
       setShowMulaiModal(false);
       setKetMulai('');
       loadMesin();
+      await showAlert('Mesin berhasil dijalankan!', 'success');
     } catch (err) {
-      alert('Gagal menjalankan mesin');
+      await showAlert('Gagal menjalankan mesin', 'error');
     } finally {
       setLoading(false);
     }
@@ -79,8 +83,9 @@ export default function MesinView({ currentRole }: { currentRole?: UserRole } = 
     try {
       await runBackend('selesaiMesin', id);
       loadMesin();
+      await showAlert('Mesin berhasil dihentikan!', 'success');
     } catch (err) {
-      alert('Gagal menghentikan mesin');
+      await showAlert('Gagal menghentikan mesin', 'error');
     }
   };
 
@@ -89,18 +94,21 @@ export default function MesinView({ currentRole }: { currentRole?: UserRole } = 
     try {
       await runBackend('setMaintenanceMesin', id, !isMaintenance);
       loadMesin();
+      await showAlert(`Status maintenance mesin berhasil diperbarui!`, 'success');
     } catch (err) {
-      alert('Gagal mengupdate status maintenance');
+      await showAlert('Gagal mengupdate status maintenance', 'error');
     }
   };
 
   const handleDelete = async (id: string, namaMesin: string) => {
-    if (!confirm(`Hapus ${namaMesin}?`)) return;
+    const isConfirmed = await showConfirm(`Hapus ${namaMesin}?`);
+    if (!isConfirmed) return;
     try {
       await runBackend('hapusMesin', id);
       loadMesin();
+      await showAlert('Mesin berhasil dihapus!', 'success');
     } catch (err) {
-      alert('Gagal menghapus mesin');
+      await showAlert('Gagal menghapus mesin', 'error');
     }
   };
 

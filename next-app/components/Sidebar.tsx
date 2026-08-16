@@ -17,10 +17,10 @@ import {
   PanelLeftOpen,
   ChevronRight,
   ClipboardList,
-  FolderOpen,
   GitMerge,
   ShieldCheck
 } from 'lucide-react';
+import { useDialog } from '@/components/DialogProvider';
 
 interface SidebarProps {
   currentTab: string;
@@ -39,6 +39,7 @@ export default function Sidebar({
   setIsSidebarOpen,
   onLogout
 }: SidebarProps) {
+  const { showAlert } = useDialog();
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
   // Auto-collapse on tablet landscape (<=1280px)
@@ -55,13 +56,13 @@ export default function Sidebar({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleNavClick = (tabKey: string) => {
+  const handleNavClick = async (tabKey: string) => {
     if (tabKey === 'transaksi' && currentRole === 'MANAGER') {
-      alert('Fitur POS Kasir hanya untuk Staff/Kasir');
+      await showAlert('Fitur POS Kasir hanya untuk Staff/Kasir', 'warning');
       return;
     }
-    if (['pegawai', 'produk', 'kategori', 'shift', 'pipeline', 'rekap'].includes(tabKey) && currentRole !== 'MANAGER') {
-      alert('Akses Ditolak — Khusus Manager/Owner');
+    if (['pegawai', 'produk', 'kategori', 'shift', 'pipeline', 'rekap', 'keamanan', 'menu'].includes(tabKey) && currentRole !== 'MANAGER') {
+      await showAlert('Akses Ditolak — Khusus Manager/Owner', 'error');
       return;
     }
     setCurrentTab(tabKey);

@@ -47,6 +47,7 @@ import {
 } from '@/lib/bluetoothPrinter';
 import PrinterModal from '@/components/PrinterModal';
 import { UserRole } from '@/lib/types';
+import { useDialog } from '@/components/DialogProvider';
 
 interface CustomerState {
   nama: string;
@@ -92,6 +93,7 @@ function getLayananStyleConfig(item: LayananItem) {
 }
 
 export default function PosView({ currentRole }: { currentRole?: UserRole } = {}) {
+  const { showAlert, showConfirm } = useDialog();
   const [layananList, setLayananList] = useState<LayananItem[]>(defaultLayanan);
   const [search, setSearch] = useState('');
   const [selectedCategoryTab, setSelectedCategoryTab] = useState<string>('Semua');
@@ -374,7 +376,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   // Step 3: Handle Add New Customer Sub-Form & Save to Google Sheets
   const handleAddNewCustomer = async () => {
     if (!newCustNama.trim() || !newCustNoHp.trim()) {
-      alert('Nama dan No. HP Pelanggan wajib diisi!');
+      await showAlert('Nama dan No. HP Pelanggan wajib diisi!', 'warning');
       return;
     }
     const newEntry: CustomerState = {
@@ -400,7 +402,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const handleConfirmPaymentSafe = async () => {
     if (paymentSubmitting) return;
     if (!shiftAktif) {
-      alert('Buka kas shift terlebih dahulu sebelum memproses pembayaran.');
+      await showAlert('Buka kas shift terlebih dahulu sebelum memproses pembayaran.', 'warning');
       setShowDetailTransaksiModal(false);
       setShowBukaShiftModal(true);
       return;
@@ -411,11 +413,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     const bayar = Number(uangBayarInput) || total;
 
     if (!customer.nama.trim() || !customer.noHp.trim()) {
-      alert('Nama dan No. HP / WhatsApp pelanggan wajib diisi.');
+      await showAlert('Nama dan No. HP / WhatsApp pelanggan wajib diisi.', 'warning');
       return;
     }
     if (metodeBayar === 'Tunai' && (!uangBayarInput || bayar < total)) {
-      alert('Nominal uang tunai belum cukup.');
+      await showAlert('Nominal uang tunai belum cukup.', 'warning');
       return;
     }
     if (metodeBayar !== 'Tunai' && qrisStatus !== 'SUCCESS') {
@@ -470,7 +472,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     } catch (error) {
       console.error('Gagal menyimpan transaksi:', error);
       const msg = error instanceof Error ? error.message : 'Transaksi gagal disimpan.';
-      alert(`Transaksi gagal: ${msg}\n\nPastikan Apps Script sudah di-deploy ulang dan koneksi internet stabil.`);
+      await showAlert(`Transaksi gagal: ${msg}\n\nPastikan Apps Script sudah di-deploy ulang dan koneksi internet stabil.`, 'error');
     } finally {
       setPaymentSubmitting(false);
     }
@@ -480,7 +482,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const handlePrintThermalLabel = async () => {
     if (!completedOrderData) return;
     if (!isBluetoothSupported()) {
-      alert('Browser ini tidak mendukung Web Bluetooth.\nGunakan Chrome / Edge di Android atau Desktop.');
+      await showAlert('Browser ini tidak mendukung Web Bluetooth.\nGunakan Chrome / Edge di Android atau Desktop.', 'warning');
       return;
     }
     setBtPrinting(true);
@@ -521,7 +523,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       if (msg.includes('User cancelled') || msg.includes('cancelled')) {
         setToastMsg('Cetak dibatalkan.');
       } else {
-        alert(`Gagal cetak thermal:\n${msg}`);
+        await showAlert(`Gagal cetak thermal:\n${msg}`, 'error');
       }
     } finally {
       setBtPrinting(false);
@@ -531,7 +533,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const handleOpenShift = async () => {
     const kasAwal = Number(kasAwalInput);
     if (!Number.isFinite(kasAwal) || kasAwal < 0) {
-      alert('Kas awal harus berupa angka nol atau lebih.');
+      await showAlert('Kas awal harus berupa angka nol atau lebih.', 'warning');
       return;
     }
     const selectedStaff = staffList.find((staff) => staff.nama === namaKasirInput) || staffList[0];
@@ -549,7 +551,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       setToastMsg(`Kas shift ${result.data.idShift} berhasil dibuka.`);
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : 'Kas shift gagal dibuka.');
+      await showAlert(error instanceof Error ? error.message : 'Kas shift gagal dibuka.', 'error');
     } finally {
       setShiftSubmitting(false);
     }
@@ -558,7 +560,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const handleClockIn = async () => {
     const selectedStaff = staffList.find((staff) => staff.nama === namaKasirInput) || staffList[0];
     if (!selectedStaff) {
-      alert('Pilih nama kasir terlebih dahulu.');
+      await showAlert('Pilih nama kasir terlebih dahulu.', 'warning');
       return;
     }
     setClockInSubmitting(true);
@@ -571,7 +573,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       }
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : 'Terjadi kesalahan saat Clock In.');
+      await showAlert(error instanceof Error ? error.message : 'Terjadi kesalahan saat Clock In.', 'error');
     } finally {
       setClockInSubmitting(false);
     }
@@ -579,7 +581,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
   const handleCheckHandover = async () => {
     if (!shiftAktif || !replacementEmployeeId) {
-      alert('Pilih staf shift pengganti terlebih dahulu.');
+      await showAlert('Pilih staf shift pengganti terlebih dahulu.', 'warning');
       return;
     }
     setShiftSubmitting(true);
@@ -602,11 +604,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     if (!shiftAktif) return;
     const kasAkhir = Number(kasAkhirFisik);
     if (!Number.isFinite(kasAkhir) || kasAkhir < 0) {
-      alert('Kas akhir fisik harus berupa angka nol atau lebih.');
+      await showAlert('Kas akhir fisik harus berupa angka nol atau lebih.', 'warning');
       return;
     }
     if (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible) {
-      alert('Clock In staf pengganti harus diverifikasi sebelum serah terima.');
+      await showAlert('Clock In staf pengganti harus diverifikasi sebelum serah terima.', 'warning');
       return;
     }
     setShiftSubmitting(true);
@@ -680,11 +682,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     if (!shiftAktif) return;
     const kasAkhir = Number(kasAkhirFisik);
     if (!Number.isFinite(kasAkhir) || kasAkhir < 0) {
-      alert('Kas akhir fisik harus berupa angka nol atau lebih.');
+      await showAlert('Kas akhir fisik harus berupa angka nol atau lebih.', 'warning');
       return;
     }
     if (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible) {
-      alert('Clock In staf pengganti harus diverifikasi sebelum serah terima.');
+      await showAlert('Clock In staf pengganti harus diverifikasi sebelum serah terima.', 'warning');
       return;
     }
 
@@ -2415,9 +2417,9 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowCustomItemModal(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">Batal</button>
-              <button onClick={() => {
+              <button onClick={async () => {
                 if (!customItemForm.layanan || !customItemForm.hargaSatuan) {
-                  alert('Mohon isi nama dan harga produk!');
+                  await showAlert('Mohon isi nama dan harga produk!', 'warning');
                   return;
                 }
                 const newItem: LayananItem = {

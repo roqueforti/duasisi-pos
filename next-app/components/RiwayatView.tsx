@@ -7,8 +7,10 @@ import { runBackend, runBackendCached } from '@/lib/api';
 import { maskPhone, eNotaUrl as buildENotaUrl } from '@/lib/utils';
 import PrinterModal from '@/components/PrinterModal';
 import { UserRole } from '@/lib/types';
+import { useDialog } from '@/components/DialogProvider';
 
 export default function RiwayatView({ currentRole }: { currentRole?: UserRole } = {}) {
+  const { showAlert } = useDialog();
   const [filter, setFilter] = useState<'Semua' | 'SelfService' | 'FullService'>('Semua');
   const [search, setSearch] = useState('');
   const [txList, setTxList] = useState<Transaksi[]>([]);
@@ -64,12 +66,12 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   };
 
   const handleSaveManualTx = async () => {
-    if (!manualNama.trim()) { alert('Nama pelanggan wajib diisi!'); return; }
+    if (!manualNama.trim()) { await showAlert('Nama pelanggan wajib diisi!', 'warning'); return; }
     const hargaNum = Number(manualHarga) || 0;
     const qtyNum = Number(manualQty) || 1;
     const grandTotal = hargaNum * qtyNum;
 
-    if (grandTotal <= 0) { alert('Total nominal transaksi harus lebih dari 0!'); return; }
+    if (grandTotal <= 0) { await showAlert('Total nominal transaksi harus lebih dari 0!', 'warning'); return; }
 
     setSavingManual(true);
     const payload = {
@@ -96,13 +98,13 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     } catch (error) {
       console.error(error);
       setSavingManual(false);
-      alert(error instanceof Error ? error.message : 'Transaksi manual gagal disimpan.');
+      await showAlert(error instanceof Error ? error.message : 'Transaksi manual gagal disimpan.', 'error');
       return;
     }
 
     setShowManualModal(false);
     setSavingManual(false);
-    alert(`✅ Transaksi manual ${generatedNota} berhasil disimpan!`);
+    await showAlert(`Transaksi manual ${generatedNota} berhasil disimpan!`, 'success');
     loadRiwayat();
   };
 
@@ -125,18 +127,18 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
 
   const handleAjukanVoid = async () => {
     if (!txToVoid) return;
-    if (!alasanVoidInput.trim()) { alert('Alasan pembatalan (void) wajib diisi!'); return; }
+    if (!alasanVoidInput.trim()) { await showAlert('Alasan pembatalan (void) wajib diisi!', 'warning'); return; }
 
     try {
       const result = await runBackend<{ success: boolean; message?: string }>('ajukanVoidTransaksi', txToVoid.noNota, alasanVoidInput.trim(), 'Kasir 1');
       if (!result?.success) throw new Error(result?.message || 'Pengajuan void ditolak backend');
-      alert(`Permohonan void nota ${txToVoid.noNota} berhasil dikirim ke Manager/Owner.`);
+      await showAlert(`Permohonan void nota ${txToVoid.noNota} berhasil dikirim ke Manager/Owner.`, 'success');
       setShowVoidModal(false);
       setAlasanVoidInput('');
       loadRiwayat();
     } catch (error) {
       console.error(error);
-      alert('Gagal mengajukan void. Data transaksi tidak diubah.');
+      await showAlert('Gagal mengajukan void. Data transaksi tidak diubah.', 'error');
     }
   };
 
@@ -146,20 +148,20 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     try {
       const result = await runBackend<{ success: boolean; message?: string }>('pelunasanDP', txToLunas.noNota, nominal, pelunasanMetode);
       if (!result?.success) throw new Error(result?.message || 'Pelunasan ditolak backend.');
-      alert(`Pelunasan Rp ${(nominal || 0).toLocaleString('id-ID')} untuk nota ${txToLunas.noNota} berhasil!`);
+      await showAlert(`Pelunasan Rp ${(nominal || 0).toLocaleString('id-ID')} untuk nota ${txToLunas.noNota} berhasil!`, 'success');
       setShowPelunasanModal(false);
       loadRiwayat();
     } catch (error) {
       console.error(error);
-      alert('Pelunasan gagal dicatat. Silakan coba lagi.');
+      await showAlert('Pelunasan gagal dicatat. Silakan coba lagi.', 'error');
     }
   };
 
-  const handleSendSiapWA = (tx: Transaksi) => {
+  const handleSendSiapWA = async (tx: Transaksi) => {
     let rawPhone = String(tx.noHp || '').replace(/[^0-9]/g, '');
     if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
     if (!rawPhone) {
-      alert('Nomor HP pelanggan tidak tersedia.');
+      await showAlert('Nomor HP pelanggan tidak tersedia.', 'warning');
       return;
     }
 

@@ -5,6 +5,7 @@ import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Downl
 import { runBackend } from '@/lib/api';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
+import { useDialog } from '@/components/DialogProvider';
 
 interface LayananItemBackend {
   id: string;
@@ -33,6 +34,7 @@ interface ProdukViewProps {
 }
 
 export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
+  const { showAlert, showConfirm } = useDialog();
   const [activeSubTab, setActiveSubTab] = useState<'Produk' | 'Promo' | 'Loyalitas'>('Produk');
   const [layananList, setLayananList] = useState<LayananItemBackend[]>([]);
   const [promoList, setPromoList] = useState<PromoVoucher[]>(defaultPromos);
@@ -145,7 +147,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   };
 
   const handleSave = async () => {
-    if (!nama.trim() || !harga.trim()) { alert('Nama dan harga wajib diisi!'); return; }
+    if (!nama.trim() || !harga.trim()) { await showAlert('Nama dan harga wajib diisi!', 'warning'); return; }
     const payload = { nama: nama.trim(), harga: Number(harga) || 0, satuan, icon, tipe, kategori, pipelineSteps: tipe === 'FullService' ? selectedPipelineSteps : [] };
     setLoading(true);
     try {
@@ -156,8 +158,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       }
       setShowModal(false);
       loadProduk();
+      await showAlert('Layanan berhasil disimpan!', 'success');
     } catch (err) {
-      alert('Gagal menyimpan layanan');
+      await showAlert('Gagal menyimpan layanan', 'error');
     } finally {
       setLoading(false);
     }
@@ -167,23 +170,26 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     try {
       await runBackend('toggleAktifLayanan', id, !isY);
       loadProduk();
+      await showAlert(`Layanan berhasil di${isY ? 'nonaktifkan' : 'aktifkan'}!`, 'success');
     } catch (err) {
-      alert('Gagal mengubah status');
+      await showAlert('Gagal mengubah status', 'error');
     }
   };
 
   const handleHapusLayanan = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus layanan ini?')) return;
+    const isConfirmed = await showConfirm('Yakin ingin menghapus layanan ini?');
+    if (!isConfirmed) return;
     try {
       await runBackend('hapusLayanan', id);
       loadProduk();
+      await showAlert('Layanan berhasil dihapus!', 'success');
     } catch (err) {
-      alert('Gagal menghapus layanan');
+      await showAlert('Gagal menghapus layanan', 'error');
     }
   };
 
   const handleSavePromo = async () => {
-    if (!kodePromo.trim()) { alert('Kode promo wajib diisi!'); return; }
+    if (!kodePromo.trim()) { await showAlert('Kode promo wajib diisi!', 'warning'); return; }
     const payload = {
       kodeVoucher: kodePromo.trim().toUpperCase(),
       jenisDiskon: 'Nominal',
@@ -199,9 +205,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       setShowPromoModal(false);
       setKodePromo('');
       loadPromo();
-      alert(`Promo ${payload.kodeVoucher} berhasil disimpan ke database!`);
+      await showAlert(`Promo ${payload.kodeVoucher} berhasil disimpan ke database!`, 'success');
     } catch (err) {
-      alert('Gagal menyimpan promo ke backend');
+      await showAlert('Gagal menyimpan promo ke backend', 'error');
     }
   };
 
@@ -214,12 +220,14 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   };
 
   const handleHapusPromo = async (id: string) => {
-    if (!confirm('Yakin hapus voucher promo ini?')) return;
+    const isConfirmed = await showConfirm('Yakin hapus voucher promo ini?');
+    if (!isConfirmed) return;
     try {
       await runBackend('hapusPromo', id);
       loadPromo();
+      await showAlert('Promo berhasil dihapus!', 'success');
     } catch (err) {
-      alert('Gagal menghapus promo');
+      await showAlert('Gagal menghapus promo', 'error');
     }
   };
 
@@ -242,7 +250,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     try {
       const text = await readFileAsText(file);
       const rows = parseCSV(text);
-      if (rows.length === 0) { alert('File CSV kosong atau format salah.'); return; }
+      if (rows.length === 0) { await showAlert('File CSV kosong atau format salah.', 'warning'); return; }
       let success = 0, fail = 0;
       for (const row of rows) {
         const nama = row['Nama Layanan'] || row['nama'] || '';
@@ -264,9 +272,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         } catch { fail++; }
       }
       loadProduk();
-      alert(`Import selesai: ${success} berhasil${fail > 0 ? `, ${fail} gagal` : ''}.`);
+      await showAlert(`Import selesai: ${success} berhasil${fail > 0 ? `, ${fail} gagal` : ''}.`, 'info');
     } catch (err) {
-      alert('Gagal membaca file CSV.');
+      await showAlert('Gagal membaca file CSV.', 'error');
     }
   };
 
@@ -493,9 +501,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
             onClick={async () => {
               try {
                 const res = await runBackend<{success: boolean, message: string}>('savePoinConfig', Number(poinRate) || 10000, Number(poinValue) || 1000);
-                alert(res?.message || 'Pengaturan poin loyalitas berhasil disimpan!');
+                await showAlert(res?.message || 'Pengaturan poin loyalitas berhasil disimpan!', 'success');
               } catch (err) {
-                alert('Gagal menyimpan konfigurasi poin!');
+                await showAlert('Gagal menyimpan konfigurasi poin!', 'error');
               }
             }}
             className="w-full bg-[#1E4648] text-white font-semibold py-2 rounded-md transition"

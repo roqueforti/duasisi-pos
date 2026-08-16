@@ -5,6 +5,7 @@ import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { Plus, Edit2, Trash2, FolderOpen, Save, X } from 'lucide-react';
 import { UserRole } from '@/lib/types';
+import { useDialog } from '@/components/DialogProvider';
 
 export interface KategoriItem {
   id: string;
@@ -23,6 +24,7 @@ const PALETTE = [
 ];
 
 export default function KategoriView({ currentRole }: { currentRole?: UserRole }) {
+  const { showAlert, showConfirm } = useDialog();
   const [data, setData] = useState<KategoriItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export default function KategoriView({ currentRole }: { currentRole?: UserRole }
 
   const handleSave = async () => {
     if (!namaKategori.trim()) {
-      alert('Nama Kategori wajib diisi');
+      await showAlert('Nama Kategori wajib diisi', 'warning');
       return;
     }
     
@@ -85,34 +87,39 @@ export default function KategoriView({ currentRole }: { currentRole?: UserRole }
       setShowModal(false);
       clearCache('getKategoriList');
       loadData();
+      await showAlert('Kategori berhasil disimpan!', 'success');
     } catch (err: any) {
-      alert(err.message || 'Gagal menyimpan kategori');
+      await showAlert(err.message || 'Gagal menyimpan kategori', 'error');
       setLoading(false);
     }
   };
 
   const handleToggleAktif = async (id: string, currentAktif: string) => {
-    if (!confirm(`Yakin ingin ${currentAktif === 'Y' ? 'menonaktifkan' : 'mengaktifkan'} kategori ini?`)) return;
+    const isConfirmed = await showConfirm(`Yakin ingin ${currentAktif === 'Y' ? 'menonaktifkan' : 'mengaktifkan'} kategori ini?`);
+    if (!isConfirmed) return;
     setLoading(true);
     try {
       await runBackend('toggleAktifKategori', id, currentAktif !== 'Y');
       clearCache('getKategoriList');
       loadData();
+      await showAlert(`Kategori berhasil di${currentAktif === 'Y' ? 'nonaktifkan' : 'aktifkan'}.`, 'success');
     } catch (err: any) {
-      alert('Gagal mengubah status');
+      await showAlert('Gagal mengubah status', 'error');
       setLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus kategori ini? Data yang terkait dengan kategori ini di produk mungkin tidak dapat ditampilkan di POS dengan benar.')) return;
+    const isConfirmed = await showConfirm('Yakin ingin menghapus kategori ini? Data yang terkait dengan kategori ini di produk mungkin tidak dapat ditampilkan di POS dengan benar.');
+    if (!isConfirmed) return;
     setLoading(true);
     try {
       await runBackend('hapusKategori', id);
       clearCache('getKategoriList');
       loadData();
+      await showAlert('Kategori berhasil dihapus.', 'success');
     } catch (err: any) {
-      alert('Gagal menghapus kategori');
+      await showAlert('Gagal menghapus kategori', 'error');
       setLoading(false);
     }
   };
