@@ -17,7 +17,7 @@ interface LayananItemBackend {
 const KATEGORI_MAPPING: Record<string, string> = {
   'SelfService': 'Self Service',
   'FullService': 'Full Service',
-  'Layanan Tambahan': 'Tambahan'
+  'Add On': 'Tambahan'
 };
 
 const FORMATS = [

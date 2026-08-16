@@ -45,7 +45,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [satuan, setSatuan] = useState('kg');
   const [icon, setIcon] = useState('🧺');
   const [tipe, setTipe] = useState<'SelfService' | 'FullService'>('SelfService');
-  const [kategori, setKategori] = useState<'Layanan' | 'Layanan Tambahan' | 'Produk' | 'MakananMinuman'>('Layanan');
+  const [kategori, setKategori] = useState<'Self Service' | 'Drop Off' | 'Add On' | 'Makanan dan Minuman'>('Self Service');
 
   // Add Promo Modal State
   const [showPromoModal, setShowPromoModal] = useState(false);
@@ -148,7 +148,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   const handleOpenAdd = () => {
     setEditingId(null);
-    setNama(''); setHarga(''); setSatuan('kg'); setIcon('🧺'); setTipe('SelfService'); setKategori('Layanan');
+    setNama(''); setHarga(''); setSatuan('kg'); setIcon('🧺'); setTipe('SelfService'); setKategori('Self Service');
     setShowModal(true);
   };
 
@@ -159,7 +159,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     setSatuan(item.satuan || 'kg');
     setIcon(item.icon || '🧺');
     setTipe(item.tipe || 'SelfService');
-    setKategori(item.kategori || 'Layanan');
+    setKategori(item.kategori || 'Self Service');
     setShowModal(true);
   };
 
@@ -611,15 +611,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Kategori *</label>
                 <select value={kategori} onChange={(e) => setKategori(e.target.value as any)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
-                  <option value="Layanan">Layanan Utama (Cuci, Lipat, dll)</option>
-                  <option value="Layanan Tambahan">Layanan Tambahan (Setrika, Parfum, dll)</option>
-                  <option value="Produk">Produk Fisik (Tas, Gantungan, dll)</option>
-                  <option value="MakananMinuman">Makanan/Minuman</option>
+                  <option value="Self Service">Self Service (Cuci Sendiri)</option>
+                  <option value="Drop Off">Drop Off (Cuci & Setrika, dll)</option>
+                  <option value="Add On">Add On (Setrika, Parfum, Kantong, dll)</option>
+                  <option value="Makanan dan Minuman">Makanan dan Minuman</option>
                 </select>
-                <p className="text-[10px] text-slate-400 mt-1">Pengali harga (SLA) hanya berlaku untuk Layanan & Layanan Tambahan.</p>
+                <p className="text-[10px] text-slate-400 mt-1">Pengali harga (SLA) hanya berlaku untuk Layanan utama (Self Service & Drop Off).</p>
               </div>
 
-              {kategori.includes('Layanan') && (
+              {(kategori === 'Self Service' || kategori === 'Drop Off') && (
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Tipe Layanan</label>
                   <select value={tipe} onChange={(e) => setTipe(e.target.value as 'SelfService' | 'FullService')} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">

@@ -61,7 +61,7 @@ const defaultLayanan: LayananItem[] = [
   { layanan: 'Dummy 2', hargaSatuan: 15000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
   { layanan: 'Dummy 3', hargaSatuan: 20000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
   { layanan: 'Dummy 4', hargaSatuan: 5000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
-  { layanan: 'Dummy 5', hargaSatuan: 12000, tipe: 'FullService', satuan: 'paket', kategori: 'Layanan Tambahan' },
+  { layanan: 'Dummy 5', hargaSatuan: 12000, tipe: 'FullService', satuan: 'paket', kategori: 'Drop Off' },
   { layanan: 'Dummy 6', hargaSatuan: 1000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Produk' },
   { layanan: 'Dummy 7', hargaSatuan: 2000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Produk' },
   { layanan: 'Dummy 8', hargaSatuan: 3000, tipe: 'SelfService', satuan: 'pcs', kategori: 'Produk' },
@@ -86,7 +86,7 @@ function getLayananStyleConfig(item: LayananItem) {
   if (kategori === 'Produk') {
     return { Icon, iconBg: 'bg-slate-100', iconColor: 'text-slate-500', dot: 'bg-slate-400' };
   }
-  if (kategori === 'Layanan Tambahan') {
+  if (kategori === 'Drop Off') {
     return { Icon, iconBg: 'bg-[#B5C9C9]/20', iconColor: 'text-[#1E4648]', dot: 'bg-teal-400' };
   }
   // Default: Layanan Utama
@@ -210,7 +210,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             satuan: item.satuan || 'paket',
             kategori: item.kategori === 'MakananMinuman'
               ? 'MakananMinuman'
-              : item.tipe === 'FullService' ? 'Layanan Tambahan' : 'Layanan',
+              : item.tipe === 'FullService' ? 'Drop Off' : 'Self Service',
           })) : defaultLayanan);
         } else {
           setLayananList(defaultLayanan);
@@ -289,7 +289,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const multiplier = activePriority?.multiplier || 1;
 
   const subtotalCart = cartArray.reduce((acc, curr) => {
-    const isLayanan = curr.kategori === 'Layanan' || curr.kategori === 'Layanan Tambahan';
+    const isLayanan = curr.kategori === 'Self Service' || curr.kategori === 'Drop Off';
     const m = isLayanan ? multiplier : 1;
     return acc + (curr.qty * curr.hargaSatuan * m);
   }, 0);
@@ -444,7 +444,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         diskon: diskonApplied.nilai,
         catatan: catatanOrderInput,
         items: cartArray.map((i) => {
-          const isLayanan = i.kategori === 'Layanan' || i.kategori === 'Layanan Tambahan';
+          const isLayanan = i.kategori === 'Self Service' || i.kategori === 'Drop Off';
           const m = isLayanan ? multiplier : 1;
           return { layanan: i.layanan, qty: i.qty, hargaSatuan: i.hargaSatuan * m };
         })
@@ -464,7 +464,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         uangBayar: Number(bayar) || resTotal,
         kembalian: Math.max(0, (Number(bayar) || resTotal) - resTotal),
         items: cartArray.map(i => {
-          const isLayanan = i.kategori === 'Layanan' || i.kategori === 'Layanan Tambahan';
+          const isLayanan = i.kategori === 'Self Service' || i.kategori === 'Drop Off';
           const m = isLayanan ? multiplier : 1;
           return { ...i, hargaSatuan: (Number(i.hargaSatuan) || 0) * m, qty: Number(i.qty) || 0 };
         }),
