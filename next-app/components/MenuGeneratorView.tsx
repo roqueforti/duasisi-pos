@@ -60,25 +60,14 @@ export default function MenuGeneratorView() {
   // Grouping logic
   const filteredData = layananList.filter(item => filterTipe === 'Semua' || item.tipe === filterTipe);
   
-  // To mimic the reference image precisely:
-  // Cuci, Cuci + Kering, Tambahan
-  // Since we don't have exactly these categories from DB (we only have Layanan, Layanan Tambahan, Produk, MakananMinuman),
-  // we will try to infer or group by "tipe" or name.
-  const groups: Record<string, LayananItemBackend[]> = {
-    'Cuci': [],
-    'Cuci + Kering': [],
-    'Tambahan': []
-  };
+  const groups: Record<string, LayananItemBackend[]> = {};
 
   filteredData.forEach(item => {
-    const nameLower = item.nama.toLowerCase();
-    if (nameLower.includes('kering') || nameLower.includes('setrika')) {
-      groups['Cuci + Kering'].push(item);
-    } else if (item.tipe === 'FullService' || nameLower.includes('cuci')) {
-      groups['Cuci'].push(item);
-    } else {
-      groups['Tambahan'].push(item);
+    const kat = item.kategori || 'Lain-lain';
+    if (!groups[kat]) {
+      groups[kat] = [];
     }
+    groups[kat].push(item);
   });
 
   return (

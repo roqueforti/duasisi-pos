@@ -96,7 +96,8 @@ function getLayananStyleConfig(item: LayananItem) {
 export default function PosView({ currentRole }: { currentRole?: UserRole } = {}) {
   const [layananList, setLayananList] = useState<LayananItem[]>(defaultLayanan);
   const [search, setSearch] = useState('');
-  const [selectedCategoryTab, setSelectedCategoryTab] = useState<'Semua' | 'Self Service' | 'Drop Off' | 'Add On' | 'Makanan dan Minuman'>('Semua');
+  const [selectedCategoryTab, setSelectedCategoryTab] = useState<string>('Semua');
+  const [kategoriList, setKategoriList] = useState<{id: string, nama: string, aktif: string}[]>([]);
   const [poinRate, setPoinRate] = useState<number>(10000);
   
   // 1. Cart & Order State
@@ -210,6 +211,17 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         }
       },
       10 * 60 * 1000 // 10 menit TTL â€” katalog jarang berubah
+    );
+
+    // Fetch Kategori
+    runBackendCached<any[]>(
+      'getKategoriList',
+      (data) => {
+        if (Array.isArray(data)) {
+          setKategoriList(data.filter(item => item.aktif === 'Y'));
+        }
+      },
+      10 * 60 * 1000
     );
 
     // 2. Customers List
@@ -941,16 +953,13 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
             {[
               { id: 'Semua', label: 'Semua Produk' },
-              { id: 'Self Service', label: 'Self Service' },
-              { id: 'Drop Off', label: 'Drop Off' },
-              { id: 'Add On', label: 'Add On' },
-              { id: 'Makanan dan Minuman', label: 'Makanan & Minuman' },
+              ...kategoriList.map(k => ({ id: k.nama, label: k.nama }))
             ].map((tab) => {
               const isActive = selectedCategoryTab === tab.id;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setSelectedCategoryTab(tab.id as any)}
+                  onClick={() => setSelectedCategoryTab(tab.id)}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition shrink-0 border ${
                     isActive
                       ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-2xs font-bold'

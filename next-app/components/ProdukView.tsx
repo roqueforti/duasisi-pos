@@ -45,7 +45,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [satuan, setSatuan] = useState('kg');
   const [icon, setIcon] = useState('🧺');
   const [tipe, setTipe] = useState<'SelfService' | 'FullService' | ''>('');
-  const [kategori, setKategori] = useState<'Self Service' | 'Drop Off' | 'Add On' | 'Makanan dan Minuman'>('Self Service');
+  const [kategori, setKategori] = useState<string>('Self Service');
+  const [kategoriList, setKategoriList] = useState<{id: string, nama: string, aktif: string}[]>([]);
 
   // Add Promo Modal State
   const [showPromoModal, setShowPromoModal] = useState(false);
@@ -93,10 +94,20 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
+  const loadKategori = async () => {
+    try {
+      const data = await runBackend<{id: string, nama: string, aktif: string}[]>('getKategoriList');
+      if (Array.isArray(data)) setKategoriList(data.filter(k => k.aktif === 'Y'));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     loadProduk();
     loadPromo();
     loadPoinConfig();
+    loadKategori();
   }, []);
 
   const handleOpenAdd = () => {
@@ -496,11 +507,11 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Kategori *</label>
-                <select value={kategori} onChange={(e) => setKategori(e.target.value as any)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
-                  <option value="Self Service">Self Service (Cuci Sendiri)</option>
-                  <option value="Drop Off">Drop Off (Cuci & Setrika, dll)</option>
-                  <option value="Add On">Add On (Setrika, Parfum, Kantong, dll)</option>
-                  <option value="Makanan dan Minuman">Makanan dan Minuman</option>
+                <select value={kategori} onChange={(e) => setKategori(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                  {kategoriList.map(kat => (
+                    <option key={kat.id} value={kat.nama}>{kat.nama}</option>
+                  ))}
+                  {kategoriList.length === 0 && <option value="Self Service">Self Service</option>}
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">Pengali harga (SLA) hanya berlaku untuk Layanan utama (Self Service & Drop Off).</p>
               </div>

@@ -17,7 +17,8 @@ import {
   PanelLeftOpen,
   ChevronRight,
   ClipboardList,
-  Cpu
+  Cpu,
+  FolderOpen
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -58,7 +59,7 @@ export default function Sidebar({
       alert('Fitur POS Kasir hanya untuk Staff/Kasir');
       return;
     }
-    if (['pegawai', 'produk', 'rekap'].includes(tabKey) && currentRole !== 'MANAGER') {
+    if (['pegawai', 'produk', 'kategori', 'rekap'].includes(tabKey) && currentRole !== 'MANAGER') {
       alert('Akses Ditolak — Khusus Manager/Owner');
       return;
     }
@@ -211,6 +212,10 @@ export default function Sidebar({
               <button className={navClass('produk')} onClick={() => handleNavClick('produk')} title="Produk">
                 <Tag className={`w-[18px] h-[18px] shrink-0 ${iconClass('produk')}`} />
                 {!isCollapsed && <span>Manajemen Produk</span>}
+              </button>
+              <button className={navClass('kategori')} onClick={() => handleNavClick('kategori')} title="Kategori">
+                <FolderOpen className={`w-[18px] h-[18px] shrink-0 ${iconClass('kategori')}`} />
+                {!isCollapsed && <span>Manajemen Kategori</span>}
               </button>
               <button className={navClass('menu')} onClick={() => handleNavClick('menu')} title="Desain Menu">
                 <LayoutDashboard className={`w-[18px] h-[18px] shrink-0 ${iconClass('menu')}`} />

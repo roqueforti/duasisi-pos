@@ -16,6 +16,7 @@ import PelangganView from '@/components/PelangganView';
 import DashboardView from '@/components/DashboardView';
 import PesananView from '@/components/PesananView';
 import MenuGeneratorView from '@/components/MenuGeneratorView';
+import KategoriView from '@/components/KategoriView';
 import { UserRole } from '@/lib/types';
 import { clearBackendSession } from '@/lib/api';
 
@@ -99,6 +100,7 @@ export default function HomePage() {
               {currentTab === 'inventory' && <InventoryView currentRole={currentRole} />}
               {currentTab === 'pegawai' && <PegawaiView currentRole={currentRole} />}
               {currentTab === 'produk' && <ProdukView currentRole={currentRole} />}
+              {currentTab === 'kategori' && <KategoriView currentRole={currentRole} />}
               {currentTab === 'menu' && <MenuGeneratorView />}
               {currentTab === 'rekap' && <RekapView />}
             </main>

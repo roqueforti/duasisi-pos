@@ -17,6 +17,7 @@ const SHEET_SHIFT     = "MasterShift";
 const SHEET_PIPELINE  = "Pipeline";
 const SHEET_PROMO     = "Promo";
 const SHEET_KAS_SHIFT = "KasShift";
+const SHEET_KATEGORI  = "MasterKategori";
 const TIMEZONE_WIB    = "Asia/Jakarta";
 const MIGRATION_KEY   = "SPREADSHEET_SCHEMA_VERSION";
 
@@ -37,7 +38,8 @@ const ALLOWED_API_ACTIONS = Object.freeze({
   getKasShiftAktif: true, openKasShift: true, handoverCheckKasShift: true, closeKasShift: true, getRekapKasShift: true, uploadExpensePhoto: true,
   getAuditLogs: true, ajukanVoidTransaksi: true, approveVoidTransaksi: true,
   getPoinConfig: true, savePoinConfig: true,
-  getPriorityConfig: true, savePriorityConfig: true
+  getPriorityConfig: true, savePriorityConfig: true,
+  getKategoriList: true, tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true
 });
 const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true });
 const MANAGER_API_ACTIONS = Object.freeze({
@@ -48,7 +50,8 @@ const MANAGER_API_ACTIONS = Object.freeze({
   tambahPegawai: true, hapusPegawai: true,
   tambahMasterShift: true, hapusMasterShift: true,
   getLaporanRange: true, getAuditLogs: true, approveVoidTransaksi: true, getRekapKasShift: true,
-  savePoinConfig: true
+  savePoinConfig: true, savePriorityConfig: true,
+  tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true
 });
 
 /**
@@ -601,6 +604,75 @@ function hapusLayanan(id) {
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) { sh.deleteRow(i + 1); return true; }
+  }
+  return false;
+}
+
+// ============================================================
+// KATEGORI (CRUD)
+// ============================================================
+function getKategoriList() {
+  let sh = SS.getSheetByName(SHEET_KATEGORI);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_KATEGORI);
+    sh.appendRow(["ID", "Nama Kategori", "Aktif"]);
+    sh.appendRow([generateId("KAT"), "Self Service", "Y"]);
+    sh.appendRow([generateId("KAT"), "Drop Off", "Y"]);
+    sh.appendRow([generateId("KAT"), "Add On", "Y"]);
+    sh.appendRow([generateId("KAT"), "Makanan dan Minuman", "Y"]);
+  }
+  const data = sh.getDataRange().getValues();
+  data.shift();
+  return data.map(r => ({
+    id: r[0],
+    nama: r[1],
+    aktif: r[2] || "Y"
+  }));
+}
+
+function tambahKategori(data) {
+  let sh = SS.getSheetByName(SHEET_KATEGORI);
+  if (!sh) sh = SS.insertSheet(SHEET_KATEGORI);
+  const id = generateId("KAT");
+  sh.appendRow([id, data.nama, "Y"]);
+  return { success: true, id: id };
+}
+
+function updateKategori(id, data) {
+  const sh = SS.getSheetByName(SHEET_KATEGORI);
+  if (!sh) return { success: false, message: "Sheet tidak ditemukan" };
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
+      sh.getRange(i + 1, 2).setValue(data.nama);
+      return { success: true };
+    }
+  }
+  return { success: false, message: "Kategori tidak ditemukan" };
+}
+
+function toggleAktifKategori(id, aktifBaru) {
+  const sh = SS.getSheetByName(SHEET_KATEGORI);
+  if (!sh) return false;
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
+      sh.getRange(i + 1, 3).setValue(aktifBaru ? "Y" : "N");
+      return true;
+    }
+  }
+  return false;
+}
+
+function hapusKategori(id) {
+  const sh = SS.getSheetByName(SHEET_KATEGORI);
+  if (!sh) return false;
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
+      sh.deleteRow(i + 1);
+      return true;
+    }
   }
   return false;
 }
