@@ -227,6 +227,18 @@ function tambahInventory(data) {
   const sh = SS.getSheetByName(SHEET_INVENTORY);
   const id = generateId("INV");
   sh.appendRow([id, data.nama, data.stok, data.satuan, data.stokMinimum, new Date()]);
+  
+  if (data.isDijual && data.hargaJual !== undefined) {
+    tambahLayanan({
+      nama: data.nama,
+      harga: data.hargaJual,
+      satuan: data.satuan,
+      tipe: "",
+      kategori: data.kategoriLayanan || "Add On",
+      idInventory: id
+    });
+  }
+  
   return { success: true, id: id };
 }
 

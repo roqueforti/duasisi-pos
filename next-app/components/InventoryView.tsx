@@ -33,6 +33,12 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   const [satuan, setSatuan] = useState('pcs');
   const [stokMin, setStokMin] = useState('5');
 
+  // Bi-directional Sync States
+  const [isDijual, setIsDijual] = useState(false);
+  const [hargaJual, setHargaJual] = useState('');
+  const [kategori, setKategori] = useState('Add On');
+  const [kategoriList, setKategoriList] = useState<{id: string, nama: string, aktif: string}[]>([]);
+
   const loadInventory = () => {
     setLoading(true);
     runBackendCached<InventoryItem[]>(
@@ -46,8 +52,18 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     setLoading(false);
   };
 
+  const loadKategori = async () => {
+    try {
+      const data = await runBackend<{id: string, nama: string, aktif: string}[]>('getKategoriList');
+      if (Array.isArray(data)) setKategoriList(data.filter(k => k.aktif === 'Y'));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     loadInventory();
+    loadKategori();
   }, []);
 
   const handleAdd = async () => {
@@ -58,11 +74,15 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
         nama: nama.trim(),
         stok: Number(stok) || 0,
         satuan: satuan.trim(),
-        stokMinimum: Number(stokMin) || 0
+        stokMinimum: Number(stokMin) || 0,
+        isDijual,
+        hargaJual: isDijual ? (Number(hargaJual) || 0) : undefined,
+        kategoriLayanan: isDijual ? kategori : undefined
       });
       clearCache('getInventoryList');
+      clearCache('getLayananListAll'); // Clear catalog cache as well
       setShowAddModal(false);
-      setNama(''); setStok('');
+      setNama(''); setStok(''); setHargaJual(''); setIsDijual(false);
       loadInventory();
     } catch (err) {
       await showAlert('Gagal menambah barang', 'error');
@@ -321,6 +341,41 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                   className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">Tanda peringatan (Menipis) akan muncul jika stok di bawah angka ini.</p>
+              </div>
+              
+              <div className="pt-2 border-t border-slate-100 mt-2">
+                <label className="flex items-center gap-2 cursor-pointer mb-2">
+                  <input type="checkbox" checked={isDijual} onChange={(e) => setIsDijual(e.target.checked)} className="w-4 h-4 text-[#1E4648] rounded border-slate-300 focus:ring-[#1E4648]" />
+                  <span className="text-xs font-semibold text-slate-700">Jual barang ini di Kasir (Produk Otomatis)</span>
+                </label>
+                
+                {isDijual && (
+                  <div className="grid grid-cols-2 gap-2 mt-2 p-3 bg-slate-50 rounded-md border border-slate-100">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Harga Jual (Rp)</label>
+                      <input
+                        type="number"
+                        value={hargaJual}
+                        onChange={(e) => setHargaJual(e.target.value)}
+                        placeholder="Contoh: 5000"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Kategori Menu</label>
+                      <select
+                        value={kategori}
+                        onChange={(e) => setKategori(e.target.value)}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
+                      >
+                        {kategoriList.map(kat => (
+                          <option key={kat.id} value={kat.nama}>{kat.nama}</option>
+                        ))}
+                        {kategoriList.length === 0 && <option value="Add On">Add On</option>}
+                      </select>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex justify-end gap-2">
