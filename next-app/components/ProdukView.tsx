@@ -32,7 +32,7 @@ interface ProdukViewProps {
 }
 
 export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
-  const [activeSubTab, setActiveSubTab] = useState<'Produk' | 'Promo' | 'Loyalitas' | 'Prioritas'>('Produk');
+  const [activeSubTab, setActiveSubTab] = useState<'Produk' | 'Promo' | 'Loyalitas'>('Produk');
   const [layananList, setLayananList] = useState<LayananItemBackend[]>([]);
   const [promoList, setPromoList] = useState<PromoVoucher[]>(defaultPromos);
   const [loading, setLoading] = useState(false);
@@ -44,7 +44,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [harga, setHarga] = useState('');
   const [satuan, setSatuan] = useState('kg');
   const [icon, setIcon] = useState('🧺');
-  const [tipe, setTipe] = useState<'SelfService' | 'FullService'>('SelfService');
+  const [tipe, setTipe] = useState<'SelfService' | 'FullService' | ''>('');
   const [kategori, setKategori] = useState<'Self Service' | 'Drop Off' | 'Add On' | 'Makanan dan Minuman'>('Self Service');
 
   // Add Promo Modal State
@@ -58,9 +58,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [poinRate, setPoinRate] = useState('10000');
   const [poinValue, setPoinValue] = useState('1000');
 
-  // Priority Settings
-  const [priorityLevels, setPriorityLevels] = useState<any[]>([]);
-  const [prioritySaving, setPrioritySaving] = useState(false);
+  // Priority Settings (Removed)
 
   const loadProduk = async () => {
     setLoading(true);
@@ -85,51 +83,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       console.error('Gagal memuat konfigurasi poin:', err);
     }
   };
-
-  const loadPriorityConfig = async () => {
-    try {
-      const config = await runBackend<any[]>('getPriorityConfig');
-      if (Array.isArray(config)) {
-        setPriorityLevels(config);
-      }
-    } catch (err) {
-      console.error('Gagal memuat konfigurasi prioritas:', err);
-    }
-  };
-
-  const handleSavePriority = async () => {
-    setPrioritySaving(true);
-    try {
-      const cleanLevels = priorityLevels.map(p => ({
-        id: p.id || `p_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        nama: p.nama,
-        sla: Number(p.sla),
-        multiplier: Number(p.multiplier)
-      }));
-      await runBackend('savePriorityConfig', cleanLevels);
-      setPriorityLevels(cleanLevels);
-      alert('Pengaturan prioritas berhasil disimpan!');
-    } catch (err) {
-      alert('Gagal menyimpan pengaturan prioritas');
-    } finally {
-      setPrioritySaving(false);
-    }
-  };
-
-  const handleAddPriorityLevel = () => {
-    setPriorityLevels([...priorityLevels, { id: `p_${Date.now()}`, nama: 'Level Baru', sla: 24, multiplier: 1 }]);
-  };
-
-  const handleRemovePriorityLevel = (idx: number) => {
-    setPriorityLevels(priorityLevels.filter((_, i) => i !== idx));
-  };
-
-  const handlePriorityChange = (idx: number, field: string, value: string | number) => {
-    const newLevels = [...priorityLevels];
-    newLevels[idx] = { ...newLevels[idx], [field]: value };
-    setPriorityLevels(newLevels);
-  };
-
+  // Priority Config Logic (Removed)
   const loadPromo = async () => {
     try {
       const data = await runBackend<PromoVoucher[]>('getPromoList');
@@ -139,16 +93,14 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
-  useEffect(() => {
     loadProduk();
     loadPromo();
     loadPoinConfig();
-    loadPriorityConfig();
   }, []);
 
   const handleOpenAdd = () => {
     setEditingId(null);
-    setNama(''); setHarga(''); setSatuan('kg'); setIcon('🧺'); setTipe('SelfService'); setKategori('Self Service');
+    setNama(''); setHarga(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service');
     setShowModal(true);
   };
 
@@ -158,7 +110,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     setHarga(item.harga.toString());
     setSatuan(item.satuan || 'kg');
     setIcon(item.icon || '🧺');
-    setTipe(item.tipe || 'SelfService');
+    setTipe(item.tipe || '');
     setKategori(item.kategori || 'Self Service');
     setShowModal(true);
   };
@@ -533,65 +485,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         </div>
       )}
 
-      {/* =========================================
-            TAB PRIORITAS & SLA
-        ========================================= */}
-      {activeSubTab === 'Prioritas' && (
-        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm p-4 md:p-5">
-          <div className="max-w-3xl">
-            <h2 className="text-sm font-extrabold text-slate-700 mb-2">Pengaturan Prioritas & SLA Dinamis</h2>
-            <p className="text-xs text-slate-500 mb-6">Tambahkan level prioritas layanan sebanyak apa pun yang Anda mau. Waktu selesai (SLA) dihitung dari saat pesanan masuk, dan Pengali Harga akan dikalikan dengan subtotal dari item kategori Layanan (produk fisik dikecualikan).</p>
-            
-            <div className="space-y-4">
-              {priorityLevels.map((level, idx) => (
-                <div key={level.id || idx} className="grid grid-cols-12 gap-3 p-4 border border-slate-200 rounded-lg bg-slate-50 relative items-start group">
-                  <div className="col-span-12 sm:col-span-4">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Level</label>
-                    <input type="text" value={level.nama} onChange={e => handlePriorityChange(idx, 'nama', e.target.value)} placeholder="e.g. Super VIP" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:border-[#1E4648] outline-none" />
-                    <p className="text-[10px] text-slate-400 mt-1">Contoh: Reguler, Express, Kilat.</p>
-                  </div>
-                  <div className="col-span-6 sm:col-span-3">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">SLA Waktu (Jam)</label>
-                    <input type="number" value={level.sla} onChange={e => handlePriorityChange(idx, 'sla', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:border-[#1E4648] outline-none" />
-                    <p className="text-[10px] text-slate-400 mt-1">Estimasi pengerjaan sejak pesanan dibuat.</p>
-                  </div>
-                  <div className="col-span-6 sm:col-span-3">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Pengali Harga (x)</label>
-                    <input type="number" step="0.1" value={level.multiplier} onChange={e => handlePriorityChange(idx, 'multiplier', e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:border-[#1E4648] outline-none" />
-                    <p className="text-[10px] text-slate-400 mt-1">Isi 1 untuk harga normal, 2 untuk harga dua kali lipat.</p>
-                  </div>
-                  <div className="col-span-12 sm:col-span-2 flex items-center justify-end sm:mt-5">
-                    <button 
-                      onClick={() => handleRemovePriorityLevel(idx)} 
-                      className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition"
-                      title="Hapus Level"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              
-              <div className="pt-2 flex flex-col sm:flex-row gap-3">
-                <button 
-                  onClick={handleAddPriorityLevel}
-                  className="bg-white border-2 border-dashed border-slate-300 hover:border-[#1E4648] hover:text-[#1E4648] text-slate-500 px-4 py-2.5 rounded-lg text-xs font-bold transition flex justify-center items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" /> Tambah Level Prioritas
-                </button>
-                <button 
-                  onClick={handleSavePriority}
-                  disabled={prioritySaving}
-                  className="bg-[#1E4648] hover:bg-[#163536] text-white px-6 py-2.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 disabled:opacity-50"
-                >
-                  {prioritySaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
-                  {prioritySaving ? 'Menyimpan...' : 'Simpan Semua Pengaturan'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {showModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
@@ -619,28 +513,20 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 <p className="text-[10px] text-slate-400 mt-1">Pengali harga (SLA) hanya berlaku untuk Layanan utama (Self Service & Drop Off).</p>
               </div>
 
-              {(kategori === 'Self Service' || kategori === 'Drop Off') && (
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Tipe Layanan</label>
-                  <select value={tipe} onChange={(e) => setTipe(e.target.value as 'SelfService' | 'FullService')} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
-                    <option value="SelfService">Self Service (Cuci Sendiri)</option>
-                    <option value="FullService">Full Service (Cuci & Setrika)</option>
-                  </select>
-                  <p className="text-[10px] text-slate-400 mt-1">Mengelompokkan layanan pada daftar antrean dan laporan.</p>
-                </div>
-              )}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Tipe Layanan (Opsional)</label>
+                <select value={tipe} onChange={(e) => setTipe(e.target.value as 'SelfService' | 'FullService' | '')} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                  <option value="">Bukan Layanan / Kosong</option>
+                  <option value="SelfService">Self Service</option>
+                  <option value="FullService">Drop Off</option>
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">Mengelompokkan layanan pada daftar antrean dan laporan.</p>
+              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Harga *</label>
-                  <input type="number" value={harga} onChange={(e) => setHarga(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
-                  <p className="text-[10px] text-slate-400 mt-1">Harga dasar per satuan.</p>
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Satuan</label>
-                  <input type="text" value={satuan} onChange={(e) => setSatuan(e.target.value)} placeholder="paket / kg" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
-                  <p className="text-[10px] text-slate-400 mt-1">Contoh: kg, pc, paket.</p>
-                </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Harga *</label>
+                <input type="number" value={harga} onChange={(e) => setHarga(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                <p className="text-[10px] text-slate-400 mt-1">Harga jual produk atau layanan.</p>
               </div>
             </div>
 

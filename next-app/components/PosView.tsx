@@ -96,7 +96,7 @@ function getLayananStyleConfig(item: LayananItem) {
 export default function PosView({ currentRole }: { currentRole?: UserRole } = {}) {
   const [layananList, setLayananList] = useState<LayananItem[]>(defaultLayanan);
   const [search, setSearch] = useState('');
-  const [selectedCategoryTab, setSelectedCategoryTab] = useState<'Semua' | 'SelfService' | 'Dropoff' | 'MakananMinuman'>('Semua');
+  const [selectedCategoryTab, setSelectedCategoryTab] = useState<'Semua' | 'Self Service' | 'Drop Off' | 'Add On' | 'Makanan dan Minuman'>('Semua');
   const [poinRate, setPoinRate] = useState<number>(10000);
   
   // 1. Cart & Order State
@@ -109,14 +109,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [diskonApplied, setDiskonApplied] = useState<{ kode: string; nilai: number }>({ kode: '', nilai: 0 });
 
   // Order Details Form State
-  const [tipeLayanan, setTipeLayanan] = useState<'SelfService' | 'FullService'>('SelfService');
+  const [tipeLayanan, setTipeLayanan] = useState<'SelfService' | 'FullService' | ''>('');
   const [tingkatLayanan, setTingkatLayanan] = useState<string>('Reguler');
   const [catatanOrderInput, setCatatanOrderInput] = useState<string>('');
   
-  // Priority Config
-  const [priorityLevels, setPriorityLevels] = useState<any[]>([
-    { id: 'p1', nama: 'Reguler', sla: 48, multiplier: 1 }
-  ]);
+  const [tingkatLayanan, setTingkatLayanan] = useState<string>('Reguler');
 
   // Payment Form State
   const [namaKasirInput, setNamaKasirInput] = useState('Kasir 1');
@@ -253,13 +250,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       if (res && res.rate) setPoinRate(res.rate);
     }).catch(() => {});
 
-    // 5. Priority Config
-    runBackend<any[]>('getPriorityConfig').then(res => {
-      if (Array.isArray(res) && res.length > 0) {
-        setPriorityLevels(res);
-        setTingkatLayanan(res[0].nama);
-      }
-    }).catch(() => {});
+    // 5. Priority Config (Removed)
   }, []);
 
   const refreshActiveShift = useCallback(async () => {
@@ -284,14 +275,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const cartArray = Object.values(cart);
   const totalCartItems = cartArray.reduce((acc, curr) => acc + curr.qty, 0);
   
-  // Apply Multiplier for Services if Priority is selected
-  const activePriority = priorityLevels.find(p => p.nama === tingkatLayanan) || priorityLevels[0];
-  const multiplier = activePriority?.multiplier || 1;
-
   const subtotalCart = cartArray.reduce((acc, curr) => {
-    const isLayanan = curr.kategori === 'Self Service' || curr.kategori === 'Drop Off';
-    const m = isLayanan ? multiplier : 1;
-    return acc + (curr.qty * curr.hargaSatuan * m);
+    return acc + (curr.qty * curr.hargaSatuan);
   }, 0);
   
   const grandTotal = Math.max(0, subtotalCart - diskonApplied.nilai);
@@ -444,9 +429,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         diskon: diskonApplied.nilai,
         catatan: catatanOrderInput,
         items: cartArray.map((i) => {
-          const isLayanan = i.kategori === 'Self Service' || i.kategori === 'Drop Off';
-          const m = isLayanan ? multiplier : 1;
-          return { layanan: i.layanan, qty: i.qty, hargaSatuan: i.hargaSatuan * m };
+          return { layanan: i.layanan, qty: i.qty, hargaSatuan: i.hargaSatuan };
         })
       });
       if (!res?.success || !res.noNota) throw new Error('Backend tidak mengembalikan nomor nota');
@@ -464,9 +447,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         uangBayar: Number(bayar) || resTotal,
         kembalian: Math.max(0, (Number(bayar) || resTotal) - resTotal),
         items: cartArray.map(i => {
-          const isLayanan = i.kategori === 'Self Service' || i.kategori === 'Drop Off';
-          const m = isLayanan ? multiplier : 1;
-          return { ...i, hargaSatuan: (Number(i.hargaSatuan) || 0) * m, qty: Number(i.qty) || 0 };
+          return { ...i, hargaSatuan: Number(i.hargaSatuan) || 0, qty: Number(i.qty) || 0 };
         }),
         catatan: catatanOrderInput,
         tipeLayanan,
@@ -752,11 +733,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const calculateEstimasi = (tingkatNama: string): string => {
     const now = new Date();
     const target = new Date(now);
-    
-    const priority = priorityLevels.find(p => p.nama === tingkatNama) || priorityLevels[0];
-    const hoursToAdd = priority?.sla || 48;
-    
-    target.setHours(target.getHours() + hoursToAdd);
+    // Hardcode 48 hours for regular since SLA is removed
+    target.setHours(target.getHours() + 48);
     
     return target.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) 
       + ' ' + target.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
@@ -967,9 +945,10 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
             {[
               { id: 'Semua', label: 'Semua Produk' },
-              { id: 'SelfService', label: 'Self Service' },
-              { id: 'Dropoff', label: 'Drop-off' },
-              { id: 'MakananMinuman', label: 'Makanan & Minuman' },
+              { id: 'Self Service', label: 'Self Service' },
+              { id: 'Drop Off', label: 'Drop Off' },
+              { id: 'Add On', label: 'Add On' },
+              { id: 'Makanan dan Minuman', label: 'Makanan & Minuman' },
             ].map((tab) => {
               const isActive = selectedCategoryTab === tab.id;
               return (
@@ -1137,9 +1116,10 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
               if (selectedCategoryTab !== 'Semua') {
                 const tabFiltered = filteredAll.filter((i) => {
-                  if (selectedCategoryTab === 'SelfService') return i.tipe === 'SelfService' && i.kategori !== 'MakananMinuman';
-                  if (selectedCategoryTab === 'Dropoff') return i.tipe === 'FullService';
-                  if (selectedCategoryTab === 'MakananMinuman') return i.kategori === 'MakananMinuman';
+                  if (selectedCategoryTab === 'Self Service') return i.kategori === 'Self Service';
+                  if (selectedCategoryTab === 'Drop Off') return i.kategori === 'Drop Off';
+                  if (selectedCategoryTab === 'Add On') return i.kategori === 'Add On';
+                  if (selectedCategoryTab === 'Makanan dan Minuman') return i.kategori === 'Makanan dan Minuman';
                   return true;
                 });
 
@@ -1265,9 +1245,10 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
                 if (selectedCategoryTab !== 'Semua') {
                   const tabFiltered = filteredAll.filter((i) => {
-                    if (selectedCategoryTab === 'SelfService') return i.tipe === 'SelfService' && i.kategori !== 'MakananMinuman';
-                    if (selectedCategoryTab === 'Dropoff') return i.tipe === 'FullService';
-                    if (selectedCategoryTab === 'MakananMinuman') return i.kategori === 'MakananMinuman';
+                    if (selectedCategoryTab === 'Self Service') return i.kategori === 'Self Service';
+                    if (selectedCategoryTab === 'Drop Off') return i.kategori === 'Drop Off';
+                    if (selectedCategoryTab === 'Add On') return i.kategori === 'Add On';
+                    if (selectedCategoryTab === 'Makanan dan Minuman') return i.kategori === 'Makanan dan Minuman';
                     return true;
                   });
 
@@ -1769,40 +1750,21 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                   </div>
                 </div>
 
-                {/* Tipe Layanan */}
+                {/* Tipe Layanan (Opsional) */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-2">Tipe Layanan</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <label className="block font-bold text-slate-700 mb-2">Tipe Layanan (Opsional)</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button type="button" onClick={() => setTipeLayanan('')} className={`py-2.5 rounded-lg font-bold text-sm border ${tipeLayanan === '' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-white text-slate-700 border-slate-200'}`}>
+                      Bukan Layanan
+                    </button>
                     <button type="button" onClick={() => setTipeLayanan('SelfService')} className={`py-2.5 rounded-lg font-bold text-sm border ${tipeLayanan === 'SelfService' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-white text-slate-700 border-slate-200'}`}>
                       Self Service
                     </button>
                     <button type="button" onClick={() => setTipeLayanan('FullService')} className={`py-2.5 rounded-lg font-bold text-sm border ${tipeLayanan === 'FullService' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-white text-slate-700 border-slate-200'}`}>
-                      Full Service
+                      Drop Off
                     </button>
                   </div>
                 </div>
-
-                {tipeLayanan === 'FullService' && (
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-2">Prioritas Pengerjaan</label>
-                    <div className="flex flex-wrap gap-2">
-                      {priorityLevels.map((priority) => (
-                        <button 
-                          key={priority.id || priority.nama} 
-                          type="button" 
-                          onClick={() => setTingkatLayanan(priority.nama)} 
-                          className={`flex-1 min-w-[80px] py-2.5 rounded-lg text-sm font-bold border transition ${
-                            tingkatLayanan === priority.nama 
-                              ? 'bg-[#FF9500] border-[#FF9500] text-white' 
-                              : 'bg-white border-slate-200 text-slate-600 hover:border-[#FF9500] hover:text-[#FF9500]'
-                          }`}
-                        >
-                          {priority.nama}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* Catatan */}
                 <div>
