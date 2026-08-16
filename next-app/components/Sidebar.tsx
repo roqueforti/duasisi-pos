@@ -70,7 +70,7 @@ export default function Sidebar({
 
   const navClass = (tabKey: string) => {
     const isActive = currentTab === tabKey;
-    return `w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'} rounded-lg text-xs font-semibold transition-colors ${
+    return `w-full text-left flex items-center ${isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'} rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
       isActive 
         ? 'bg-slate-100 text-slate-700 font-bold shadow-2xs' 
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
@@ -92,7 +92,7 @@ export default function Sidebar({
       )}
 
       <aside className={`bg-white text-slate-600 border-r border-slate-200/80 flex flex-col shrink-0 z-[200] fixed lg:static inset-y-0 left-0 transition-all duration-200 overflow-y-auto ${
-        isCollapsed ? 'lg:w-[64px]' : 'lg:w-48'
+        isCollapsed ? 'lg:w-[64px]' : 'lg:w-60'
       } ${isSidebarOpen ? 'w-60 translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         
         {/* Header Logo & Minimize */}
