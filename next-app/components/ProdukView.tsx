@@ -14,6 +14,7 @@ interface LayananItemBackend {
   icon: string;
   aktif: string;
   tipe: 'SelfService' | 'FullService';
+  pipelineSteps?: number[];
 }
 
 interface PromoVoucher {
@@ -47,6 +48,10 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [tipe, setTipe] = useState<'SelfService' | 'FullService' | ''>('');
   const [kategori, setKategori] = useState<string>('Self Service');
   const [kategoriList, setKategoriList] = useState<{id: string, nama: string, aktif: string}[]>([]);
+  
+  // Pipeline Steps selection
+  const [masterPipelineSteps, setMasterPipelineSteps] = useState<{step: number, nama: string}[]>([]);
+  const [selectedPipelineSteps, setSelectedPipelineSteps] = useState<number[]>([]);
 
   // Add Promo Modal State
   const [showPromoModal, setShowPromoModal] = useState(false);
@@ -103,16 +108,27 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
+  const loadPipelineSteps = async () => {
+    try {
+      const data = await runBackend<{step: number, nama: string}[]>('getPipelineConfigData');
+      if (Array.isArray(data)) setMasterPipelineSteps(data);
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     loadProduk();
     loadPromo();
     loadPoinConfig();
     loadKategori();
+    loadPipelineSteps();
   }, []);
 
   const handleOpenAdd = () => {
     setEditingId(null);
     setNama(''); setHarga(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service');
+    setSelectedPipelineSteps([]);
     setShowModal(true);
   };
 
@@ -124,12 +140,13 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     setIcon(item.icon || '🧺');
     setTipe(item.tipe || '');
     setKategori(item.kategori || 'Self Service');
+    setSelectedPipelineSteps(item.pipelineSteps ? item.pipelineSteps.map(Number) : []);
     setShowModal(true);
   };
 
   const handleSave = async () => {
     if (!nama.trim() || !harga.trim()) { alert('Nama dan harga wajib diisi!'); return; }
-    const payload = { nama: nama.trim(), harga: Number(harga) || 0, satuan, icon, tipe, kategori };
+    const payload = { nama: nama.trim(), harga: Number(harga) || 0, satuan, icon, tipe, kategori, pipelineSteps: tipe === 'FullService' ? selectedPipelineSteps : [] };
     setLoading(true);
     try {
       if (editingId) {
@@ -525,6 +542,29 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">Mengelompokkan layanan pada daftar antrean dan laporan.</p>
               </div>
+
+              {tipe === 'FullService' && masterPipelineSteps.length > 0 && (
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Langkah Pengerjaan (Pipeline)</label>
+                  <div className="space-y-1.5 p-3 bg-slate-50 border border-slate-200 rounded-md">
+                    {masterPipelineSteps.map(step => (
+                      <label key={step.step} className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedPipelineSteps.includes(step.step)}
+                          onChange={e => {
+                            if (e.target.checked) setSelectedPipelineSteps(prev => [...prev, step.step]);
+                            else setSelectedPipelineSteps(prev => prev.filter(s => s !== step.step));
+                          }}
+                          className="rounded border-slate-300 text-[#1E4648] focus:ring-[#1E4648]"
+                        />
+                        <span className="text-xs text-slate-700">{step.step}. {step.nama}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">Pilih langkah apa saja yang harus dilewati produk ini.</p>
+                </div>
+              )}
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Harga *</label>

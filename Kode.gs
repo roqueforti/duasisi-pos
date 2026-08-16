@@ -40,7 +40,8 @@ const ALLOWED_API_ACTIONS = Object.freeze({
   getPoinConfig: true, savePoinConfig: true,
   getPriorityConfig: true, savePriorityConfig: true,
   getKategoriList: true, tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true,
-  getAbsensiConfig: true, saveAbsensiConfig: true, updateMasterShift: true
+  getAbsensiConfig: true, saveAbsensiConfig: true, updateMasterShift: true,
+  getPipelineConfigData: true, savePipelineConfigData: true
 });
 const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true });
 const MANAGER_API_ACTIONS = Object.freeze({
@@ -53,7 +54,8 @@ const MANAGER_API_ACTIONS = Object.freeze({
   getLaporanRange: true, getAuditLogs: true, approveVoidTransaksi: true, getRekapKasShift: true,
   savePoinConfig: true, savePriorityConfig: true,
   tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true,
-  saveAbsensiConfig: true, updateMasterShift: true
+  saveAbsensiConfig: true, updateMasterShift: true,
+  getPipelineConfigData: true, savePipelineConfigData: true
 });
 
 /**
@@ -434,16 +436,37 @@ function getLegacyPipelineConfig_(tipe) {
   ];
 }
 
+function getPipelineConfigData() {
+  const props = PropertiesService.getScriptProperties();
+  const raw = props.getProperty("PIPELINE_FULLSERVICE");
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch(e) {}
+  }
+  return [
+    { step: 1, nama: "Diterima", needStaff: false, needMesin: false },
+    { step: 2, nama: "Dicuci", needStaff: true, needMesin: true },
+    { step: 3, nama: "Dikeringkan", needStaff: true, needMesin: true },
+    { step: 4, nama: "Disetrika", needStaff: true, needMesin: false },
+    { step: 5, nama: "Siap Diambil", needStaff: false, needMesin: false },
+    { step: 6, nama: "Selesai", needStaff: false, needMesin: false }
+  ];
+}
+
+function savePipelineConfigData(configArray) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    props.setProperty("PIPELINE_FULLSERVICE", JSON.stringify(configArray));
+    return { success: true, message: "Konfigurasi Drop Off berhasil disimpan!" };
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
+}
+
 function getPipelineConfig(tipe) {
   if (tipe === "FullService") {
-    return [
-      { step: 1, nama: "Diterima", needStaff: false, needMesin: false },
-      { step: 2, nama: "Dicuci", needStaff: true, needMesin: true },
-      { step: 3, nama: "Dikeringkan", needStaff: true, needMesin: true },
-      { step: 4, nama: "Disetrika", needStaff: true, needMesin: false },
-      { step: 5, nama: "Siap Diambil", needStaff: false, needMesin: false },
-      { step: 6, nama: "Selesai", needStaff: false, needMesin: false }
-    ];
+    return getPipelineConfigData();
   }
   return getLegacyPipelineConfig_(tipe);
 }
@@ -548,35 +571,46 @@ function getLayananList(tipeFilter) {
   data.shift();
   let list = data.filter(r => r[5] === "Y");
   if (tipeFilter) list = list.filter(r => r[6] === tipeFilter);
-  return list.map(r => ({ 
-    id: r[0], 
-    nama: r[1], 
-    harga: Number(r[2]) || 0, 
-    satuan: r[3], 
-    icon: r[4] || "🧺", 
-    tipe: r[6] || "SelfService" 
-  }));
+  return list.map(r => {
+    let pipelineSteps = [];
+    try { if (r[7]) pipelineSteps = JSON.parse(r[7]); } catch(e) {}
+    return {
+      id: r[0], 
+      nama: r[1], 
+      harga: Number(r[2]) || 0, 
+      satuan: r[3], 
+      icon: r[4] || "🧺", 
+      tipe: r[6] || "SelfService",
+      pipelineSteps: pipelineSteps
+    };
+  });
 }
 
 function getLayananListAll() {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   const data = sh.getDataRange().getValues();
   data.shift();
-  return data.map(r => ({ 
-    id: r[0], 
-    nama: r[1], 
-    harga: Number(r[2]) || 0, 
-    satuan: r[3], 
-    icon: r[4] || "🧺", 
-    aktif: r[5], 
-    tipe: r[6] || "SelfService" 
-  }));
+  return data.map(r => {
+    let pipelineSteps = [];
+    try { if (r[7]) pipelineSteps = JSON.parse(r[7]); } catch(e) {}
+    return {
+      id: r[0], 
+      nama: r[1], 
+      harga: Number(r[2]) || 0, 
+      satuan: r[3], 
+      icon: r[4] || "🧺", 
+      aktif: r[5], 
+      tipe: r[6] || "SelfService",
+      pipelineSteps: pipelineSteps
+    };
+  });
 }
 
 function tambahLayanan(data) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   const id = generateId("SVC");
-  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe || "SelfService"]);
+  const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : "";
+  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe || "SelfService", pSteps]);
   return { success: true, id: id };
 }
 
@@ -585,7 +619,8 @@ function updateLayanan(id, data) {
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
-      sh.getRange(i + 1, 2, 1, 6).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe || rows[i][6]]]);
+      const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : (rows[i][7] || "");
+      sh.getRange(i + 1, 2, 1, 7).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe || rows[i][6], pSteps]]);
       return { success: true };
     }
   }
@@ -883,7 +918,7 @@ function simpanTransaksi(data) {
     ]);
 
     simpanPelangganJikaBaru(data.namaPelanggan || data.pelanggan, data.noHp, data.alamat || "", total, data.catatanPelanggan || "");
-    if (tipe === "FullService") createPipelineForNota(noNota, tipe);
+    if (tipe === "FullService") createPipelineForNota(noNota, tipe, items);
     addAuditLog(petugas, "Transaksi Baru", noNota, "Total Rp " + total.toLocaleString('id-ID') + " (" + (data.metodeBayar || "Tunai") + ", " + statusPembayaran + ")");
     SpreadsheetApp.flush();
     var notaToken = generateNotaToken_(noNota);
@@ -1223,14 +1258,33 @@ function getRiwayatPelangganByHp(noHp) {
 // ============================================================
 // PIPELINE ENGINE
 // ============================================================
-function createPipelineForNota(noNota, tipe) {
+function createPipelineForNota(noNota, tipe, items) {
   let sh = SS.getSheetByName(SHEET_PIPELINE);
   if (!sh) {
     sh = SS.insertSheet(SHEET_PIPELINE);
     sh.appendRow(["ID", "No Nota", "Step", "Nama Step", "Status", "Assigned Staff", "Mesin ID", "Waktu Mulai", "Waktu Selesai", "Catatan"]);
   }
 
-  const config = getPipelineConfig(tipe);
+  let config = getPipelineConfig(tipe);
+
+  if (tipe === "FullService" && items && items.length > 0) {
+    // Extract required steps based on products bought
+    const allLayanan = getLayananListAll();
+    const requiredSteps = new Set();
+    
+    items.forEach(item => {
+      const lay = allLayanan.find(l => l.nama === item.layanan);
+      if (lay && Array.isArray(lay.pipelineSteps)) {
+        lay.pipelineSteps.forEach(s => requiredSteps.add(Number(s)));
+      }
+    });
+
+    if (requiredSteps.size > 0) {
+      config = config.filter(c => requiredSteps.has(c.step));
+      // Fallback if somehow no step 1, but we trust the user config
+    }
+  }
+
   config.forEach((c, idx) => {
     const status = idx === 0 ? "Aktif" : "Pending";
     const waktuMulai = idx === 0 ? new Date() : "";

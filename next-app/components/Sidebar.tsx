@@ -17,8 +17,8 @@ import {
   PanelLeftOpen,
   ChevronRight,
   ClipboardList,
-  Cpu,
-  FolderOpen
+  FolderOpen,
+  GitMerge
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -59,7 +59,7 @@ export default function Sidebar({
       alert('Fitur POS Kasir hanya untuk Staff/Kasir');
       return;
     }
-    if (['pegawai', 'produk', 'kategori', 'shift', 'rekap'].includes(tabKey) && currentRole !== 'MANAGER') {
+    if (['pegawai', 'produk', 'kategori', 'shift', 'pipeline', 'rekap'].includes(tabKey) && currentRole !== 'MANAGER') {
       alert('Akses Ditolak — Khusus Manager/Owner');
       return;
     }
@@ -212,6 +212,10 @@ export default function Sidebar({
               <button className={navClass('shift')} onClick={() => handleNavClick('shift')} title="Shift & Absensi">
                 <Clock className={`w-[18px] h-[18px] shrink-0 ${iconClass('shift')}`} />
                 {!isCollapsed && <span>Shift & Absensi</span>}
+              </button>
+              <button className={navClass('pipeline')} onClick={() => handleNavClick('pipeline')} title="Drop Off Pipeline">
+                <GitMerge className={`w-[18px] h-[18px] shrink-0 ${iconClass('pipeline')}`} />
+                {!isCollapsed && <span>Manajemen Drop Off</span>}
               </button>
               <button className={navClass('produk')} onClick={() => handleNavClick('produk')} title="Produk">
                 <Tag className={`w-[18px] h-[18px] shrink-0 ${iconClass('produk')}`} />
