@@ -47,6 +47,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [layananList, setLayananList] = useState<LayananItemBackend[]>([]);
   const [promoList, setPromoList] = useState<PromoVoucher[]>(defaultPromos);
   const [loading, setLoading] = useState(false);
+  const [filterKategori, setFilterKategori] = useState<string>('Semua');
 
   // Add / Edit Product Modal State
   const [showModal, setShowModal] = useState(false);
@@ -289,6 +290,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
+  const uniqueKategoriList = ['Semua', ...Array.from(new Set(layananList.map(item => item.kategori || 'Self Service')))];
+  const filteredLayananList = filterKategori === 'Semua' ? layananList : layananList.filter(item => (item.kategori || 'Self Service') === filterKategori);
+
   return (
     <div className="p-3 md:p-4 space-y-4 w-full">
       <div className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap shadow-xs">
@@ -326,6 +330,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
         {activeSubTab === 'Produk' && (
           <div className="flex items-center gap-2">
+            <select
+              value={filterKategori}
+              onChange={(e) => setFilterKategori(e.target.value)}
+              className="px-3 py-1.5 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] text-xs text-slate-600 bg-white shadow-sm"
+            >
+              {uniqueKategoriList.map(kat => (
+                <option key={kat} value={kat}>{kat === 'Semua' ? 'Semua Kategori' : kat}</option>
+              ))}
+            </select>
             {currentRole === 'MANAGER' && (
               <>
                 <button onClick={handleExportProduk} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Export Data Layanan ke CSV">
@@ -390,10 +403,10 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16 ml-auto" /></td>
                     </tr>
                   ))
-                ) : layananList.length === 0 ? (
+                ) : filteredLayananList.length === 0 ? (
                   <tr><td colSpan={6} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
                 ) : (
-                  layananList.map((item) => (
+                  filteredLayananList.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50 transition">
                       <td className="py-3 px-4 font-semibold text-slate-600 flex items-center gap-2">
                         <span>{item.nama}</span>
