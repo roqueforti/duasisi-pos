@@ -79,18 +79,16 @@ function getLayananStyleConfig(item: LayananItem) {
   else if (name.includes('Air') || name.includes('Kopi') || name.includes('Teh')) Icon = Coffee;
   else if (name.includes('Setrika') || name.includes('Express') || name.includes('Setrika')) Icon = Sparkles;
 
-  // Subtle color scheme â€” semua pakai nuansa teal/slate, hanya icon bg yang beda tipis
-  if (kategori === 'Makanan dan Minuman') {
-    return { Icon, iconBg: 'bg-[#FF9500]/10', iconColor: 'text-[#FF9500]', dot: 'bg-orange-400' };
-  }
-  if (kategori === 'Add On') {
-    return { Icon, iconBg: 'bg-slate-100', iconColor: 'text-slate-500', dot: 'bg-slate-400' };
-  }
-  if (kategori === 'Drop Off') {
-    return { Icon, iconBg: 'bg-[#B5C9C9]/20', iconColor: 'text-[#1E4648]', dot: 'bg-teal-400' };
-  }
-  // Default: Layanan Utama
-  return { Icon, iconBg: 'bg-[#B5C9C9]/20', iconColor: 'text-[#1E4648]', dot: 'bg-[#1E4648]' };
+  const warna = item.kategoriWarna || 'bg-slate-100 text-slate-800 border-slate-200';
+  
+  // Extract text color and background color from Tailwind classes
+  // e.g., 'bg-blue-100 text-blue-800 border-blue-200'
+  const classes = warna.split(' ');
+  const bgClass = classes.find(c => c.startsWith('bg-')) || 'bg-[#B5C9C9]/20';
+  const textClass = classes.find(c => c.startsWith('text-')) || 'text-[#1E4648]';
+  const dotColor = bgClass.replace('100', '400').replace('bg-', '');
+
+  return { Icon, iconBg: bgClass, iconColor: textClass, dot: `bg-${dotColor}` };
 }
 
 export default function PosView({ currentRole }: { currentRole?: UserRole } = {}) {
@@ -205,6 +203,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             tipe: item.tipe || 'SelfService',
             satuan: item.satuan || 'paket',
             kategori: (item.kategori as any) || 'Self Service',
+            kategoriWarna: item.kategoriWarna,
           })) : defaultLayanan);
         } else {
           setLayananList(defaultLayanan);
@@ -1049,19 +1048,27 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         let IconComp = WashingMachine;
                         let bgColor = 'bg-[#1E4648]';
                         let textColor = 'text-white';
-                        
-                        if (item.tipe === 'FullService') {
-                          IconComp = Sparkles;
-                          bgColor = 'bg-[#FF9500]';
+                        if (item.kategoriWarna) {
+                          const classes = item.kategoriWarna.split(' ');
+                          bgColor = classes.find(c => c.startsWith('bg-'))?.replace('100', '500') || 'bg-[#1E4648]';
                           textColor = 'text-white';
-                        } else if (item.kategori === 'Makanan dan Minuman') {
-                          IconComp = Coffee;
-                          bgColor = 'bg-orange-500';
-                          textColor = 'text-white';
-                        } else if (item.kategori === 'Add On') {
-                          IconComp = Package;
-                          bgColor = 'bg-slate-400';
-                          textColor = 'text-white';
+                          if (item.tipe === 'FullService') IconComp = Sparkles;
+                          else if (item.kategori === 'Makanan dan Minuman') IconComp = Coffee;
+                          else if (item.kategori === 'Add On') IconComp = Package;
+                        } else {
+                          if (item.tipe === 'FullService') {
+                            IconComp = Sparkles;
+                            bgColor = 'bg-[#FF9500]';
+                            textColor = 'text-white';
+                          } else if (item.kategori === 'Makanan dan Minuman') {
+                            IconComp = Coffee;
+                            bgColor = 'bg-orange-500';
+                            textColor = 'text-white';
+                          } else if (item.kategori === 'Add On') {
+                            IconComp = Package;
+                            bgColor = 'bg-slate-400';
+                            textColor = 'text-white';
+                          }
                         }
                         
                         return (

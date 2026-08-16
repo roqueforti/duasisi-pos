@@ -8,7 +8,8 @@ export interface LayananItem {
   tipe: 'SelfService' | 'FullService';
   satuan?: string;
   icon?: string;
-  kategori?: 'Self Service' | 'Drop Off' | 'Add On' | 'Makanan dan Minuman';
+  kategori?: string;
+  kategoriWarna?: string;
 }
 
 export interface CartItem {

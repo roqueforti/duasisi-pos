@@ -566,8 +566,13 @@ function setupSheets() {
 // LAYANAN (CRUD) — with Tipe support
 // ============================================================
 function getLayananList(tipeFilter) {
-  const sh = SS.getSheetByName(SHEET_LAYANAN);
-  const data = sh.getDataRange().getValues();
+  const shL = SS.getSheetByName(SHEET_LAYANAN);
+  const shK = SS.getSheetByName(SHEET_KATEGORI);
+  const katData = shK ? shK.getDataRange().getValues() : [];
+  const katMap = {};
+  katData.forEach(r => { katMap[r[1]] = r[3]; });
+
+  const data = shL.getDataRange().getValues();
   data.shift();
   let list = data.filter(r => r[5] === "Y");
   if (tipeFilter) list = list.filter(r => r[6] === tipeFilter);
@@ -581,14 +586,21 @@ function getLayananList(tipeFilter) {
       satuan: r[3], 
       icon: r[4] || "🧺", 
       tipe: r[6] || "SelfService",
+      kategori: r[8] || "Self Service",
+      kategoriWarna: katMap[r[8] || "Self Service"] || "bg-slate-100 text-slate-800 border-slate-200",
       pipelineSteps: pipelineSteps
     };
   });
 }
 
 function getLayananListAll() {
-  const sh = SS.getSheetByName(SHEET_LAYANAN);
-  const data = sh.getDataRange().getValues();
+  const shL = SS.getSheetByName(SHEET_LAYANAN);
+  const shK = SS.getSheetByName(SHEET_KATEGORI);
+  const katData = shK ? shK.getDataRange().getValues() : [];
+  const katMap = {};
+  katData.forEach(r => { katMap[r[1]] = r[3]; });
+
+  const data = shL.getDataRange().getValues();
   data.shift();
   return data.map(r => {
     let pipelineSteps = [];
@@ -601,6 +613,8 @@ function getLayananListAll() {
       icon: r[4] || "🧺", 
       aktif: r[5], 
       tipe: r[6] || "SelfService",
+      kategori: r[8] || "Self Service",
+      kategoriWarna: katMap[r[8] || "Self Service"] || "bg-slate-100 text-slate-800 border-slate-200",
       pipelineSteps: pipelineSteps
     };
   });
@@ -610,7 +624,7 @@ function tambahLayanan(data) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   const id = generateId("SVC");
   const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : "";
-  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe || "SelfService", pSteps]);
+  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe || "SelfService", pSteps, data.kategori || "Self Service"]);
   return { success: true, id: id };
 }
 
@@ -620,7 +634,7 @@ function updateLayanan(id, data) {
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
       const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : (rows[i][7] || "");
-      sh.getRange(i + 1, 2, 1, 7).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe || rows[i][6], pSteps]]);
+      sh.getRange(i + 1, 2, 1, 8).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe || rows[i][6], pSteps, data.kategori || rows[i][8]]]);
       return { success: true };
     }
   }
@@ -652,18 +666,19 @@ function getKategoriList() {
   let sh = SS.getSheetByName(SHEET_KATEGORI);
   if (!sh) {
     sh = SS.insertSheet(SHEET_KATEGORI);
-    sh.appendRow(["ID", "Nama Kategori", "Aktif"]);
-    sh.appendRow([generateId("KAT"), "Self Service", "Y"]);
-    sh.appendRow([generateId("KAT"), "Drop Off", "Y"]);
-    sh.appendRow([generateId("KAT"), "Add On", "Y"]);
-    sh.appendRow([generateId("KAT"), "Makanan dan Minuman", "Y"]);
+    sh.appendRow(["ID", "Nama Kategori", "Aktif", "Warna"]);
+    sh.appendRow([generateId("KAT"), "Self Service", "Y", "bg-blue-100 text-blue-800 border-blue-200"]);
+    sh.appendRow([generateId("KAT"), "Drop Off", "Y", "bg-amber-100 text-amber-800 border-amber-200"]);
+    sh.appendRow([generateId("KAT"), "Add On", "Y", "bg-emerald-100 text-emerald-800 border-emerald-200"]);
+    sh.appendRow([generateId("KAT"), "Makanan dan Minuman", "Y", "bg-rose-100 text-rose-800 border-rose-200"]);
   }
   const data = sh.getDataRange().getValues();
   data.shift();
   return data.map(r => ({
     id: r[0],
     nama: r[1],
-    aktif: r[2] || "Y"
+    aktif: r[2] || "Y",
+    warna: r[3] || "bg-slate-100 text-slate-800 border-slate-200"
   }));
 }
 
@@ -671,7 +686,7 @@ function tambahKategori(data) {
   let sh = SS.getSheetByName(SHEET_KATEGORI);
   if (!sh) sh = SS.insertSheet(SHEET_KATEGORI);
   const id = generateId("KAT");
-  sh.appendRow([id, data.nama, "Y"]);
+  sh.appendRow([id, data.nama, "Y", data.warna || "bg-slate-100 text-slate-800 border-slate-200"]);
   return { success: true, id: id };
 }
 
@@ -682,6 +697,7 @@ function updateKategori(id, data) {
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
       sh.getRange(i + 1, 2).setValue(data.nama);
+      if (data.warna) sh.getRange(i + 1, 4).setValue(data.warna);
       return { success: true };
     }
   }
