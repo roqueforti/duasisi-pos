@@ -210,20 +210,13 @@ function getRiwayatPelangganByHp(noHp) {
   const cleanHp = normalizePhone(noHp);
   if (!cleanHp) return [];
 
-  const shT = SS.getSheetByName(SHEET_TRANSAKSI);
-  const shD = SS.getSheetByName(SHEET_DETAIL);
+  const allTx = getTransaksiList();
+  const filtered = allTx.filter(t => normalizePhone(t.noHp) === cleanHp);
 
-  const dataHeader = shT ? shT.getDataRange().getValues() : []; dataHeader.shift();
-  const dataDetail = shD ? shD.getDataRange().getValues() : []; dataDetail.shift();
-
-  const filtered = dataHeader.filter(r => normalizePhone(r[3]) === cleanHp);
-
-  return filtered.map(r => {
-    const items = dataDetail.filter(d => d[0] === r[0]).map(d => ({ layanan: d[1], qty: d[2], subtotal: d[4] }));
-    const tipe = r[8] || "SelfService";
-    const pipeline = tipe === "FullService" ? getPipelineSteps(r[0]) : undefined;
-    return {
-      noNota: r[0], tanggal: fmtWib(r[1]), total: r[4], status: r[5], tipe: tipe, items: items, pipeline: pipeline
-    };
-  }).reverse();
+  return filtered.map(t => {
+    if (t.tipe === "FullService") {
+      t.pipeline = getPipelineSteps(t.noNota);
+    }
+    return t;
+  });
 }

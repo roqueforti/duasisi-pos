@@ -38,15 +38,7 @@ export interface PelangganItem {
   saldoPoin: number;
 }
 
-export interface TransaksiItemHistory {
-  noNota: string;
-  tanggal: string;
-  total: number;
-  status: string;
-  tipe: string;
-  items: { layanan: string; qty: number; subtotal: number }[];
-  pipeline?: { namaStep: string; status: string; assignedStaff?: string; mesinId?: string }[];
-}
+import { Transaksi } from '@/lib/types';
 
 export default function PelangganView({ currentRole }: { currentRole?: UserRole } = {}) {
   const { showAlert } = useDialog();
@@ -65,7 +57,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [editCatatan, setEditCatatan] = useState<string>('');
   
   // History list for selected customer
-  const [historyList, setHistoryList] = useState<TransaksiItemHistory[]>([]);
+  const [historyList, setHistoryList] = useState<Transaksi[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
   const [savingEdit, setSavingEdit] = useState<boolean>(false);
 
@@ -99,9 +91,9 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
     // Fetch customer transactions history
     setLoadingHistory(true);
     try {
-      const txs = await runBackend<TransaksiItemHistory[]>('getRiwayatPelangganByHp', cust.noHp);
-      if (Array.isArray(txs)) {
-        setHistoryList(txs);
+      const hist = await runBackend<Transaksi[]>('getRiwayatPelangganByHp', cust.noHp);
+      if (Array.isArray(hist)) {
+        setHistoryList(hist);
       } else {
         setHistoryList([]);
       }
@@ -504,12 +496,45 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                           </span>
                         </div>
                         {tx.items && tx.items.length > 0 && (
-                          <div className="text-[10px] text-slate-600 pt-1 border-t border-slate-100 flex flex-wrap gap-1">
+                          <div className="text-[10px] text-slate-600 pt-1 border-t border-slate-100 flex flex-col gap-1">
                             {tx.items.map((it, i) => (
-                              <span key={i} className="bg-slate-100 px-1.5 py-0.5 rounded">
-                                {it.layanan} ×{it.qty}
-                              </span>
+                              <div key={i} className="flex justify-between items-center bg-slate-50 px-1.5 py-0.5 rounded">
+                                <span>{it.layanan} × {it.qty}</span>
+                                <span className="font-semibold text-slate-500">Rp {(it.subtotal || 0).toLocaleString('id-ID')}</span>
+                              </div>
                             ))}
+                            
+                            <div className="mt-1 pt-1 border-t border-slate-100 border-dashed space-y-0.5 text-slate-500">
+                              <div className="flex justify-between">
+                                <span>Subtotal</span>
+                                <span>Rp {(tx.subtotal || 0).toLocaleString('id-ID')}</span>
+                              </div>
+                              {tx.diskon > 0 && (
+                                <div className="flex justify-between text-rose-500">
+                                  <span>Diskon</span>
+                                  <span>- Rp {(tx.diskon || 0).toLocaleString('id-ID')}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between font-bold text-slate-700">
+                                <span>Total Tagihan</span>
+                                <span>Rp {(tx.total || 0).toLocaleString('id-ID')}</span>
+                              </div>
+                            </div>
+                            
+                            <div className="mt-1 pt-1 border-t border-slate-100 border-dashed space-y-0.5">
+                              <div className="flex justify-between">
+                                <span>Metode Bayar</span>
+                                <span className="font-semibold">{tx.metodeBayar || 'Tunai'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Status Bayar</span>
+                                <span className={`font-bold ${tx.statusPembayaran === 'Lunas' ? 'text-[#1E4648]' : 'text-[#FF9500]'}`}>{tx.statusPembayaran || 'Lunas'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Kasir / Petugas</span>
+                                <span>{tx.petugas || '-'}</span>
+                              </div>
+                            </div>
                           </div>
                         )}
                         {tx.tipe === 'FullService' && tx.pipeline && tx.pipeline.length > 0 && (
