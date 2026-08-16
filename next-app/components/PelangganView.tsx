@@ -509,7 +509,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                                 <span>Subtotal</span>
                                 <span>Rp {(tx.subtotal || 0).toLocaleString('id-ID')}</span>
                               </div>
-                              {tx.diskon > 0 && (
+                              {(tx.diskon || 0) > 0 && (
                                 <div className="flex justify-between text-rose-500">
                                   <span>Diskon</span>
                                   <span>- Rp {(tx.diskon || 0).toLocaleString('id-ID')}</span>
