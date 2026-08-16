@@ -636,6 +636,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         <Plus className="w-3 h-3" /> Tambah Manual
                       </button>
                     </div>
+                  </div>
                   <p className="text-[10px] text-slate-400 mt-1">Atur urutan proses spesifik untuk produk ini.</p>
                 </div>
               )}
