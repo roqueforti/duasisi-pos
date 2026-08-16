@@ -93,6 +93,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
+  useEffect(() => {
     loadProduk();
     loadPromo();
     loadPoinConfig();
@@ -272,15 +273,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
             >
               <Gift className="w-3.5 h-3.5" />
               <span>Program Poin Loyalitas</span>
-            </button>
-            <button
-              onClick={() => setActiveSubTab('Prioritas')}
-              className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
-                activeSubTab === 'Prioritas' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Prioritas & SLA</span>
             </button>
           </div>
         </div>

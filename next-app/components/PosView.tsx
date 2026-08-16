@@ -57,16 +57,16 @@ interface CustomerState {
 }
 
 const defaultLayanan: LayananItem[] = [
-  { layanan: 'Dummy 1', hargaSatuan: 10000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
-  { layanan: 'Dummy 2', hargaSatuan: 15000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
-  { layanan: 'Dummy 3', hargaSatuan: 20000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
-  { layanan: 'Dummy 4', hargaSatuan: 5000, tipe: 'SelfService', satuan: 'paket', kategori: 'Layanan' },
+  { layanan: 'Dummy 1', hargaSatuan: 10000, tipe: 'SelfService', satuan: 'paket', kategori: 'Self Service' },
+  { layanan: 'Dummy 2', hargaSatuan: 15000, tipe: 'SelfService', satuan: 'paket', kategori: 'Self Service' },
+  { layanan: 'Dummy 3', hargaSatuan: 20000, tipe: 'SelfService', satuan: 'paket', kategori: 'Self Service' },
+  { layanan: 'Dummy 4', hargaSatuan: 5000, tipe: 'SelfService', satuan: 'paket', kategori: 'Self Service' },
   { layanan: 'Dummy 5', hargaSatuan: 12000, tipe: 'FullService', satuan: 'paket', kategori: 'Drop Off' },
-  { layanan: 'Dummy 6', hargaSatuan: 1000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Produk' },
-  { layanan: 'Dummy 7', hargaSatuan: 2000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Produk' },
-  { layanan: 'Dummy 8', hargaSatuan: 3000, tipe: 'SelfService', satuan: 'pcs', kategori: 'Produk' },
-  { layanan: 'Dummy 9', hargaSatuan: 5000, tipe: 'SelfService', satuan: 'botol', kategori: 'MakananMinuman' },
-  { layanan: 'Dummy 10', hargaSatuan: 7000, tipe: 'SelfService', satuan: 'cangkir', kategori: 'MakananMinuman' },
+  { layanan: 'Dummy 6', hargaSatuan: 1000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Add On' },
+  { layanan: 'Dummy 7', hargaSatuan: 2000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Add On' },
+  { layanan: 'Dummy 8', hargaSatuan: 3000, tipe: 'SelfService', satuan: 'pcs', kategori: 'Add On' },
+  { layanan: 'Dummy 9', hargaSatuan: 5000, tipe: 'SelfService', satuan: 'botol', kategori: 'Makanan dan Minuman' },
+  { layanan: 'Dummy 10', hargaSatuan: 7000, tipe: 'SelfService', satuan: 'cangkir', kategori: 'Makanan dan Minuman' },
 ];
 
 function getLayananStyleConfig(item: LayananItem) {
@@ -80,10 +80,10 @@ function getLayananStyleConfig(item: LayananItem) {
   else if (name.includes('Setrika') || name.includes('Express') || name.includes('Setrika')) Icon = Sparkles;
 
   // Subtle color scheme â€” semua pakai nuansa teal/slate, hanya icon bg yang beda tipis
-  if (kategori === 'MakananMinuman') {
+  if (kategori === 'Makanan dan Minuman') {
     return { Icon, iconBg: 'bg-[#FF9500]/10', iconColor: 'text-[#FF9500]', dot: 'bg-orange-400' };
   }
-  if (kategori === 'Produk') {
+  if (kategori === 'Add On') {
     return { Icon, iconBg: 'bg-slate-100', iconColor: 'text-slate-500', dot: 'bg-slate-400' };
   }
   if (kategori === 'Drop Off') {
@@ -112,8 +112,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [tipeLayanan, setTipeLayanan] = useState<'SelfService' | 'FullService' | ''>('');
   const [tingkatLayanan, setTingkatLayanan] = useState<string>('Reguler');
   const [catatanOrderInput, setCatatanOrderInput] = useState<string>('');
-  
-  const [tingkatLayanan, setTingkatLayanan] = useState<string>('Reguler');
 
   // Payment Form State
   const [namaKasirInput, setNamaKasirInput] = useState('Kasir 1');
@@ -189,7 +187,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [customItemForm, setCustomItemForm] = useState({
     layanan: '',
     hargaSatuan: '',
-    kategori: 'Layanan' as LayananItem['kategori']
+    kategori: 'Add On' as LayananItem['kategori']
   });
 
   // Fetch Master Data â€” stale-while-revalidate (instant dari cache, fresh di background)
@@ -205,9 +203,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             hargaSatuan: Number(item.harga),
             tipe: item.tipe || 'SelfService',
             satuan: item.satuan || 'paket',
-            kategori: item.kategori === 'MakananMinuman'
-              ? 'MakananMinuman'
-              : item.tipe === 'FullService' ? 'Drop Off' : 'Self Service',
+            kategori: (item.kategori as any) || 'Self Service',
           })) : defaultLayanan);
         } else {
           setLayananList(defaultLayanan);
@@ -1049,11 +1045,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           IconComp = Sparkles;
                           bgColor = 'bg-[#FF9500]';
                           textColor = 'text-white';
-                        } else if (item.kategori === 'MakananMinuman') {
+                        } else if (item.kategori === 'Makanan dan Minuman') {
                           IconComp = Coffee;
                           bgColor = 'bg-orange-500';
                           textColor = 'text-white';
-                        } else if (item.kategori === 'Produk') {
+                        } else if (item.kategori === 'Add On') {
                           IconComp = Package;
                           bgColor = 'bg-slate-400';
                           textColor = 'text-white';
@@ -1182,11 +1178,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                             IconComp = Sparkles;
                             bgColor = 'bg-[#FF9500]';
                             textColor = 'text-white';
-                          } else if (item.kategori === 'MakananMinuman') {
+                          } else if (item.kategori === 'Makanan dan Minuman') {
                             IconComp = Coffee;
                             bgColor = 'bg-orange-500';
                             textColor = 'text-white';
-                          } else if (item.kategori === 'Produk') {
+                          } else if (item.kategori === 'Add On') {
                             IconComp = Package;
                             bgColor = 'bg-slate-400';
                             textColor = 'text-white';
@@ -2417,7 +2413,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 };
                 setLayananList([newItem, ...layananList]);
                 setShowCustomItemModal(false);
-                setCustomItemForm({ layanan: '', hargaSatuan: '', kategori: 'Layanan' });
+                setCustomItemForm({ layanan: '', hargaSatuan: '', kategori: 'Add On' });
               }} className="flex-1 bg-[#1E4648] text-white rounded-lg text-xs font-bold py-2">Tambah Produk</button>
             </div>
           </div>
