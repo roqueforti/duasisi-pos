@@ -59,7 +59,7 @@ export default function Sidebar({
       alert('Fitur POS Kasir hanya untuk Staff/Kasir');
       return;
     }
-    if (['pegawai', 'produk', 'kategori', 'rekap'].includes(tabKey) && currentRole !== 'MANAGER') {
+    if (['pegawai', 'produk', 'kategori', 'shift', 'rekap'].includes(tabKey) && currentRole !== 'MANAGER') {
       alert('Akses Ditolak — Khusus Manager/Owner');
       return;
     }
@@ -208,6 +208,10 @@ export default function Sidebar({
               <button className={navClass('pegawai')} onClick={() => handleNavClick('pegawai')} title="Pegawai">
                 <Users className={`w-[18px] h-[18px] shrink-0 ${iconClass('pegawai')}`} />
                 {!isCollapsed && <span>Data Pegawai</span>}
+              </button>
+              <button className={navClass('shift')} onClick={() => handleNavClick('shift')} title="Shift & Absensi">
+                <Clock className={`w-[18px] h-[18px] shrink-0 ${iconClass('shift')}`} />
+                {!isCollapsed && <span>Shift & Absensi</span>}
               </button>
               <button className={navClass('produk')} onClick={() => handleNavClick('produk')} title="Produk">
                 <Tag className={`w-[18px] h-[18px] shrink-0 ${iconClass('produk')}`} />

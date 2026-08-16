@@ -39,7 +39,8 @@ const ALLOWED_API_ACTIONS = Object.freeze({
   getAuditLogs: true, ajukanVoidTransaksi: true, approveVoidTransaksi: true,
   getPoinConfig: true, savePoinConfig: true,
   getPriorityConfig: true, savePriorityConfig: true,
-  getKategoriList: true, tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true
+  getKategoriList: true, tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true,
+  getAbsensiConfig: true, saveAbsensiConfig: true, updateMasterShift: true
 });
 const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true });
 const MANAGER_API_ACTIONS = Object.freeze({
@@ -51,7 +52,8 @@ const MANAGER_API_ACTIONS = Object.freeze({
   tambahMasterShift: true, hapusMasterShift: true,
   getLaporanRange: true, getAuditLogs: true, approveVoidTransaksi: true, getRekapKasShift: true,
   savePoinConfig: true, savePriorityConfig: true,
-  tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true
+  tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true,
+  saveAbsensiConfig: true, updateMasterShift: true
 });
 
 /**
@@ -1695,6 +1697,7 @@ function getRekapKinerjaPegawai(startDateStr, endDateStr) {
 function clockInPegawai(namaPegawai, shift, catatan) {
   let sh = SS.getSheetByName(SHEET_ABSENSI);
   if (!sh) { sh = SS.insertSheet(SHEET_ABSENSI); sh.appendRow(["ID", "Tanggal", "Nama Pegawai", "Shift", "Clock In", "Clock Out", "Durasi Kerja", "Catatan"]); }
+  
   const now = new Date();
   const tglStr = fmtWib(now, "yyyy-MM-dd");
   const clockInStr = fmtWib(now);
@@ -1705,7 +1708,32 @@ function clockInPegawai(namaPegawai, shift, catatan) {
       return { success: false, message: "Pegawai ini sudah Clock In (belum Clock Out)." };
     }
   }
-  sh.appendRow([generateId("ABS"), now, namaPegawai, shift || "Pagi", clockInStr, "", "", catatan || ""]);
+
+  // Cek Keterlambatan
+  let finalCatatan = catatan || "";
+  try {
+    const masterShifts = getMasterShiftList();
+    const targetShift = masterShifts.find(s => s.nama === shift);
+    if (targetShift && targetShift.jamMasuk) {
+      const config = getAbsensiConfig();
+      // Format jamMasuk: "HH:mm" (e.g., "07:00")
+      const [shHH, shMM] = targetShift.jamMasuk.split(":").map(Number);
+      
+      const jamMulaiShift = new Date(now.getFullYear(), now.getMonth(), now.getDate(), shHH, shMM, 0);
+      jamMulaiShift.setMinutes(jamMulaiShift.getMinutes() + config.toleransiTelatMenit);
+      
+      if (now.getTime() > jamMulaiShift.getTime()) {
+        const diffMs = now.getTime() - (jamMulaiShift.getTime() - (config.toleransiTelatMenit * 60000));
+        const diffMenit = Math.floor(diffMs / 60000);
+        const warning = `[TERLAMBAT ${diffMenit} Menit]`;
+        finalCatatan = finalCatatan ? `${warning} ${finalCatatan}` : warning;
+      }
+    }
+  } catch(e) {
+    // Abaikan jika error deteksi keterlambatan
+  }
+
+  sh.appendRow([generateId("ABS"), now, namaPegawai, shift || "Pagi", clockInStr, "", "", finalCatatan]);
   return { success: true, message: "✅ Clock In Berhasil (" + clockInStr + ")" };
 }
 
@@ -2411,4 +2439,39 @@ function savePriorityConfig(config) {
     return { success: false, message: err.toString() };
   }
 }
+}
 
+function updateMasterShift(id, data) {
+  const sh = SS.getSheetByName(SHEET_SHIFT);
+  if (!sh) return { success: false, message: "Sheet Master Shift belum ada." };
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
+      sh.getRange(i + 1, 2, 1, 4).setValues([[data.nama, data.jamMasuk, data.jamKeluar, data.keterangan || ""]]);
+      return { success: true };
+    }
+  }
+  return { success: false, message: "Shift tidak ditemukan" };
+}
+
+// ============================================================
+// ABSENSI CONFIGURATION
+// ============================================================
+function getAbsensiConfig() {
+  const props = PropertiesService.getScriptProperties();
+  return {
+    jamBuka: props.getProperty("ABSENSI_JAM_BUKA") || "07:00",
+    toleransiTelatMenit: Number(props.getProperty("ABSENSI_TOLERANSI_MENIT") || 15)
+  };
+}
+
+function saveAbsensiConfig(jamBuka, toleransiMenit) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    props.setProperty("ABSENSI_JAM_BUKA", jamBuka || "07:00");
+    props.setProperty("ABSENSI_TOLERANSI_MENIT", String(Number(toleransiMenit) || 0));
+    return { success: true, message: "Konfigurasi absensi berhasil disimpan!" };
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
+}

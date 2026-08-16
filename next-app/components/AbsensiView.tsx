@@ -227,17 +227,19 @@ export default function AbsensiView() {
                   </td>
                 </tr>
               ) : (
-                rekap.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                rekap.map((r) => {
+                  const isLate = r.catatan?.includes('[TERLAMBAT');
+                  return (
+                  <tr key={r.id} className={`hover:bg-slate-50/80 transition-colors ${isLate ? 'bg-rose-50/50' : ''}`}>
                     <td className="py-3 px-4 text-slate-600 font-medium">{r.tanggal}</td>
                     <td className="py-3 px-4 font-semibold text-slate-600">{r.namaPegawai}</td>
                     <td className="py-3 px-4 text-slate-600">{r.shift}</td>
-                    <td className="py-3 px-4 text-[#1E4648] font-medium">{r.clockIn}</td>
+                    <td className={`py-3 px-4 font-medium ${isLate ? 'text-rose-600' : 'text-[#1E4648]'}`}>{r.clockIn}</td>
                     <td className="py-3 px-4 text-[#FF9500] font-medium">{r.clockOut || '-'}</td>
                     <td className="py-3 px-4 font-semibold text-slate-600">{r.durasi}</td>
-                    <td className="py-3 px-4 text-slate-500">{r.catatan}</td>
+                    <td className={`py-3 px-4 ${isLate ? 'text-rose-600 font-medium' : 'text-slate-500'}`}>{r.catatan}</td>
                   </tr>
-                ))
+                )})
               )}
             </tbody>
           </table>
