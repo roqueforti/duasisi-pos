@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown } from 'lucide-react';
 import { runBackend } from '@/lib/api';
+import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
@@ -224,6 +225,24 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
+  const handleAutoLinkInventory = async (item: LayananItemBackend) => {
+    setLoading(true);
+    try {
+      await runBackend('updateLayanan', item.id, {
+        ...item,
+        tipe: '',
+        idInventory: ''
+      });
+      loadProduk();
+      clearCache('getInventoryList');
+      await showAlert('Produk berhasil dipautkan ke Stok Inventory!', 'success');
+    } catch (err) {
+      await showAlert('Gagal memautkan ke inventory', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSavePromo = async () => {
     if (!kodePromo.trim()) { await showAlert('Kode promo wajib diisi!', 'warning'); return; }
     const payload = {
@@ -417,6 +436,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                   <th className="py-3 px-4">Nama Produk / Layanan</th>
                   <th className="py-3 px-4">Kategori</th>
                   <th className="py-3 px-4">Tipe</th>
+                  <th className="py-3 px-4">Inventory</th>
                   <th className="py-3 px-4">Tarif</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4 text-right">Aksi</th>
@@ -430,12 +450,13 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
+                      <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-12" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16 ml-auto" /></td>
                     </tr>
                   ))
                 ) : filteredLayananList.length === 0 ? (
-                  <tr><td colSpan={6} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
+                  <tr><td colSpan={7} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
                 ) : (
                   filteredLayananList.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50 transition">
@@ -446,9 +467,22 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         {item.kategori || '-'}
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${!item.tipe || (item.tipe as string).toLowerCase() === 'bukan layanan' ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-600'}`}>
-                          {!item.tipe || (item.tipe as string).toLowerCase() === 'bukan layanan' ? 'Bukan Layanan' : item.tipe}
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-600'}`}>
+                          {!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'Bukan Layanan' : item.tipe}
                         </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {(!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '') ? (
+                          item.idInventory ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100">Tersambung</span>
+                          ) : (
+                            <button onClick={() => handleAutoLinkInventory(item)} className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 transition shadow-sm border border-orange-200">
+                              Pautkan Stok
+                            </button>
+                          )
+                        ) : (
+                          <span className="text-slate-300 text-xs">-</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 font-bold text-[#1E4648]">
                         Rp {(item?.harga || 0).toLocaleString('id-ID')}
