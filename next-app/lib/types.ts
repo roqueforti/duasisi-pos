@@ -11,6 +11,7 @@ export interface LayananItem {
   kategori?: string;
   kategoriWarna?: string;
   idInventory?: string | null;
+  inventoryDeductionQty?: number;
 }
 
 export interface CartItem {
@@ -20,6 +21,7 @@ export interface CartItem {
   catatan?: string;
   kategori?: 'Self Service' | 'Drop Off' | 'Add On' | 'Makanan dan Minuman' | string;
   idInventory?: string | null;
+  inventoryDeductionQty?: number;
 }
 
 export interface TransaksiItem {
@@ -28,6 +30,8 @@ export interface TransaksiItem {
   hargaSatuan: number;
   subtotal?: number;
   catatan?: string;
+  idInventory?: string | null;
+  inventoryDeductionQty?: number;
 }
 
 export interface Transaksi {

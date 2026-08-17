@@ -60,7 +60,8 @@ function simpanTransaksi(data) {
 
     items.forEach(function(item) {
       if (item.idInventory) {
-        updateStokInventory(item.idInventory, -Number(item.qty));
+        const deductionMultiplier = item.inventoryDeductionQty !== undefined ? Number(item.inventoryDeductionQty) : 1;
+        updateStokInventory(item.idInventory, -(Number(item.qty) * deductionMultiplier));
       }
     });
 

@@ -70,6 +70,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [icon, setIcon] = useState('🧺');
   const [tipe, setTipe] = useState<'SelfService' | 'FullService' | ''>('');
   const [idInventory, setIdInventory] = useState<string>('');
+  const [inventoryDeductionQty, setInventoryDeductionQty] = useState<string>('1');
   const [kategori, setKategori] = useState<string>('Self Service');
   const [kategoriList, setKategoriList] = useState<{id: string, nama: string, aktif: string}[]>([]);
   
@@ -165,7 +166,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   const handleOpenAdd = () => {
     setEditingId(null);
-    setNama(''); setHarga(''); setHargaModal(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service'); setIdInventory('');
+    setNama(''); setHarga(''); setHargaModal(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service'); setIdInventory(''); setInventoryDeductionQty('1');
     setCustomPipelineSteps([]);
     setShowModal(true);
   };
@@ -184,6 +185,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     
     setIdInventory(item.idInventory || '');
     setKategori(item.kategori || 'Self Service');
+    setInventoryDeductionQty((item.inventoryDeductionQty || 1).toString());
     setCustomPipelineSteps(item.pipelineSteps ? (item.pipelineSteps as CustomPipelineStep[]) : []);
     setShowModal(true);
   };
@@ -199,6 +201,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         tipe: tipe || '',
         kategori,
         idInventory: tipe === '' ? idInventory : undefined,
+        inventoryDeductionQty: tipe === '' ? (Number(inventoryDeductionQty) || 1) : undefined,
         hargaModal: Number(hargaModal) || 0,
         pipelineSteps: tipe === 'FullService' ? customPipelineSteps : []
       };
@@ -708,15 +711,27 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
               </div>
 
               {tipe === '' && (
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Pautkan ke Inventory (Opsional)</label>
-                  <select value={idInventory} onChange={(e) => setIdInventory(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
-                    <option value="">-- Buat Otomatis di Inventory (Default) --</option>
-                    {inventoryList.map(inv => (
-                      <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-slate-400 mt-1">Jika dibiarkan default, sistem akan membuat item inventory baru secara otomatis.</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Pautkan ke Inventory (Opsional)</label>
+                    <select value={idInventory} onChange={(e) => setIdInventory(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                      <option value="">-- Buat Otomatis di Inventory (Default) --</option>
+                      {inventoryList.map(inv => (
+                        <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-1">Jika dibiarkan default, sistem akan membuat item inventory baru secara otomatis.</p>
+                  </div>
+                  {idInventory !== '' && (
+                    <div className="bg-orange-50 border border-orange-100 p-3 rounded-md">
+                      <label className="block font-semibold text-orange-900 mb-1">Potongan Stok per 1 Transaksi</label>
+                      <div className="flex gap-2 items-center">
+                        <input type="number" value={inventoryDeductionQty} onChange={(e) => setInventoryDeductionQty(e.target.value)} min="1" step="0.1" className="w-24 px-3 py-1.5 border border-orange-200 rounded-md outline-none focus:border-orange-500 font-bold text-orange-900" />
+                        <span className="text-xs font-semibold text-orange-800">{inventoryList.find(i => i.id === idInventory)?.satuan || 'unit'}</span>
+                      </div>
+                      <p className="text-[10px] text-orange-700 mt-1">Jumlah stok {inventoryList.find(i => i.id === idInventory)?.nama} yang akan dikurangi setiap kali 1 layanan ini dipesan.</p>
+                    </div>
+                  )}
                 </div>
               )}
 

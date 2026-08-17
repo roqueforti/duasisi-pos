@@ -53,6 +53,7 @@ function getLayananListAll() {
       kategori: r[8] || "Self Service",
       idInventory: r[9] || null,
       hargaModal: Number(r[10]) || 0,
+      inventoryDeductionQty: r[11] !== undefined && r[11] !== "" ? Number(r[11]) : 1,
       kategoriWarna: katMap[r[8] || "Self Service"] || "bg-slate-100 text-slate-800 border-slate-200",
       pipelineSteps: pipelineSteps
     };
@@ -72,11 +73,11 @@ function tambahLayanan(data) {
     }
   }
 
-  if (sh.getMaxColumns() < 11) {
-    sh.insertColumnsAfter(sh.getMaxColumns(), 11 - sh.getMaxColumns());
+  if (sh.getMaxColumns() < 12) {
+    sh.insertColumnsAfter(sh.getMaxColumns(), 12 - sh.getMaxColumns());
   }
 
-  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe !== undefined ? data.tipe : "", pSteps, data.kategori || "Self Service", idInv, data.hargaModal || 0]);
+  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe !== undefined ? data.tipe : "", pSteps, data.kategori || "Self Service", idInv, data.hargaModal || 0, data.inventoryDeductionQty !== undefined ? data.inventoryDeductionQty : 1]);
   return { success: true, id: id };
 }
 
@@ -95,11 +96,11 @@ function updateLayanan(id, data) {
         }
       }
 
-      if (sh.getMaxColumns() < 11) {
-        sh.insertColumnsAfter(sh.getMaxColumns(), 11 - sh.getMaxColumns());
+      if (sh.getMaxColumns() < 12) {
+        sh.insertColumnsAfter(sh.getMaxColumns(), 12 - sh.getMaxColumns());
       }
 
-      sh.getRange(i + 1, 2, 1, 10).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8], idInv, data.hargaModal !== undefined ? data.hargaModal : (Number(rows[i][10]) || 0)]]);
+      sh.getRange(i + 1, 2, 1, 11).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8], idInv, data.hargaModal !== undefined ? data.hargaModal : (Number(rows[i][10]) || 0), data.inventoryDeductionQty !== undefined ? data.inventoryDeductionQty : (rows[i][11] !== undefined && rows[i][11] !== "" ? Number(rows[i][11]) : 1)]]);
       return { success: true };
     }
   }
