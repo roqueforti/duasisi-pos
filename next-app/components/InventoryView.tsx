@@ -24,10 +24,11 @@ interface InventoryViewProps {
 export default function InventoryView({ currentRole }: InventoryViewProps = {}) {
   const { showAlert, showConfirm } = useDialog();
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
-  // Modal State
+  // Add/Edit Modal
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [nama, setNama] = useState('');
   const [stok, setStok] = useState('');
   const [satuan, setSatuan] = useState('pcs');
@@ -66,26 +67,47 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     loadKategori();
   }, []);
 
-  const handleAdd = async () => {
+  const handleEditClick = (item: InventoryItem) => {
+    setEditId(item.id);
+    setNama(item.nama);
+    setStok(item.stok.toString());
+    setSatuan(item.satuan);
+    setStokMin(item.stokMinimum.toString());
+    setIsDijual(false);
+    setShowAddModal(true);
+  };
+
+  const handleSave = async () => {
     if (!nama.trim()) { await showAlert('Masukkan nama barang!', 'warning'); return; }
     setLoading(true);
     try {
-      await runBackend('tambahInventory', {
-        nama: nama.trim(),
-        stok: Number(stok) || 0,
-        satuan: satuan.trim(),
-        stokMinimum: Number(stokMin) || 0,
-        isDijual,
-        hargaJual: isDijual ? (Number(hargaJual) || 0) : undefined,
-        kategoriLayanan: isDijual ? kategori : undefined
-      });
+      if (editId) {
+        await runBackend('updateInventoryItem', editId, {
+          nama: nama.trim(),
+          stok: Number(stok) || 0,
+          satuan: satuan.trim(),
+          stokMinimum: Number(stokMin) || 0,
+        });
+      } else {
+        await runBackend('tambahInventory', {
+          nama: nama.trim(),
+          stok: Number(stok) || 0,
+          satuan: satuan.trim(),
+          stokMinimum: Number(stokMin) || 0,
+          isDijual,
+          hargaJual: isDijual ? (Number(hargaJual) || 0) : undefined,
+          kategoriLayanan: isDijual ? kategori : undefined
+        });
+        clearCache('getLayananListAll'); // Clear catalog cache as well
+      }
       clearCache('getInventoryList');
-      clearCache('getLayananListAll'); // Clear catalog cache as well
       setShowAddModal(false);
-      setNama(''); setStok(''); setHargaJual(''); setIsDijual(false);
+      setEditId(null);
+      setNama(''); setStok(''); setSatuan(''); setStokMin(''); setHargaJual(''); setIsDijual(false);
       loadInventory();
-    } catch (err) {
-      await showAlert('Gagal menambah barang', 'error');
+      await showAlert(`Berhasil ${editId ? 'mengubah' : 'menambah'} barang!`, 'success');
+    } catch (err: any) {
+      await showAlert(`Gagal ${editId ? 'mengubah' : 'menambah'} barang: ` + (err.message || String(err)), 'error');
     } finally {
       setLoading(false);
     }
@@ -189,9 +211,9 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
           
           {/* Tambah barang - STAFF dan MANAGER */}
           {(currentRole === 'STAFF' || currentRole === 'MANAGER') && (
-            <button onClick={() => setShowAddModal(true)} className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-3.5 py-1.5 rounded-md text-xs transition flex items-center gap-1.5">
-              <Plus className="w-3.5 h-3.5" /> Tambah Bahan
-            </button>
+              <button onClick={() => { setEditId(null); setNama(''); setStok(''); setSatuan(''); setStokMin(''); setIsDijual(false); setShowAddModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-md text-xs font-semibold transition shadow-sm">
+                <Plus className="w-4 h-4" /> Tambah Bahan
+              </button>
           )}
         </div>
       </div>
@@ -269,13 +291,22 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                             </button>
                             {/* Hapus hanya untuk MANAGER */}
                             {currentRole === 'MANAGER' && (
-                              <button
-                                onClick={() => handleDelete(item.id, item.nama)}
-                                className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
-                                title="Hapus"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleEditClick(item)}
+                                  className="p-1.5 text-slate-400 hover:text-blue-500 rounded transition"
+                                  title="Edit"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(item.id, item.nama)}
+                                  className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
+                                  title="Hapus"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
                             )}
                           </div>
                         ) : (
@@ -291,11 +322,11 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
         </div>
       </div>
 
-      {/* Add Modal */}
+      {/* Add/Edit Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-5 w-full max-w-sm">
-            <h3 className="text-sm font-semibold text-slate-600 mb-4">Tambah Stok Bahan Baru</h3>
+            <h3 className="text-sm font-semibold text-slate-600 mb-4">{editId ? 'Edit Stok Bahan' : 'Tambah Stok Bahan Baru'}</h3>
             <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Nama Barang</label>
@@ -343,46 +374,48 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                 <p className="text-[10px] text-slate-400 mt-1">Tanda peringatan (Menipis) akan muncul jika stok di bawah angka ini.</p>
               </div>
               
-              <div className="pt-2 border-t border-slate-100 mt-2">
-                <label className="flex items-center gap-2 cursor-pointer mb-2">
-                  <input type="checkbox" checked={isDijual} onChange={(e) => setIsDijual(e.target.checked)} className="w-4 h-4 text-[#1E4648] rounded border-slate-300 focus:ring-[#1E4648]" />
-                  <span className="text-xs font-semibold text-slate-700">Jual barang ini di Kasir (Produk Otomatis)</span>
-                </label>
-                
-                {isDijual && (
-                  <div className="grid grid-cols-2 gap-2 mt-2 p-3 bg-slate-50 rounded-md border border-slate-100">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Harga Jual (Rp)</label>
-                      <input
-                        type="number"
-                        value={hargaJual}
-                        onChange={(e) => setHargaJual(e.target.value)}
-                        placeholder="Contoh: 5000"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
-                      />
+              {!editId && (
+                <div className="pt-2 border-t border-slate-100 mt-2">
+                  <label className="flex items-center gap-2 cursor-pointer mb-2">
+                    <input type="checkbox" checked={isDijual} onChange={(e) => setIsDijual(e.target.checked)} className="w-4 h-4 text-[#1E4648] rounded border-slate-300 focus:ring-[#1E4648]" />
+                    <span className="text-xs font-semibold text-slate-700">Jual barang ini di Kasir (Produk Otomatis)</span>
+                  </label>
+                  
+                  {isDijual && (
+                    <div className="grid grid-cols-2 gap-2 mt-2 p-3 bg-slate-50 rounded-md border border-slate-100">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Harga Jual (Rp)</label>
+                        <input
+                          type="number"
+                          value={hargaJual}
+                          onChange={(e) => setHargaJual(e.target.value)}
+                          placeholder="Contoh: 5000"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Kategori Menu</label>
+                        <select
+                          value={kategori}
+                          onChange={(e) => setKategori(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
+                        >
+                          {kategoriList.map(kat => (
+                            <option key={kat.id} value={kat.nama}>{kat.nama}</option>
+                          ))}
+                          {kategoriList.length === 0 && <option value="Add On">Add On</option>}
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Kategori Menu</label>
-                      <select
-                        value={kategori}
-                        onChange={(e) => setKategori(e.target.value)}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
-                      >
-                        {kategoriList.map(kat => (
-                          <option key={kat.id} value={kat.nama}>{kat.nama}</option>
-                        ))}
-                        {kategoriList.length === 0 && <option value="Add On">Add On</option>}
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowAddModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-md text-xs">
+              <button onClick={() => { setShowAddModal(false); setEditId(null); setNama(''); setStok(''); setSatuan(''); setStokMin(''); setIsDijual(false); }} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-md text-xs">
                 Batal
               </button>
-              <button onClick={handleAdd} className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-4 py-2 rounded-md text-xs">
+              <button onClick={handleSave} className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-4 py-2 rounded-md text-xs">
                 Simpan
               </button>
             </div>

@@ -26,7 +26,7 @@ const MIGRATION_KEY   = "SPREADSHEET_SCHEMA_VERSION";
 const ALLOWED_API_ACTIONS = Object.freeze({
   verifikasiPin: true,
   getLayananList: true, getLayananListAll: true, tambahLayanan: true, updateLayanan: true, toggleAktifLayanan: true, hapusLayanan: true,
-  getInventoryList: true, tambahInventory: true, updateStokInventory: true, hapusInventory: true,
+  getInventoryList: true, tambahInventory: true, updateStokInventory: true, updateInventoryItem: true, hapusInventory: true,
   getMesinList: true, tambahMesin: true, mulaiPakaiMesin: true, selesaiMesin: true, setMaintenanceMesin: true, hapusMesin: true,
   simpanTransaksi: true, pelunasanDP: true,
   getPromoList: true, tambahPromo: true, hapusPromo: true, validasiVoucher: true,
@@ -47,7 +47,7 @@ const ALLOWED_API_ACTIONS = Object.freeze({
 const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true, recoverPin: true });
 const MANAGER_API_ACTIONS = Object.freeze({
   tambahLayanan: true, updateLayanan: true, toggleAktifLayanan: true, hapusLayanan: true,
-  tambahInventory: true, hapusInventory: true,
+  tambahInventory: true, hapusInventory: true, updateInventoryItem: true, updateStokInventory: true,
   tambahMesin: true, hapusMesin: true,
   tambahPromo: true, hapusPromo: true, editPromo: true,
   tambahPegawai: true, hapusPegawai: true,

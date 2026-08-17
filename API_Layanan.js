@@ -71,6 +71,10 @@ function tambahLayanan(data) {
     }
   }
 
+  if (sh.getMaxColumns() < 10) {
+    sh.insertColumnsAfter(sh.getMaxColumns(), 10 - sh.getMaxColumns());
+  }
+
   sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe !== undefined ? data.tipe : "", pSteps, data.kategori || "Self Service", idInv]);
   return { success: true, id: id };
 }
@@ -88,6 +92,10 @@ function updateLayanan(id, data) {
         if (invRes.success) {
           idInv = invRes.id;
         }
+      }
+
+      if (sh.getMaxColumns() < 10) {
+        sh.insertColumnsAfter(sh.getMaxColumns(), 10 - sh.getMaxColumns());
       }
 
       sh.getRange(i + 1, 2, 1, 9).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8], idInv]]);
@@ -240,6 +248,19 @@ function tambahInventory(data) {
   }
   
   return { success: true, id: id };
+}
+
+function updateInventoryItem(id, data) {
+  const sh = SS.getSheetByName(SHEET_INVENTORY);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
+      sh.getRange(i + 1, 2, 1, 4).setValues([[data.nama, data.stok, data.satuan, data.stokMinimum]]);
+      sh.getRange(i + 1, 6).setValue(new Date());
+      return { success: true };
+    }
+  }
+  return { success: false, message: "Item tidak ditemukan" };
 }
 
 function updateStokInventory(id, perubahan) {
