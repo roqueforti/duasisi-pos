@@ -20,6 +20,7 @@ interface LayananItemBackend {
   idInventory?: string | null;
   pipelineSteps?: any[];
   hargaModal?: number;
+  inventoryDeductionQty?: number;
 }
 
 interface InventoryItem {
