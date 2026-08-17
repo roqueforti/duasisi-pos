@@ -511,8 +511,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                       return newObj;
                                     });
                                     await showAlert('Pautan inventory berhasil disimpan!', 'success');
-                                  } catch (err) {
-                                    await showAlert('Gagal memautkan ke inventory', 'error');
+                                  } catch (err: any) {
+                                    await showAlert('Gagal: ' + (err.message || String(err)), 'error');
                                   } finally {
                                     setLoading(false);
                                   }
