@@ -40,6 +40,7 @@ export default function Navbar({
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState<boolean>(false);
   const [printerConnected, setPrinterConnected] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -91,6 +92,16 @@ export default function Navbar({
     }
   };
 
+  const handleRefreshClick = () => {
+    if (onRefresh) {
+      onRefresh();
+      setIsRefreshing(true);
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 700);
+    }
+  };
+
   return (
     <>
       <header className="h-12 bg-white border-b border-slate-200/80 px-2 sm:px-3 md:px-4 flex items-center justify-between shrink-0 z-30">
@@ -134,12 +145,16 @@ export default function Navbar({
           {/* Refresh Data Button */}
           {onRefresh && (
             <button
-              onClick={onRefresh}
-              className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 px-2 py-1 rounded-lg text-xs font-semibold transition shrink-0"
+              onClick={handleRefreshClick}
+              className={`flex items-center gap-1.5 border px-2 py-1 rounded-lg text-xs font-semibold transition shrink-0 ${
+                isRefreshing 
+                  ? 'bg-[#B5C9C9]/20 text-[#1E4648] border-[#B5C9C9]' 
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200/80'
+              }`}
               title="Refresh / Muat Ulang Data"
             >
-              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
-              <span className="hidden md:inline">Refresh Data</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#1E4648]' : 'text-slate-500'}`} />
+              <span className="hidden md:inline">{isRefreshing ? 'Memuat...' : 'Refresh Data'}</span>
             </button>
           )}
 
