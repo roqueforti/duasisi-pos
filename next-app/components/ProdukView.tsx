@@ -19,6 +19,7 @@ interface LayananItemBackend {
   kategori?: string;
   idInventory?: string | null;
   pipelineSteps?: any[];
+  hargaModal?: number;
 }
 
 interface InventoryItem {
@@ -64,6 +65,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nama, setNama] = useState('');
   const [harga, setHarga] = useState('');
+  const [hargaModal, setHargaModal] = useState('');
   const [satuan, setSatuan] = useState('kg');
   const [icon, setIcon] = useState('🧺');
   const [tipe, setTipe] = useState<'SelfService' | 'FullService' | ''>('');
@@ -163,7 +165,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   const handleOpenAdd = () => {
     setEditingId(null);
-    setNama(''); setHarga(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service'); setIdInventory('');
+    setNama(''); setHarga(''); setHargaModal(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service'); setIdInventory('');
     setCustomPipelineSteps([]);
     setShowModal(true);
   };
@@ -172,6 +174,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     setEditingId(item.id);
     setNama(item.nama);
     setHarga(item.harga.toString());
+    setHargaModal((item.hargaModal || 0).toString());
     setSatuan(item.satuan || 'kg');
     setIcon(item.icon || '🧺');
     
@@ -188,7 +191,17 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const handleSave = async () => {
     if (!nama.trim() || !harga.trim()) { await showAlert('Nama dan harga wajib diisi!', 'warning'); return; }
     const payloadPipeline = customPipelineSteps.map((s, i) => ({ ...s, step: i + 1 }));
-    const payload = { nama: nama.trim(), harga: Number(harga) || 0, satuan, icon, tipe, idInventory: tipe === '' ? idInventory : null, kategori, pipelineSteps: tipe === 'FullService' ? payloadPipeline : [] };
+    const payload = {
+        nama: nama.trim(),
+        harga: Number(harga) || 0,
+        satuan,
+        icon,
+        tipe: tipe || '',
+        kategori,
+        idInventory: tipe === '' ? idInventory : undefined,
+        hargaModal: Number(hargaModal) || 0,
+        pipelineSteps: tipe === 'FullService' ? customPipelineSteps : []
+      };
     setLoading(true);
     try {
       if (editingId) {
@@ -422,7 +435,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                   <th className="py-3 px-4">Kategori</th>
                   <th className="py-3 px-4">Tipe</th>
                   <th className="py-3 px-4">Inventory</th>
-                  <th className="py-3 px-4">Tarif</th>
+                  {currentRole === 'MANAGER' && <th className="py-3 px-4">Modal & Profit</th>}
+                  <th className="py-3 px-4">Tarif Jual</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4 text-right">Aksi</th>
                 </tr>
@@ -527,6 +541,24 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                           <span className="text-slate-300 text-xs">-</span>
                         )}
                       </td>
+                      {currentRole === 'MANAGER' && (
+                        <td className="py-3 px-4 text-xs">
+                          <div className="font-semibold text-slate-600">Rp {(item?.hargaModal || 0).toLocaleString('id-ID')}</div>
+                          {(() => {
+                            const hJual = item?.harga || 0;
+                            const hModal = item?.hargaModal || 0;
+                            if (hJual > 0) {
+                              const profitMargin = ((hJual - hModal) / hJual) * 100;
+                              return (
+                                <div className={`text-[10px] font-bold ${profitMargin < 0 ? 'text-red-500' : (profitMargin > 30 ? 'text-emerald-600' : 'text-[#FF9500]')}`}>
+                                  Margin: {profitMargin.toFixed(1)}%
+                                </div>
+                              );
+                            }
+                            return <div className="text-[10px] text-slate-400">Margin: -</div>;
+                          })()}
+                        </td>
+                      )}
                       <td className="py-3 px-4 font-bold text-[#1E4648]">
                         Rp {(item?.harga || 0).toLocaleString('id-ID')}
                       </td>
@@ -782,10 +814,19 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 </div>
               )}
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Harga *</label>
-                <input type="number" value={harga} onChange={(e) => setHarga(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
-                <p className="text-[10px] text-slate-400 mt-1">Harga jual produk atau layanan.</p>
+              <div className="grid grid-cols-2 gap-3">
+                {currentRole === 'MANAGER' && (
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Harga Modal *</label>
+                    <input type="number" value={hargaModal} onChange={(e) => setHargaModal(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                    <p className="text-[10px] text-slate-400 mt-1">Biaya pokok / pembelian.</p>
+                  </div>
+                )}
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Harga Jual *</label>
+                  <input type="number" value={harga} onChange={(e) => setHarga(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                  <p className="text-[10px] text-slate-400 mt-1">Harga jual ke pelanggan.</p>
+                </div>
               </div>
             </div>
 
