@@ -88,6 +88,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   // Priority Settings (Removed)
 
+  // Pending Inventory Linking
+  const [pendingInventory, setPendingInventory] = useState<Record<string, string>>({});
+
   const loadProduk = async () => {
     setLoading(true);
     try {
@@ -455,45 +458,71 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                       </td>
                       <td className="py-3 px-4">
                         {(!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '') ? (
-                          <select
-                            value={item.idInventory || ''}
-                            onChange={async (e) => {
-                              const newVal = e.target.value;
-                              if (newVal === '') return;
-                              const isConfirmed = await showConfirm(
-                                newVal === 'auto' 
-                                  ? 'Buat item stok baru secara otomatis untuk produk ini?' 
-                                  : 'Ubah pautan inventory untuk produk ini?'
-                              );
-                              if (!isConfirmed) return;
-                              setLoading(true);
-                              try {
-                                await runBackend('updateLayanan', item.id, {
-                                  ...item,
-                                  tipe: '',
-                                  idInventory: newVal === 'auto' ? '' : newVal
-                                });
-                                loadProduk();
-                                clearCache('getInventoryList');
-                                await showAlert('Pautan inventory berhasil disimpan!', 'success');
-                              } catch (err) {
-                                await showAlert('Gagal memautkan ke inventory', 'error');
-                              } finally {
-                                setLoading(false);
-                              }
-                            }}
-                            className={`w-36 text-[10px] p-1 border rounded outline-none cursor-pointer truncate ${
-                              item.idInventory 
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 font-bold' 
-                                : 'bg-orange-50 border-orange-200 text-orange-700 font-bold'
-                            }`}
-                          >
-                            {!item.idInventory && <option value="">-- Belum Terpaut --</option>}
-                            <option value="auto">+ Buat Baru Otomatis</option>
-                            {inventoryList.map(inv => (
-                              <option key={inv.id} value={inv.id}>{inv.nama}</option>
-                            ))}
-                          </select>
+                          <div className="flex items-center">
+                            <select
+                              value={pendingInventory[item.id] !== undefined ? pendingInventory[item.id] : (item.idInventory || '')}
+                              onChange={(e) => {
+                                setPendingInventory(prev => ({ ...prev, [item.id]: e.target.value }));
+                              }}
+                              className={`w-36 text-[10px] p-1 border rounded outline-none cursor-pointer truncate ${
+                                item.idInventory 
+                                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 font-bold' 
+                                  : 'bg-orange-50 border-orange-200 text-orange-700 font-bold'
+                              }`}
+                            >
+                              {!item.idInventory && <option value="">-- Belum Terpaut --</option>}
+                              <option value="auto">+ Buat Baru Otomatis</option>
+                              {inventoryList.map(inv => (
+                                <option key={inv.id} value={inv.id}>{inv.nama}</option>
+                              ))}
+                            </select>
+                            
+                            {pendingInventory[item.id] !== undefined && pendingInventory[item.id] !== (item.idInventory || '') && (
+                              <button
+                                onClick={async () => {
+                                  const newVal = pendingInventory[item.id];
+                                  const isConfirmed = await showConfirm(
+                                    newVal === 'auto' 
+                                      ? 'Buat item stok baru secara otomatis untuk produk ini?' 
+                                      : 'Ubah pautan inventory untuk produk ini?'
+                                  );
+                                  if (!isConfirmed) {
+                                    setPendingInventory(prev => {
+                                      const newObj = { ...prev };
+                                      delete newObj[item.id];
+                                      return newObj;
+                                    });
+                                    return;
+                                  }
+                                  
+                                  setLoading(true);
+                                  try {
+                                    await runBackend('updateLayanan', item.id, {
+                                      ...item,
+                                      tipe: '',
+                                      idInventory: newVal === 'auto' ? '' : newVal
+                                    });
+                                    clearCache('getInventoryList');
+                                    await loadInventory();
+                                    await loadProduk();
+                                    setPendingInventory(prev => {
+                                      const newObj = { ...prev };
+                                      delete newObj[item.id];
+                                      return newObj;
+                                    });
+                                    await showAlert('Pautan inventory berhasil disimpan!', 'success');
+                                  } catch (err) {
+                                    await showAlert('Gagal memautkan ke inventory', 'error');
+                                  } finally {
+                                    setLoading(false);
+                                  }
+                                }}
+                                className="ml-1 text-[9px] font-bold px-2 py-1 rounded bg-[#1E4648] text-white hover:bg-[#153233] transition shadow-sm"
+                              >
+                                Simpan
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-slate-300 text-xs">-</span>
                         )}
