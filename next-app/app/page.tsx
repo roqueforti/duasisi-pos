@@ -23,6 +23,7 @@ import LangkahView from '@/components/LangkahView';
 import KeamananView from '@/components/KeamananView';
 import { UserRole } from '@/lib/types';
 import { clearBackendSession } from '@/lib/api';
+import { clearCache } from '@/lib/cache';
 
 export default function HomePage() {
   const [currentRole, setCurrentRole] = useState<UserRole>('');
@@ -30,6 +31,7 @@ export default function HomePage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [publicNotaParam, setPublicNotaParam] = useState<string | null>(null);
   const [publicNotaToken, setPublicNotaToken] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -51,6 +53,11 @@ export default function HomePage() {
   const handleLogout = () => {
     clearBackendSession();
     setCurrentRole('');
+  };
+
+  const handleGlobalRefresh = () => {
+    clearCache();
+    setRefreshKey(prev => prev + 1);
   };
 
   if (publicNotaParam) {
@@ -92,9 +99,10 @@ export default function HomePage() {
               currentRole={currentRole}
               onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
               onLogout={handleLogout}
+              onRefresh={handleGlobalRefresh}
             />
 
-            <main className="flex-1 overflow-y-auto bg-slate-50">
+            <main key={refreshKey} className="flex-1 overflow-y-auto bg-slate-50">
               {currentTab === 'dashboard' && <DashboardView currentRole={currentRole} />}
               {currentTab === 'transaksi' && <PosView currentRole={currentRole} />}
               {currentTab === 'riwayat' && <RiwayatView currentRole={currentRole} />}

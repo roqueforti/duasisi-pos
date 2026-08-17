@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Menu, LogOut, Wifi, WifiOff, Download, Printer } from 'lucide-react';
+import { Menu, LogOut, Wifi, WifiOff, Download, Printer, RefreshCw } from 'lucide-react';
 import { UserRole } from '@/lib/types';
 import PrinterModal from '@/components/PrinterModal';
 import { getActiveDeviceInfo } from '@/lib/bluetoothPrinter';
@@ -12,6 +12,7 @@ interface NavbarProps {
   currentRole: UserRole;
   onToggleSidebar: () => void;
   onLogout: () => void;
+  onRefresh?: () => void;
 }
 
 const tabTitles: Record<string, string> = {
@@ -31,6 +32,7 @@ export default function Navbar({
   currentRole,
   onToggleSidebar,
   onLogout,
+  onRefresh,
 }: NavbarProps) {
   const { showAlert } = useDialog();
   const [clockStr, setClockStr] = useState<string>('');
@@ -128,6 +130,18 @@ export default function Navbar({
               {printerConnected ? 'Printer Thermal (Terhubung)' : 'Cek Printer BT'}
             </span>
           </button>
+
+          {/* Refresh Data Button */}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 px-2 py-1 rounded-lg text-xs font-semibold transition shrink-0"
+              title="Refresh / Muat Ulang Data"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden md:inline">Refresh Data</span>
+            </button>
+          )}
 
           {/* PWA Install Button */}
           <button
