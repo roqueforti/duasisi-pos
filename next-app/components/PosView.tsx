@@ -34,6 +34,10 @@ import {
   TrendingUp,
   Camera,
   RefreshCw,
+  Gift,
+  Lightbulb,
+  Zap,
+  AlertTriangle,
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
@@ -108,6 +112,9 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [voucherInput, setVoucherInput] = useState<string>('');
   const [voucherMsg, setVoucherMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [diskonApplied, setDiskonApplied] = useState<{ kode: string; nilai: number }>({ kode: '', nilai: 0 });
+  const [promoList, setPromoList] = useState<any[]>([]);
+  const [inventoryList, setInventoryList] = useState<any[]>([]);
+  const [showRekomendasiModal, setShowRekomendasiModal] = useState<boolean>(false);
 
   // Order Details Form State
   const [tipeLayanan, setTipeLayanan] = useState<'SelfService' | 'FullService' | ''>('');
@@ -260,7 +267,27 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       if (res && res.rate) setPoinRate(res.rate);
     }).catch(() => {});
 
-    // 5. Priority Config (Removed)
+    // 5. Promo List
+    runBackendCached<any[]>(
+      'getPromoList',
+      (data) => {
+        if (Array.isArray(data)) {
+          setPromoList(data.filter(p => p.statusAktif));
+        }
+      },
+      5 * 60 * 1000
+    );
+
+    // 6. Inventory List
+    runBackendCached<any[]>(
+      'getInventoryList',
+      (data) => {
+        if (Array.isArray(data)) {
+          setInventoryList(data);
+        }
+      },
+      3 * 60 * 1000
+    );
   }, []);
 
   const refreshActiveShift = useCallback(async () => {
@@ -290,6 +317,148 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   }, 0);
   
   const grandTotal = Math.max(0, subtotalCart - diskonApplied.nilai);
+
+  // Dynamic Recommendation Engine for POS
+  const rekomendasiKasir = React.useMemo(() => {
+    const list: Array<{
+      id: string;
+      tipe: 'PROMO' | 'UPSELL' | 'POIN' | 'PERINGATAN';
+      judul: string;
+      deskripsi: string;
+      badge: string;
+      badgeColor: string;
+      actionText?: string;
+      onAction?: () => void;
+    }> = [];
+
+    // 1. Rekomendasi Promo / Voucher Terbaik yang memenuhi kriteria belanja
+    if (promoList.length > 0 && subtotalCart > 0) {
+      const eligiblePromos = promoList.filter(p => p.statusAktif && subtotalCart >= (p.minTransaksi || 0));
+      if (eligiblePromos.length > 0) {
+        // Hitung estimasi diskon terbesar
+        const bestPromo = [...eligiblePromos].sort((a, b) => {
+          const potA = a.jenisDiskon === 'Persen' ? (subtotalCart * a.nilaiDiskon) / 100 : a.nilaiDiskon;
+          const potB = b.jenisDiskon === 'Persen' ? (subtotalCart * b.nilaiDiskon) / 100 : b.nilaiDiskon;
+          return potB - potA;
+        })[0];
+
+        const potVal = bestPromo.jenisDiskon === 'Persen'
+          ? Math.round((subtotalCart * bestPromo.nilaiDiskon) / 100)
+          : bestPromo.nilaiDiskon;
+
+        const isCurrentlyApplied = diskonApplied.kode.toUpperCase() === bestPromo.kodeVoucher.toUpperCase();
+
+        if (!isCurrentlyApplied) {
+          list.push({
+            id: `promo-${bestPromo.idPromo || bestPromo.kodeVoucher}`,
+            tipe: 'PROMO',
+            judul: `Promo Hemat: Voucher ${bestPromo.kodeVoucher}`,
+            deskripsi: `Belanja telah memenuhi syarat min. Rp ${(bestPromo.minTransaksi || 0).toLocaleString('id-ID')}. Dapatkan potongan Rp ${potVal.toLocaleString('id-ID')} (${bestPromo.jenisDiskon === 'Persen' ? `${bestPromo.nilaiDiskon}%` : `Rp ${bestPromo.nilaiDiskon.toLocaleString('id-ID')}`}).`,
+            badge: 'Hemat Promo',
+            badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+            actionText: 'Terapkan Voucher',
+            onAction: () => {
+              setVoucherInput(bestPromo.kodeVoucher);
+              setDiskonApplied({
+                kode: bestPromo.kodeVoucher,
+                nilai: potVal
+              });
+              setVoucherMsg({
+                type: 'success',
+                text: `Voucher ${bestPromo.kodeVoucher} berhasil dipasang!`
+              });
+              setShowRekomendasiModal(false);
+            }
+          });
+        }
+      }
+    }
+
+    // 2. Rekomendasi Poin Loyalitas Pelanggan
+    const currCust = customerList.find(c => (customer.noHp && c.noHp === customer.noHp) || (customer.nama && c.nama === customer.nama));
+    const poinPelanggan = currCust?.poin || 0;
+    if (poinPelanggan >= 10 && subtotalCart > 0 && diskonApplied.nilai === 0) {
+      const nilaiPotonganPoin = poinPelanggan * 100; // Tiap 1 poin = Rp 100
+      list.push({
+        id: 'poin-loyalty',
+        tipe: 'POIN',
+        judul: `Tukar ${poinPelanggan} Poin Pelanggan`,
+        deskripsi: `Pelanggan memiliki ${poinPelanggan} Poin. Tawarkan penukaran poin senilai diskon Rp ${nilaiPotonganPoin.toLocaleString('id-ID')}.`,
+        badge: 'Reward Poin',
+        badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+        actionText: 'Gunakan Diskon Poin',
+        onAction: () => {
+          setDiskonApplied({
+            kode: `POIN-${poinPelanggan}PTS`,
+            nilai: nilaiPotonganPoin
+          });
+          setVoucherMsg({
+            type: 'success',
+            text: `Diskon Poin ${poinPelanggan} pts (-Rp ${nilaiPotonganPoin.toLocaleString('id-ID')}) diterapkan!`
+          });
+          setShowRekomendasiModal(false);
+        }
+      });
+    }
+
+    // 3. Rekomendasi Add-On / Upselling Dinamis dari katalog layanan
+    const hasServiceInCart = cartArray.some(item => 
+      item.tipe === 'SelfService' || 
+      item.tipe === 'FullService' || 
+      item.kategori === 'Self Service' || 
+      item.kategori === 'Drop Off'
+    );
+    const addOnServices = layananList.filter(l => l.kategori === 'Add On' || !l.tipe || (l.tipe as string) === '');
+    if (hasServiceInCart && addOnServices.length > 0) {
+      const unselectedAddOns = addOnServices.filter(a => !cart[a.layanan]);
+      if (unselectedAddOns.length > 0) {
+        unselectedAddOns.slice(0, 3).forEach(addon => {
+          list.push({
+            id: `addon-${addon.layanan}`,
+            tipe: 'UPSELL',
+            judul: `Tawarkan: ${addon.layanan}`,
+            deskripsi: `Lengkapi cucian dengan ${addon.layanan} hanya Rp ${(addon.hargaSatuan || 0).toLocaleString('id-ID')}/${addon.satuan || 'item'}.`,
+            badge: 'Saran Tambahan',
+            badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
+            actionText: '+ Tambah ke Keranjang',
+            onAction: () => {
+              updateCart({
+                layanan: addon.layanan,
+                hargaSatuan: addon.hargaSatuan,
+                tipe: addon.tipe,
+                satuan: addon.satuan,
+                idInventory: addon.idInventory,
+                inventoryDeductionQty: (addon as any).inventoryDeductionQty
+              }, 1);
+            }
+          });
+        });
+      }
+    }
+
+    // 4. Peringatan Stok Inventory Kritis
+    cartArray.forEach(item => {
+      if (item.idInventory) {
+        const inv = inventoryList.find(i => i.id === item.idInventory);
+        if (inv) {
+          const deduction = (item.inventoryDeductionQty !== undefined ? Number(item.inventoryDeductionQty) : 1) * item.qty;
+          const sisaStok = inv.stok - deduction;
+          if (sisaStok <= (inv.stokMinimum || 0)) {
+            list.push({
+              id: `stock-warn-${inv.id}`,
+              tipe: 'PERINGATAN',
+              judul: `Peringatan Stok: ${inv.nama}`,
+              deskripsi: `Sisa stok saat ini ${inv.stok} ${inv.satuan}. Transaksi ini akan menyisakan ${sisaStok.toFixed(1)} ${inv.satuan} (mencapai batas minimum ${inv.stokMinimum} ${inv.satuan}).`,
+              badge: sisaStok <= 0 ? 'Stok Habis' : 'Stok Menipis',
+              badgeColor: 'bg-rose-100 text-rose-800 border-rose-200'
+            });
+          }
+        }
+      }
+    });
+
+    return list;
+  }, [cartArray, subtotalCart, promoList, diskonApplied, customerList, customer, layananList, inventoryList, cart]);
 
   // Toast Auto Clear
   useEffect(() => {
@@ -1458,6 +1627,36 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           )}
         </div>
 
+        {/* Recommendation Trigger Banner (Dynamic) */}
+        {rekomendasiKasir.length > 0 && (
+          <div className="px-4 pt-3 bg-white border-t border-slate-100">
+            <button
+              onClick={() => setShowRekomendasiModal(true)}
+              className="w-full flex items-center justify-between p-2.5 bg-linear-to-r from-[#1E4648]/10 via-[#B5C9C9]/25 to-[#FF9500]/10 border border-[#1E4648]/20 hover:border-[#1E4648] rounded-lg transition group text-left shadow-xs"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-md bg-[#1E4648] text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <span>Sistem Rekomendasi Kasir</span>
+                    <span className="px-1.5 py-0.5 bg-[#FF9500] text-white text-[9px] font-extrabold rounded-full">
+                      {rekomendasiKasir.length} Saran
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 line-clamp-1">
+                    {rekomendasiKasir[0]?.judul || 'Saran promo, diskon, & add-on'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-[11px] font-bold text-[#1E4648] flex items-center gap-0.5 group-hover:translate-x-0.5 transition shrink-0 ml-1">
+                Buka <ChevronRight className="w-3.5 h-3.5" />
+              </span>
+            </button>
+          </div>
+        )}
+
         {/* Voucher Input Box */}
         <div className="px-4 py-3 bg-white border-t border-slate-100 space-y-2">
           <div className="flex gap-2">
@@ -2436,6 +2635,71 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 setShowCustomItemModal(false);
                 setCustomItemForm({ layanan: '', hargaSatuan: '', kategori: 'Add On' });
               }} className="flex-1 bg-[#1E4648] text-white rounded-lg text-xs font-bold py-2">Tambah Produk</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMART RECOMMENDATION MODAL (POS) */}
+      {showRekomendasiModal && (
+        <div className="fixed inset-0 z-[500] bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-5 w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#1E4648] text-white flex items-center justify-center shadow-xs">
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Sistem Rekomendasi Keputusan Kasir</h3>
+                  <p className="text-[10px] text-slate-400">Analisis otomatis promo, poin loyalitas, upsell add-on, & stok</p>
+                </div>
+              </div>
+              <button onClick={() => setShowRekomendasiModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="overflow-y-auto space-y-3 pr-1 flex-1 text-xs">
+              {rekomendasiKasir.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 space-y-2">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+                  <p className="font-semibold text-slate-600">Semua pengaturan transaksi sudah optimal.</p>
+                  <p className="text-[11px] text-slate-400">Belum ada saran promo tambahan atau peringatan stok saat ini.</p>
+                </div>
+              ) : (
+                rekomendasiKasir.map((rek) => (
+                  <div key={rek.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2 hover:border-[#1E4648]/40 transition">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {rek.tipe === 'PROMO' && <Gift className="w-4 h-4 text-emerald-600 shrink-0" />}
+                        {rek.tipe === 'POIN' && <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />}
+                        {rek.tipe === 'UPSELL' && <Lightbulb className="w-4 h-4 text-blue-600 shrink-0" />}
+                        {rek.tipe === 'PERINGATAN' && <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />}
+                        <span className="font-bold text-slate-800">{rek.judul}</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase shrink-0 ${rek.badgeColor}`}>
+                        {rek.badge}
+                      </span>
+                    </div>
+                    <p className="text-slate-600 text-[11px] leading-relaxed">{rek.deskripsi}</p>
+                    {rek.actionText && rek.onAction && (
+                      <div className="pt-1 flex justify-end">
+                        <button
+                          onClick={rek.onAction}
+                          className="px-3 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white font-bold rounded-md text-[11px] flex items-center gap-1 shadow-xs transition"
+                        >
+                          <Zap className="w-3 h-3 text-amber-300" />
+                          <span>{rek.actionText}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-100 mt-3">
+              <button onClick={() => setShowRekomendasiModal(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition">
+                Tutup
+              </button>
             </div>
           </div>
         </div>

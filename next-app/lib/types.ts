@@ -18,6 +18,8 @@ export interface CartItem {
   layanan: string;
   hargaSatuan: number;
   qty: number;
+  tipe?: 'SelfService' | 'FullService' | string;
+  satuan?: string;
   catatan?: string;
   kategori?: 'Self Service' | 'Drop Off' | 'Add On' | 'Makanan dan Minuman' | string;
   idInventory?: string | null;

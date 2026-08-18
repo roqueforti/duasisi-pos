@@ -26,6 +26,8 @@ import {
   Zap,
   Activity,
   Layers,
+  Sparkles,
+  Lightbulb,
   X
 } from 'lucide-react';
 import { UserRole } from '@/lib/types';
@@ -106,6 +108,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   // Inventory Quick Restock Modal (Manager only)
   const [selectedRestockItem, setSelectedRestockItem] = useState<InventoryItem | null>(null);
   const [restockQty, setRestockQty] = useState<string>('5');
+  const [showRestockAnalysisModal, setShowRestockAnalysisModal] = useState<boolean>(false);
 
   // Kasir Shift Info
   const [kasShiftInfo, setKasShiftInfo] = useState<{ kasAwal?: number; waktuBuka?: string; status?: string } | null>(null);
@@ -165,6 +168,53 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   
   const lowStockItems = inventoryList?.filter(i => i.stok <= i.stokMinimum) || [];
   const maintenanceMachines = mesinList?.filter(m => m.status === 'Maintenance') || [];
+
+  // Dynamic Restock Recommendation Engine
+  const restockRecommendations = React.useMemo(() => {
+    return inventoryList.map(item => {
+      const { stok, stokMinimum, satuan, nama } = item;
+      const minVal = Number(stokMinimum) || 5;
+      const sVal = Number(stok) || 0;
+      
+      let status: 'HABIS' | 'MENIPIS' | 'WASPADA' | 'AMAN' = 'AMAN';
+      let badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      let rekomendasiQty = 0;
+      let alasan = '';
+
+      if (sVal <= 0) {
+        status = 'HABIS';
+        badgeColor = 'bg-rose-100 text-rose-800 border-rose-200';
+        rekomendasiQty = Math.max(minVal * 2, 10);
+        alasan = `Stok kosong total! Segera restock minimal ${rekomendasiQty} ${satuan} agar proses pengerjaan laundry tidak tertunda.`;
+      } else if (sVal <= minVal) {
+        status = 'MENIPIS';
+        badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
+        rekomendasiQty = Math.max((minVal * 2) - sVal, minVal);
+        alasan = `Stok (${sVal} ${satuan}) berada di bawah batas aman minimum (${minVal} ${satuan}). Disarankan order tambahan ${rekomendasiQty} ${satuan}.`;
+      } else if (sVal <= minVal * 1.5) {
+        status = 'WASPADA';
+        badgeColor = 'bg-blue-100 text-blue-800 border-blue-200';
+        rekomendasiQty = minVal;
+        alasan = `Stok (${sVal} ${satuan}) mendekati batas ambang minimum. Siapkan rencana restock sekitar ${rekomendasiQty} ${satuan}.`;
+      } else {
+        status = 'AMAN';
+        badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        rekomendasiQty = 0;
+        alasan = `Kapasitas stok aman (${sVal} ${satuan}). Tidak memerlukan restock dalam waktu dekat.`;
+      }
+
+      return {
+        ...item,
+        status,
+        badgeColor,
+        rekomendasiQty,
+        alasan
+      };
+    }).sort((a, b) => {
+      const priority = { HABIS: 0, MENIPIS: 1, WASPADA: 2, AMAN: 3 };
+      return priority[a.status] - priority[b.status];
+    });
+  }, [inventoryList]);
 
   // Inventory Quick Restock Submit
   const handleRestockSubmit = async () => {
@@ -552,12 +602,21 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             </div>
           </div>
 
-          {!isManager && (
-            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-              <span>View Only</span>
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowRestockAnalysisModal(true)}
+              className="px-3 py-1.5 bg-linear-to-r from-[#1E4648] to-[#2A5C5E] hover:from-[#163536] hover:to-[#1E4648] text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span>Rekomendasi Restock</span>
+            </button>
+            {!isManager && (
+              <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+                <span>View Only</span>
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -695,6 +754,75 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             <div className="flex gap-2 pt-2">
               <button onClick={() => setSelectedRestockItem(null)} className="px-3 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs">Batal</button>
               <button onClick={handleRestockSubmit} className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2 rounded-lg text-xs">Simpan Stok Baru</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMART RESTOCK RECOMMENDATION MODAL (DASHBOARD) */}
+      {showRestockAnalysisModal && (
+        <div className="fixed inset-0 z-[500] bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-5 sm:p-6 w-full max-w-2xl shadow-xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#1E4648] text-white flex items-center justify-center shadow-xs">
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-slate-800">Sistem Rekomendasi Restock & Pengadaan Bahan</h3>
+                  <p className="text-[10px] sm:text-xs text-slate-400">Analisis rasio stok riil terhadap batas ambang minimum operasional</p>
+                </div>
+              </div>
+              <button onClick={() => setShowRestockAnalysisModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="overflow-y-auto space-y-3 pr-1 flex-1 text-xs">
+              {restockRecommendations.length === 0 ? (
+                <div className="py-8 text-center text-slate-400">
+                  <Package className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p>Belum ada data bahan inventory di sistem.</p>
+                </div>
+              ) : (
+                restockRecommendations.map((item) => (
+                  <div key={item.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2 hover:border-[#1E4648]/40 transition">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-slate-800">{item.nama}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${item.badgeColor}`}>
+                          {item.status === 'HABIS' ? 'Kritis (Habis)' : item.status === 'MENIPIS' ? 'Perlu Restock' : item.status === 'WASPADA' ? 'Waspada' : 'Stok Aman'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 font-semibold">
+                        Sisa: <span className="text-slate-800 font-bold">{item.stok} {item.satuan}</span> | Batas Min: <span className="text-slate-800 font-bold">{item.stokMinimum} {item.satuan}</span>
+                      </div>
+                    </div>
+
+                    <p className="text-slate-600 text-[11px] leading-relaxed">{item.alasan}</p>
+
+                    {isManager && item.rekomendasiQty > 0 && (
+                      <div className="pt-1 flex justify-end">
+                        <button
+                          onClick={() => {
+                            setSelectedRestockItem(item);
+                            setRestockQty(item.rekomendasiQty.toString());
+                            setShowRestockAnalysisModal(false);
+                          }}
+                          className="px-3 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white font-bold rounded-md text-[11px] flex items-center gap-1.5 shadow-xs transition"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Restock Rekomendasi (+{item.rekomendasiQty} {item.satuan})</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-100 mt-3">
+              <button onClick={() => setShowRestockAnalysisModal(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition">
+                Tutup
+              </button>
             </div>
           </div>
         </div>
