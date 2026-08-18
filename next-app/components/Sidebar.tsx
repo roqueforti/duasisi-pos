@@ -19,7 +19,10 @@ import {
   ClipboardList,
   GitMerge,
   ShieldCheck,
-  FolderOpen
+  FolderOpen,
+  Sparkles,
+  Coins,
+  UserCheck
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { useDialog } from '@/components/DialogProvider';
@@ -31,6 +34,19 @@ interface SidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
   onLogout: () => void;
+}
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: any;
+  managerOnly?: boolean;
+  staffOnly?: boolean;
+}
+
+interface NavGroup {
+  groupName: string;
+  items: NavItem[];
 }
 
 export default function Sidebar({
@@ -53,7 +69,7 @@ export default function Sidebar({
         setIsCollapsed(false);
       }
     };
-    handleResize(); // trigger on mount
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -63,7 +79,7 @@ export default function Sidebar({
       await showAlert('Fitur POS Kasir hanya untuk Staff/Kasir', 'warning');
       return;
     }
-    if (['pegawai', 'payroll', 'produk', 'kategori', 'shift', 'rekap', 'keamanan', 'menu'].includes(tabKey) && currentRole !== 'MANAGER') {
+    if (['pegawai', 'payroll', 'produk', 'kategori', 'shift', 'rekap', 'keamanan', 'menu', 'langkah'].includes(tabKey) && currentRole !== 'MANAGER') {
       await showAlert('Akses Ditolak — Khusus Manager/Owner', 'error');
       return;
     }
@@ -71,17 +87,56 @@ export default function Sidebar({
     setIsSidebarOpen(false);
   };
 
+  const navGroups: NavGroup[] = [
+    {
+      groupName: 'Operasional Kasir',
+      items: [
+        { id: 'dashboard', label: 'Dashboard Utama', icon: LayoutDashboard },
+        { id: 'transaksi', label: 'POS Kasir', icon: ShoppingCart, staffOnly: true },
+        { id: 'pesanan', label: 'Pesanan Drop-off', icon: ClipboardList },
+        { id: 'riwayat', label: 'Riwayat Transaksi', icon: History },
+        { id: 'pelanggan', label: 'Data Pelanggan', icon: Users }
+      ]
+    },
+    {
+      groupName: 'Katalog & Inventory',
+      items: [
+        { id: 'inventory', label: 'Stok Inventory', icon: Package },
+        { id: 'produk', label: 'Manajemen Layanan', icon: Tag, managerOnly: true },
+        { id: 'kategori', label: 'Kategori Layanan', icon: FolderOpen, managerOnly: true },
+        { id: 'langkah', label: 'Pipeline Langkah', icon: GitMerge, managerOnly: true },
+        { id: 'menu', label: 'Menu Digital', icon: Sparkles, managerOnly: true }
+      ]
+    },
+    {
+      groupName: 'Kepegawaian & Gaji',
+      items: [
+        { id: 'absensi', label: 'Presensi & Cuti', icon: Clock },
+        { id: 'shift', label: 'Kas Shift & Serah Terima', icon: Coins, managerOnly: true },
+        { id: 'pegawai', label: 'Data Pegawai', icon: UserCheck, managerOnly: true },
+        { id: 'payroll', label: 'Payroll & Gaji', icon: RupiahIcon, managerOnly: true }
+      ]
+    },
+    {
+      groupName: 'Laporan & Pengaturan',
+      items: [
+        { id: 'rekap', label: 'Laporan Rekap', icon: BarChart3, managerOnly: true },
+        { id: 'keamanan', label: 'Keamanan & PIN', icon: ShieldCheck, managerOnly: true }
+      ]
+    }
+  ];
+
   const navClass = (tabKey: string) => {
     const isActive = currentTab === tabKey;
-    return `w-full text-left flex items-center ${isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'} rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+    return `w-full text-left flex items-center ${isCollapsed ? 'justify-center px-2 py-2' : 'gap-2.5 px-3 py-2'} rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
       isActive 
-        ? 'bg-slate-100 text-slate-700 font-bold shadow-2xs' 
-        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+        ? 'bg-[#1E4648] text-white font-bold shadow-xs' 
+        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
     }`;
   };
 
   const iconClass = (tabKey: string) => {
-    return currentTab === tabKey ? 'text-[#1E4648]' : 'text-slate-400';
+    return currentTab === tabKey ? 'text-white' : 'text-slate-400 group-hover:text-slate-600';
   };
 
   return (
@@ -95,7 +150,7 @@ export default function Sidebar({
       )}
 
       <aside className={`bg-white text-slate-600 border-r border-slate-200/80 flex flex-col shrink-0 z-[200] fixed lg:static inset-y-0 left-0 transition-all duration-200 overflow-y-auto ${
-        isCollapsed ? 'lg:w-[64px]' : 'lg:w-60'
+        isCollapsed ? 'lg:w-[68px]' : 'lg:w-60'
       } ${isSidebarOpen ? 'w-60 translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         
         {/* Header Logo & Minimize */}
@@ -104,12 +159,12 @@ export default function Sidebar({
             <img 
               src="./assets/Asset 5.svg" 
               alt="Dua SiSi" 
-              className="h-8 w-8"
+              className="h-8 w-8 object-contain"
             />
             <button
               onClick={() => setIsCollapsed(false)}
-              className="hidden lg:flex text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition"
-              title="Expand Sidebar"
+              className="hidden lg:flex text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition"
+              title="Perluas Sidebar"
             >
               <PanelLeftOpen className="w-4 h-4" />
             </button>
@@ -124,13 +179,13 @@ export default function Sidebar({
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setIsCollapsed(true)}
-                className="hidden lg:flex text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-100 transition"
-                title="Minimize Sidebar"
+                className="hidden lg:flex text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition"
+                title="Kecilkan Sidebar"
               >
                 <PanelLeftClose className="w-4 h-4" />
               </button>
               <button 
-                className="lg:hidden text-slate-400 hover:text-slate-600 p-1"
+                className="lg:hidden text-slate-400 hover:text-slate-600 p-1.5"
                 onClick={() => setIsSidebarOpen(false)}
               >
                 <X className="w-5 h-5" />
@@ -139,125 +194,79 @@ export default function Sidebar({
           </div>
         )}
 
-        {/* User Info Badge */}
+        {/* User Role Badge */}
         <div className={`px-3.5 py-3 border-b border-slate-100 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs ${
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs ${
             currentRole === 'MANAGER' ? 'bg-[#FF9500]' : 'bg-[#1E4648]'
           }`}>
             {currentRole === 'MANAGER' ? 'M' : 'S'}
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
-              <div className="text-xs font-bold text-slate-600 truncate">
-                {currentRole === 'MANAGER' ? 'Manager' : 'Kasir 1'}
+              <div className="text-xs font-bold text-slate-800 truncate">
+                {currentRole === 'MANAGER' ? 'Manager Outlet' : 'Kasir / Staff'}
               </div>
-              <div className="text-[11px] text-slate-400 font-medium">
+              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
                 {currentRole === 'MANAGER' ? 'Owner / Manager' : 'Staff On Duty'}
               </div>
             </div>
           )}
         </div>
 
-        {/* Navigation Menu */}
-        <nav className="flex-1 px-3 py-3 space-y-1">
-          {!isCollapsed && (
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mb-1.5">
-              Menu Utama
-            </div>
-          )}
-          
-          <button className={navClass('dashboard')} onClick={() => handleNavClick('dashboard')} title="Dashboard Utama">
-            <LayoutDashboard className={`w-[18px] h-[18px] shrink-0 ${iconClass('dashboard')}`} />
-            {!isCollapsed && <span>Dashboard Utama</span>}
-            {!isCollapsed && currentTab === 'dashboard' && <ChevronRight className="w-3.5 h-3.5 ml-auto text-slate-400" />}
-          </button>
+        {/* Grouped Navigation Menu */}
+        <nav className="flex-1 px-3 py-3 space-y-4">
+          {navGroups.map((group, gIdx) => {
+            // Filter items visible to the current role
+            const visibleItems = group.items.filter(item => {
+              if (item.managerOnly && currentRole !== 'MANAGER') return false;
+              if (item.staffOnly && currentRole === 'MANAGER') return false;
+              return true;
+            });
 
-          {currentRole !== 'MANAGER' && (
-            <>
-              <button className={navClass('transaksi')} onClick={() => handleNavClick('transaksi')} title="POS Kasir">
-                <ShoppingCart className={`w-[18px] h-[18px] shrink-0 ${iconClass('transaksi')}`} />
-                {!isCollapsed && <span>POS Kasir</span>}
-                {!isCollapsed && currentTab === 'transaksi' && <ChevronRight className="w-3.5 h-3.5 ml-auto text-slate-400" />}
-              </button>
-            </>
-          )}
-          <button className={navClass('riwayat')} onClick={() => handleNavClick('riwayat')} title="Riwayat">
-            <History className={`w-[18px] h-[18px] shrink-0 ${iconClass('riwayat')}`} />
-            {!isCollapsed && <span>Riwayat Transaksi</span>}
-          </button>
-          <button className={navClass('pesanan')} onClick={() => handleNavClick('pesanan')} title="Pesanan Drop-off">
-            <ClipboardList className={`w-[18px] h-[18px] shrink-0 ${iconClass('pesanan')}`} />
-            {!isCollapsed && <span>Pesanan Drop-off</span>}
-          </button>
-          <button className={navClass('absensi')} onClick={() => handleNavClick('absensi')} title="Absensi">
-            <Clock className={`w-[18px] h-[18px] shrink-0 ${iconClass('absensi')}`} />
-            {!isCollapsed && <span>Absensi Staf</span>}
-          </button>
-          <button className={navClass('pelanggan')} onClick={() => handleNavClick('pelanggan')} title="Data Pelanggan">
-            <Users className={`w-[18px] h-[18px] shrink-0 ${iconClass('pelanggan')}`} />
-            {!isCollapsed && <span>Data Pelanggan</span>}
-          </button>
-          <button className={navClass('inventory')} onClick={() => handleNavClick('inventory')} title="Inventory">
-            <Package className={`w-[18px] h-[18px] shrink-0 ${iconClass('inventory')}`} />
-            {!isCollapsed && <span>Stok Inventory</span>}
-          </button>
+            if (visibleItems.length === 0) return null;
 
-          {currentRole === 'MANAGER' && (
-            <>
-              {!isCollapsed && (
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 mt-4 mb-1.5">
-                  Manajemen
-                </div>
-              )}
-              <button className={navClass('pegawai')} onClick={() => handleNavClick('pegawai')} title="Pegawai">
-                <Users className={`w-[18px] h-[18px] shrink-0 ${iconClass('pegawai')}`} />
-                {!isCollapsed && <span>Data Pegawai</span>}
-              </button>
-              <button className={navClass('payroll')} onClick={() => handleNavClick('payroll')} title="Payroll & Gaji">
-                <RupiahIcon className={`w-[18px] h-[18px] shrink-0 ${iconClass('payroll')}`} />
-                {!isCollapsed && <span>Payroll & Gaji</span>}
-              </button>
-              <button className={navClass('shift')} onClick={() => handleNavClick('shift')} title="Shift & Absensi">
-                <Clock className={`w-[18px] h-[18px] shrink-0 ${iconClass('shift')}`} />
-                {!isCollapsed && <span>Shift & Absensi</span>}
-              </button>
+            return (
+              <div key={gIdx} className="space-y-1">
+                {!isCollapsed ? (
+                  <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2.5 pb-1">
+                    {group.groupName}
+                  </div>
+                ) : (
+                  <div className="w-full border-t border-slate-100 my-2" />
+                )}
 
-              <button className={navClass('produk')} onClick={() => handleNavClick('produk')} title="Produk">
-                <Tag className={`w-[18px] h-[18px] shrink-0 ${iconClass('produk')}`} />
-                {!isCollapsed && <span>Manajemen Produk</span>}
-              </button>
-              <button className={navClass('kategori')} onClick={() => handleNavClick('kategori')} title="Kategori">
-                <FolderOpen className={`w-[18px] h-[18px] shrink-0 ${iconClass('kategori')}`} />
-                {!isCollapsed && <span>Manajemen Kategori</span>}
-              </button>
-              <button className={navClass('langkah')} onClick={() => handleNavClick('langkah')} title="Langkah Pengerjaan">
-                <GitMerge className={`w-[18px] h-[18px] shrink-0 ${iconClass('langkah')}`} />
-                {!isCollapsed && <span>Manajemen Langkah</span>}
-              </button>
-              <button className={navClass('keamanan')} onClick={() => handleNavClick('keamanan')} title="Keamanan">
-                <ShieldCheck className={`w-[18px] h-[18px] shrink-0 ${iconClass('keamanan')}`} />
-                {!isCollapsed && <span>Manajemen Keamanan</span>}
-              </button>
-              <button className={navClass('menu')} onClick={() => handleNavClick('menu')} title="Desain Menu">
-                <LayoutDashboard className={`w-[18px] h-[18px] shrink-0 ${iconClass('menu')}`} />
-                {!isCollapsed && <span>Menu Digital</span>}
-              </button>
-              <button className={navClass('rekap')} onClick={() => handleNavClick('rekap')} title="Laporan">
-                <BarChart3 className={`w-[18px] h-[18px] shrink-0 ${iconClass('rekap')}`} />
-                {!isCollapsed && <span>Laporan Rekap</span>}
-              </button>
-            </>
-          )}
+                {visibleItems.map(item => {
+                  const IconComp = item.icon;
+                  const isActive = currentTab === item.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      className={navClass(item.id)}
+                      onClick={() => handleNavClick(item.id)}
+                      title={item.label}
+                    >
+                      <IconComp className={`w-4 h-4 shrink-0 transition-colors ${iconClass(item.id)}`} />
+                      {!isCollapsed && <span className="truncate">{item.label}</span>}
+                      {!isCollapsed && isActive && (
+                        <ChevronRight className="w-3.5 h-3.5 ml-auto text-teal-200" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
         </nav>
 
-        {/* Logout */}
+        {/* Logout Button */}
         <div className="px-3 py-3 border-t border-slate-100">
           <button 
             onClick={onLogout}
             title="Keluar Sesi"
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-2.5' : 'gap-3 px-3 py-2.5'} rounded-lg text-xs font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-2' : 'gap-2.5 px-3 py-2'} rounded-xl text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors`}
           >
-            <LogOut className="w-[18px] h-[18px] shrink-0 text-rose-500" />
+            <LogOut className="w-4 h-4 shrink-0 text-rose-500" />
             {!isCollapsed && <span>Keluar Sesi</span>}
           </button>
         </div>
