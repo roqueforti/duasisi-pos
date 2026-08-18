@@ -40,6 +40,11 @@ import {
   AlertTriangle,
   Shirt,
   Layers,
+  ShoppingBag,
+  Utensils,
+  Flame,
+  Folder,
+  Star,
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
@@ -1154,14 +1159,28 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
             {[
               { id: 'Semua', label: 'Semua Produk', icon: Layers },
-              ...kategoriList.map(k => {
-                const kName = k.nama.toLowerCase();
+              ...kategoriList.map((k: any) => {
                 let IconComp = TagIcon;
-                if (kName.includes('self') || kName.includes('koin')) IconComp = Zap;
-                else if (kName.includes('drop') || kName.includes('full') || kName.includes('cuci')) IconComp = Shirt;
-                else if (kName.includes('add') || kName.includes('deterjen') || kName.includes('softener') || kName.includes('pewangi')) IconComp = Sparkles;
-                else if (kName.includes('makan') || kName.includes('minum') || kName.includes('snack') || kName.includes('kopi')) IconComp = Coffee;
-                return { id: k.nama, label: k.nama, icon: IconComp };
+                const iconName = k.icon;
+                if (iconName === 'Zap') IconComp = Zap;
+                else if (iconName === 'Shirt') IconComp = Shirt;
+                else if (iconName === 'Sparkles') IconComp = Sparkles;
+                else if (iconName === 'Coffee') IconComp = Coffee;
+                else if (iconName === 'Package') IconComp = Package;
+                else if (iconName === 'ShoppingBag') IconComp = ShoppingBag;
+                else if (iconName === 'Utensils') IconComp = Utensils;
+                else if (iconName === 'Flame') IconComp = Flame;
+                else if (iconName === 'WashingMachine') IconComp = WashingMachine;
+                else if (iconName === 'Folder') IconComp = Folder;
+                else if (iconName === 'Star') IconComp = Star;
+                else {
+                  const kName = (k.nama || '').toLowerCase();
+                  if (kName.includes('self') || kName.includes('koin')) IconComp = Zap;
+                  else if (kName.includes('drop') || kName.includes('full') || kName.includes('cuci')) IconComp = Shirt;
+                  else if (kName.includes('add') || kName.includes('deterjen') || kName.includes('softener') || kName.includes('pewangi')) IconComp = Sparkles;
+                  else if (kName.includes('makan') || kName.includes('minum') || kName.includes('snack') || kName.includes('kopi')) IconComp = Coffee;
+                }
+                return { id: k.nama, label: k.nama, icon: IconComp, warna: k.warna };
               })
             ].map((tab) => {
               const isActive = selectedCategoryTab === tab.id;

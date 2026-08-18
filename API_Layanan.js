@@ -180,11 +180,11 @@ function getKategoriList() {
   let sh = SS.getSheetByName(SHEET_KATEGORI);
   if (!sh) {
     sh = SS.insertSheet(SHEET_KATEGORI);
-    sh.appendRow(["ID", "Nama Kategori", "Aktif", "Warna"]);
-    sh.appendRow([generateId("KAT"), "Self Service", "Y", "bg-blue-100 text-blue-800 border-blue-200"]);
-    sh.appendRow([generateId("KAT"), "Drop Off", "Y", "bg-amber-100 text-amber-800 border-amber-200"]);
-    sh.appendRow([generateId("KAT"), "Add On", "Y", "bg-emerald-100 text-emerald-800 border-emerald-200"]);
-    sh.appendRow([generateId("KAT"), "Makanan dan Minuman", "Y", "bg-rose-100 text-rose-800 border-rose-200"]);
+    sh.appendRow(["ID", "Nama Kategori", "Aktif", "Warna", "Icon"]);
+    sh.appendRow([generateId("KAT"), "Self Service", "Y", "bg-emerald-100 text-emerald-800 border-emerald-200", "Zap"]);
+    sh.appendRow([generateId("KAT"), "Drop Off", "Y", "bg-teal-100 text-teal-800 border-teal-200", "Shirt"]);
+    sh.appendRow([generateId("KAT"), "Add On", "Y", "bg-amber-100 text-amber-800 border-amber-200", "Sparkles"]);
+    sh.appendRow([generateId("KAT"), "Makanan dan Minuman", "Y", "bg-orange-100 text-orange-800 border-orange-200", "Coffee"]);
   }
   const data = sh.getDataRange().getValues();
   data.shift();
@@ -192,15 +192,25 @@ function getKategoriList() {
     id: r[0],
     nama: r[1],
     aktif: r[2] || "Y",
-    warna: r[3] || "bg-slate-100 text-slate-800 border-slate-200"
+    warna: r[3] || "bg-slate-100 text-slate-800 border-slate-200",
+    icon: r[4] || "Tag"
   }));
 }
 
 function tambahKategori(data) {
   let sh = SS.getSheetByName(SHEET_KATEGORI);
-  if (!sh) sh = SS.insertSheet(SHEET_KATEGORI);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_KATEGORI);
+    sh.appendRow(["ID", "Nama Kategori", "Aktif", "Warna", "Icon"]);
+  }
   const id = generateId("KAT");
-  sh.appendRow([id, data.nama, "Y", data.warna || "bg-slate-100 text-slate-800 border-slate-200"]);
+  sh.appendRow([
+    id, 
+    data.nama, 
+    "Y", 
+    data.warna || "bg-slate-100 text-slate-800 border-slate-200",
+    data.icon || "Tag"
+  ]);
   return { success: true, id: id };
 }
 
@@ -212,6 +222,7 @@ function updateKategori(id, data) {
     if (rows[i][0] === id) {
       sh.getRange(i + 1, 2).setValue(data.nama);
       if (data.warna) sh.getRange(i + 1, 4).setValue(data.warna);
+      if (data.icon) sh.getRange(i + 1, 5).setValue(data.icon);
       return { success: true };
     }
   }
