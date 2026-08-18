@@ -49,13 +49,12 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     setLoading(true);
     runBackendCached<InventoryItem[]>(
       'getInventoryList',
-      (data, fromCache) => {
+      (data) => {
         if (Array.isArray(data)) setItems(data);
-        if (!fromCache) setLoading(false);
+        setLoading(false);
       },
       3 * 60 * 1000
     );
-    setLoading(false);
   };
 
   const loadKategori = async () => {

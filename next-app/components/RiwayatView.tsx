@@ -11,10 +11,10 @@ import { useDialog } from '@/components/DialogProvider';
 
 export default function RiwayatView({ currentRole }: { currentRole?: UserRole } = {}) {
   const { showAlert } = useDialog();
-  const [filter, setFilter] = useState<'Semua' | 'SelfService' | 'FullService'>('Semua');
+  const [filter, setFilter] = useState<'Semua' | 'SelfService' | 'FullService' | 'NonLayanan'>('Semua');
   const [search, setSearch] = useState('');
   const [txList, setTxList] = useState<Transaksi[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<Transaksi | null>(null);
 
   // Bluetooth Thermal Printer Modal State
@@ -108,17 +108,16 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     loadRiwayat();
   };
 
-  const loadRiwayat = () => {
+  const loadRiwayat = async () => {
     setLoading(true);
-    runBackendCached<Transaksi[]>(
-      'getTransaksiList',
-      (data, fromCache) => {
-        setTxList(Array.isArray(data) ? data : []);
-        if (!fromCache) setLoading(false);
-      },
-      2 * 60 * 1000,
-      'Semua'
-    );
+    try {
+      const data = await runBackend<Transaksi[]>('getTransaksiList', 'Semua');
+      setTxList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Gagal memuat riwayat:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -188,7 +187,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
       ``,
       `No Nota     : ${tx.noNota}`,
       `Tanggal     : ${tx.tanggal}`,
-      `Tipe        : ${tx.tipe === 'FullService' ? 'Full Service' : 'Self Service'}`,
+      `Tipe        : ${tx.tipe === 'FullService' ? 'Drop Off' : tx.tipe === 'SelfService' ? 'Self Service' : 'Non-Layanan'}`,
       `Status      : ${tx.status}`,
       ``,
       `Detail Layanan:`,
@@ -219,7 +218,15 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
 
   const filteredTx = (txList || []).filter((t) => {
     if (!t) return false;
-    const matchFilter = filter === 'Semua' || t.tipe === filter;
+    let matchFilter = true;
+    if (filter === 'SelfService') {
+      matchFilter = t.tipe === 'SelfService';
+    } else if (filter === 'FullService') {
+      matchFilter = t.tipe === 'FullService';
+    } else if (filter === 'NonLayanan') {
+      matchFilter = !t.tipe || t.tipe === '' || t.tipe === 'NonLayanan' || t.tipe === 'Bukan Layanan';
+    }
+
     const q = (search || '').toLowerCase().trim();
     const matchSearch =
       !q ||
@@ -229,12 +236,21 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     return matchFilter && matchSearch;
   });
 
+  const getFilterLabel = (f: 'Semua' | 'SelfService' | 'FullService' | 'NonLayanan') => {
+    switch (f) {
+      case 'Semua': return 'Semua Tipe';
+      case 'SelfService': return 'Self Service';
+      case 'FullService': return 'Drop Off';
+      case 'NonLayanan': return 'Non-Layanan / Retail';
+    }
+  };
+
   return (
     <div className="p-3 md:p-4 space-y-4 w-full">
       {/* Header Filters & Search */}
       <div className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap shadow-xs">
-        <div className="flex bg-slate-100 p-0.5 rounded-md gap-0.5">
-          {(['Semua', 'SelfService', 'FullService'] as const).map((f) => (
+        <div className="flex bg-slate-100 p-0.5 rounded-md gap-0.5 flex-wrap">
+          {(['Semua', 'SelfService', 'FullService', 'NonLayanan'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -244,7 +260,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                   : 'text-slate-600 hover:text-slate-700'
               }`}
             >
-              {f === 'Semua' ? 'Semua Tipe' : f === 'SelfService' ? 'Self Service' : 'Full Service'}
+              {getFilterLabel(f)}
             </button>
           ))}
         </div>

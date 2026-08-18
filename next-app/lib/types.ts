@@ -42,7 +42,7 @@ export interface Transaksi {
   namaPelanggan: string;
   noHp?: string;
   petugas: string;
-  tipe: 'SelfService' | 'FullService';
+  tipe?: 'SelfService' | 'FullService' | 'NonLayanan' | string;
   tingkatLayanan?: KecepatanLayanan;
   subtotal?: number;
   diskon?: number;
