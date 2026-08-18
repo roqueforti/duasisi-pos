@@ -17,7 +17,9 @@ import {
   CheckCircle2, 
   UserCheck, 
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Download,
+  Upload
 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { maskPhone } from '@/lib/utils';
@@ -230,21 +232,30 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {currentRole === 'MANAGER' && (
             <>
-              <button onClick={handleExportCSV} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-lg text-xs transition" title="Export ke CSV">
-                Export
+              <button 
+                onClick={handleDownloadTemplate} 
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition flex items-center gap-1.5" 
+                title="Download Template CSV Pelanggan"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-500" />
+                <span>Template</span>
               </button>
-              <div className="relative group">
-                <label className="cursor-pointer px-3 py-2 bg-slate-100 hover:bg-[#1E4648] hover:text-white text-slate-600 font-semibold rounded-lg text-xs transition flex items-center gap-1.5" title="Import dari CSV">
-                  Import
-                  <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-                </label>
-                <div className="absolute top-full right-0 mt-1 hidden group-hover:block w-48 bg-white border border-slate-200 shadow-xl rounded-md p-2 z-50">
-                  <p className="text-[10px] text-slate-500 mb-2">Import data massal via CSV.</p>
-                  <button onClick={handleDownloadTemplate} className="w-full text-left px-2 py-1.5 hover:bg-slate-50 text-[10px] text-[#1E4648] font-bold rounded">
-                    ⬇️ Download Template CSV
-                  </button>
-                </div>
-              </div>
+              <button 
+                onClick={handleExportCSV} 
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition flex items-center gap-1.5" 
+                title="Export Data ke CSV"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-500" />
+                <span>Export</span>
+              </button>
+              <label 
+                className="cursor-pointer px-3 py-2 bg-slate-100 hover:bg-[#1E4648] hover:text-white text-slate-700 font-semibold rounded-lg text-xs transition flex items-center gap-1.5" 
+                title="Import Pelanggan dari File CSV"
+              >
+                <Upload className="w-3.5 h-3.5 text-slate-500 group-hover:text-white" />
+                <span>Import</span>
+                <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
+              </label>
             </>
           )}
           <button
