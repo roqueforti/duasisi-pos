@@ -238,6 +238,7 @@ export interface PayrollItem {
   bonusKomisi: number;
   insentifDropOff?: number;
   totalTahapDropOff?: number;
+  dropoffBreakdown?: Record<string, number>;
   potongan: number;
   potonganRutin?: number;
   dendaTelat?: number;
@@ -265,6 +266,7 @@ export interface PayrollSummary {
   totalPegawai: number;
   sudahDibayarCount: number;
   belumDibayarCount: number;
+  allDropoffSteps?: string[];
   items: PayrollItem[];
 }
 

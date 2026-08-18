@@ -189,14 +189,18 @@ const SHEET_HARI_LIBUR = "MasterHariLibur";
 
 function getDropoffContributionsMap_(startDateStr, endDateStr) {
   const sh = SS.getSheetByName(SHEET_PIPELINE);
-  if (!sh) return {};
+  if (!sh) return { totalMap: {}, breakdownMap: {}, allSteps: [] };
   const data = sh.getDataRange().getValues();
-  const map = {}; // staffName/staffId -> count
+  const totalMap = {}; // staffName/staffId -> count
+  const breakdownMap = {}; // staffName/staffId -> { [stepName]: count }
+  const stepSet = {};
+
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     // [ID, No Nota, Step, Nama Step, Status, Assigned Staff, Mesin ID, Waktu Mulai, Waktu Selesai, Catatan]
     const status = String(row[4] || "");
     const staff = String(row[5] || "").trim();
+    const stepName = String(row[3] || "Langkah").trim();
     const waktuSelesai = row[8];
     if (status === "Selesai" && staff) {
       if (waktuSelesai) {
@@ -205,10 +209,17 @@ function getDropoffContributionsMap_(startDateStr, endDateStr) {
           continue;
         }
       }
-      map[staff] = (map[staff] || 0) + 1;
+      totalMap[staff] = (totalMap[staff] || 0) + 1;
+      if (!breakdownMap[staff]) breakdownMap[staff] = {};
+      breakdownMap[staff][stepName] = (breakdownMap[staff][stepName] || 0) + 1;
+      stepSet[stepName] = true;
     }
   }
-  return map;
+  return {
+    totalMap: totalMap,
+    breakdownMap: breakdownMap,
+    allSteps: Object.keys(stepSet)
+  };
 }
 
 function getDendaAbsensiMap_(absensiList, config) {
@@ -249,7 +260,7 @@ function getPayrollSummary(periodeStr) {
   
   const absensiList = getRekapAbsensi(startDateStr, endDateStr);
   const kinerjaList = getRekapKinerjaPegawai(startDateStr, endDateStr);
-  const dropoffMap = getDropoffContributionsMap_(startDateStr, endDateStr);
+  const dropoffData = getDropoffContributionsMap_(startDateStr, endDateStr);
   const config = getAbsensiConfig();
   const dendaMap = getDendaAbsensiMap_(absensiList, config);
 
@@ -297,7 +308,8 @@ function getPayrollSummary(periodeStr) {
     const totalTransaksi = empKin ? empKin.totalTransaksi : 0;
 
     // Kontribusi drop off per tahap
-    const totalTahapDropOff = (dropoffMap[peg.nama] || 0) + (dropoffMap[peg.id] || 0);
+    const totalTahapDropOff = (dropoffData.totalMap[peg.nama] || 0) + (dropoffData.totalMap[peg.id] || 0);
+    const dropoffBreakdown = dropoffData.breakdownMap[peg.nama] || dropoffData.breakdownMap[peg.id] || {};
     const insentifDropOff = totalTahapDropOff * (config.insentifDropOffPerTahap || 1500);
 
     // Tunjangan kehadiran otomatis (bila belum diatur khusus)
@@ -336,6 +348,7 @@ function getPayrollSummary(periodeStr) {
       bonusKomisi: bonusKomisi,
       insentifDropOff: insentifDropOff,
       totalTahapDropOff: totalTahapDropOff,
+      dropoffBreakdown: dropoffBreakdown,
       potongan: finalPotongan,
       potonganRutin: potonganRutin,
       dendaTelat: dendaTelat,
@@ -364,6 +377,7 @@ function getPayrollSummary(periodeStr) {
     totalPegawai: items.length,
     sudahDibayarCount: items.filter(i => i.statusPembayaran === "Sudah Dibayar").length,
     belumDibayarCount: items.filter(i => i.statusPembayaran !== "Sudah Dibayar").length,
+    allDropoffSteps: dropoffData.allSteps,
     items: items
   };
 }

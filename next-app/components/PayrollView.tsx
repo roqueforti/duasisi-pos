@@ -73,6 +73,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
 
   // Modal Master Pengaturan Gaji Pegawai
   const [showSalaryConfigModal, setShowSalaryConfigModal] = useState(false);
+  const [showInsentifModal, setShowInsentifModal] = useState(false);
   const [masterPegawaiList, setMasterPegawaiList] = useState<PegawaiDetail[]>([]);
   const [editingMasterPegawai, setEditingMasterPegawai] = useState<PegawaiDetail | null>(null);
   const [masterGajiPokok, setMasterGajiPokok] = useState('0');
@@ -389,6 +390,15 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
           </button>
 
           <button
+            onClick={() => setShowInsentifModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 border border-emerald-300 text-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 rounded-xl text-xs font-bold transition shadow-2xs"
+            title="Lihat Rincian Kontribusi & Insentif Drop Off Pegawai"
+          >
+            <Award className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Rekap Insentif Drop Off</span>
+          </button>
+
+          <button
             onClick={openSalaryConfigModal}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-2xs"
             title="Atur Gaji Pokok, Tunjangan & Rekening Seluruh Pegawai"
@@ -556,7 +566,16 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                   {/* Insentif Drop Off */}
                   <td className="py-3.5 px-3 text-right font-semibold text-emerald-600">
                     <div>+Rp {(item.insentifDropOff || item.bonusKomisi).toLocaleString('id-ID')}</div>
-                    <div className="text-[10px] text-emerald-700/80 font-normal">{item.totalTahapDropOff || 0} Tahap Selesai</div>
+                    <div className="text-[10px] text-emerald-700/80 font-bold">{item.totalTahapDropOff || 0} Tahap Selesai</div>
+                    {item.dropoffBreakdown && Object.keys(item.dropoffBreakdown).length > 0 && (
+                      <div className="flex flex-wrap justify-end gap-1 mt-1 max-w-[200px] ml-auto">
+                        {Object.entries(item.dropoffBreakdown).map(([st, cnt]) => (
+                          <span key={st} className="inline-block bg-emerald-50 text-emerald-800 text-[9px] font-bold px-1.5 py-0.5 rounded border border-emerald-200/80 shadow-2xs">
+                            {st}: {cnt}x
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </td>
 
                   {/* Potongan & Denda */}
@@ -1086,6 +1105,159 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
               >
                 Selesai / Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL REKAPITULASI RINCI INSENTIF DROP OFF ==================== */}
+      {showInsentifModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+              <div>
+                <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-emerald-600" />
+                  <span>Rekapitulasi Kontribusi & Insentif Drop Off Pegawai</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Tabel rincian banyaknya tahapan pengerjaan drop off yang diselesaikan setiap staf pada periode <strong>{bulanLabel} {selectedTahun}</strong>.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowInsentifModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Table Breakdown */}
+            <div className="overflow-x-auto max-h-[60vh] border border-slate-200 rounded-2xl">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-50 text-slate-700 font-bold sticky top-0 border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Nama Pegawai</th>
+                    <th className="py-3 px-3">Jabatan</th>
+                    {/* Dynamic Step Columns */}
+                    {(payrollData?.allDropoffSteps && payrollData.allDropoffSteps.length > 0 
+                      ? payrollData.allDropoffSteps 
+                      : ['Dicuci', 'Dikeringkan', 'Disetrika', 'Siap Diambil']).map(st => (
+                      <th key={st} className="py-3 px-3 text-center bg-teal-50/50 text-[#1E4648]">
+                        {st}
+                      </th>
+                    ))}
+                    <th className="py-3 px-3 text-center font-black bg-emerald-50 text-emerald-900">Total Tahap</th>
+                    <th className="py-3 px-4 text-right font-black bg-emerald-100/70 text-emerald-950">Total Insentif</th>
+                    <th className="py-3 px-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-12 text-center text-slate-400">
+                        <Award className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="font-semibold text-xs">Belum ada data kontribusi drop off pada periode ini.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredItems.map(item => {
+                      const stepsList = payrollData?.allDropoffSteps && payrollData.allDropoffSteps.length > 0 
+                        ? payrollData.allDropoffSteps 
+                        : ['Dicuci', 'Dikeringkan', 'Disetrika', 'Siap Diambil'];
+                      
+                      return (
+                        <tr key={item.idPegawai} className="hover:bg-slate-50/70 transition">
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-slate-900">{item.nama}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{item.idPegawai}</div>
+                          </td>
+                          <td className="py-3.5 px-3 font-semibold text-slate-600">
+                            {item.jabatan}
+                          </td>
+                          
+                          {/* Step counts */}
+                          {stepsList.map(st => {
+                            const count = item.dropoffBreakdown?.[st] || 0;
+                            return (
+                              <td key={st} className="py-3.5 px-3 text-center">
+                                {count > 0 ? (
+                                  <span className="inline-block bg-teal-100/70 text-[#1E4648] font-bold px-2 py-0.5 rounded-md text-xs border border-teal-200">
+                                    {count}x
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-300">-</span>
+                                )}
+                              </td>
+                            );
+                          })}
+
+                          {/* Total Tahap */}
+                          <td className="py-3.5 px-3 text-center font-bold text-emerald-800 bg-emerald-50/40">
+                            <span className="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-xs font-black">
+                              {item.totalTahapDropOff || 0} Tahap
+                            </span>
+                          </td>
+
+                          {/* Total Insentif */}
+                          <td className="py-3.5 px-4 text-right font-black text-emerald-700 bg-emerald-50/60 text-sm">
+                            Rp {(item.insentifDropOff || 0).toLocaleString('id-ID')}
+                          </td>
+
+                          {/* Action */}
+                          <td className="py-3.5 px-3 text-right">
+                            <button
+                              onClick={() => {
+                                setShowInsentifModal(false);
+                                openSlipModal(item);
+                              }}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-[#1E4648] hover:text-white text-slate-700 rounded-lg text-[11px] font-bold transition"
+                            >
+                              Slip Gaji
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+                <tfoot className="bg-slate-50 border-t-2 border-slate-200 font-bold text-slate-800">
+                  <tr>
+                    <td colSpan={2} className="py-3 px-4 uppercase text-[11px] tracking-wider font-black">
+                      Total Seluruh Staf
+                    </td>
+                    {(payrollData?.allDropoffSteps && payrollData.allDropoffSteps.length > 0 
+                      ? payrollData.allDropoffSteps 
+                      : ['Dicuci', 'Dikeringkan', 'Disetrika', 'Siap Diambil']).map(st => {
+                      const totalForStep = filteredItems.reduce((acc, it) => acc + (it.dropoffBreakdown?.[st] || 0), 0);
+                      return (
+                        <td key={st} className="py-3 px-3 text-center font-extrabold text-[#1E4648]">
+                          {totalForStep}x
+                        </td>
+                      );
+                    })}
+                    <td className="py-3 px-3 text-center font-black text-emerald-900 bg-emerald-100/60">
+                      {filteredItems.reduce((acc, it) => acc + (it.totalTahapDropOff || 0), 0)} Tahap
+                    </td>
+                    <td className="py-3 px-4 text-right font-black text-emerald-900 bg-emerald-100 text-sm">
+                      Rp {filteredItems.reduce((acc, it) => acc + (it.insentifDropOff || 0), 0).toLocaleString('id-ID')}
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 pt-4 mt-4">
+              <div className="text-xs text-slate-500">
+                💡 Insentif dihitung otomatis dari transaksi drop off yang telah diselesaikan oleh masing-masing petugas.
+              </div>
+              <button
+                onClick={() => setShowInsentifModal(false)}
+                className="px-5 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs"
+              >
+                Tutup Rekap
               </button>
             </div>
           </div>
