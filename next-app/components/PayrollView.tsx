@@ -20,12 +20,14 @@ import {
   TrendingUp,
   Award,
   ShieldCheck,
-  Edit2
+  Edit2,
+  Settings,
+  Building
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { runBackend } from '@/lib/api';
 import { toCSV, downloadCSV } from '@/lib/csvUtils';
-import { UserRole, PayrollItem, PayrollSummary } from '@/lib/types';
+import { UserRole, PayrollItem, PayrollSummary, PegawaiDetail } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 
 const BULAN_OPTIONS = [
@@ -67,6 +69,19 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
   const [editPotongan, setEditPotongan] = useState('');
   const [editMetode, setEditMetode] = useState('Transfer');
   const [editCatatan, setEditCatatan] = useState('');
+  const [editSyncMaster, setEditSyncMaster] = useState(false);
+
+  // Modal Master Pengaturan Gaji Pegawai
+  const [showSalaryConfigModal, setShowSalaryConfigModal] = useState(false);
+  const [masterPegawaiList, setMasterPegawaiList] = useState<PegawaiDetail[]>([]);
+  const [editingMasterPegawai, setEditingMasterPegawai] = useState<PegawaiDetail | null>(null);
+  const [masterGajiPokok, setMasterGajiPokok] = useState('0');
+  const [masterTunjangan, setMasterTunjangan] = useState('0');
+  const [masterPotongan, setMasterPotongan] = useState('0');
+  const [masterBank, setMasterBank] = useState('BCA');
+  const [masterNoRekening, setMasterNoRekening] = useState('');
+  const [masterNamaRekening, setMasterNamaRekening] = useState('');
+  const [savingSalaryId, setSavingSalaryId] = useState<string | null>(null);
 
   const printSlipRef = useRef<HTMLDivElement>(null);
 
@@ -99,6 +114,56 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
     }
   };
 
+  const openSalaryConfigModal = async () => {
+    setLoading(true);
+    try {
+      const data = await runBackend<PegawaiDetail[]>('getPegawaiList');
+      if (Array.isArray(data)) setMasterPegawaiList(data);
+      setShowSalaryConfigModal(true);
+    } catch (err) {
+      console.error(err);
+      await showAlert('Gagal memuat daftar pegawai', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openEditMasterPegawaiSalary = (peg: PegawaiDetail) => {
+    setEditingMasterPegawai(peg);
+    setMasterGajiPokok(String(peg.gajiPokok || 0));
+    setMasterTunjangan(String(peg.tunjangan || 0));
+    setMasterPotongan(String(peg.potongan || 0));
+    setMasterBank(peg.bank || 'BCA');
+    setMasterNoRekening(peg.noRekening || '');
+    setMasterNamaRekening(peg.namaRekening || '');
+  };
+
+  const handleSaveMasterPegawaiSalary = async () => {
+    if (!editingMasterPegawai) return;
+    setSavingSalaryId(editingMasterPegawai.id);
+    try {
+      const updated: PegawaiDetail = {
+        ...editingMasterPegawai,
+        gajiPokok: Number(masterGajiPokok) || 0,
+        tunjangan: Number(masterTunjangan) || 0,
+        potongan: Number(masterPotongan) || 0,
+        bank: masterBank,
+        noRekening: masterNoRekening,
+        namaRekening: masterNamaRekening
+      };
+      await runBackend('updatePegawai', editingMasterPegawai.id, updated);
+      setMasterPegawaiList(prev => prev.map(p => p.id === editingMasterPegawai.id ? updated : p));
+      setEditingMasterPegawai(null);
+      loadPayroll();
+      await showAlert(`Gaji pokok & rekening ${editingMasterPegawai.nama} berhasil diperbarui!`, 'success');
+    } catch (err) {
+      console.error(err);
+      await showAlert('Gagal menyimpan gaji pokok pegawai', 'error');
+    } finally {
+      setSavingSalaryId(null);
+    }
+  };
+
   useEffect(() => {
     loadPayroll();
   }, [selectedBulan, selectedTahun]);
@@ -116,6 +181,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
     setEditPotongan(String(item.potongan || 0));
     setEditMetode(item.metodePembayaran || (item.bank ? 'Transfer' : 'Tunai'));
     setEditCatatan(item.catatan || '');
+    setEditSyncMaster(false);
     setShowEditPayModal(true);
   };
 
@@ -148,6 +214,21 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
       );
 
       if (!res?.success) throw new Error(res?.message || 'Gagal menyimpan penyesuaian');
+
+      // If user opted to also save to Master Pegawai profile permanently
+      if (editSyncMaster) {
+        const pegRes = await runBackend<PegawaiDetail[]>('getPegawaiList').catch(() => []);
+        const targetPeg = pegRes?.find(p => p.id === editItem.idPegawai || p.nama === editItem.nama);
+        if (targetPeg) {
+          await runBackend('updatePegawai', targetPeg.id, {
+            ...targetPeg,
+            gajiPokok: gPokok,
+            tunjangan: tunj,
+            potongan: pot
+          }).catch(console.error);
+        }
+      }
+
       setShowEditPayModal(false);
       loadPayroll();
       await showAlert('Penyesuaian gaji berhasil disimpan!', 'success');
@@ -304,6 +385,15 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
             className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+
+          <button
+            onClick={openSalaryConfigModal}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-2xs"
+            title="Atur Gaji Pokok, Tunjangan & Rekening Seluruh Pegawai"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>Pengaturan Gaji Master</span>
           </button>
 
           <button
@@ -772,6 +862,17 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                 />
               </div>
 
+              {/* Checkbox Simpan ke Master Pegawai */}
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 bg-emerald-50/70 border border-emerald-200/80 p-2.5 rounded-xl cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editSyncMaster}
+                  onChange={e => setEditSyncMaster(e.target.checked)}
+                  className="rounded text-[#1E4648] focus:ring-[#1E4648]"
+                />
+                <span>Simpan juga perubahan ini sebagai Gaji Pokok & Tunjangan permanen di profil Pegawai</span>
+              </label>
+
               {/* Preview Total Bersih */}
               <div className="bg-slate-100 p-3 rounded-xl flex items-center justify-between font-bold">
                 <span>Total Bersih Baru:</span>
@@ -796,6 +897,178 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                 className="px-5 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50"
               >
                 {loading ? 'Menyimpan...' : 'Simpan Penyesuaian'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL PENGATURAN MASTER GAJI PEGAWAI ==================== */}
+      {showSalaryConfigModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+              <div>
+                <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-[#1E4648]" />
+                  <span>Pengaturan Gaji Pokok, Tunjangan & Rekening Pegawai</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Atur paket kompensasi default setiap pegawai untuk perhitungan otomatis payroll bulanan.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowSalaryConfigModal(false);
+                  setEditingMasterPegawai(null);
+                }}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* List Table of Employees with Quick Edit */}
+            <div className="overflow-x-auto max-h-[60vh]">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-50 text-slate-600 font-bold sticky top-0 border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-3.5">Pegawai</th>
+                    <th className="py-3 px-3.5">Gaji Pokok</th>
+                    <th className="py-3 px-3.5">Tunjangan</th>
+                    <th className="py-3 px-3.5">Potongan Rutin</th>
+                    <th className="py-3 px-3.5">Bank & Rekening</th>
+                    <th className="py-3 px-3.5 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {masterPegawaiList.map(peg => {
+                    const isEditingThis = editingMasterPegawai?.id === peg.id;
+                    return (
+                      <tr key={peg.id} className={isEditingThis ? 'bg-teal-50/50' : 'hover:bg-slate-50/60'}>
+                        <td className="py-3 px-3.5">
+                          <div className="font-bold text-slate-800">{peg.nama}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">{peg.id} • {peg.jabatan}</div>
+                        </td>
+                        
+                        {isEditingThis ? (
+                          <>
+                            <td className="py-3 px-2">
+                              <input
+                                type="number"
+                                value={masterGajiPokok}
+                                onChange={e => setMasterGajiPokok(e.target.value)}
+                                className="w-28 px-2 py-1 bg-white border border-slate-300 rounded-lg font-bold text-[#1E4648] text-xs focus:outline-none focus:border-[#1E4648]"
+                              />
+                            </td>
+                            <td className="py-3 px-2">
+                              <input
+                                type="number"
+                                value={masterTunjangan}
+                                onChange={e => setMasterTunjangan(e.target.value)}
+                                className="w-24 px-2 py-1 bg-white border border-slate-300 rounded-lg font-semibold text-emerald-700 text-xs focus:outline-none focus:border-[#1E4648]"
+                              />
+                            </td>
+                            <td className="py-3 px-2">
+                              <input
+                                type="number"
+                                value={masterPotongan}
+                                onChange={e => setMasterPotongan(e.target.value)}
+                                className="w-24 px-2 py-1 bg-white border border-slate-300 rounded-lg font-semibold text-rose-600 text-xs focus:outline-none focus:border-[#1E4648]"
+                              />
+                            </td>
+                            <td className="py-3 px-2">
+                              <div className="space-y-1">
+                                <div className="flex gap-1">
+                                  <input
+                                    type="text"
+                                    value={masterBank}
+                                    onChange={e => setMasterBank(e.target.value)}
+                                    placeholder="Bank"
+                                    className="w-16 px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-bold"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={masterNoRekening}
+                                    onChange={e => setMasterNoRekening(e.target.value)}
+                                    placeholder="No Rekening"
+                                    className="w-28 px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px]"
+                                  />
+                                </div>
+                                <input
+                                  type="text"
+                                  value={masterNamaRekening}
+                                  onChange={e => setMasterNamaRekening(e.target.value)}
+                                  placeholder="Atas Nama"
+                                  className="w-full px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px]"
+                                />
+                              </div>
+                            </td>
+                            <td className="py-3 px-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  disabled={savingSalaryId === peg.id}
+                                  onClick={handleSaveMasterPegawaiSalary}
+                                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-2xs"
+                                >
+                                  {savingSalaryId === peg.id ? '...' : 'Simpan'}
+                                </button>
+                                <button
+                                  onClick={() => setEditingMasterPegawai(null)}
+                                  className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition"
+                                >
+                                  Batal
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-3 px-3.5 font-bold text-[#1E4648]">
+                              Rp {(peg.gajiPokok || 0).toLocaleString('id-ID')}
+                            </td>
+                            <td className="py-3 px-3.5 font-semibold text-emerald-700">
+                              Rp {(peg.tunjangan || 0).toLocaleString('id-ID')}
+                            </td>
+                            <td className="py-3 px-3.5 font-semibold text-rose-600">
+                              Rp {(peg.potongan || 0).toLocaleString('id-ID')}
+                            </td>
+                            <td className="py-3 px-3.5">
+                              {peg.bank ? (
+                                <div>
+                                  <span className="font-bold text-slate-700">{peg.bank}</span> {peg.noRekening || '-'}
+                                  {peg.namaRekening && <div className="text-[10px] text-slate-400">a.n {peg.namaRekening}</div>}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400">Belum diatur</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3.5 text-right">
+                              <button
+                                onClick={() => openEditMasterPegawaiSalary(peg)}
+                                className="px-3 py-1 bg-slate-100 hover:bg-[#1E4648] hover:text-white text-slate-700 rounded-lg text-xs font-bold transition"
+                              >
+                                Edit Gaji
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end border-t border-slate-100 pt-4 mt-4">
+              <button
+                onClick={() => {
+                  setShowSalaryConfigModal(false);
+                  setEditingMasterPegawai(null);
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition"
+              >
+                Selesai / Tutup
               </button>
             </div>
           </div>

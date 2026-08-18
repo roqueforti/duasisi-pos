@@ -60,9 +60,40 @@ function getLayananListAll() {
   });
 }
 
+function getProductPrefix_(kategori, tipe) {
+  const kat = String(kategori || "").toLowerCase().trim();
+  const tip = String(tipe || "").toLowerCase().trim();
+
+  if (tip === "selfservice" || kat.includes("self")) return "SS";
+  if (tip === "fullservice" || kat.includes("drop") || kat.includes("full")) return "DO";
+  if (kat.includes("add") || kat.includes("tambahan")) return "ADD";
+  if (kat.includes("retail") || kat.includes("eceran") || kat.includes("jual")) return "RTL";
+  if (kat.includes("paket") || kat.includes("promo")) return "PKT";
+  if (kat.includes("satuan") || kat.includes("unit")) return "STN";
+  if (tip === "" || tip.includes("bukan")) return "ADD";
+  return "PRD";
+}
+
+function generateLayananCode_(kategori, tipe) {
+  const prefix = getProductPrefix_(kategori, tipe);
+  const sh = SS.getSheetByName(SHEET_LAYANAN);
+  if (!sh) return prefix + "-001";
+  const rows = sh.getDataRange().getValues();
+  let maxNum = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const code = String(rows[i][0] || "").trim();
+    if (code.startsWith(prefix + "-")) {
+      const parts = code.split("-");
+      const numPart = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
+    }
+  }
+  return prefix + "-" + String(maxNum + 1).padStart(3, "0");
+}
+
 function tambahLayanan(data) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
-  const id = generateId("SVC");
+  const id = data.kode && String(data.kode).trim() ? String(data.kode).trim() : generateLayananCode_(data.kategori, data.tipe);
   const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : "";
   let idInv = data.idInventory || "";
   
@@ -86,6 +117,7 @@ function updateLayanan(id, data) {
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
+      const newId = data.kode && String(data.kode).trim() ? String(data.kode).trim() : rows[i][0];
       const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : (rows[i][7] || "");
       let idInv = data.idInventory !== undefined ? data.idInventory : (rows[i][9] || "");
       
@@ -100,11 +132,27 @@ function updateLayanan(id, data) {
         sh.insertColumnsAfter(sh.getMaxColumns(), 12 - sh.getMaxColumns());
       }
 
-      sh.getRange(i + 1, 2, 1, 11).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8], idInv, data.hargaModal !== undefined ? data.hargaModal : (Number(rows[i][10]) || 0), data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : (rows[i][11] !== undefined && rows[i][11] !== "" ? Number(rows[i][11]) : 1)]]);
-      return { success: true };
+      sh.getRange(i + 1, 1, 1, 12).setValues([[newId, data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8], idInv, data.hargaModal !== undefined ? data.hargaModal : (Number(rows[i][10]) || 0), data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : (rows[i][11] !== undefined && rows[i][11] !== "" ? Number(rows[i][11]) : 1)]]);
+      return { success: true, id: newId };
     }
   }
   return { success: false, message: "Layanan tidak ditemukan" };
+}
+
+function regenerateProductCodes() {
+  const sh = SS.getSheetByName(SHEET_LAYANAN);
+  if (!sh) return { success: false, message: "Sheet Layanan tidak ditemukan." };
+  const rows = sh.getDataRange().getValues();
+  const counters = {};
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const prefix = getProductPrefix_(row[8], row[6]);
+    counters[prefix] = (counters[prefix] || 0) + 1;
+    const newCode = prefix + "-" + String(counters[prefix]).padStart(3, "0");
+    sh.getRange(i + 1, 1).setValue(newCode);
+  }
+  SpreadsheetApp.flush();
+  return { success: true, message: "Kode produk berhasil disesuaikan menurut kategori & tipe." };
 }
 
 function toggleAktifLayanan(id, aktifBaru) {

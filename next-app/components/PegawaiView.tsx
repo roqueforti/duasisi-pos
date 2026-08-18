@@ -766,14 +766,48 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">URL Foto Profil (Opsional)</label>
-                      <input
-                        type="url"
-                        value={formData.foto || ''}
-                        onChange={e => setFormData({ ...formData, foto: e.target.value })}
-                        placeholder="https://..."
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#1E4648]"
-                      />
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Foto Profil Pegawai</label>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center text-slate-400 font-bold text-xs">
+                          {formData.foto ? (
+                            <img src={formData.foto} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <span>Foto</span>
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <label className="cursor-pointer px-3 py-1.5 bg-slate-100 hover:bg-[#1E4648] hover:text-white text-slate-700 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 border border-slate-200">
+                            <Upload className="w-3 h-3" />
+                            <span>Pilih / Upload Foto</span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={e => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = () => {
+                                    if (typeof reader.result === 'string') {
+                                      setFormData(prev => ({ ...prev, foto: reader.result as string }));
+                                    }
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }} 
+                            />
+                          </label>
+                          {formData.foto && (
+                            <button
+                              type="button"
+                              onClick={() => setFormData(prev => ({ ...prev, foto: '' }))}
+                              className="text-[10px] text-rose-500 hover:underline font-semibold block"
+                            >
+                              Hapus Foto
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -804,7 +838,9 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
                         <option value="SMP">SMP / MTs</option>
                         <option value="SMA/SMK">SMA / SMK / MA</option>
                         <option value="Diploma (D3)">Diploma (D3)</option>
+                        <option value="Diploma (D4)">Diploma (D4) / Sarjana Terapan</option>
                         <option value="Sarjana (S1)">Sarjana (S1)</option>
+                        <option value="Magister (S2)">Magister (S2)</option>
                         <option value="Lainnya">Lainnya</option>
                       </select>
                     </div>

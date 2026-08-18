@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown } from 'lucide-react';
+import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
@@ -65,6 +65,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   // Add / Edit Product Modal State
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [kode, setKode] = useState('');
   const [nama, setNama] = useState('');
   const [harga, setHarga] = useState('');
   const [hargaModal, setHargaModal] = useState('');
@@ -103,6 +104,25 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       if (Array.isArray(data)) setLayananList(data);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegenerateCodes = async () => {
+    const isConfirmed = await showConfirm('Sesuaikan seluruh kode produk/layanan berdasarkan kategori dan tipenya (contoh: SS-001, DO-001, ADD-001, RTL-001)?');
+    if (!isConfirmed) return;
+    try {
+      setLoading(true);
+      const res = await runBackend<{ success: boolean; message?: string }>('regenerateProductCodes');
+      if (!res?.success) throw new Error(res?.message || 'Gagal menyesuaikan kode');
+      clearCache('getLayananList');
+      clearCache('getLayananListAll');
+      await showAlert(res.message || 'Kode produk berhasil disesuaikan menurut kategori & tipe!', 'success');
+      loadProduk();
+    } catch (err) {
+      console.error(err);
+      await showAlert('Gagal menyesuaikan kode produk.', 'error');
     } finally {
       setLoading(false);
     }
@@ -168,6 +188,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   const handleOpenAdd = () => {
     setEditingId(null);
+    setKode('');
     setNama(''); setHarga(''); setHargaModal(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service'); setIdInventory(''); setInventoryDeductionQty('1');
     setCustomPipelineSteps([]);
     setShowModal(true);
@@ -175,6 +196,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   const handleOpenEdit = (item: LayananItemBackend) => {
     setEditingId(item.id);
+    setKode(item.id);
     setNama(item.nama);
     setHarga(item.harga.toString());
     setHargaModal((item.hargaModal || 0).toString());
@@ -200,6 +222,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     if (!nama.trim() || !harga.trim()) { await showAlert('Nama dan harga wajib diisi!', 'warning'); return; }
     const payloadPipeline = customPipelineSteps.map((s, i) => ({ ...s, step: i + 1 }));
     const payload = {
+        kode: kode.trim(),
         nama: nama.trim(),
         harga: Number(harga) || 0,
         satuan,
@@ -409,6 +432,14 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                   <span>Import</span>
                   <input type="file" accept=".csv" className="hidden" onChange={handleImportProduk} />
                 </label>
+                <button
+                  onClick={handleRegenerateCodes}
+                  className="px-3 py-1.5 border border-teal-200 bg-teal-50/70 hover:bg-teal-100 text-[#1E4648] rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-2xs"
+                  title="Sesuaikan Kode Produk Berdasarkan Kategori & Tipe (SS-xxx, DO-xxx, ADD-xxx, RTL-xxx)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Auto Kode Kategori</span>
+                </button>
                 <button
                   onClick={handleOpenAdd}
                   className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
@@ -717,6 +748,18 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Kolom Kiri: Informasi Dasar Layanan */}
                 <div className="space-y-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Kode Produk / Layanan (Opsional)</label>
+                    <input 
+                      type="text" 
+                      value={kode} 
+                      onChange={(e) => setKode(e.target.value)} 
+                      placeholder="Otomatis (contoh: SS-001, DO-001, ADD-001)" 
+                      className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] font-mono text-xs" 
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Kosongkan untuk penomoran otomatis berdasarkan kategori & tipe.</p>
+                  </div>
+
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Nama Layanan *</label>
                     <input type="text" value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Cuci Karpet..." className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
