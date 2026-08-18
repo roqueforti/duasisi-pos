@@ -232,20 +232,20 @@ export default function MenuGeneratorView() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-100 p-4 lg:p-6 print:p-0 print:bg-white print:text-black print:block">
+    <div className="flex flex-col h-full bg-slate-50 text-slate-800 p-4 lg:p-6 print:p-0 print:bg-white print:text-black print:block">
       
       {/* Control Panel Header (Hidden on print) */}
-      <div className="bg-slate-800/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-700 mb-6 print:hidden flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
+      <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-200 mb-5 print:hidden flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
         
         {/* Filter & Customization Controls */}
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
           {/* Format / Ukuran */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 mb-1">Ukuran / Format</label>
+            <label className="block text-[11px] font-bold text-slate-500 mb-1">Ukuran / Format</label>
             <select 
               value={format.id}
               onChange={e => setFormat(FORMATS.find(f => f.id === e.target.value) || FORMATS[0])}
-              className="px-3 py-1.5 border border-slate-600 rounded-lg text-xs font-semibold text-white bg-slate-700 focus:outline-none focus:border-amber-400"
+              className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-slate-50 focus:outline-none focus:border-[#1E4648]"
             >
               {FORMATS.map(f => (
                 <option key={f.id} value={f.id}>{f.name}</option>
@@ -253,13 +253,13 @@ export default function MenuGeneratorView() {
             </select>
           </div>
 
-          {/* Tema Desain Grafis */}
+          {/* Gaya Desain Poster */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 mb-1">Gaya Desain Poster</label>
+            <label className="block text-[11px] font-bold text-slate-500 mb-1">Gaya Desain Poster</label>
             <select 
               value={theme.id}
               onChange={e => setTheme(THEMES.find(t => t.id === e.target.value) || THEMES[0])}
-              className="px-3 py-1.5 border border-slate-600 rounded-lg text-xs font-semibold text-white bg-slate-700 focus:outline-none focus:border-amber-400"
+              className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-slate-50 focus:outline-none focus:border-[#1E4648]"
             >
               {THEMES.map(t => (
                 <option key={t.id} value={t.id}>{t.name}</option>
@@ -267,13 +267,13 @@ export default function MenuGeneratorView() {
             </select>
           </div>
 
-          {/* Filter Tipe */}
+          {/* Filter Kategori */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 mb-1">Filter Kategori</label>
+            <label className="block text-[11px] font-bold text-slate-500 mb-1">Filter Kategori</label>
             <select 
               value={filterTipe}
               onChange={e => setFilterTipe(e.target.value as any)}
-              className="px-3 py-1.5 border border-slate-600 rounded-lg text-xs font-semibold text-white bg-slate-700 focus:outline-none focus:border-amber-400"
+              className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-slate-50 focus:outline-none focus:border-[#1E4648]"
             >
               <option value="Semua">Semua Kategori</option>
               <option value="SelfService">Khusus Self Service</option>
@@ -283,17 +283,17 @@ export default function MenuGeneratorView() {
 
           {/* Kolom Layout */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 mb-1">Kolom</label>
-            <div className="inline-flex rounded-lg border border-slate-600 p-0.5 bg-slate-700">
+            <label className="block text-[11px] font-bold text-slate-500 mb-1">Kolom</label>
+            <div className="inline-flex rounded-xl border border-slate-200 p-0.5 bg-slate-100">
               <button
                 onClick={() => setColumnCount(1)}
-                className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${columnCount === 1 ? 'bg-amber-400 text-slate-950 shadow-xs' : 'text-slate-300 hover:text-white'}`}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition ${columnCount === 1 ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 1 Kolom
               </button>
               <button
                 onClick={() => setColumnCount(2)}
-                className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${columnCount === 2 ? 'bg-amber-400 text-slate-950 shadow-xs' : 'text-slate-300 hover:text-white'}`}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition ${columnCount === 2 ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 2 Kolom
               </button>
@@ -302,28 +302,28 @@ export default function MenuGeneratorView() {
 
           {/* Toggles */}
           <div className="flex items-center gap-3 pt-4 sm:pt-0">
-            <label className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer select-none">
               <input 
                 type="checkbox" 
                 checked={showStamp} 
                 onChange={e => setShowStamp(e.target.checked)}
-                className="rounded text-amber-400 focus:ring-amber-400" 
+                className="rounded text-[#1E4648] focus:ring-[#1E4648]" 
               />
               <span>Stempel Garansi</span>
             </label>
           </div>
 
           {/* Zoom Slider */}
-          <div className="flex items-center gap-2 pl-3 border-l border-slate-700">
+          <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
             <ZoomOut className="w-3.5 h-3.5 text-slate-400" />
             <input 
               type="range" min="0.25" max="1.25" step="0.05" 
               value={zoom} onChange={e => setZoom(Number(e.target.value))}
-              className="w-20 accent-amber-400"
+              className="w-20 accent-[#1E4648]"
               title={`Zoom: ${Math.round(zoom * 100)}%`}
             />
             <ZoomIn className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-[11px] font-bold text-slate-400 w-10">{Math.round(zoom * 100)}%</span>
+            <span className="text-[11px] font-bold text-slate-600 w-10">{Math.round(zoom * 100)}%</span>
           </div>
         </div>
 
@@ -332,7 +332,7 @@ export default function MenuGeneratorView() {
           <button 
             onClick={loadData} 
             title="Muat Ulang Katalog Layanan"
-            className="p-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700 transition"
+            className="p-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -341,7 +341,7 @@ export default function MenuGeneratorView() {
           <button
             onClick={() => handleDownload('png')}
             disabled={downloading !== null}
-            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 active:from-emerald-700 active:to-emerald-600 disabled:opacity-60 text-white rounded-lg text-xs font-bold transition shadow-lg shadow-emerald-950/40"
+            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition shadow-xs"
           >
             {downloading === 'png' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
             <span>Download PNG (HD)</span>
@@ -351,7 +351,7 @@ export default function MenuGeneratorView() {
           <button
             onClick={() => handleDownload('jpeg')}
             disabled={downloading !== null}
-            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:from-amber-600 active:to-amber-500 disabled:opacity-60 text-slate-950 rounded-lg text-xs font-black transition shadow-lg shadow-amber-950/40"
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#FF9500] hover:bg-amber-600 active:bg-amber-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition shadow-xs"
           >
             {downloading === 'jpeg' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
             <span>Download JPEG (HD)</span>
@@ -360,7 +360,7 @@ export default function MenuGeneratorView() {
           {/* Print / PDF */}
           <button 
             onClick={handlePrint}
-            className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow-xs"
+            className="flex items-center gap-1.5 bg-[#1E4648] hover:bg-[#163536] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Cetak / PDF</span>
@@ -369,7 +369,7 @@ export default function MenuGeneratorView() {
       </div>
 
       {/* Canvas Scroll Area */}
-      <div className="flex-1 overflow-auto flex justify-center items-start print:overflow-visible print:block bg-slate-950/80 p-4 lg:p-8 rounded-2xl border border-slate-800">
+      <div className="flex-1 overflow-auto flex justify-center items-start print:overflow-visible print:block bg-slate-200/60 p-4 lg:p-8 rounded-3xl border border-slate-200 shadow-inner">
         
         {/* Dynamic Print Styles */}
         <style dangerouslySetInnerHTML={{__html: `
