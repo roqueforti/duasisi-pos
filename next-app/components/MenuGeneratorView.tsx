@@ -1,7 +1,25 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Monitor, Smartphone, BookOpen, Presentation, RefreshCw, Printer } from 'lucide-react';
+import { 
+  Download, 
+  Printer, 
+  RefreshCw, 
+  Sparkles, 
+  Palette, 
+  ZoomIn, 
+  ZoomOut, 
+  Image as ImageIcon,
+  CheckCircle2,
+  Clock,
+  Phone,
+  ShieldCheck,
+  Zap,
+  Droplets,
+  Layers,
+  Loader2
+} from 'lucide-react';
+import { toPng, toJpeg } from 'html-to-image';
 import { runBackend } from '@/lib/api';
 
 interface LayananItemBackend {
@@ -9,30 +27,76 @@ interface LayananItemBackend {
   nama: string;
   harga: number;
   satuan: string;
+  icon?: string;
   aktif: string;
-  tipe: 'SelfService' | 'FullService';
+  tipe: 'SelfService' | 'FullService' | '';
   kategori?: string;
 }
 
-const KATEGORI_MAPPING: Record<string, string> = {
-  'SelfService': 'Self Service',
-  'FullService': 'Full Service',
-  'Add On': 'Tambahan'
-};
-
 const FORMATS = [
-  { id: 'a4-portrait', name: 'A4 / Poster (Potret)', width: 794, height: 1123, scale: 1 },
-  { id: 'a4-landscape', name: 'A4 / TV (Lanskap)', width: 1123, height: 794, scale: 1 },
-  { id: 'ig-feed', name: 'IG Feed (1:1)', width: 1080, height: 1080, scale: 1.3 },
-  { id: 'ig-story', name: 'IG Story (9:16)', width: 1080, height: 1920, scale: 1.5 }
+  { id: 'a4-portrait', name: 'A4 / Poster (Potret)', width: 794, height: 1123, defaultCols: 1 },
+  { id: 'a4-landscape', name: 'A4 / TV Display (Lanskap)', width: 1123, height: 794, defaultCols: 2 },
+  { id: 'ig-feed', name: 'Instagram Feed (1:1)', width: 1080, height: 1080, defaultCols: 2 },
+  { id: 'ig-story', name: 'IG Story / WhatsApp (9:16)', width: 1080, height: 1920, defaultCols: 1 }
+];
+
+const THEMES = [
+  {
+    id: 'signature-teal',
+    name: 'Signature Teal',
+    bg: 'bg-gradient-to-b from-[#0E2426] via-[#11292B] to-[#0A1B1C]',
+    cardBg: 'bg-white/95 backdrop-blur-md text-slate-800 border-white/20',
+    titleBadge: 'bg-[#1E4648] text-white border-white/30',
+    accentText: 'text-[#1E4648]',
+    priceBadge: 'bg-[#1E4648] text-white border-[#1E4648]/20',
+    dotColor: 'border-[#1E4648]/30',
+    subText: 'text-slate-500',
+    headerText: 'text-white',
+    logoSrc: './assets/logo-full-white.svg',
+    haloColor: 'bg-teal-500/10'
+  },
+  {
+    id: 'clean-pearl',
+    name: 'Clean Pearl Light',
+    bg: 'bg-gradient-to-b from-slate-50 via-slate-100 to-slate-200',
+    cardBg: 'bg-white text-slate-800 border-slate-200/80 shadow-md',
+    titleBadge: 'bg-[#1E4648] text-white border-slate-700',
+    accentText: 'text-[#1E4648]',
+    priceBadge: 'bg-[#1E4648] text-white border-[#1E4648]/20',
+    dotColor: 'border-slate-300',
+    subText: 'text-slate-500',
+    headerText: 'text-slate-800',
+    logoSrc: './assets/logo-full-teal.svg',
+    haloColor: 'bg-teal-600/5'
+  },
+  {
+    id: 'luxury-midnight',
+    name: 'Luxury Midnight Gold',
+    bg: 'bg-gradient-to-b from-[#090D16] via-[#0F172A] to-[#050811]',
+    cardBg: 'bg-slate-900/90 backdrop-blur-md text-slate-100 border-amber-500/30 shadow-xl',
+    titleBadge: 'bg-gradient-to-r from-amber-600 to-amber-500 text-white border-amber-300/40',
+    accentText: 'text-amber-400',
+    priceBadge: 'bg-gradient-to-r from-amber-600 to-amber-500 text-white border-amber-400/30',
+    dotColor: 'border-amber-400/20',
+    subText: 'text-slate-400',
+    headerText: 'text-white',
+    logoSrc: './assets/logo-full-white.svg',
+    haloColor: 'bg-amber-500/10'
+  }
 ];
 
 export default function MenuGeneratorView() {
   const [layananList, setLayananList] = useState<LayananItemBackend[]>([]);
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState<'png' | 'jpeg' | null>(null);
   const [format, setFormat] = useState(FORMATS[0]);
+  const [theme, setTheme] = useState(THEMES[0]);
   const [filterTipe, setFilterTipe] = useState<'Semua' | 'SelfService' | 'FullService'>('Semua');
+  const [showUnit, setShowUnit] = useState(true);
+  const [showFooter, setShowFooter] = useState(true);
   const [zoom, setZoom] = useState(0.5);
+  const [columnCount, setColumnCount] = useState<1 | 2>(1);
+
   const printRef = useRef<HTMLDivElement>(null);
 
   const loadData = async () => {
@@ -43,7 +107,7 @@ export default function MenuGeneratorView() {
         setLayananList(data.filter(d => d.aktif === 'Y'));
       }
     } catch (err) {
-      console.error(err);
+      console.error('Gagal memuat katalog:', err);
     } finally {
       setLoading(false);
     }
@@ -53,78 +117,199 @@ export default function MenuGeneratorView() {
     loadData();
   }, []);
 
+  // Update default columns when format changes
+  useEffect(() => {
+    setColumnCount(format.defaultCols as 1 | 2);
+  }, [format]);
+
   const handlePrint = () => {
     window.print();
   };
 
-  // Grouping logic
-  const filteredData = layananList.filter(item => filterTipe === 'Semua' || item.tipe === filterTipe);
-  
-  const groups: Record<string, LayananItemBackend[]> = {};
+  const handleDownload = async (formatType: 'png' | 'jpeg') => {
+    if (!printRef.current) return;
+    setDownloading(formatType);
+    try {
+      const node = printRef.current;
+      const options = {
+        pixelRatio: 2, // 2X High resolution render
+        cacheBust: true,
+        style: {
+          transform: 'none',
+          transformOrigin: 'top left',
+          margin: '0',
+        },
+      };
 
+      const dataUrl = formatType === 'png'
+        ? await toPng(node, options)
+        : await toJpeg(node, { ...options, quality: 0.95 });
+
+      const link = document.createElement('a');
+      link.download = `DuaSisi-Pricelist-${format.id}-${Date.now()}.${formatType}`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Gagal mengunduh gambar. Silakan gunakan opsi Cetak/PDF.');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  // Grouping logic
+  const filteredData = layananList.filter(
+    item => filterTipe === 'Semua' || item.tipe === filterTipe
+  );
+
+  const groups: Record<string, LayananItemBackend[]> = {};
   filteredData.forEach(item => {
-    const kat = item.kategori || 'Lain-lain';
+    const kat = item.kategori || (item.tipe === 'SelfService' ? 'Self Service' : item.tipe === 'FullService' ? 'Drop Off' : 'Layanan');
     if (!groups[kat]) {
       groups[kat] = [];
     }
     groups[kat].push(item);
   });
 
+  const getCategoryIcon = (katName: string) => {
+    const k = katName.toLowerCase();
+    if (k.includes('self') || k.includes('koin')) return '🧺';
+    if (k.includes('drop') || k.includes('full') || k.includes('cuci')) return '👕';
+    if (k.includes('setrika') || k.includes('lipat')) return '👔';
+    if (k.includes('sepatu') || k.includes('tas')) return '👟';
+    if (k.includes('karpet') || k.includes('bedcover')) return '🛏️';
+    if (k.includes('add') || k.includes('deterjen') || k.includes('parfum') || k.includes('pewangi')) return '🧴';
+    if (k.includes('makan') || k.includes('minum') || k.includes('snack') || k.includes('kopi')) return '☕';
+    return '✨';
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-100 p-4 lg:p-6 print:p-0 print:bg-white print:block">
-      {/* Control Panel (Hidden on print) */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 print:hidden flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex items-center gap-4">
+      {/* Control Panel Header (Hidden on print) */}
+      <div className="bg-white p-4 rounded-xl shadow-xs border border-slate-200 mb-5 print:hidden flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
+        
+        {/* Filter Controls */}
+        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+          {/* Format / Ukuran */}
           <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">Ukuran / Format</label>
+            <label className="block text-[11px] font-bold text-slate-500 mb-1">Ukuran / Format</label>
             <select 
               value={format.id}
               onChange={e => setFormat(FORMATS.find(f => f.id === e.target.value) || FORMATS[0])}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#1E4648]"
+              className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:border-[#1E4648]"
             >
               {FORMATS.map(f => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
             </select>
           </div>
+
+          {/* Tema Warna */}
           <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">Filter Tipe</label>
+            <label className="block text-[11px] font-bold text-slate-500 mb-1">Tema Desain</label>
+            <select 
+              value={theme.id}
+              onChange={e => setTheme(THEMES.find(t => t.id === e.target.value) || THEMES[0])}
+              className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:border-[#1E4648]"
+            >
+              {THEMES.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter Tipe */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 mb-1">Kategori Menu</label>
             <select 
               value={filterTipe}
               onChange={e => setFilterTipe(e.target.value as any)}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#1E4648]"
+              className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white focus:outline-none focus:border-[#1E4648]"
             >
-              <option value="Semua">Semua Tipe</option>
-              <option value="SelfService">Self Service</option>
-              <option value="FullService">Full Service</option>
+              <option value="Semua">Semua Layanan</option>
+              <option value="SelfService">Khusus Self Service</option>
+              <option value="FullService">Khusus Drop Off</option>
             </select>
           </div>
-          <div className="flex flex-col">
-            <label className="block text-xs font-bold text-slate-500 mb-1">Zoom ({Math.round(zoom * 100)}%)</label>
+
+          {/* Kolom Layout */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 mb-1">Tata Letak</label>
+            <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
+              <button
+                onClick={() => setColumnCount(1)}
+                className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${columnCount === 1 ? 'bg-white text-[#1E4648] shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                1 Kolom
+              </button>
+              <button
+                onClick={() => setColumnCount(2)}
+                className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${columnCount === 2 ? 'bg-white text-[#1E4648] shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                2 Kolom
+              </button>
+            </div>
+          </div>
+
+          {/* Zoom Slider */}
+          <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+            <ZoomOut className="w-3.5 h-3.5 text-slate-400" />
             <input 
-              type="range" min="0.2" max="2" step="0.1" 
+              type="range" min="0.25" max="1.25" step="0.05" 
               value={zoom} onChange={e => setZoom(Number(e.target.value))}
-              className="w-24 mt-2"
+              className="w-20 accent-[#1E4648]"
+              title={`Zoom: ${Math.round(zoom * 100)}%`}
             />
+            <ZoomIn className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-[11px] font-bold text-slate-500 w-10">{Math.round(zoom * 100)}%</span>
           </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={loadData} className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition">
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+
+        {/* Action Buttons: Download JPEG, PNG, Print */}
+        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-end">
+          <button 
+            onClick={loadData} 
+            title="Muat Ulang Katalog Layanan"
+            className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
+
+          {/* Download PNG */}
+          <button
+            onClick={() => handleDownload('png')}
+            disabled={downloading !== null}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 disabled:opacity-60 text-white rounded-lg text-xs font-bold transition shadow-2xs"
+          >
+            {downloading === 'png' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            <span>Download PNG</span>
+          </button>
+
+          {/* Download JPEG */}
+          <button
+            onClick={() => handleDownload('jpeg')}
+            disabled={downloading !== null}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1E4648] hover:bg-[#163536] active:bg-[#11292B] disabled:opacity-60 text-white rounded-lg text-xs font-bold transition shadow-2xs"
+          >
+            {downloading === 'jpeg' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
+            <span>Download JPEG</span>
+          </button>
+
+          {/* Print / PDF */}
           <button 
             onClick={handlePrint}
-            className="flex items-center gap-2 bg-[#1E4648] hover:bg-[#163536] text-white px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-sm"
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition shadow-2xs"
           >
-            <Printer className="w-4 h-4" /> Cetak / PDF
+            <Printer className="w-3.5 h-3.5" />
+            <span>Cetak / PDF</span>
           </button>
         </div>
       </div>
 
-      {/* Canvas Area */}
-      <div className="flex-1 overflow-auto flex justify-center items-start print:overflow-visible print:block bg-slate-200/50 p-4 rounded-xl border border-slate-200">
+      {/* Canvas Scroll Area */}
+      <div className="flex-1 overflow-auto flex justify-center items-start print:overflow-visible print:block bg-slate-300/40 p-4 lg:p-8 rounded-xl border border-slate-200/80">
         
-        {/* Style injection for printing dynamically sized pages */}
+        {/* Dynamic Print Styles */}
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
             @page { size: ${format.width}px ${format.height}px; margin: 0; }
@@ -132,81 +317,153 @@ export default function MenuGeneratorView() {
           }
         `}} />
 
-        <div style={{ width: format.width * zoom, height: format.height * zoom }} className="print:w-auto print:h-auto shrink-0">
+        {/* Scaled Preview Wrapper */}
+        <div 
+          style={{ width: format.width * zoom, height: format.height * zoom }} 
+          className="print:w-auto print:h-auto shrink-0 transition-all duration-150"
+        >
+          {/* THE ACTUAL CANVAS FOR EXPORT / PRINT */}
           <div 
             ref={printRef}
-            className="relative bg-[#1a383a] overflow-hidden shadow-2xl print:shadow-none mx-auto origin-top-left flex flex-col"
+            className={`relative overflow-hidden shadow-2xl print:shadow-none mx-auto origin-top-left flex flex-col justify-between ${theme.bg}`}
             style={{ 
               width: `${format.width}px`, 
               height: `${format.height}px`,
               transform: `scale(${zoom})`, 
-              fontFamily: "'Inter', sans-serif" 
+              fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" 
             }}
           >
-          {/* Decorative Bubbles (Glassmorphism) */}
-          <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full border-[15px] border-white/5 blur-[2px]"></div>
-          <div className="absolute top-40 -right-32 w-80 h-80 rounded-full border-[20px] border-white/10 blur-[4px]"></div>
-          <div className="absolute bottom-10 -left-10 w-40 h-40 rounded-full border-[10px] border-white/5 blur-[3px]"></div>
-          <div className="absolute -bottom-20 -right-20 w-96 h-96 rounded-full border-[25px] border-white/5 blur-[5px]"></div>
-          
-          <div className="relative z-10 p-12 flex flex-col h-full w-full">
-            {/* Header / Logo */}
-            <div className="flex justify-center items-center gap-3 mb-10">
-              <img src="./assets/Asset 5.svg" className="h-14 brightness-0 invert" alt="Logo" />
-              <div className="text-white">
-                <div className="font-extrabold text-2xl tracking-tight leading-none">dua SiSi</div>
-                <div className="text-[10px] uppercase tracking-[0.2em] font-medium opacity-80">Laundry Express & Coin</div>
-              </div>
-            </div>
+            {/* Background Aesthetic Ornaments & Radial Halos */}
+            <div className={`absolute top-0 right-0 w-[500px] h-[500px] rounded-full ${theme.haloColor} blur-[90px] pointer-events-none`} />
+            <div className={`absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full ${theme.haloColor} blur-[100px] pointer-events-none`} />
+            <div className="absolute -top-16 -left-16 w-60 h-60 rounded-full border-[10px] border-white/5 blur-[1px] pointer-events-none" />
+            <div className="absolute top-1/3 -right-24 w-72 h-72 rounded-full border-[14px] border-white/5 blur-[2px] pointer-events-none" />
+            <div className="absolute -bottom-24 -right-16 w-80 h-80 rounded-full border-[16px] border-white/5 blur-[3px] pointer-events-none" />
 
-            {/* Title */}
-            <div className="flex flex-col items-center mb-10">
-              <div className="bg-[#1e4648] text-white px-8 py-2 font-black text-3xl uppercase tracking-widest shadow-lg border border-white/20 transform -rotate-1">
-                DAFTAR HARGA
-              </div>
-              <div className="bg-white text-[#1a383a] px-10 py-2 font-black text-2xl uppercase tracking-widest shadow-lg transform rotate-1 -mt-2">
-                {filterTipe === 'Semua' ? 'LAUNDRY SERVICE' : KATEGORI_MAPPING[filterTipe]?.toUpperCase()}
-              </div>
-            </div>
+            {/* MAIN CONTENT CONTAINER */}
+            <div className="relative z-10 p-8 sm:p-12 flex flex-col h-full w-full justify-between">
+              
+              {/* TOP HEADER */}
+              <div className="flex flex-col items-center text-center">
+                
+                {/* Official Logo Banner */}
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <img 
+                    src={theme.logoSrc} 
+                    className="h-14 sm:h-16 w-auto object-contain drop-shadow-md" 
+                    alt="Dua Sisi Laundry" 
+                  />
+                </div>
 
-            {/* Content Groups */}
-            <div className="flex-1 flex flex-col gap-6 w-full max-w-2xl mx-auto z-10 relative">
-              {Object.entries(groups).map(([groupName, items]) => {
-                if (items.length === 0) return null;
-                return (
-                  <div key={groupName} className="relative mt-4">
-                    {/* Badge Title */}
-                    <div className="absolute -top-4 left-6 bg-[#1a383a] text-white font-black px-4 py-1.5 rounded text-lg border-2 border-white/20 z-20 shadow-md">
-                      {groupName}
-                    </div>
-                    {/* List Box */}
-                    <div className="bg-white rounded-xl p-6 pt-8 pb-4 shadow-xl border-4 border-white/40">
-                      <div className="space-y-4">
-                        {items.map((item, index) => (
-                          <div key={item.id} className="flex items-center gap-4">
-                            {/* Number */}
-                            <div className="w-8 h-8 rounded bg-[#1a383a] text-white flex items-center justify-center font-bold text-lg shrink-0">
-                              {index + 1}
-                            </div>
-                            {/* Name */}
-                            <div className="font-bold text-[#1a383a] text-xl whitespace-nowrap">
-                              {item.nama}
-                            </div>
-                            {/* Dotted Line */}
-                            <div className="flex-1 border-b-2 border-dashed border-[#1a383a]/30 relative top-1 mx-2"></div>
-                            {/* Price */}
-                            <div className="bg-[#a8bdbd] text-[#1a383a] font-black px-4 py-1.5 rounded-lg text-lg border-2 border-[#1a383a]/10 shrink-0">
-                              Rp{item.harga.toLocaleString('id-ID')}
-                            </div>
+                {/* Subtitle & Tagline Bar */}
+                <div className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 mb-3">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-xs sm:text-sm font-extrabold uppercase tracking-[0.25em] text-white/90">
+                    DAFTAR HARGA & LAYANAN RESMI
+                  </span>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                </div>
+
+                {/* Feature Highlights Pills */}
+                <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] font-bold text-white/80 mt-1">
+                  <span className="inline-flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-amber-400" /> Selesai Cepat & Tepat
+                  </span>
+                  <span className="opacity-40">•</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Droplets className="w-3 h-3 text-cyan-400" /> Air Higienis Terfilter
+                  </span>
+                  <span className="opacity-40">•</span>
+                  <span className="inline-flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" /> Sabun & Pewangi Premium
+                  </span>
+                </div>
+
+                <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-white/40 to-transparent mt-4 mb-6" />
+              </div>
+
+              {/* SERVICE / PRICELIST ITEMS GRID */}
+              <div className="flex-1 w-full max-w-5xl mx-auto z-10 flex flex-col justify-center">
+                <div className={`grid ${columnCount === 2 ? 'grid-cols-2 gap-5' : 'grid-cols-1 gap-5'} w-full`}>
+                  {Object.entries(groups).map(([groupName, items]) => {
+                    if (items.length === 0) return null;
+                    return (
+                      <div 
+                        key={groupName} 
+                        className={`rounded-2xl p-5 sm:p-6 shadow-lg border relative transition-all ${theme.cardBg}`}
+                      >
+                        {/* Category Header Badge */}
+                        <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-slate-100/60">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl leading-none">{getCategoryIcon(groupName)}</span>
+                            <h3 className="font-extrabold text-base sm:text-lg tracking-tight uppercase">
+                              {groupName}
+                            </h3>
                           </div>
-                        ))}
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                            {items.length} Pilihan
+                          </span>
+                        </div>
+
+                        {/* Items Rows */}
+                        <div className="space-y-3">
+                          {items.map((item, index) => (
+                            <div key={item.id} className="flex items-center gap-3 group">
+                              
+                              {/* Index / Bullet */}
+                              <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-[#1E4648] group-hover:text-white transition">
+                                {index + 1}
+                              </div>
+
+                              {/* Service Name & Optional Unit */}
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-bold text-sm sm:text-base leading-snug truncate">
+                                  {item.nama}
+                                </span>
+                                {showUnit && item.satuan && (
+                                  <span className="text-[10px] font-medium opacity-65 -mt-0.5">
+                                    per {item.satuan}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Elegant Dotted Leader Line */}
+                              <div className={`flex-1 border-b-2 border-dotted ${theme.dotColor} relative top-0.5 min-w-6`} />
+
+                              {/* Price Badge */}
+                              <div className={`font-black text-sm sm:text-base px-3.5 py-1 rounded-xl shrink-0 shadow-2xs whitespace-nowrap ${theme.priceBadge}`}>
+                                Rp {item.harga.toLocaleString('id-ID')}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* BOTTOM FOOTER */}
+              {showFooter && (
+                <div className="mt-8 pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-white/80 text-[11px] font-medium">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Buka Setiap Hari: <strong>07.00 - 21.00 WIB</strong></span>
                   </div>
-                );
-              })}
+
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span>Dua Sisi Laundry Express & Coin — Bersih, Cepat & Terpercaya</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Layanan Pelanggan: <strong>Hubungi Kasir Outlet</strong></span>
+                  </div>
+                </div>
+              )}
+
             </div>
-          </div>
           </div>
         </div>
       </div>
