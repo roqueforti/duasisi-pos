@@ -699,67 +699,98 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
       {showModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-5 w-full max-w-sm">
-            <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-slate-600">{editingId ? 'Edit Layanan' : 'Tambah Layanan Baru'}</h3>
-              <button onClick={() => setShowModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+          <div className="bg-white rounded-xl p-5 sm:p-6 w-full max-w-2xl shadow-xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="text-sm sm:text-base font-bold text-slate-800">{editingId ? 'Edit Layanan' : 'Tambah Layanan Baru'}</h3>
+              <button onClick={() => setShowModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition"><X className="w-5 h-5" /></button>
             </div>
 
-            <div className="space-y-3 text-xs mb-4">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Nama Layanan *</label>
-                <input type="text" value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Cuci Karpet..." className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
-                <p className="text-[10px] text-slate-400 mt-1">Nama yang akan tampil di struk dan kasir.</p>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Kategori *</label>
-                <select value={kategori} onChange={(e) => setKategori(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
-                  {kategoriList.map(kat => (
-                    <option key={kat.id} value={kat.nama}>{kat.nama}</option>
-                  ))}
-                  {kategoriList.length === 0 && <option value="Self Service">Self Service</option>}
-                </select>
-                <p className="text-[10px] text-slate-400 mt-1">Pengali harga (SLA) hanya berlaku untuk Layanan utama (Self Service & Drop Off).</p>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Tipe Layanan (Opsional)</label>
-                <select value={tipe} onChange={(e) => setTipe(e.target.value as 'SelfService' | 'FullService' | '')} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
-                  <option value="">Bukan Layanan / Kosong</option>
-                  <option value="SelfService">Self Service</option>
-                  <option value="FullService">Drop Off</option>
-                </select>
-                <p className="text-[10px] text-slate-400 mt-1">Mengelompokkan layanan pada daftar antrean dan laporan.</p>
-              </div>
-
-              {tipe === '' && (
+            <div className="overflow-y-auto pr-1 space-y-4 text-xs flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Kolom Kiri: Informasi Dasar Layanan */}
                 <div className="space-y-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Pautkan ke Inventory (Opsional)</label>
-                    <select value={idInventory} onChange={(e) => setIdInventory(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
-                      <option value="">-- Buat Otomatis di Inventory (Default) --</option>
-                      {inventoryList.map(inv => (
-                        <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
-                      ))}
-                    </select>
-                    <p className="text-[10px] text-slate-400 mt-1">Jika dibiarkan default, sistem akan membuat item inventory baru secara otomatis.</p>
+                    <label className="block font-semibold text-slate-700 mb-1">Nama Layanan *</label>
+                    <input type="text" value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Cuci Karpet..." className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                    <p className="text-[10px] text-slate-400 mt-1">Nama yang akan tampil di struk dan kasir.</p>
                   </div>
-                  {idInventory !== '' && (
-                    <div className="bg-orange-50 border border-orange-100 p-3 rounded-md">
-                      <label className="block font-semibold text-orange-900 mb-1">Potongan Stok per 1 Transaksi</label>
-                      <div className="flex gap-2 items-center">
-                        <input type="number" value={inventoryDeductionQty} onChange={(e) => setInventoryDeductionQty(e.target.value)} min="0" step="any" placeholder="0.1" className="w-28 px-3 py-1.5 border border-orange-200 rounded-md outline-none focus:border-orange-500 font-bold text-orange-900" />
-                        <span className="text-xs font-semibold text-orange-800">{inventoryList.find(i => i.id === idInventory)?.satuan || 'unit'}</span>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Kategori *</label>
+                    <select value={kategori} onChange={(e) => setKategori(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                      {kategoriList.map(kat => (
+                        <option key={kat.id} value={kat.nama}>{kat.nama}</option>
+                      ))}
+                      {kategoriList.length === 0 && <option value="Self Service">Self Service</option>}
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-1">Pengali harga (SLA) hanya berlaku untuk Layanan utama.</p>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Tipe Layanan (Opsional)</label>
+                    <select value={tipe} onChange={(e) => setTipe(e.target.value as 'SelfService' | 'FullService' | '')} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                      <option value="">Bukan Layanan / Kosong</option>
+                      <option value="SelfService">Self Service</option>
+                      <option value="FullService">Drop Off</option>
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-1">Mengelompokkan layanan pada daftar antrean dan laporan.</p>
+                  </div>
+                </div>
+
+                {/* Kolom Kanan: Inventory & Harga */}
+                <div className="space-y-3">
+                  {tipe === '' && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">Pautkan ke Inventory (Opsional)</label>
+                        <select value={idInventory} onChange={(e) => setIdInventory(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                          <option value="">-- Buat Otomatis di Inventory (Default) --</option>
+                          {inventoryList.map(inv => (
+                            <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-slate-400 mt-1">Sistem akan membuat item inventory baru otomatis jika default.</p>
                       </div>
-                      <p className="text-[10px] text-orange-700 mt-1">Jumlah stok {inventoryList.find(i => i.id === idInventory)?.nama} yang akan dikurangi setiap kali 1 layanan ini dipesan.</p>
+                      {idInventory !== '' && (
+                        <div className="bg-orange-50 border border-orange-100 p-3 rounded-md">
+                          <label className="block font-semibold text-orange-900 mb-1">Potongan Stok per 1 Transaksi</label>
+                          <div className="flex gap-2 items-center">
+                            <input 
+                              type="number" 
+                              value={inventoryDeductionQty} 
+                              onChange={(e) => setInventoryDeductionQty(e.target.value)} 
+                              min="0" 
+                              step="0.1" 
+                              placeholder="0.1" 
+                              className="w-28 px-3 py-1.5 border border-orange-200 rounded-md outline-none focus:border-orange-500 font-bold text-orange-900 bg-white" 
+                            />
+                            <span className="text-xs font-semibold text-orange-800">{inventoryList.find(i => i.id === idInventory)?.satuan || 'unit'}</span>
+                          </div>
+                          <p className="text-[10px] text-orange-700 mt-1">Jumlah stok {inventoryList.find(i => i.id === idInventory)?.nama} yang akan dikurangi setiap kali 1 layanan ini dipesan.</p>
+                        </div>
+                      )}
                     </div>
                   )}
+
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    {currentRole === 'MANAGER' && (
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">Harga Modal *</label>
+                        <input type="number" value={hargaModal} onChange={(e) => setHargaModal(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                        <p className="text-[10px] text-slate-400 mt-1">Biaya pokok.</p>
+                      </div>
+                    )}
+                    <div className={currentRole !== 'MANAGER' ? 'col-span-2' : ''}>
+                      <label className="block font-semibold text-slate-700 mb-1">Harga Jual *</label>
+                      <input type="number" value={harga} onChange={(e) => setHarga(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
+                      <p className="text-[10px] text-slate-400 mt-1">Harga jual pelanggan.</p>
+                    </div>
+                  </div>
                 </div>
-              )}
+              </div>
 
               {tipe === 'FullService' && (
-                <div>
+                <div className="pt-3 border-t border-slate-100 mt-2">
                   <label className="block font-semibold text-slate-700 mb-1">Langkah Pengerjaan (Pipeline)</label>
                   <div className="space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-md">
                     {customPipelineSteps.length === 0 ? (
@@ -851,26 +882,13 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                   <p className="text-[10px] text-slate-400 mt-1">Atur urutan proses spesifik untuk produk ini.</p>
                 </div>
               )}
-
-              <div className="grid grid-cols-2 gap-3">
-                {currentRole === 'MANAGER' && (
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Harga Modal *</label>
-                    <input type="number" value={hargaModal} onChange={(e) => setHargaModal(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
-                    <p className="text-[10px] text-slate-400 mt-1">Biaya pokok / pembelian.</p>
-                  </div>
-                )}
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Harga Jual *</label>
-                  <input type="number" value={harga} onChange={(e) => setHarga(e.target.value)} placeholder="0" className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]" />
-                  <p className="text-[10px] text-slate-400 mt-1">Harga jual ke pelanggan.</p>
-                </div>
-              </div>
             </div>
 
-            <div className="flex gap-2">
-              <button onClick={() => setShowModal(false)} className="bg-slate-100 text-slate-600 px-3 py-2 rounded-md text-xs font-semibold">Batal</button>
-              <button onClick={handleSave} className="flex-1 bg-[#1E4648] text-white font-semibold py-2 rounded-md text-xs transition">Simpan</button>
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 mt-3">
+              <button onClick={() => setShowModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-md text-xs font-semibold transition">Batal</button>
+              <button onClick={handleSave} disabled={loading} className="bg-[#1E4648] hover:bg-[#153233] text-white px-6 py-2 rounded-md text-xs font-semibold shadow-sm transition disabled:opacity-50">
+                {loading ? 'Menyimpan...' : 'Simpan'}
+              </button>
             </div>
           </div>
         </div>
