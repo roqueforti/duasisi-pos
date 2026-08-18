@@ -7,6 +7,7 @@ import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
+import SatuanInput from '@/components/SatuanInput';
 
 interface InventoryItem {
   id: string;
@@ -351,17 +352,12 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                     className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Satuan</label>
-                  <input
-                    type="text"
-                    value={satuan}
-                    onChange={(e) => setSatuan(e.target.value)}
-                    placeholder="pcs / liter"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">Contoh: liter, pcs, botol.</p>
-                </div>
+                <SatuanInput
+                  value={satuan}
+                  onChange={setSatuan}
+                  label="Satuan"
+                  helperText="Contoh: liter, pcs, botol, kg, atau ketik kustom."
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Stok Minimum Peringatan</label>

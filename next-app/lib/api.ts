@@ -1,8 +1,15 @@
 import { cachedFetch } from './cache';
+import { UserRole } from './types';
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL || 'https://script.google.com/macros/s/AKfycbwhy6jhKdsCJSOrDzVO1Av1NXwK1mgJ5u-_7PsefOihNwhsSnTO1C26RfRHrvqHDyWEMA/exec';
 
 const SESSION_KEY = 'gas_session_token';
+
+export interface BackendSessionPayload {
+  role: UserRole;
+  label?: string;
+  exp: number;
+}
 
 export function setBackendSession(token: string): void {
   if (typeof window !== 'undefined') {
@@ -16,15 +23,73 @@ export function clearBackendSession(): void {
   }
 }
 
-function getBackendSession(): string | null {
+export function getBackendSession(): string | null {
   if (typeof window !== 'undefined') {
     return localStorage.getItem(SESSION_KEY);
   }
   return null;
 }
 
+export function parseSessionToken(token?: string | null): BackendSessionPayload | null {
+  const t = token ?? getBackendSession();
+  if (!t) return null;
+  try {
+    const parts = t.split('.');
+    if (parts.length !== 2) return null;
+    let b64 = parts[0].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const jsonStr = decodeURIComponent(
+      Array.prototype.map
+        .call(atob(b64), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const data = JSON.parse(jsonStr);
+    if (!data.exp || !data.role) return null;
+    return data as BackendSessionPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function isSessionValid(): boolean {
+  const payload = parseSessionToken();
+  if (!payload) return false;
+  return Number(payload.exp) > Date.now();
+}
+
+type SessionExpiredListener = (message: string) => void;
+const sessionExpiredListeners = new Set<SessionExpiredListener>();
+
+export function onSessionExpired(listener: SessionExpiredListener): () => void {
+  sessionExpiredListeners.add(listener);
+  return () => {
+    sessionExpiredListeners.delete(listener);
+  };
+}
+
+export function notifySessionExpired(message = 'Sesi Anda telah kedaluwarsa demi keamanan. Silakan login kembali.'): void {
+  clearBackendSession();
+  sessionExpiredListeners.forEach((listener) => {
+    try {
+      listener(message);
+    } catch (e) {
+      console.error('Error in session expired listener:', e);
+    }
+  });
+}
+
 export async function runBackend<T = any>(action: string, ...args: any[]): Promise<T> {
   const sessionToken = getBackendSession();
+
+  // Jika token ada tetapi sudah kedaluwarsa secara lokal
+  if (sessionToken) {
+    const payload = parseSessionToken(sessionToken);
+    if (payload && payload.exp <= Date.now()) {
+      notifySessionExpired('Sesi Anda telah kedaluwarsa demi keamanan. Silakan login kembali.');
+      throw new Error('Sesi tidak valid atau sudah kedaluwarsa. Silakan login kembali.');
+    }
+  }
+
   const payload: Record<string, any> = { action, args };
   if (sessionToken) payload.sessionToken = sessionToken;
 
@@ -38,7 +103,17 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
 
   // Surface GAS-level errors as JS errors
   if (data?.error === true) {
-    throw new Error(data.message || 'GAS error');
+    const errMsg = String(data.message || 'GAS error');
+    const lowerMsg = errMsg.toLowerCase();
+    if (
+      lowerMsg.includes('kedaluwarsa') ||
+      lowerMsg.includes('sesi tidak valid') ||
+      lowerMsg.includes('session expired') ||
+      (lowerMsg.includes('akses ditolak') && lowerMsg.includes('sesi'))
+    ) {
+      notifySessionExpired('Sesi Anda telah berakhir atau kedaluwarsa. Silakan masukkan PIN kembali.');
+    }
+    throw new Error(errMsg);
   }
 
   return data as T;

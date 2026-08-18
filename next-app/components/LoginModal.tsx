@@ -1,18 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserRole } from '@/lib/types';
 import { runBackend, setBackendSession } from '@/lib/api';
-import { KeyRound, ShieldCheck, Loader2 } from 'lucide-react';
+import { KeyRound, Loader2, Clock, AlertTriangle } from 'lucide-react';
 
 interface LoginModalProps {
   onSuccess: (role: UserRole, label: string) => void;
+  initialNotice?: string | null;
 }
 
-export default function LoginModal({ onSuccess }: LoginModalProps) {
+export default function LoginModal({ onSuccess, initialNotice }: LoginModalProps) {
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [notice, setNotice] = useState<string | null>(initialNotice || null);
+
+  useEffect(() => {
+    if (initialNotice) {
+      setNotice(initialNotice);
+    }
+  }, [initialNotice]);
 
   const processPinVerification = async (pinValue: string) => {
     if (!pinValue || pinValue.length < 4 || loading) return;
@@ -71,6 +79,16 @@ export default function LoginModal({ onSuccess }: LoginModalProps) {
           <KeyRound className="w-3.5 h-3.5 text-[#B5C9C9]" />
           <span>Masukkan 4-digit PIN untuk masuk</span>
         </div>
+
+        {notice && !errorMsg && (
+          <div className="mb-4 text-xs font-medium text-amber-200 bg-amber-950/80 border border-amber-500/40 p-3 rounded-lg flex items-start gap-2 text-left animate-fade-in shadow-sm">
+            <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="flex-1 leading-snug">
+              <span className="font-semibold block text-amber-300">Sesi Berakhir</span>
+              {notice}
+            </div>
+          </div>
+        )}
 
         {errorMsg && (
           <div className="mb-4 text-xs font-semibold text-rose-300 bg-rose-950/80 p-2.5 rounded-lg border border-rose-700 animate-shake">

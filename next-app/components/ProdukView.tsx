@@ -7,6 +7,7 @@ import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
+import SatuanInput from '@/components/SatuanInput';
 
 interface LayananItemBackend {
   id: string;
@@ -735,6 +736,13 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                     </select>
                     <p className="text-[10px] text-slate-400 mt-1">Mengelompokkan layanan pada daftar antrean dan laporan.</p>
                   </div>
+
+                  <SatuanInput
+                    value={satuan}
+                    onChange={setSatuan}
+                    label="Satuan Penjualan"
+                    helperText="Contoh: paket, kg, pcs, botol, porsi, atau ketik kustom."
+                  />
                 </div>
 
                 {/* Kolom Kanan: Inventory & Harga */}

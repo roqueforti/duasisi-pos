@@ -22,7 +22,7 @@ import LangkahView from '@/components/LangkahView';
 
 import KeamananView from '@/components/KeamananView';
 import { UserRole } from '@/lib/types';
-import { clearBackendSession } from '@/lib/api';
+import { clearBackendSession, parseSessionToken, onSessionExpired, notifySessionExpired } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 
 export default function HomePage() {
@@ -32,6 +32,46 @@ export default function HomePage() {
   const [publicNotaParam, setPublicNotaParam] = useState<string | null>(null);
   const [publicNotaToken, setPublicNotaToken] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+
+  // Restore session & Setup auto-expiration checks
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Check existing session
+    const payload = parseSessionToken();
+    if (payload) {
+      if (payload.exp > Date.now()) {
+        setCurrentRole(payload.role);
+        setCurrentTab(payload.role === 'MANAGER' ? 'dashboard' : 'transaksi');
+      } else {
+        notifySessionExpired('Sesi sebelumnya telah kedaluwarsa. Silakan masukkan PIN untuk melanjutkan.');
+      }
+    }
+
+    // Subscribe to session expired events
+    const unsubscribe = onSessionExpired((message) => {
+      setCurrentRole('');
+      setSessionNotice(message);
+    });
+
+    // Heartbeat checker to automatically detect expiration when tab is idle
+    const checkExpiration = () => {
+      const activePayload = parseSessionToken();
+      if (activePayload && activePayload.exp <= Date.now()) {
+        notifySessionExpired('Sesi Anda telah kedaluwarsa demi keamanan. Silakan login kembali.');
+      }
+    };
+
+    const intervalId = setInterval(checkExpiration, 15000);
+    window.addEventListener('focus', checkExpiration);
+
+    return () => {
+      unsubscribe();
+      clearInterval(intervalId);
+      window.removeEventListener('focus', checkExpiration);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -46,12 +86,14 @@ export default function HomePage() {
   }, []);
 
   const handleLoginSuccess = (role: UserRole, label: string) => {
+    setSessionNotice(null);
     setCurrentRole(role);
     setCurrentTab(role === 'MANAGER' ? 'dashboard' : 'transaksi');
   };
 
   const handleLogout = () => {
     clearBackendSession();
+    setSessionNotice(null);
     setCurrentRole('');
   };
 
@@ -79,7 +121,7 @@ export default function HomePage() {
   return (
     <>
       {!currentRole ? (
-        <LoginModal onSuccess={handleLoginSuccess} />
+        <LoginModal onSuccess={handleLoginSuccess} initialNotice={sessionNotice} />
       ) : (
         <div className="flex h-screen w-full overflow-hidden bg-slate-50 relative select-none">
           {/* Sidebar Navigation */}
