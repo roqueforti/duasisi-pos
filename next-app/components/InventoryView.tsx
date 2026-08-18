@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload } from 'lucide-react';
+import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload, Check, X, Loader2 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
@@ -27,6 +27,10 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Pending quick adjustment per item: { [itemId]: delta }
+  const [pendingDeltas, setPendingDeltas] = useState<Record<string, number>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+
   // Add/Edit Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -114,39 +118,71 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     }
   };
 
-  const handleUpdateStok = async (id: string, delta: number) => {
-    // 1. Simpan salinan state lama untuk rollback jika terjadi kesalahan
+  const handleAdjustDelta = (item: InventoryItem, step: number) => {
+    const currentDelta = pendingDeltas[item.id] || 0;
+    const newDelta = Math.round((currentDelta + step) * 100) / 100;
+
+    // Cegah stok akhir kurang dari 0
+    if (item.stok + newDelta < 0) return;
+
+    if (newDelta === 0) {
+      setPendingDeltas((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+    } else {
+      setPendingDeltas((prev) => ({
+        ...prev,
+        [item.id]: newDelta,
+      }));
+    }
+  };
+
+  const handleCancelDelta = (id: string) => {
+    setPendingDeltas((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const handleSaveDelta = async (item: InventoryItem) => {
+    const delta = pendingDeltas[item.id];
+    if (!delta) return;
+
+    setSavingId(item.id);
     const previousItems = [...items];
 
-    // 2. Optimistic UI update: langsung ubah angka stok di layar secara instan
+    // Optimistic UI update
     setItems((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const newStok = Math.max(0, Math.round((Number(item.stok) + delta) * 100) / 100);
-          return { ...item, stok: newStok };
-        }
-        return item;
-      })
+      prev.map((i) =>
+        i.id === item.id
+          ? { ...i, stok: Math.max(0, Math.round((Number(i.stok) + delta) * 100) / 100) }
+          : i
+      )
     );
 
-    // 3. Bersihkan cache agar refresh data sinkron dengan data baru
     clearCache('getInventoryList');
 
     try {
       const res = await runBackend<{ success: boolean; stokBaru?: number; message?: string }>(
         'updateStokInventory',
-        id,
+        item.id,
         delta
       );
       if (res && res.success && res.stokBaru !== undefined) {
         setItems((prev) =>
-          prev.map((item) => (item.id === id ? { ...item, stok: res.stokBaru! } : item))
+          prev.map((i) => (i.id === item.id ? { ...i, stok: res.stokBaru! } : i))
         );
       }
+      handleCancelDelta(item.id);
     } catch (err: any) {
       // Rollback jika request gagal
       setItems(previousItems);
       await showAlert(`Gagal mengubah stok: ${err?.message || String(err)}`, 'error');
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -281,12 +317,35 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                 </tr>
               ) : (
                 items.map((item) => {
-                  const isMenipis = item.stok <= item.stokMinimum;
+                  const delta = pendingDeltas[item.id] || 0;
+                  const previewStok = Math.max(0, Math.round((Number(item.stok) + delta) * 100) / 100);
+                  const isMenipis = (delta ? previewStok : item.stok) <= item.stokMinimum;
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={item.id} className={`transition-colors ${delta ? 'bg-amber-50/40' : 'hover:bg-slate-50/80'}`}>
                       <td className="py-3 px-4 font-semibold text-slate-600">{item.nama}</td>
                       <td className="py-3 px-4 font-bold text-slate-700">
-                        {item.stok} <span className="text-slate-400 font-normal text-[11px]">{item.satuan}</span>
+                        {delta !== 0 ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-slate-400 line-through text-[11px]">{item.stok}</span>
+                            <span className="text-slate-400 font-normal text-xs">➔</span>
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-xs font-bold border ${
+                                delta > 0
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                  : 'bg-rose-50 text-rose-700 border-rose-300'
+                              }`}
+                            >
+                              {previewStok} {item.satuan}
+                              <span className="text-[10px] ml-1 font-semibold opacity-80">
+                                ({delta > 0 ? `+${delta}` : delta})
+                              </span>
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            {item.stok} <span className="text-slate-400 font-normal text-[11px]">{item.satuan}</span>
+                          </>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-slate-500">{item.stokMinimum} {item.satuan}</td>
                       <td className="py-3 px-4">
@@ -303,39 +362,87 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                       <td className="py-3 px-4 text-slate-400">{item.terakhirUpdate || '-'}</td>
                       <td className="py-3 px-4 text-right">
                         {(currentRole === 'STAFF' || currentRole === 'MANAGER') ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => handleUpdateStok(item.id, -1)}
-                              disabled={item.stok <= 0}
-                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 rounded text-xs font-bold transition shadow-xs select-none"
-                              title="Kurangi Stok (-1)"
-                            >
-                              -1
-                            </button>
-                            <button
-                              onClick={() => handleUpdateStok(item.id, 1)}
-                              className="px-2.5 py-1 bg-[#1E4648] hover:bg-[#163536] active:bg-[#102728] text-white rounded text-xs font-bold transition shadow-xs select-none"
-                              title="Tambah Stok (+1)"
-                            >
-                              +1
-                            </button>
-                            {/* Hapus hanya untuk MANAGER */}
-                            {currentRole === 'MANAGER' && (
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                            {delta !== 0 ? (
+                              <div className="flex items-center gap-1 bg-emerald-50/80 border border-emerald-200 p-0.5 rounded-md animate-fade-in shadow-2xs">
+                                {/* Stepper -1 / +1 */}
+                                <button
+                                  onClick={() => handleAdjustDelta(item, -1)}
+                                  disabled={item.stok + delta <= 0 || savingId === item.id}
+                                  className="px-2 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-xs font-bold border border-slate-200 transition select-none"
+                                  title="Kurangi 1 lagi"
+                                >
+                                  -1
+                                </button>
+                                <button
+                                  onClick={() => handleAdjustDelta(item, 1)}
+                                  disabled={savingId === item.id}
+                                  className="px-2 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-xs font-bold border border-slate-200 transition select-none"
+                                  title="Tambah 1 lagi"
+                                >
+                                  +1
+                                </button>
+
+                                {/* Tombol Simpan */}
+                                <button
+                                  onClick={() => handleSaveDelta(item)}
+                                  disabled={savingId === item.id}
+                                  className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white rounded text-xs font-bold transition shadow-2xs select-none"
+                                  title="Simpan Perubahan Stok"
+                                >
+                                  {savingId === item.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Check className="w-3.5 h-3.5" />
+                                  )}
+                                  <span>Simpan</span>
+                                </button>
+
+                                {/* Tombol Batal */}
+                                <button
+                                  onClick={() => handleCancelDelta(item.id)}
+                                  disabled={savingId === item.id}
+                                  className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-white transition"
+                                  title="Batal"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
                               <>
                                 <button
-                                  onClick={() => handleEditClick(item)}
-                                  className="p-1.5 text-slate-400 hover:text-blue-500 rounded transition"
-                                  title="Edit"
+                                  onClick={() => handleAdjustDelta(item, -1)}
+                                  disabled={item.stok <= 0}
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 rounded text-xs font-bold transition shadow-xs select-none"
+                                  title="Kurangi Stok (-1)"
                                 >
-                                  <Edit3 className="w-3.5 h-3.5" />
+                                  -1
                                 </button>
                                 <button
-                                  onClick={() => handleDelete(item.id, item.nama)}
-                                  className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
-                                  title="Hapus"
+                                  onClick={() => handleAdjustDelta(item, 1)}
+                                  className="px-2.5 py-1 bg-[#1E4648] hover:bg-[#163536] active:bg-[#102728] text-white rounded text-xs font-bold transition shadow-xs select-none"
+                                  title="Tambah Stok (+1)"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  +1
                                 </button>
+                                {currentRole === 'MANAGER' && (
+                                  <>
+                                    <button
+                                      onClick={() => handleEditClick(item)}
+                                      className="p-1.5 text-slate-400 hover:text-blue-500 rounded transition"
+                                      title="Edit"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(item.id, item.nama)}
+                                      className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
+                                      title="Hapus"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
                               </>
                             )}
                           </div>
