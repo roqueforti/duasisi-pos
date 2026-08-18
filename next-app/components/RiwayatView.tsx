@@ -855,6 +855,32 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                 <Send className="w-3.5 h-3.5" />
                 <span>Kirim WA</span>
               </button>
+
+              <button
+                onClick={() => handlePrintReceipt(selectedTx)}
+                className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-1.5"
+                title="Cetak Struk Thermal"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Cetak</span>
+              </button>
+
+              {selectedTx.status !== 'Batal' && selectedTx.status !== 'Void' && selectedTx.statusVoid !== 'Approved' && (
+                <button
+                  onClick={() => {
+                    const tx = selectedTx;
+                    setSelectedTx(null);
+                    setTxToVoid(tx);
+                    setShowVoidModal(true);
+                  }}
+                  className="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-lg transition flex items-center gap-1.5"
+                  title="Batalkan atau Void Transaksi ini"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Void Transaksi</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setSelectedTx(null)}
                 className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition"

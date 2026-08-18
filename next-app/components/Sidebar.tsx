@@ -27,6 +27,8 @@ import {
 import RupiahIcon from '@/components/RupiahIcon';
 import { useDialog } from '@/components/DialogProvider';
 
+import { BadgeCounts } from '@/lib/useGlobalNotifications';
+
 interface SidebarProps {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
@@ -34,6 +36,7 @@ interface SidebarProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (open: boolean) => void;
   onLogout: () => void;
+  badgeCounts?: BadgeCounts;
 }
 
 interface NavItem {
@@ -55,7 +58,8 @@ export default function Sidebar({
   currentRole,
   isSidebarOpen,
   setIsSidebarOpen,
-  onLogout
+  onLogout,
+  badgeCounts
 }: SidebarProps) {
   const { showAlert } = useDialog();
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
@@ -238,6 +242,7 @@ export default function Sidebar({
                 {visibleItems.map(item => {
                   const IconComp = item.icon;
                   const isActive = currentTab === item.id;
+                  const count = badgeCounts ? (badgeCounts as any)[item.id] || 0 : 0;
 
                   return (
                     <button
@@ -246,9 +251,19 @@ export default function Sidebar({
                       onClick={() => handleNavClick(item.id)}
                       title={item.label}
                     >
-                      <IconComp className={`w-4 h-4 shrink-0 transition-colors ${iconClass(item.id)}`} />
+                      <div className="relative shrink-0">
+                        <IconComp className={`w-4 h-4 transition-colors ${iconClass(item.id)}`} />
+                        {isCollapsed && count > 0 && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
+                        )}
+                      </div>
                       {!isCollapsed && <span className="truncate">{item.label}</span>}
-                      {!isCollapsed && isActive && (
+                      {!isCollapsed && count > 0 && (
+                        <span className="ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-2xs animate-pulse shrink-0">
+                          {count > 99 ? '99+' : count}
+                        </span>
+                      )}
+                      {!isCollapsed && isActive && count === 0 && (
                         <ChevronRight className="w-3.5 h-3.5 ml-auto text-teal-200" />
                       )}
                     </button>

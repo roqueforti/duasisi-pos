@@ -1,11 +1,28 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
-import { Menu, LogOut, Wifi, WifiOff, Download, Printer, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Menu, 
+  LogOut, 
+  Wifi, 
+  WifiOff, 
+  Download, 
+  Printer, 
+  RefreshCw, 
+  Bell, 
+  CheckCheck, 
+  AlertTriangle, 
+  Package, 
+  ClipboardList, 
+  ShieldAlert, 
+  Clock, 
+  X,
+  ExternalLink,
+  ChevronRight
+} from 'lucide-react';
 import { UserRole } from '@/lib/types';
 import PrinterModal from '@/components/PrinterModal';
 import { getActiveDeviceInfo } from '@/lib/bluetoothPrinter';
 import { useDialog } from '@/components/DialogProvider';
+import { GlobalNotificationItem } from '@/lib/useGlobalNotifications';
 
 interface NavbarProps {
   currentTab: string;
@@ -13,18 +30,29 @@ interface NavbarProps {
   onToggleSidebar: () => void;
   onLogout: () => void;
   onRefresh?: () => void;
+  onNavigate?: (tab: string) => void;
+  notifications?: GlobalNotificationItem[];
+  unreadCount?: number;
+  onMarkAsRead?: (id: string) => void;
+  onMarkAllAsRead?: () => void;
 }
 
 const tabTitles: Record<string, string> = {
   transaksi: 'Point of Sale (POS)',
   riwayat: 'Riwayat Transaksi',
   pesanan: 'Manajemen Pesanan Drop-off',
-  absensi: 'Absensi Shift Presensi',
-  inventory: 'Inventory Stok Bahan',
-  pegawai: 'Pegawai & Kinerja',
-  produk: 'Produk & Layanan',
-  rekap: 'Laporan Omzet & Analytics',
-  keamanan: 'Manajemen Keamanan',
+  absensi: 'Presensi & Cuti',
+  inventory: 'Stok Inventory Bahan',
+  pegawai: 'Data Pegawai',
+  payroll: 'Payroll & Penggajian',
+  produk: 'Manajemen Layanan & Produk',
+  kategori: 'Manajemen Kategori',
+  langkah: 'Pipeline Langkah Pengerjaan',
+  shift: 'Kas Shift & Serah Terima',
+  rekap: 'Laporan Rekap & Analytics',
+  menu: 'Menu Digital & Desain Poster',
+  keamanan: 'Manajemen Keamanan & PIN',
+  dashboard: 'Dashboard Outlet'
 };
 
 export default function Navbar({
@@ -33,6 +61,11 @@ export default function Navbar({
   onToggleSidebar,
   onLogout,
   onRefresh,
+  onNavigate,
+  notifications = [],
+  unreadCount = 0,
+  onMarkAsRead,
+  onMarkAllAsRead,
 }: NavbarProps) {
   const { showAlert } = useDialog();
   const [clockStr, setClockStr] = useState<string>('');
@@ -41,6 +74,19 @@ export default function Navbar({
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState<boolean>(false);
   const [printerConnected, setPrinterConnected] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  // Close notif popover on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -184,6 +230,109 @@ export default function Navbar({
           {/* Clock */}
           <div className="hidden lg:block text-xs text-slate-500 font-semibold px-3 py-1 bg-slate-50 border border-slate-200/80 rounded-lg shrink-0">
             {clockStr || '00.00.00 WIB'}
+          </div>
+
+          {/* Global Notification Bell */}
+          <div className="relative" ref={notifRef}>
+            <button
+              onClick={() => setIsNotifOpen(!isNotifOpen)}
+              className={`relative p-1.5 rounded-lg border transition ${
+                isNotifOpen || unreadCount > 0
+                  ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200/80'
+              }`}
+              title="Notifikasi & Peringatan Operasional"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white shadow-xs animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Notification Popover Dropdown */}
+            {isNotifOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 z-[300] text-xs">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+                  <div className="flex items-center gap-1.5">
+                    <Bell className="w-4 h-4 text-[#1E4648]" />
+                    <h3 className="font-bold text-slate-800 text-xs">Pusat Notifikasi POS</h3>
+                    {unreadCount > 0 && (
+                      <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                        {unreadCount} baru
+                      </span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && onMarkAllAsRead && (
+                    <button
+                      onClick={onMarkAllAsRead}
+                      className="text-[10px] text-teal-700 hover:text-teal-900 font-bold hover:underline flex items-center gap-1"
+                    >
+                      <CheckCheck className="w-3 h-3" />
+                      <span>Tandai Semua Dibaca</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                  {notifications.length === 0 ? (
+                    <div className="py-8 text-center text-slate-400">
+                      <CheckCheck className="w-8 h-8 mx-auto mb-1.5 text-emerald-500 opacity-60" />
+                      <p className="font-bold text-xs text-slate-600">Semua Operasional Lancar</p>
+                      <p className="text-[10px] mt-0.5">Tidak ada stok kritis atau antrean yang butuh perhatian khusus.</p>
+                    </div>
+                  ) : (
+                    notifications.map(n => {
+                      const getCategoryIcon = () => {
+                        if (n.category === 'inventory') return <Package className="w-3.5 h-3.5 text-amber-600" />;
+                        if (n.category === 'pesanan') return <ClipboardList className="w-3.5 h-3.5 text-teal-600" />;
+                        if (n.category === 'void') return <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />;
+                        if (n.category === 'cuti') return <Clock className="w-3.5 h-3.5 text-indigo-600" />;
+                        return <AlertTriangle className="w-3.5 h-3.5 text-slate-600" />;
+                      };
+
+                      return (
+                        <div
+                          key={n.id}
+                          onClick={() => {
+                            if (onMarkAsRead) onMarkAsRead(n.id);
+                            if (onNavigate && n.targetTab) {
+                              onNavigate(n.targetTab);
+                              setIsNotifOpen(false);
+                            }
+                          }}
+                          className={`p-2.5 rounded-xl border transition cursor-pointer flex items-start gap-2.5 hover:shadow-xs ${
+                            n.type === 'error'
+                              ? 'bg-rose-50/70 border-rose-200/80 hover:bg-rose-100/60'
+                              : n.type === 'warning'
+                              ? 'bg-amber-50/70 border-amber-200/80 hover:bg-amber-100/60'
+                              : 'bg-teal-50/60 border-teal-200/80 hover:bg-teal-100/50'
+                          }`}
+                        >
+                          <div className="mt-0.5 p-1 rounded-lg bg-white shadow-2xs shrink-0">
+                            {getCategoryIcon()}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <h4 className="font-bold text-slate-900 text-xs truncate">{n.title}</h4>
+                              <span className="text-[9px] text-slate-400 font-semibold shrink-0">{n.timestamp}</span>
+                            </div>
+                            <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">{n.message}</p>
+                            <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-black/5">
+                              <span className="text-[9px] font-bold text-[#1E4648] flex items-center gap-0.5">
+                                <span>Buka Menu {tabTitles[n.targetTab] || n.targetTab}</span>
+                                <ChevronRight className="w-2.5 h-2.5" />
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* User Profile */}

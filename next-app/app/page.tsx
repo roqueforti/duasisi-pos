@@ -24,6 +24,7 @@ import KeamananView from '@/components/KeamananView';
 import { UserRole } from '@/lib/types';
 import { clearBackendSession, parseSessionToken, onSessionExpired, notifySessionExpired, isSessionIdleExpired, touchSessionActivity } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
+import { useGlobalNotifications } from '@/lib/useGlobalNotifications';
 
 export default function HomePage() {
   const [currentRole, setCurrentRole] = useState<UserRole>('');
@@ -33,6 +34,15 @@ export default function HomePage() {
   const [publicNotaToken, setPublicNotaToken] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+
+  const {
+    notifications,
+    unreadCount,
+    badgeCounts,
+    markAsRead,
+    markAllAsRead,
+    refreshNotifications
+  } = useGlobalNotifications(currentRole);
 
   // Restore session & Setup 30-minute inactivity auto-expiration with interaction reset
   useEffect(() => {
@@ -150,6 +160,7 @@ export default function HomePage() {
             isSidebarOpen={isSidebarOpen}
             setIsSidebarOpen={setIsSidebarOpen}
             onLogout={handleLogout}
+            badgeCounts={badgeCounts}
           />
 
           {/* Main Content Area */}
@@ -159,7 +170,15 @@ export default function HomePage() {
               currentRole={currentRole}
               onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
               onLogout={handleLogout}
-              onRefresh={handleGlobalRefresh}
+              onRefresh={() => {
+                handleGlobalRefresh();
+                refreshNotifications();
+              }}
+              onNavigate={(tab) => setCurrentTab(tab)}
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={markAllAsRead}
             />
 
             <main key={refreshKey} className="flex-1 overflow-y-auto bg-slate-50">
