@@ -440,6 +440,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                  <th className="py-3 px-3">Kode</th>
                   <th className="py-3 px-4">Nama Produk / Layanan</th>
                   <th className="py-3 px-4">Kategori</th>
                   <th className="py-3 px-4">Tipe</th>
@@ -455,6 +456,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 {loading ? (
                   Array.from({ length: 4 }).map((_, idx) => (
                     <tr key={idx} className="animate-pulse">
+                      <td className="py-3 px-3"><div className="h-3.5 bg-slate-100 rounded w-14" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-32" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
@@ -467,10 +469,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                     </tr>
                   ))
                 ) : filteredLayananList.length === 0 ? (
-                  <tr><td colSpan={currentRole === 'MANAGER' ? 9 : 8} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
+                  <tr><td colSpan={currentRole === 'MANAGER' ? 10 : 9} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
                 ) : (
                   filteredLayananList.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50 transition">
+                      <td className="py-3 px-3">
+                        <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          {item.id}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 font-semibold text-slate-600 flex items-center gap-2">
                         <span>{item.nama}</span>
                       </td>

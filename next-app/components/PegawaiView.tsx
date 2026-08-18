@@ -306,9 +306,14 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
                           <span className="text-[11px] font-semibold text-slate-400">({peg.namaPanggilan})</span>
                         )}
                       </h3>
-                      <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-teal-50 text-teal-800 border border-teal-200/60">
-                        {peg.jabatan}
-                      </span>
+                      <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                        <span className="font-mono text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                          {peg.id}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-teal-50 text-teal-800 border border-teal-200/60">
+                          {peg.jabatan}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

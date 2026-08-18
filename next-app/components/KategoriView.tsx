@@ -165,6 +165,7 @@ export default function KategoriView({ currentRole }: { currentRole?: UserRole }
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase text-xs font-bold">
                 <tr>
+                  <th className="px-6 py-4">Kode</th>
                   <th className="px-6 py-4">Nama Kategori</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Aksi</th>
@@ -173,6 +174,11 @@ export default function KategoriView({ currentRole }: { currentRole?: UserRole }
               <tbody className="divide-y divide-slate-100">
                 {data.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/50 transition">
+                    <td className="px-6 py-4">
+                      <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                        {item.id}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 font-semibold text-slate-800 flex items-center gap-3">
                       <div className={`w-4 h-4 rounded-full border ${item.warna || 'bg-slate-100 border-slate-200'}`} />
                       {item.nama}

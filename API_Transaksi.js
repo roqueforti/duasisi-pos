@@ -85,6 +85,91 @@ function simpanTransaksi(data) {
   }
 }
 
+function importTransaksiBatch(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { success: false, message: "Data transaksi kosong." };
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+
+    const grouped = {};
+    rows.forEach(function(r, idx) {
+      const rawNota = r['No Nota'] || r['noNota'] || r['Nota'] || '';
+      const notaKey = rawNota && String(rawNota).trim() ? String(rawNota).trim() : ("ROW_" + idx);
+      if (!grouped[notaKey]) {
+        const rawTgl = r['Tanggal'] || r['tanggal'] || r['Tgl'] || '';
+        let tglVal = new Date();
+        if (rawTgl) {
+          const parsed = new Date(rawTgl);
+          if (!isNaN(parsed.getTime())) tglVal = parsed;
+        }
+
+        const rawTipe = String(r['Tipe Layanan'] || r['tipe'] || r['Tipe'] || 'SelfService').trim();
+        let tipeVal = 'SelfService';
+        if (rawTipe.toLowerCase().includes('drop') || rawTipe.toLowerCase() === 'fullservice') {
+          tipeVal = 'FullService';
+        } else if (rawTipe.toLowerCase().includes('non') || rawTipe.toLowerCase().includes('bukan') || rawTipe.toLowerCase() === 'retail') {
+          tipeVal = '';
+        }
+
+        grouped[notaKey] = {
+          noNota: rawNota && String(rawNota).trim() ? String(rawNota).trim() : "",
+          tanggal: tglVal,
+          namaPelanggan: String(r['Nama Pelanggan'] || r['namaPelanggan'] || r['Pelanggan'] || 'Pelanggan Umum').trim(),
+          noHp: String(r['No HP'] || r['noHp'] || r['HP'] || '').trim(),
+          petugas: String(r['Petugas'] || r['Kasir'] || r['petugas'] || 'Kasir Offline').trim(),
+          tipe: tipeVal,
+          status: tipeVal === 'FullService' ? 'Diterima' : 'Selesai',
+          metodeBayar: String(r['Metode Bayar'] || r['metodeBayar'] || 'Tunai').trim(),
+          statusPembayaran: String(r['Status Pembayaran'] || r['statusPembayaran'] || 'Lunas').trim(),
+          catatan: String(r['Catatan'] || r['catatan'] || 'Import Pembukuan Offline').trim(),
+          items: []
+        };
+      }
+
+      const itemNama = String(r['Item / Layanan'] || r['Layanan'] || r['Nama Layanan'] || r['item'] || 'Layanan Cuci').trim();
+      const itemQty = Number(r['Qty'] || r['qty'] || r['Jumlah']) || 1;
+      const itemHarga = Number(r['Harga Satuan'] || r['hargaSatuan'] || r['Harga'] || r['harga']) || 0;
+
+      grouped[notaKey].items.push({
+        layanan: itemNama,
+        qty: itemQty,
+        hargaSatuan: itemHarga
+      });
+    });
+
+    Object.values(grouped).forEach(function(txData) {
+      try {
+        let subtotal = 0;
+        txData.items.forEach(function(it) {
+          subtotal += (it.qty * it.hargaSatuan);
+        });
+        txData.nominalBayar = txData.statusPembayaran.toLowerCase() === 'belum bayar' ? 0 : subtotal;
+        txData.diskon = 0;
+        
+        simpanTransaksi(txData);
+        successCount++;
+      } catch (err) {
+        failCount++;
+        errors.push(err.message || String(err));
+      }
+    });
+
+    return {
+      success: true,
+      importedCount: successCount,
+      failedCount: failCount,
+      errors: errors
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function pelunasanDP(noNota, nominal, metode) {
   const sh = SS.getSheetByName(SHEET_TRANSAKSI);
   if (!sh) return { success: false, message: "Sheet Transaksi tidak ditemukan." };

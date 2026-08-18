@@ -1,17 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, Check } from 'lucide-react';
+import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, Check, Download, Upload, Calendar, ArrowRight } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
+import { clearCache } from '@/lib/cache';
 import { maskPhone, eNotaUrl as buildENotaUrl } from '@/lib/utils';
+import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import PrinterModal from '@/components/PrinterModal';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 
 export default function RiwayatView({ currentRole }: { currentRole?: UserRole } = {}) {
-  const { showAlert } = useDialog();
+  const { showAlert, showConfirm } = useDialog();
   const [filter, setFilter] = useState<'Semua' | 'SelfService' | 'FullService' | 'NonLayanan'>('Semua');
+  const [periodePreset, setPeriodePreset] = useState<'all' | 'today' | 'yesterday' | 'last7days' | 'thisMonth' | 'lastMonth' | 'custom'>('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [search, setSearch] = useState('');
   const [txList, setTxList] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(true);
@@ -216,6 +221,131 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     setIsPrinterModalOpen(true);
   };
 
+  // Helper Period Matching
+  const isDateInSelectedPeriod = (tglStr: string): boolean => {
+    if (periodePreset === 'all') return true;
+    if (!tglStr) return false;
+    
+    let d: Date;
+    if (tglStr.includes('/')) {
+      const parts = tglStr.split(' ')[0].split('/');
+      if (parts.length === 3) {
+        d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+      } else {
+        d = new Date(tglStr);
+      }
+    } else {
+      d = new Date(tglStr);
+    }
+    if (isNaN(d.getTime())) return true;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const txDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+    if (periodePreset === 'today') {
+      return txDay.getTime() === today.getTime();
+    }
+    if (periodePreset === 'yesterday') {
+      const yest = new Date(today);
+      yest.setDate(yest.getDate() - 1);
+      return txDay.getTime() === yest.getTime();
+    }
+    if (periodePreset === 'last7days') {
+      const sevenAgo = new Date(today);
+      sevenAgo.setDate(sevenAgo.getDate() - 7);
+      return txDay >= sevenAgo && txDay <= today;
+    }
+    if (periodePreset === 'thisMonth') {
+      return txDay.getFullYear() === now.getFullYear() && txDay.getMonth() === now.getMonth();
+    }
+    if (periodePreset === 'lastMonth') {
+      const lastMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+      const lastMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+      return txDay.getFullYear() === lastMonthYear && txDay.getMonth() === lastMonth;
+    }
+    if (periodePreset === 'custom') {
+      if (customStartDate && customEndDate) {
+        const start = new Date(customStartDate);
+        const end = new Date(customEndDate);
+        end.setHours(23, 59, 59, 999);
+        return d >= start && d <= end;
+      }
+      if (customStartDate) {
+        const start = new Date(customStartDate);
+        return d >= start;
+      }
+      if (customEndDate) {
+        const end = new Date(customEndDate);
+        end.setHours(23, 59, 59, 999);
+        return d <= end;
+      }
+    }
+    return true;
+  };
+
+  const handleExportCSV = () => {
+    const headers = [
+      'No Nota', 'Tanggal', 'Nama Pelanggan', 'No HP', 'Tipe Layanan', 'Total',
+      'Metode Bayar', 'Status Pembayaran', 'Status Pengerjaan', 'Kasir', 'Detail Items', 'Catatan'
+    ];
+    const rows = filteredTx.map(t => [
+      t.noNota,
+      t.tanggal,
+      t.namaPelanggan,
+      t.noHp || '',
+      t.tipe || 'SelfService',
+      t.total || 0,
+      t.metodeBayar || 'Tunai',
+      t.statusPembayaran || 'Lunas',
+      t.status || 'Selesai',
+      t.petugas || 'Kasir',
+      (t.items || []).map(i => `${i.layanan} (${i.qty}x)`).join('; '),
+      t.catatan || ''
+    ]);
+    downloadCSV(`riwayat_transaksi_${Date.now()}.csv`, toCSV(headers, rows));
+  };
+
+  const handleDownloadTemplateTransaksi = () => {
+    const headers = [
+      'No Nota', 'Tanggal', 'Nama Pelanggan', 'No HP', 'Tipe Layanan', 'Item / Layanan', 'Qty', 'Harga Satuan', 'Metode Bayar', 'Status Pembayaran', 'Petugas', 'Catatan'
+    ];
+    const sampleRows = [
+      ['LDY-260801-0001', '2026-08-01 10:00', 'Ibu Ratna', '081234567890', 'SelfService', 'Cuci 7,5 Kg', 1, 10000, 'Tunai', 'Lunas', 'Kasir Siti', 'Pembukuan Offline'],
+      ['LDY-260801-0002', '2026-08-01 11:30', 'Pak Hendra', '082345678901', 'Drop Off', 'Cuci Kering 7,5 Kg', 2, 18000, 'QRIS', 'Lunas', 'Kasir Siti', 'Titip selesai sore']
+    ];
+    downloadCSV('template_import_transaksi_offline.csv', toCSV(headers, sampleRows));
+  };
+
+  const handleImportTransaksiCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    try {
+      const text = await readFileAsText(file);
+      const rows = parseCSV(text);
+      if (rows.length === 0) {
+        await showAlert('File CSV kosong atau format tidak sesuai.', 'warning');
+        return;
+      }
+      setLoading(true);
+      const res = await runBackend<{ success: boolean; importedCount: number; failedCount: number; errors?: string[]; message?: string }>(
+        'importTransaksiBatch',
+        rows
+      );
+      if (!res?.success) throw new Error(res?.message || 'Gagal memproses import transaksi');
+      clearCache('getTransaksiList');
+      clearCache('getLaporanRange');
+      await showAlert(`Import selesai: ${res.importedCount} transaksi berhasil dimasukkan${res.failedCount > 0 ? `, ${res.failedCount} gagal` : ''}.`, 'success');
+      loadRiwayat();
+    } catch (err) {
+      console.error(err);
+      await showAlert(err instanceof Error ? err.message : 'Gagal import transaksi.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredTx = (txList || []).filter((t) => {
     if (!t) return false;
     let matchFilter = true;
@@ -227,13 +357,15 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
       matchFilter = !t.tipe || t.tipe === '' || t.tipe === 'NonLayanan' || t.tipe === 'Bukan Layanan';
     }
 
+    const matchPeriod = isDateInSelectedPeriod(t.tanggal);
+
     const q = (search || '').toLowerCase().trim();
     const matchSearch =
       !q ||
       (t.noNota || '').toLowerCase().includes(q) ||
       (t.namaPelanggan && (t.namaPelanggan || '').toLowerCase().includes(q)) ||
       (t.noHp && (t.noHp || '').includes(q));
-    return matchFilter && matchSearch;
+    return matchFilter && matchPeriod && matchSearch;
   });
 
   const getFilterLabel = (f: 'Semua' | 'SelfService' | 'FullService' | 'NonLayanan') => {
@@ -247,60 +379,149 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
 
   return (
     <div className="p-3 md:p-4 space-y-4 w-full">
-      {/* Header Filters & Search */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap shadow-xs">
-        <div className="flex bg-slate-100 p-0.5 rounded-md gap-0.5 flex-wrap">
-          {(['Semua', 'SelfService', 'FullService', 'NonLayanan'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition ${
-                filter === f
-                  ? 'bg-[#1E4648] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-700'
-              }`}
-            >
-              {getFilterLabel(f)}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 flex-1 min-w-[280px]">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nota, pelanggan, no HP..."
-              className="w-full pl-9 pr-8 py-1.5 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                <X className="w-3.5 h-3.5" />
+      
+      {/* Header Filters & Controls */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs">
+        
+        {/* Top Row: Type Tabs + Search + Action Buttons */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex bg-slate-100 p-0.5 rounded-xl gap-0.5 flex-wrap">
+            {(['Semua', 'SelfService', 'FullService', 'NonLayanan'] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                  filter === f
+                    ? 'bg-[#1E4648] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-800'
+                }`}
+              >
+                {getFilterLabel(f)}
               </button>
-            )}
+            ))}
           </div>
 
-          {currentRole === 'MANAGER' && (
+          <div className="flex items-center gap-2 flex-1 min-w-[280px]">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari no nota, nama pelanggan, no HP..."
+                className="w-full pl-9 pr-8 py-2 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-[#1E4648] bg-slate-50"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Export & Import Buttons for Offline Bookkeeping */}
+            {currentRole === 'MANAGER' && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button 
+                  onClick={handleExportCSV}
+                  className="flex items-center gap-1 px-3 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition shadow-2xs"
+                  title="Export Transaksi ke CSV"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Export</span>
+                </button>
+
+                <button 
+                  onClick={handleDownloadTemplateTransaksi}
+                  className="px-2.5 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-bold transition shadow-2xs"
+                  title="Download Template CSV Offline"
+                >
+                  Template
+                </button>
+
+                <label 
+                  className="cursor-pointer flex items-center gap-1 px-3 py-2 bg-slate-100 hover:bg-[#1E4648] hover:text-white text-slate-700 font-bold rounded-xl text-xs transition shadow-2xs"
+                  title="Import Transaksi Pembukuan Offline (CSV)"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Import</span>
+                  <input type="file" accept=".csv" className="hidden" onChange={handleImportTransaksiCSV} />
+                </label>
+
+                <button
+                  onClick={openManualModal}
+                  className="bg-[#1E4648] hover:bg-[#163536] text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition shadow-sm"
+                  title="Input Transaksi Manual"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">Transaksi Manual</span>
+                </button>
+              </div>
+            )}
+
             <button
-              onClick={openManualModal}
-              className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-sm shrink-0"
-              title="Input Transaksi Manual"
+              onClick={loadRiwayat}
+              className="p-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition shrink-0"
+              title="Segarkan Riwayat"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Transaksi Manual</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
+          </div>
+        </div>
+
+        {/* Bottom Row: Periodic Date Filters (Hari ini, Kemarin, 7 Hari, Bulan ini, Custom) */}
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap text-xs font-bold">
+          <div className="flex items-center gap-1 text-slate-400 uppercase text-[10px] tracking-wider shrink-0 mr-1">
+            <Calendar className="w-3.5 h-3.5 text-[#1E4648]" /> Periode:
+          </div>
+
+          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/80 flex-wrap">
+            {[
+              { id: 'all', label: 'Semua Tanggal' },
+              { id: 'today', label: 'Hari Ini' },
+              { id: 'yesterday', label: 'Kemarin' },
+              { id: 'last7days', label: '7 Hari Terakhir' },
+              { id: 'thisMonth', label: 'Bulan Ini' },
+              { id: 'lastMonth', label: 'Bulan Lalu' },
+              { id: 'custom', label: 'Custom Range' },
+            ].map(p => (
+              <button
+                key={p.id}
+                onClick={() => setPeriodePreset(p.id as any)}
+                className={`px-2.5 py-1 rounded-lg text-xs transition ${
+                  periodePreset === p.id 
+                    ? 'bg-[#1E4648] text-white shadow-2xs' 
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom Date Pickers */}
+          {periodePreset === 'custom' && (
+            <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200">
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={e => setCustomStartDate(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-700 outline-none"
+              />
+              <ArrowRight className="w-3 h-3 text-slate-400" />
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={e => setCustomEndDate(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-700 outline-none"
+              />
+            </div>
           )}
 
-          <button
-            onClick={loadRiwayat}
-            className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition shrink-0"
-            title="Refresh Data"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="ml-auto text-[11px] text-slate-400 font-semibold">
+            Menampilkan <strong>{filteredTx.length}</strong> transaksi
+          </div>
         </div>
+
       </div>
 
       {/* Transaction Table */}

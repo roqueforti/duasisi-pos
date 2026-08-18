@@ -288,6 +288,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                <th className="py-3 px-3">Kode</th>
                 <th className="py-3 px-4">Nama Barang</th>
                 <th className="py-3 px-4">Stok Saat Ini</th>
                 <th className="py-3 px-4">Stok Min.</th>
@@ -300,6 +301,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
               {loading ? (
                 Array.from({ length: 4 }).map((_, idx) => (
                   <tr key={idx} className="animate-pulse">
+                    <td className="py-3 px-3"><div className="h-3.5 bg-slate-100 rounded w-14" /></td>
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-32" /></td>
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
                     <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-12" /></td>
@@ -310,7 +312,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                 ))
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-slate-400">
+                  <td colSpan={7} className="py-10 text-center text-slate-400">
                     Belum ada data stok bahan
                   </td>
                 </tr>
@@ -321,6 +323,11 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                   const isMenipis = (delta ? previewStok : item.stok) <= item.stokMinimum;
                   return (
                     <tr key={item.id} className={`transition-colors ${delta ? 'bg-amber-50/40' : 'hover:bg-slate-50/80'}`}>
+                      <td className="py-3 px-3">
+                        <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          {item.id}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 font-semibold text-slate-600">{item.nama}</td>
                       <td className="py-3 px-4 font-bold text-slate-700">
                         {delta !== 0 ? (
