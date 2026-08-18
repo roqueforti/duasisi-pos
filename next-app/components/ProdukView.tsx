@@ -186,7 +186,11 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     
     setIdInventory(item.idInventory || '');
     setKategori(item.kategori || 'Self Service');
-    setInventoryDeductionQty((item.inventoryDeductionQty || 1).toString());
+    setInventoryDeductionQty(
+      item.inventoryDeductionQty !== undefined && item.inventoryDeductionQty !== null
+        ? item.inventoryDeductionQty.toString()
+        : '1'
+    );
     setCustomPipelineSteps(item.pipelineSteps ? (item.pipelineSteps as CustomPipelineStep[]) : []);
     setShowModal(true);
   };
@@ -202,7 +206,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         tipe: tipe || '',
         kategori,
         idInventory: tipe === '' ? idInventory : undefined,
-        inventoryDeductionQty: tipe === '' ? (Number(inventoryDeductionQty) || 1) : undefined,
+        inventoryDeductionQty: tipe === '' ? (isNaN(parseFloat(inventoryDeductionQty)) ? 1 : parseFloat(inventoryDeductionQty)) : undefined,
         hargaModal: Number(hargaModal) || 0,
         pipelineSteps: tipe === 'FullService' ? customPipelineSteps : []
       };
@@ -439,6 +443,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                   <th className="py-3 px-4">Kategori</th>
                   <th className="py-3 px-4">Tipe</th>
                   <th className="py-3 px-4">Inventory</th>
+                  <th className="py-3 px-4">Potongan Stok</th>
                   {currentRole === 'MANAGER' && <th className="py-3 px-4">Modal & Profit</th>}
                   <th className="py-3 px-4">Tarif Jual</th>
                   <th className="py-3 px-4">Status</th>
@@ -453,13 +458,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
+                      <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
+                      {currentRole === 'MANAGER' && <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>}
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-12" /></td>
                       <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16 ml-auto" /></td>
                     </tr>
                   ))
                 ) : filteredLayananList.length === 0 ? (
-                  <tr><td colSpan={7} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
+                  <tr><td colSpan={currentRole === 'MANAGER' ? 9 : 8} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
                 ) : (
                   filteredLayananList.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50 transition">
@@ -540,6 +547,21 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                 Simpan
                               </button>
                             )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-300 text-xs">-</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        {item.idInventory ? (
+                          <div className="flex items-center gap-1">
+                            <span className="font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 text-xs">
+                              {item.inventoryDeductionQty !== undefined && item.inventoryDeductionQty !== null ? item.inventoryDeductionQty : 1}
+                              <span className="text-orange-900/70 font-medium text-[10px] ml-1">
+                                {inventoryList.find(inv => inv.id === item.idInventory)?.satuan || 'unit'}
+                              </span>
+                            </span>
+                            <span className="text-[10px] text-slate-400">/ trx</span>
                           </div>
                         ) : (
                           <span className="text-slate-300 text-xs">-</span>
@@ -727,7 +749,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                     <div className="bg-orange-50 border border-orange-100 p-3 rounded-md">
                       <label className="block font-semibold text-orange-900 mb-1">Potongan Stok per 1 Transaksi</label>
                       <div className="flex gap-2 items-center">
-                        <input type="number" value={inventoryDeductionQty} onChange={(e) => setInventoryDeductionQty(e.target.value)} min="1" step="0.1" className="w-24 px-3 py-1.5 border border-orange-200 rounded-md outline-none focus:border-orange-500 font-bold text-orange-900" />
+                        <input type="number" value={inventoryDeductionQty} onChange={(e) => setInventoryDeductionQty(e.target.value)} min="0" step="any" placeholder="0.1" className="w-28 px-3 py-1.5 border border-orange-200 rounded-md outline-none focus:border-orange-500 font-bold text-orange-900" />
                         <span className="text-xs font-semibold text-orange-800">{inventoryList.find(i => i.id === idInventory)?.satuan || 'unit'}</span>
                       </div>
                       <p className="text-[10px] text-orange-700 mt-1">Jumlah stok {inventoryList.find(i => i.id === idInventory)?.nama} yang akan dikurangi setiap kali 1 layanan ini dipesan.</p>

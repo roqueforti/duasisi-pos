@@ -683,6 +683,8 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                 <label className="block text-slate-700 font-bold mb-1">Jumlah Tambahan Stok ({selectedRestockItem.satuan})</label>
                 <input
                   type="number"
+                  step="any"
+                  min="0"
                   value={restockQty}
                   onChange={(e) => setRestockQty(e.target.value)}
                   className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg font-bold text-slate-700 outline-none focus:border-[#1E4648]"

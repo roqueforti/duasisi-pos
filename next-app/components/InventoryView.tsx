@@ -344,6 +344,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                   <label className="block text-xs font-medium text-slate-500 mb-1">Jumlah Stok</label>
                   <input
                     type="number"
+                    step="any"
                     value={stok}
                     onChange={(e) => setStok(e.target.value)}
                     placeholder="0"
@@ -366,6 +367,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                 <label className="block text-xs font-medium text-slate-500 mb-1">Stok Minimum Peringatan</label>
                 <input
                   type="number"
+                  step="any"
                   value={stokMin}
                   onChange={(e) => setStokMin(e.target.value)}
                   placeholder="5"

@@ -77,7 +77,7 @@ function tambahLayanan(data) {
     sh.insertColumnsAfter(sh.getMaxColumns(), 12 - sh.getMaxColumns());
   }
 
-  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe !== undefined ? data.tipe : "", pSteps, data.kategori || "Self Service", idInv, data.hargaModal || 0, data.inventoryDeductionQty !== undefined ? data.inventoryDeductionQty : 1]);
+  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe !== undefined ? data.tipe : "", pSteps, data.kategori || "Self Service", idInv, data.hargaModal || 0, data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : 1]);
   return { success: true, id: id };
 }
 
@@ -100,7 +100,7 @@ function updateLayanan(id, data) {
         sh.insertColumnsAfter(sh.getMaxColumns(), 12 - sh.getMaxColumns());
       }
 
-      sh.getRange(i + 1, 2, 1, 11).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8], idInv, data.hargaModal !== undefined ? data.hargaModal : (Number(rows[i][10]) || 0), data.inventoryDeductionQty !== undefined ? data.inventoryDeductionQty : (rows[i][11] !== undefined && rows[i][11] !== "" ? Number(rows[i][11]) : 1)]]);
+      sh.getRange(i + 1, 2, 1, 11).setValues([[data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8], idInv, data.hargaModal !== undefined ? data.hargaModal : (Number(rows[i][10]) || 0), data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : (rows[i][11] !== undefined && rows[i][11] !== "" ? Number(rows[i][11]) : 1)]]);
       return { success: true };
     }
   }
