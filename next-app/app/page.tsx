@@ -19,7 +19,7 @@ import MenuGeneratorView from '@/components/MenuGeneratorView';
 import KategoriView from '@/components/KategoriView';
 import ShiftView from '@/components/ShiftView';
 import LangkahView from '@/components/LangkahView';
-
+import PayrollView from '@/components/PayrollView';
 import KeamananView from '@/components/KeamananView';
 import { UserRole } from '@/lib/types';
 import { clearBackendSession, parseSessionToken, onSessionExpired, notifySessionExpired } from '@/lib/api';
@@ -59,17 +59,14 @@ export default function HomePage() {
     const checkExpiration = () => {
       const activePayload = parseSessionToken();
       if (activePayload && activePayload.exp <= Date.now()) {
-        notifySessionExpired('Sesi Anda telah kedaluwarsa demi keamanan. Silakan login kembali.');
+        notifySessionExpired('Sesi Anda telah kedaluwarsa. Silakan masukkan PIN kembali.');
       }
     };
 
-    const intervalId = setInterval(checkExpiration, 15000);
-    window.addEventListener('focus', checkExpiration);
-
+    const interval = setInterval(checkExpiration, 15000);
     return () => {
       unsubscribe();
-      clearInterval(intervalId);
-      window.removeEventListener('focus', checkExpiration);
+      clearInterval(interval);
     };
   }, []);
 
@@ -85,21 +82,26 @@ export default function HomePage() {
     }
   }, []);
 
-  const handleLoginSuccess = (role: UserRole, label: string) => {
-    setSessionNotice(null);
+  const handleLoginSuccess = (role: UserRole) => {
     setCurrentRole(role);
-    setCurrentTab(role === 'MANAGER' ? 'dashboard' : 'transaksi');
+    setSessionNotice(null);
+    if (role === 'MANAGER') {
+      setCurrentTab('dashboard');
+    } else {
+      setCurrentTab('transaksi');
+    }
   };
 
   const handleLogout = () => {
     clearBackendSession();
-    setSessionNotice(null);
+    clearCache();
     setCurrentRole('');
+    setSessionNotice(null);
   };
 
   const handleGlobalRefresh = () => {
     clearCache();
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   if (publicNotaParam) {
@@ -153,6 +155,7 @@ export default function HomePage() {
               {currentTab === 'pelanggan' && <PelangganView currentRole={currentRole} />}
               {currentTab === 'inventory' && <InventoryView currentRole={currentRole} />}
               {currentTab === 'pegawai' && <PegawaiView currentRole={currentRole} />}
+              {currentTab === 'payroll' && <PayrollView currentRole={currentRole} />}
               {currentTab === 'produk' && <ProdukView currentRole={currentRole} />}
               {currentTab === 'kategori' && <KategoriView currentRole={currentRole} />}
               {currentTab === 'langkah' && <LangkahView currentRole={currentRole} />}

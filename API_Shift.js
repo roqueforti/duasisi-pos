@@ -1,26 +1,161 @@
 // ============================================================
-// PEGAWAI & REKAP KINERJA
+// PEGAWAI & REKAP KINERJA (EXTENDED SCHEMA)
 // ============================================================
+const SHEET_PAYROLL = "MasterPayroll";
+
+function ensurePegawaiHeaders_(sh) {
+  const HEADERS = [
+    "ID", "Nama Pegawai", "No HP", "Jabatan", "Status", "Tanggal Bergabung",
+    "NIK", "Nama Panggilan", "Foto", "Jenis Kelamin", "Tempat Lahir", "Tanggal Lahir", "Alamat",
+    "Pendidikan Jenjang", "Pendidikan Institusi", "Pendidikan Jurusan", "Pendidikan Tahun Masuk", "Pendidikan Tahun Lulus", "Pendidikan Status",
+    "Status Kepegawaian", "Tanggal Masuk", "Tanggal Keluar", "Shift Utama",
+    "Gaji Pokok", "Tunjangan", "Potongan", "Bank", "No Rekening", "Nama Rekening",
+    "Kontak Darurat Nama", "Kontak Darurat Hubungan", "Kontak Darurat No HP"
+  ];
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(HEADERS);
+    return;
+  }
+  const currentCols = sh.getLastColumn();
+  if (currentCols < HEADERS.length) {
+    sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+  }
+}
+
 function getPegawaiList() {
   const sh = SS.getSheetByName(SHEET_PEGAWAI);
   if (!sh) return [];
+  ensurePegawaiHeaders_(sh);
   const data = sh.getDataRange().getValues();
+  if (data.length <= 1) return [];
   data.shift();
   return data.map(r => ({
-    id: r[0],
-    nama: r[1],
-    noHp: r[2],
-    jabatan: r[3],
-    status: r[4] || "Aktif"
+    id: String(r[0] || ""),
+    nama: String(r[1] || ""),
+    noHp: String(r[2] || ""),
+    jabatan: String(r[3] || "Kasir / Staff"),
+    status: String(r[4] || "Aktif"),
+    tanggalBergabung: r[5] ? fmtWib(r[5], "yyyy-MM-dd") : "",
+    nik: String(r[6] || ""),
+    namaPanggilan: String(r[7] || ""),
+    foto: String(r[8] || ""),
+    jenisKelamin: String(r[9] || ""),
+    tempatLahir: String(r[10] || ""),
+    tanggalLahir: r[11] ? (r[11] instanceof Date ? fmtWib(r[11], "yyyy-MM-dd") : String(r[11])) : "",
+    alamat: String(r[12] || ""),
+    pendidikanJenjang: String(r[13] || ""),
+    pendidikanInstitusi: String(r[14] || ""),
+    pendidikanJurusan: String(r[15] || ""),
+    pendidikanTahunMasuk: String(r[16] || ""),
+    pendidikanTahunLulus: String(r[17] || ""),
+    pendidikanStatus: String(r[18] || ""),
+    statusKepegawaian: String(r[19] || "Tetap"),
+    tanggalMasuk: r[20] ? (r[20] instanceof Date ? fmtWib(r[20], "yyyy-MM-dd") : String(r[20])) : "",
+    tanggalKeluar: r[21] ? (r[21] instanceof Date ? fmtWib(r[21], "yyyy-MM-dd") : String(r[21])) : "",
+    shiftUtama: String(r[22] || "Pagi"),
+    gajiPokok: Number(r[23]) || 0,
+    tunjangan: Number(r[24]) || 0,
+    potongan: Number(r[25]) || 0,
+    bank: String(r[26] || ""),
+    noRekening: String(r[27] || ""),
+    namaRekening: String(r[28] || ""),
+    kontakDaruratNama: String(r[29] || ""),
+    kontakDaruratHubungan: String(r[30] || ""),
+    kontakDaruratNoHp: String(r[31] || "")
   }));
 }
 
 function tambahPegawai(data) {
   let sh = SS.getSheetByName(SHEET_PEGAWAI);
-  if (!sh) { sh = SS.insertSheet(SHEET_PEGAWAI); sh.appendRow(["ID", "Nama Pegawai", "No HP", "Jabatan", "Status", "Tanggal Bergabung"]); }
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_PEGAWAI);
+  }
+  ensurePegawaiHeaders_(sh);
   const id = generateId("EMP");
-  sh.appendRow([id, data.nama, data.noHp || "", data.jabatan || "Operator", "Aktif", new Date()]);
+  const row = [
+    id,
+    data.nama || "",
+    data.noHp || "",
+    data.jabatan || "Kasir / Staff",
+    data.status || "Aktif",
+    data.tanggalBergabung ? new Date(data.tanggalBergabung) : new Date(),
+    data.nik || "",
+    data.namaPanggilan || "",
+    data.foto || "",
+    data.jenisKelamin || "",
+    data.tempatLahir || "",
+    data.tanggalLahir ? new Date(data.tanggalLahir) : (data.tanggalLahir || ""),
+    data.alamat || "",
+    data.pendidikanJenjang || "",
+    data.pendidikanInstitusi || "",
+    data.pendidikanJurusan || "",
+    data.pendidikanTahunMasuk || "",
+    data.pendidikanTahunLulus || "",
+    data.pendidikanStatus || "",
+    data.statusKepegawaian || "Tetap",
+    data.tanggalMasuk ? new Date(data.tanggalMasuk) : (data.tanggalMasuk || ""),
+    data.tanggalKeluar ? new Date(data.tanggalKeluar) : (data.tanggalKeluar || ""),
+    data.shiftUtama || "Pagi",
+    Number(data.gajiPokok) || 0,
+    Number(data.tunjangan) || 0,
+    Number(data.potongan) || 0,
+    data.bank || "",
+    data.noRekening || "",
+    data.namaRekening || "",
+    data.kontakDaruratNama || "",
+    data.kontakDaruratHubungan || "",
+    data.kontakDaruratNoHp || ""
+  ];
+  sh.appendRow(row);
   return { success: true, id: id };
+}
+
+function updatePegawai(id, data) {
+  const sh = SS.getSheetByName(SHEET_PEGAWAI);
+  if (!sh) return { success: false, message: "Sheet Pegawai tidak ditemukan" };
+  ensurePegawaiHeaders_(sh);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
+      const row = [
+        id,
+        data.nama || rows[i][1],
+        data.noHp !== undefined ? data.noHp : rows[i][2],
+        data.jabatan || rows[i][3],
+        data.status || rows[i][4],
+        rows[i][5] || new Date(),
+        data.nik !== undefined ? data.nik : rows[i][6],
+        data.namaPanggilan !== undefined ? data.namaPanggilan : rows[i][7],
+        data.foto !== undefined ? data.foto : rows[i][8],
+        data.jenisKelamin !== undefined ? data.jenisKelamin : rows[i][9],
+        data.tempatLahir !== undefined ? data.tempatLahir : rows[i][10],
+        data.tanggalLahir !== undefined ? (data.tanggalLahir ? new Date(data.tanggalLahir) : "") : rows[i][11],
+        data.alamat !== undefined ? data.alamat : rows[i][12],
+        data.pendidikanJenjang !== undefined ? data.pendidikanJenjang : rows[i][13],
+        data.pendidikanInstitusi !== undefined ? data.pendidikanInstitusi : rows[i][14],
+        data.pendidikanJurusan !== undefined ? data.pendidikanJurusan : rows[i][15],
+        data.pendidikanTahunMasuk !== undefined ? data.pendidikanTahunMasuk : rows[i][16],
+        data.pendidikanTahunLulus !== undefined ? data.pendidikanTahunLulus : rows[i][17],
+        data.pendidikanStatus !== undefined ? data.pendidikanStatus : rows[i][18],
+        data.statusKepegawaian !== undefined ? data.statusKepegawaian : rows[i][19],
+        data.tanggalMasuk !== undefined ? (data.tanggalMasuk ? new Date(data.tanggalMasuk) : "") : rows[i][20],
+        data.tanggalKeluar !== undefined ? (data.tanggalKeluar ? new Date(data.tanggalKeluar) : "") : rows[i][21],
+        data.shiftUtama !== undefined ? data.shiftUtama : rows[i][22],
+        data.gajiPokok !== undefined ? Number(data.gajiPokok) : Number(rows[i][23]) || 0,
+        data.tunjangan !== undefined ? Number(data.tunjangan) : Number(rows[i][24]) || 0,
+        data.potongan !== undefined ? Number(data.potongan) : Number(rows[i][25]) || 0,
+        data.bank !== undefined ? data.bank : rows[i][26],
+        data.noRekening !== undefined ? data.noRekening : rows[i][27],
+        data.namaRekening !== undefined ? data.namaRekening : rows[i][28],
+        data.kontakDaruratNama !== undefined ? data.kontakDaruratNama : rows[i][29],
+        data.kontakDaruratHubungan !== undefined ? data.kontakDaruratHubungan : rows[i][30],
+        data.kontakDaruratNoHp !== undefined ? data.kontakDaruratNoHp : rows[i][31]
+      ];
+      sh.getRange(i + 1, 1, 1, row.length).setValues([row]);
+      return { success: true, id: id };
+    }
+  }
+  return { success: false, message: "Pegawai tidak ditemukan" };
 }
 
 function hapusPegawai(id) {
@@ -31,6 +166,181 @@ function hapusPegawai(id) {
     if (rows[i][0] === id) { sh.deleteRow(i + 1); return true; }
   }
   return false;
+}
+
+// ============================================================
+// PAYROLL & PENGGAJIAN ENGINE
+// ============================================================
+function ensurePayrollHeaders_(sh) {
+  const HEADERS = [
+    "ID Payroll", "Periode", "ID Pegawai", "Nama Pegawai", "Jabatan",
+    "Gaji Pokok", "Tunjangan", "Bonus Komisi", "Potongan", "Total Gaji Bersih",
+    "Jumlah Kehadiran", "Jumlah Keterlambatan", "Total Jam Kerja", "Status Pembayaran", "Tanggal Pembayaran", "Metode Pembayaran", "Catatan"
+  ];
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(HEADERS);
+    return;
+  }
+}
+
+function getPayrollSummary(periodeStr) {
+  const targetPeriode = periodeStr || fmtWib(new Date(), "yyyy-MM");
+  const parts = targetPeriode.split("-");
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+
+  const pegawaiList = getPegawaiList();
+  
+  const startDateStr = `${targetPeriode}-01`;
+  const endDay = new Date(year, month, 0).getDate();
+  const endDateStr = `${targetPeriode}-${String(endDay).padStart(2, '0')}`;
+  
+  const absensiList = getRekapAbsensi(startDateStr, endDateStr);
+  const kinerjaList = getRekapKinerjaPegawai(startDateStr, endDateStr);
+
+  let shPay = SS.getSheetByName(SHEET_PAYROLL);
+  if (!shPay) {
+    shPay = SS.insertSheet(SHEET_PAYROLL);
+    ensurePayrollHeaders_(shPay);
+  }
+  const payRows = shPay.getDataRange().getValues();
+  const paidMap = {};
+  for (let i = 1; i < payRows.length; i++) {
+    const rowPeriode = payRows[i][1];
+    const rowPegawaiId = payRows[i][2];
+    if (rowPeriode === targetPeriode) {
+      paidMap[rowPegawaiId] = {
+        idPayroll: payRows[i][0],
+        status: payRows[i][13] || "Sudah Dibayar",
+        tanggalBayar: payRows[i][14] ? fmtWib(payRows[i][14], "yyyy-MM-dd HH:mm") : "",
+        metodeBayar: payRows[i][15] || "Transfer",
+        catatan: payRows[i][16] || "",
+        gajiPokok: Number(payRows[i][5]) || 0,
+        tunjangan: Number(payRows[i][6]) || 0,
+        bonusKomisi: Number(payRows[i][7]) || 0,
+        potongan: Number(payRows[i][8]) || 0,
+        totalGajiBersih: Number(payRows[i][9]) || 0
+      };
+    }
+  }
+
+  const items = pegawaiList.map(peg => {
+    const empAbs = absensiList.filter(a => a.namaPegawai === peg.nama);
+    const jumlahHadir = empAbs.length;
+    let totalJamKerja = 0;
+    let jumlahTelat = 0;
+    empAbs.forEach(a => {
+      const durasiNum = parseFloat(a.durasi) || 0;
+      totalJamKerja += durasiNum;
+      if (a.catatan && a.catatan.includes("TERLAMBAT")) {
+        jumlahTelat += 1;
+      }
+    });
+
+    const empKin = kinerjaList.find(k => k.nama === peg.nama || k.id === peg.id);
+    const totalOmzet = empKin ? empKin.totalOmzet : 0;
+    const totalTransaksi = empKin ? empKin.totalTransaksi : 0;
+
+    const savedPay = paidMap[peg.id];
+
+    const gajiPokok = savedPay ? savedPay.gajiPokok : (peg.gajiPokok || 0);
+    const tunjangan = savedPay ? savedPay.tunjangan : (peg.tunjangan || 0);
+    const potongan = savedPay ? savedPay.potongan : (peg.potongan || 0);
+    const bonusKomisi = savedPay ? savedPay.bonusKomisi : 0;
+    const totalGajiBersih = savedPay ? savedPay.totalGajiBersih : Math.max(0, (gajiPokok + tunjangan + bonusKomisi) - potongan);
+
+    return {
+      idPegawai: peg.id,
+      nama: peg.nama,
+      namaPanggilan: peg.namaPanggilan || "",
+      jabatan: peg.jabatan,
+      statusPegawai: peg.status,
+      statusKepegawaian: peg.statusKepegawaian || "Tetap",
+      bank: peg.bank || "",
+      noRekening: peg.noRekening || "",
+      namaRekening: peg.namaRekening || "",
+      noHp: peg.noHp || "",
+      
+      periode: targetPeriode,
+      gajiPokok: gajiPokok,
+      tunjangan: tunjangan,
+      bonusKomisi: bonusKomisi,
+      potongan: potongan,
+      totalGajiBersih: totalGajiBersih,
+
+      jumlahHadir: jumlahHadir,
+      totalJamKerja: Math.round(totalJamKerja * 10) / 10,
+      jumlahTelat: jumlahTelat,
+      totalOmzetDihasilkan: totalOmzet,
+      totalTransaksiDihasilkan: totalTransaksi,
+
+      statusPembayaran: savedPay ? (savedPay.status || "Sudah Dibayar") : "Belum Dibayar",
+      tanggalPembayaran: savedPay ? savedPay.tanggalBayar : "",
+      metodePembayaran: savedPay ? savedPay.metodeBayar : (peg.bank ? "Transfer" : "Tunai"),
+      catatan: savedPay ? savedPay.catatan : ""
+    };
+  });
+
+  return {
+    periode: targetPeriode,
+    totalGajiPokok: items.reduce((acc, i) => acc + i.gajiPokok, 0),
+    totalTunjangan: items.reduce((acc, i) => acc + i.tunjangan, 0),
+    totalBonus: items.reduce((acc, i) => acc + i.bonusKomisi, 0),
+    totalPotongan: items.reduce((acc, i) => acc + i.potongan, 0),
+    totalPengeluaranGaji: items.reduce((acc, i) => acc + i.totalGajiBersih, 0),
+    totalPegawai: items.length,
+    sudahDibayarCount: items.filter(i => i.statusPembayaran === "Sudah Dibayar").length,
+    belumDibayarCount: items.filter(i => i.statusPembayaran !== "Sudah Dibayar").length,
+    items: items
+  };
+}
+
+function savePayrollPayment(idPegawai, periode, payload) {
+  let sh = SS.getSheetByName(SHEET_PAYROLL);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_PAYROLL);
+  }
+  ensurePayrollHeaders_(sh);
+  const rows = sh.getDataRange().getValues();
+  const now = new Date();
+  
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][1] === periode && rows[i][2] === idPegawai) {
+      sh.getRange(i + 1, 6).setValue(Number(payload.gajiPokok) || rows[i][5]);
+      sh.getRange(i + 1, 7).setValue(Number(payload.tunjangan) || rows[i][6]);
+      sh.getRange(i + 1, 8).setValue(Number(payload.bonusKomisi) || rows[i][7]);
+      sh.getRange(i + 1, 9).setValue(Number(payload.potongan) || rows[i][8]);
+      sh.getRange(i + 1, 10).setValue(Number(payload.totalGajiBersih) || rows[i][9]);
+      sh.getRange(i + 1, 14).setValue(payload.statusPembayaran || "Sudah Dibayar");
+      sh.getRange(i + 1, 15).setValue(payload.statusPembayaran === "Belum Dibayar" ? "" : now);
+      sh.getRange(i + 1, 16).setValue(payload.metodePembayaran || "Transfer");
+      sh.getRange(i + 1, 17).setValue(payload.catatan || "");
+      return { success: true, message: "Status pembayaran gaji berhasil diperbarui" };
+    }
+  }
+
+  const idPayroll = generateId("PAY");
+  const newRow = [
+    idPayroll,
+    periode,
+    idPegawai,
+    payload.nama || "",
+    payload.jabatan || "",
+    Number(payload.gajiPokok) || 0,
+    Number(payload.tunjangan) || 0,
+    Number(payload.bonusKomisi) || 0,
+    Number(payload.potongan) || 0,
+    Number(payload.totalGajiBersih) || 0,
+    Number(payload.jumlahHadir) || 0,
+    Number(payload.jumlahTelat) || 0,
+    Number(payload.totalJamKerja) || 0,
+    payload.statusPembayaran || "Sudah Dibayar",
+    now,
+    payload.metodePembayaran || "Transfer",
+    payload.catatan || ""
+  ];
+  sh.appendRow(newRow);
+  return { success: true, idPayroll: idPayroll, message: "Pembayaran gaji berhasil dicatat" };
 }
 
 function getRekapKinerjaPegawai(startDateStr, endDateStr) {

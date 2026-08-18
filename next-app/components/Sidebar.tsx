@@ -19,7 +19,8 @@ import {
   ClipboardList,
   GitMerge,
   ShieldCheck,
-  FolderOpen
+  FolderOpen,
+  DollarSign
 } from 'lucide-react';
 import { useDialog } from '@/components/DialogProvider';
 
@@ -62,7 +63,7 @@ export default function Sidebar({
       await showAlert('Fitur POS Kasir hanya untuk Staff/Kasir', 'warning');
       return;
     }
-    if (['pegawai', 'produk', 'kategori', 'shift', 'rekap', 'keamanan', 'menu'].includes(tabKey) && currentRole !== 'MANAGER') {
+    if (['pegawai', 'payroll', 'produk', 'kategori', 'shift', 'rekap', 'keamanan', 'menu'].includes(tabKey) && currentRole !== 'MANAGER') {
       await showAlert('Akses Ditolak — Khusus Manager/Owner', 'error');
       return;
     }
@@ -211,6 +212,10 @@ export default function Sidebar({
               <button className={navClass('pegawai')} onClick={() => handleNavClick('pegawai')} title="Pegawai">
                 <Users className={`w-[18px] h-[18px] shrink-0 ${iconClass('pegawai')}`} />
                 {!isCollapsed && <span>Data Pegawai</span>}
+              </button>
+              <button className={navClass('payroll')} onClick={() => handleNavClick('payroll')} title="Payroll & Gaji">
+                <DollarSign className={`w-[18px] h-[18px] shrink-0 ${iconClass('payroll')}`} />
+                {!isCollapsed && <span>Payroll & Gaji</span>}
               </button>
               <button className={navClass('shift')} onClick={() => handleNavClick('shift')} title="Shift & Absensi">
                 <Clock className={`w-[18px] h-[18px] shrink-0 ${iconClass('shift')}`} />

@@ -124,10 +124,101 @@ export interface AuditLog {
 }
 
 export interface Pegawai {
+  id?: string;
   nama: string;
   jabatan: string;
   noHp?: string;
-  role: 'STAFF' | 'MANAGER';
+  status?: string;
+  role?: 'STAFF' | 'MANAGER';
+}
+
+export interface PegawaiDetail {
+  id: string;
+  nama: string;
+  noHp?: string;
+  jabatan: string;
+  status: string;
+  tanggalBergabung?: string;
+  
+  // Data Pribadi
+  nik?: string;
+  namaPanggilan?: string;
+  foto?: string;
+  jenisKelamin?: string;
+  tempatLahir?: string;
+  tanggalLahir?: string;
+  alamat?: string;
+
+  // Pendidikan
+  pendidikanJenjang?: string;
+  pendidikanInstitusi?: string;
+  pendidikanJurusan?: string;
+  pendidikanTahunMasuk?: string;
+  pendidikanTahunLulus?: string;
+  pendidikanStatus?: string;
+
+  // Pekerjaan
+  statusKepegawaian?: string;
+  tanggalMasuk?: string;
+  tanggalKeluar?: string;
+  shiftUtama?: string;
+
+  // Penggajian
+  gajiPokok?: number;
+  tunjangan?: number;
+  potongan?: number;
+  bank?: string;
+  noRekening?: string;
+  namaRekening?: string;
+
+  // Kontak Darurat
+  kontakDaruratNama?: string;
+  kontakDaruratHubungan?: string;
+  kontakDaruratNoHp?: string;
+}
+
+export interface PayrollItem {
+  idPegawai: string;
+  nama: string;
+  namaPanggilan?: string;
+  jabatan: string;
+  statusPegawai: string;
+  statusKepegawaian?: string;
+  bank?: string;
+  noRekening?: string;
+  namaRekening?: string;
+  noHp?: string;
+
+  periode: string; // "YYYY-MM"
+  gajiPokok: number;
+  tunjangan: number;
+  bonusKomisi: number;
+  potongan: number;
+  totalGajiBersih: number;
+
+  jumlahHadir: number;
+  totalJamKerja: number;
+  jumlahTelat: number;
+  totalOmzetDihasilkan?: number;
+  totalTransaksiDihasilkan?: number;
+
+  statusPembayaran: 'Belum Dibayar' | 'Sudah Dibayar';
+  tanggalPembayaran?: string;
+  metodePembayaran?: string;
+  catatan?: string;
+}
+
+export interface PayrollSummary {
+  periode: string;
+  totalGajiPokok: number;
+  totalTunjangan: number;
+  totalBonus: number;
+  totalPotongan: number;
+  totalPengeluaranGaji: number;
+  totalPegawai: number;
+  sudahDibayarCount: number;
+  belumDibayarCount: number;
+  items: PayrollItem[];
 }
 
 export interface Mesin {
@@ -143,3 +234,4 @@ export interface BahanInventory {
   satuan: string;
   minStok: number;
 }
+
