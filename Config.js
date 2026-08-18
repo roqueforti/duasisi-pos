@@ -47,7 +47,7 @@ const ALLOWED_API_ACTIONS = Object.freeze({
 const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true, recoverPin: true });
 const MANAGER_API_ACTIONS = Object.freeze({
   tambahLayanan: true, updateLayanan: true, toggleAktifLayanan: true, hapusLayanan: true,
-  tambahInventory: true, hapusInventory: true, updateInventoryItem: true, updateStokInventory: true,
+  tambahInventory: true, hapusInventory: true, updateInventoryItem: true,
   tambahMesin: true, hapusMesin: true,
   tambahPromo: true, hapusPromo: true, editPromo: true,
   tambahPegawai: true, hapusPegawai: true,

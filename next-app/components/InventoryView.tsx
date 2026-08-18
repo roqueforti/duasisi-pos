@@ -115,11 +115,38 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   };
 
   const handleUpdateStok = async (id: string, delta: number) => {
+    // 1. Simpan salinan state lama untuk rollback jika terjadi kesalahan
+    const previousItems = [...items];
+
+    // 2. Optimistic UI update: langsung ubah angka stok di layar secara instan
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const newStok = Math.max(0, Math.round((Number(item.stok) + delta) * 100) / 100);
+          return { ...item, stok: newStok };
+        }
+        return item;
+      })
+    );
+
+    // 3. Bersihkan cache agar refresh data sinkron dengan data baru
+    clearCache('getInventoryList');
+
     try {
-      await runBackend('updateStokInventory', id, delta);
-      loadInventory();
-    } catch (err) {
-      await showAlert('Gagal mengupdate stok', 'error');
+      const res = await runBackend<{ success: boolean; stokBaru?: number; message?: string }>(
+        'updateStokInventory',
+        id,
+        delta
+      );
+      if (res && res.success && res.stokBaru !== undefined) {
+        setItems((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, stok: res.stokBaru! } : item))
+        );
+      }
+    } catch (err: any) {
+      // Rollback jika request gagal
+      setItems(previousItems);
+      await showAlert(`Gagal mengubah stok: ${err?.message || String(err)}`, 'error');
     }
   };
 
@@ -127,10 +154,11 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     const isConfirmed = await showConfirm(`Hapus barang ${namaBarang}?`);
     if (!isConfirmed) return;
     try {
+      clearCache('getInventoryList');
       await runBackend('hapusInventory', id);
       loadInventory();
-    } catch (err) {
-      await showAlert('Gagal menghapus barang', 'error');
+    } catch (err: any) {
+      await showAlert(`Gagal menghapus barang: ${err?.message || String(err)}`, 'error');
     }
   };
 
@@ -278,15 +306,16 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => handleUpdateStok(item.id, -1)}
-                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold"
-                              title="Kurangi Stok"
+                              disabled={item.stok <= 0}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 rounded text-xs font-bold transition shadow-xs select-none"
+                              title="Kurangi Stok (-1)"
                             >
                               -1
                             </button>
                             <button
                               onClick={() => handleUpdateStok(item.id, 1)}
-                              className="px-2 py-1 bg-[#1E4648] hover:bg-[#163536] text-white rounded text-xs font-bold"
-                              title="Tambah Stok"
+                              className="px-2.5 py-1 bg-[#1E4648] hover:bg-[#163536] active:bg-[#102728] text-white rounded text-xs font-bold transition shadow-xs select-none"
+                              title="Tambah Stok (+1)"
                             >
                               +1
                             </button>
