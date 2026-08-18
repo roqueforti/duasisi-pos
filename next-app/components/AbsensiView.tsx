@@ -23,7 +23,8 @@ import {
   Check, 
   X,
   ChevronRight,
-  TrendingDown
+  TrendingDown,
+  Sparkles
 } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { 
@@ -95,6 +96,7 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
   const [selectedBulanJadwal, setSelectedBulanJadwal] = useState(currentMonthStr);
   const [jadwalList, setJadwalList] = useState<JadwalKerjaItem[]>([]);
   const [showAddJadwalModal, setShowAddJadwalModal] = useState(false);
+  const [jadwalModalMode, setJadwalModalMode] = useState<'single' | 'weekly_off'>('weekly_off');
   const [formJadwal, setFormJadwal] = useState({
     idPegawai: '',
     namaPegawai: '',
@@ -103,6 +105,66 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
     status: 'Masuk' as 'Masuk' | 'Libur' | 'Cuti' | 'Tukar Shift',
     catatan: ''
   });
+
+  // Auto Roster with 1 Day Off per Week
+  const [autoHariLibur, setAutoHariLibur] = useState<string>('Minggu');
+  const [autoShiftUtama, setAutoShiftUtama] = useState<string>('Shift 1 (Pagi)');
+
+  const handleGenerateMonthlyRoster = async () => {
+    if (!formJadwal.idPegawai) {
+      await showAlert('Pilih pegawai terlebih dahulu!', 'warning');
+      return;
+    }
+    const targetBulan = selectedBulanJadwal || currentMonthStr;
+    const [yearStr, monthStr] = targetBulan.split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const targetPeg = pegawaiList.find(p => p.id === formJadwal.idPegawai);
+    const namaPeg = targetPeg ? targetPeg.nama : formJadwal.namaPegawai;
+
+    const rowsToSave: any[] = [];
+    let liburCount = 0;
+    let kerjaCount = 0;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateObj = new Date(year, month - 1, day);
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dayIndex = (dateObj.getDay() + 6) % 7; // 0: Senin, 6: Minggu
+      const dayName = HARI_NAMES[dayIndex];
+
+      const isOffDay = dayName.toLowerCase() === autoHariLibur.toLowerCase();
+      if (isOffDay) liburCount++;
+      else kerjaCount++;
+
+      rowsToSave.push({
+        idPegawai: formJadwal.idPegawai,
+        namaPegawai: namaPeg,
+        tanggal: dateStr,
+        hari: dayName,
+        shift: isOffDay ? 'Libur / Off Day' : autoShiftUtama,
+        status: isOffDay ? 'Libur' : 'Masuk',
+        catatan: isOffDay ? `Jatah Libur Mingguan (${dayName})` : 'Bertugas'
+      });
+    }
+
+    setLoading(true);
+    try {
+      await runBackend('saveJadwalKerjaBatch', rowsToSave);
+      setShowAddJadwalModal(false);
+      await showAlert(
+        `Roster ${namaPeg} berhasil digenerate untuk ${daysInMonth} hari (${kerjaCount} hari kerja & ${liburCount} hari libur setiap ${autoHariLibur})!`,
+        'success'
+      );
+      loadInitialData();
+    } catch (err) {
+      console.error(err);
+      await showAlert('Gagal generate roster bulanan', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Cuti & Izin State
   const [cutiList, setCutiList] = useState<CutiItem[]>([]);
@@ -586,13 +648,30 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
               />
             </div>
 
-            <button
-              onClick={() => setShowAddJadwalModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Penugasan Jadwal</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => {
+                  setJadwalModalMode('weekly_off');
+                  setShowAddJadwalModal(true);
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                title="Generate otomatis 1 bulan jadwal dengan jatah 1 hari libur per minggu"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Auto Roster (6 Kerja + 1 Libur)</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setJadwalModalMode('single');
+                  setShowAddJadwalModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Jadwal Harian</span>
+              </button>
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
@@ -936,85 +1015,236 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
         </div>
       )}
 
-      {/* ==================== MODAL TAMBAH JADWAL ==================== */}
+      {/* ==================== MODAL TAMBAH JADWAL & JATAH LIBUR MINGGUAN ==================== */}
       {showAddJadwalModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 my-8">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-              <h3 className="font-bold text-slate-800 text-sm">Tambah Penugasan Roster Jadwal</h3>
-              <button onClick={() => setShowAddJadwalModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4 text-[#1E4648]" />
+                  <span>Penugasan Roster & Jatah Libur Mingguan</span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">Atur jadwal kerja dan tetapkan jatah 1 hari libur dalam seminggu</p>
+              </div>
+              <button onClick={() => setShowAddJadwalModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Pilih Pegawai *</label>
-                <select
-                  value={formJadwal.idPegawai}
-                  onChange={e => {
-                    const p = pegawaiList.find(x => x.id === e.target.value);
-                    setFormJadwal({ ...formJadwal, idPegawai: e.target.value, namaPegawai: p?.nama || '' });
-                  }}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
-                >
-                  {pegawaiList.map(p => (
-                    <option key={p.id} value={p.id}>{p.nama} ({p.jabatan})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Tanggal *</label>
-                <input
-                  type="date"
-                  value={formJadwal.tanggal}
-                  onChange={e => setFormJadwal({ ...formJadwal, tanggal: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Shift</label>
-                <select
-                  value={formJadwal.shift}
-                  onChange={e => setFormJadwal({ ...formJadwal, shift: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
-                >
-                  {shiftList.map(s => (
-                    <option key={s.id} value={s.nama}>{s.nama} ({formatTime(s.jamMasuk)} - {formatTime(s.jamKeluar)})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Status Roster</label>
-                <select
-                  value={formJadwal.status}
-                  onChange={e => setFormJadwal({ ...formJadwal, status: e.target.value as any })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
-                >
-                  <option value="Masuk">Masuk Bertugas</option>
-                  <option value="Libur">Hari Libur Mingguan</option>
-                  <option value="Cuti">Cuti / Izin</option>
-                  <option value="Tukar Shift">Tukar Shift</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Catatan</label>
-                <input
-                  type="text"
-                  value={formJadwal.catatan}
-                  onChange={e => setFormJadwal({ ...formJadwal, catatan: e.target.value })}
-                  placeholder="Catatan penugasan..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
-                />
-              </div>
+            {/* Mode Switcher */}
+            <div className="flex bg-slate-100 p-1 rounded-xl mb-4 gap-1">
+              <button
+                type="button"
+                onClick={() => setJadwalModalMode('weekly_off')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  jadwalModalMode === 'weekly_off' 
+                    ? 'bg-[#1E4648] text-white shadow-2xs' 
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Pola 6 Kerja + 1 Libur</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setJadwalModalMode('single')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  jadwalModalMode === 'single' 
+                    ? 'bg-[#1E4648] text-white shadow-2xs' 
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <CalendarIcon className="w-3.5 h-3.5" />
+                <span>Jadwal Harian / Manual</span>
+              </button>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-4">
-              <button onClick={() => setShowAddJadwalModal(false)} className="px-3.5 py-2 bg-slate-100 rounded-xl font-bold">Batal</button>
-              <button onClick={handleSaveJadwal} className="px-4 py-2 bg-[#1E4648] text-white rounded-xl font-bold">Simpan Jadwal</button>
-            </div>
+            {/* MODE 1: WEEKLY OFF-DAY AUTO ROSTER GENERATOR */}
+            {jadwalModalMode === 'weekly_off' ? (
+              <div className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Pilih Pegawai *</label>
+                  <select
+                    value={formJadwal.idPegawai}
+                    onChange={e => {
+                      const p = pegawaiList.find(x => x.id === e.target.value);
+                      setFormJadwal({ ...formJadwal, idPegawai: e.target.value, namaPegawai: p?.nama || '' });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:border-[#1E4648]"
+                  >
+                    {pegawaiList.map(p => (
+                      <option key={p.id} value={p.id}>{p.nama} ({p.jabatan})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Bulan Roster *</label>
+                    <input
+                      type="month"
+                      value={selectedBulanJadwal}
+                      onChange={e => setSelectedBulanJadwal(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:border-[#1E4648]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Shift Kerja Utama</label>
+                    <select
+                      value={autoShiftUtama}
+                      onChange={e => setAutoShiftUtama(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 focus:outline-none focus:border-[#1E4648]"
+                    >
+                      {shiftList.map(s => (
+                        <option key={s.id} value={s.nama}>{s.nama} ({formatTime(s.jamMasuk)} - {formatTime(s.jamKeluar)})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Day Off Selector (1 Day Off / Week) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block font-bold text-slate-800">
+                      Jatah Hari Libur Mingguan (1 Hari / Minggu) *
+                    </label>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Libur: {autoHariLibur}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mb-2">Pilih hari libur tetap dalam seminggu untuk pegawai ini:</p>
+                  
+                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                    {HARI_NAMES.map(h => {
+                      const isSelected = autoHariLibur.toLowerCase() === h.toLowerCase();
+                      return (
+                        <button
+                          key={h}
+                          type="button"
+                          onClick={() => setAutoHariLibur(h)}
+                          className={`py-2 px-1 rounded-xl text-center font-bold text-xs transition border ${
+                            isSelected
+                              ? 'bg-rose-500 text-white border-rose-600 shadow-xs ring-2 ring-rose-200'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <div className="text-[9px] opacity-80 uppercase tracking-tighter">Hari</div>
+                          <div className="font-extrabold">{h.slice(0, 3)}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Summary Box */}
+                <div className="bg-teal-50/70 border border-teal-200/80 p-3.5 rounded-2xl space-y-1">
+                  <div className="font-bold text-[#1E4648] text-xs flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5 text-teal-600" />
+                    <span>Ringkasan Penugasan Otomatis:</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Pegawai <strong>{pegawaiList.find(p => p.id === formJadwal.idPegawai)?.nama || 'Pegawai'}</strong> akan bertugas <strong>6 hari kerja ({autoShiftUtama})</strong> dan mendapatkan jatah <strong>libur 1 hari setiap minggu pada hari {autoHariLibur}</strong> untuk seluruh tanggal di bulan terpilih.
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-4">
+                  <button onClick={() => setShowAddJadwalModal(false)} className="px-3.5 py-2 bg-slate-100 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition">
+                    Batal
+                  </button>
+                  <button
+                    disabled={loading}
+                    onClick={handleGenerateMonthlyRoster}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{loading ? 'Memproses...' : 'Terapkan Roster 1 Bulan'}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* MODE 2: SINGLE DAY JADWAL MANUAL */
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Pilih Pegawai *</label>
+                  <select
+                    value={formJadwal.idPegawai}
+                    onChange={e => {
+                      const p = pegawaiList.find(x => x.id === e.target.value);
+                      setFormJadwal({ ...formJadwal, idPegawai: e.target.value, namaPegawai: p?.nama || '' });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                  >
+                    {pegawaiList.map(p => (
+                      <option key={p.id} value={p.id}>{p.nama} ({p.jabatan})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tanggal *</label>
+                  <input
+                    type="date"
+                    value={formJadwal.tanggal}
+                    onChange={e => setFormJadwal({ ...formJadwal, tanggal: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Status Roster</label>
+                  <select
+                    value={formJadwal.status}
+                    onChange={e => {
+                      const st = e.target.value as any;
+                      setFormJadwal({ 
+                        ...formJadwal, 
+                        status: st,
+                        shift: st === 'Libur' ? 'Libur / Off Day' : formJadwal.shift,
+                        catatan: st === 'Libur' ? 'Jatah Libur Mingguan' : formJadwal.catatan
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                  >
+                    <option value="Masuk">Masuk Bertugas</option>
+                    <option value="Libur">🛌 Hari Libur Mingguan (Off Day)</option>
+                    <option value="Cuti">Cuti / Izin</option>
+                    <option value="Tukar Shift">Tukar Shift</option>
+                  </select>
+                </div>
+
+                {formJadwal.status !== 'Libur' && (
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Shift</label>
+                    <select
+                      value={formJadwal.shift}
+                      onChange={e => setFormJadwal({ ...formJadwal, shift: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                    >
+                      {shiftList.map(s => (
+                        <option key={s.id} value={s.nama}>{s.nama} ({formatTime(s.jamMasuk)} - {formatTime(s.jamKeluar)})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Catatan</label>
+                  <input
+                    type="text"
+                    value={formJadwal.catatan}
+                    onChange={e => setFormJadwal({ ...formJadwal, catatan: e.target.value })}
+                    placeholder="Catatan penugasan..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-4">
+                  <button onClick={() => setShowAddJadwalModal(false)} className="px-3.5 py-2 bg-slate-100 rounded-xl font-bold">Batal</button>
+                  <button onClick={handleSaveJadwal} className="px-4 py-2 bg-[#1E4648] text-white rounded-xl font-bold">Simpan Jadwal</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

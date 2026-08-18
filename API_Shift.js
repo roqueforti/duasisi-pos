@@ -675,20 +675,44 @@ function saveJadwalKerjaBatch(rows) {
     sh = SS.insertSheet(SHEET_JADWAL);
     sh.appendRow(["ID", "ID Pegawai", "Nama Pegawai", "Tanggal", "Hari", "Shift", "Status", "Catatan"]);
   }
-  if (Array.isArray(rows)) {
+  if (Array.isArray(rows) && rows.length > 0) {
+    const existing = sh.getDataRange().getValues();
+    const toAppend = [];
     rows.forEach(r => {
-      const id = r.id || generateId("JDW");
-      sh.appendRow([
-        id,
-        r.idPegawai || "",
-        r.namaPegawai || "",
-        r.tanggal ? new Date(r.tanggal) : new Date(),
-        r.hari || "",
-        r.shift || "Shift 1 (Pagi)",
-        r.status || "Masuk",
-        r.catatan || ""
-      ]);
+      const tglStr = r.tanggal ? (r.tanggal instanceof Date ? fmtWib(r.tanggal, "yyyy-MM-dd") : String(r.tanggal).slice(0, 10)) : "";
+      let foundIdx = -1;
+      for (let i = 1; i < existing.length; i++) {
+        const rowTgl = existing[i][3] ? fmtWib(existing[i][3], "yyyy-MM-dd") : "";
+        if (existing[i][1] === r.idPegawai && rowTgl === tglStr) {
+          foundIdx = i;
+          break;
+        }
+      }
+      if (foundIdx !== -1) {
+        // Update existing row
+        sh.getRange(foundIdx + 1, 3).setValue(r.namaPegawai || "");
+        sh.getRange(foundIdx + 1, 5).setValue(r.hari || "");
+        sh.getRange(foundIdx + 1, 6).setValue(r.shift || "Shift 1 (Pagi)");
+        sh.getRange(foundIdx + 1, 7).setValue(r.status || "Masuk");
+        sh.getRange(foundIdx + 1, 8).setValue(r.catatan || "");
+      } else {
+        const id = r.id || generateId("JDW");
+        toAppend.push([
+          id,
+          r.idPegawai || "",
+          r.namaPegawai || "",
+          r.tanggal ? new Date(r.tanggal) : new Date(),
+          r.hari || "",
+          r.shift || "Shift 1 (Pagi)",
+          r.status || "Masuk",
+          r.catatan || ""
+        ]);
+      }
     });
+
+    if (toAppend.length > 0) {
+      toAppend.forEach(row => sh.appendRow(row));
+    }
   }
   return { success: true, message: "Jadwal kerja berhasil disimpan!" };
 }
