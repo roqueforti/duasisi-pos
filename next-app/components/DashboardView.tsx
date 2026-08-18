@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   ShoppingCart, 
-  DollarSign, 
   Clock, 
   AlertTriangle, 
   Cpu, 
@@ -30,6 +29,7 @@ import {
   Lightbulb,
   X
 } from 'lucide-react';
+import RupiahIcon from '@/components/RupiahIcon';
 import { UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { useDialog } from '@/components/DialogProvider';
@@ -284,7 +284,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         {/* Metric 2: Omzet Today */}
         <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
           <div className="w-10 h-10 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold shrink-0">
-            <DollarSign className="w-5 h-5" />
+            <RupiahIcon className="w-5 h-5" />
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Omzet Hari Ini</div>

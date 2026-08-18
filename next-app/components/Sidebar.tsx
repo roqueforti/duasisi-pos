@@ -19,9 +19,9 @@ import {
   ClipboardList,
   GitMerge,
   ShieldCheck,
-  FolderOpen,
-  DollarSign
+  FolderOpen
 } from 'lucide-react';
+import RupiahIcon from '@/components/RupiahIcon';
 import { useDialog } from '@/components/DialogProvider';
 
 interface SidebarProps {
@@ -214,7 +214,7 @@ export default function Sidebar({
                 {!isCollapsed && <span>Data Pegawai</span>}
               </button>
               <button className={navClass('payroll')} onClick={() => handleNavClick('payroll')} title="Payroll & Gaji">
-                <DollarSign className={`w-[18px] h-[18px] shrink-0 ${iconClass('payroll')}`} />
+                <RupiahIcon className={`w-[18px] h-[18px] shrink-0 ${iconClass('payroll')}`} />
                 {!isCollapsed && <span>Payroll & Gaji</span>}
               </button>
               <button className={navClass('shift')} onClick={() => handleNavClick('shift')} title="Shift & Absensi">

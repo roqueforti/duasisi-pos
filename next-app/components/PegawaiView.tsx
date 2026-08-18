@@ -23,9 +23,9 @@ import {
   User, 
   CheckCircle2, 
   X,
-  Building,
-  DollarSign
+  Building
 } from 'lucide-react';
+import RupiahIcon from '@/components/RupiahIcon';
 import { runBackend } from '@/lib/api';
 import { toCSV, downloadCSV } from '@/lib/csvUtils';
 import { UserRole, PegawaiDetail } from '@/lib/types';
@@ -449,7 +449,7 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
                   activeTab === 'penggajian' ? 'bg-white text-[#1E4648] shadow-xs' : 'text-slate-600 hover:text-slate-800'
                 }`}
               >
-                <CreditCard className="w-3.5 h-3.5" /> Payroll
+                <RupiahIcon className="w-3.5 h-3.5" /> Payroll
               </button>
               <button
                 type="button"

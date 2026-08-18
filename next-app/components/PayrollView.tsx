@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  DollarSign, 
   Calendar, 
   RefreshCw, 
   Download, 
@@ -23,6 +22,7 @@ import {
   ShieldCheck,
   Edit2
 } from 'lucide-react';
+import RupiahIcon from '@/components/RupiahIcon';
 import { runBackend } from '@/lib/api';
 import { toCSV, downloadCSV } from '@/lib/csvUtils';
 import { UserRole, PayrollItem, PayrollSummary } from '@/lib/types';
@@ -265,7 +265,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs print:hidden">
         <div>
           <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2.5">
-            <DollarSign className="w-6 h-6 text-[#1E4648]" />
+            <RupiahIcon className="w-6 h-6 text-[#1E4648]" />
             <span>Payroll & Penggajian Karyawan</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
@@ -323,7 +323,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
         <div className="bg-gradient-to-br from-[#1E4648] to-[#122B2C] text-white p-5 rounded-2xl shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold text-teal-200 uppercase tracking-wider">Total Gaji Bersih</span>
-            <DollarSign className="w-5 h-5 text-amber-300" />
+            <RupiahIcon className="w-5 h-5 text-amber-300" />
           </div>
           <div>
             <div className="text-2xl font-black tracking-tight">
@@ -534,7 +534,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
               {filteredItems.length === 0 && (
                 <tr>
                   <td colSpan={10} className="py-10 text-center text-slate-400">
-                    <DollarSign className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <RupiahIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p className="font-semibold text-xs">Tidak ada data payroll untuk periode {bulanLabel} {selectedTahun}.</p>
                   </td>
                 </tr>

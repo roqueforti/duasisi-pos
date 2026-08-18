@@ -22,7 +22,7 @@ import LangkahView from '@/components/LangkahView';
 import PayrollView from '@/components/PayrollView';
 import KeamananView from '@/components/KeamananView';
 import { UserRole } from '@/lib/types';
-import { clearBackendSession, parseSessionToken, onSessionExpired, notifySessionExpired } from '@/lib/api';
+import { clearBackendSession, parseSessionToken, onSessionExpired, notifySessionExpired, isSessionIdleExpired, touchSessionActivity } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 
 export default function HomePage() {
@@ -34,18 +34,19 @@ export default function HomePage() {
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
 
-  // Restore session & Setup auto-expiration checks
+  // Restore session & Setup 30-minute inactivity auto-expiration with interaction reset
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     // Check existing session
     const payload = parseSessionToken();
     if (payload) {
-      if (payload.exp > Date.now()) {
+      if (!isSessionIdleExpired()) {
         setCurrentRole(payload.role);
         setCurrentTab(payload.role === 'MANAGER' ? 'dashboard' : 'transaksi');
+        touchSessionActivity();
       } else {
-        notifySessionExpired('Sesi sebelumnya telah kedaluwarsa. Silakan masukkan PIN untuk melanjutkan.');
+        notifySessionExpired('Sesi sebelumnya telah kedaluwarsa karena tidak ada aktivitas. Silakan masukkan PIN untuk melanjutkan.');
       }
     }
 
@@ -55,17 +56,32 @@ export default function HomePage() {
       setSessionNotice(message);
     });
 
-    // Heartbeat checker to automatically detect expiration when tab is idle
+    // Global interaction listeners to reset 30-minute idle countdown
+    let lastTouch = 0;
+    const handleUserInteraction = () => {
+      const now = Date.now();
+      // Throttle recording to once every 5 seconds to optimize performance
+      if (now - lastTouch > 5000) {
+        lastTouch = now;
+        touchSessionActivity();
+      }
+    };
+
+    const interactionEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    interactionEvents.forEach((ev) => window.addEventListener(ev, handleUserInteraction, { passive: true }));
+
+    // Heartbeat checker to automatically detect expiration when tab is idle for 30 minutes
     const checkExpiration = () => {
       const activePayload = parseSessionToken();
-      if (activePayload && activePayload.exp <= Date.now()) {
-        notifySessionExpired('Sesi Anda telah kedaluwarsa. Silakan masukkan PIN kembali.');
+      if (activePayload && isSessionIdleExpired()) {
+        notifySessionExpired('Sesi Anda telah kedaluwarsa karena tidak ada aktivitas selama 30 menit. Silakan masukkan PIN kembali.');
       }
     };
 
     const interval = setInterval(checkExpiration, 15000);
     return () => {
       unsubscribe();
+      interactionEvents.forEach((ev) => window.removeEventListener(ev, handleUserInteraction));
       clearInterval(interval);
     };
   }, []);

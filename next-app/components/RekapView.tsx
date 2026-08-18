@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  BarChart3, Calendar, RefreshCw, TrendingUp, ShoppingBag, DollarSign, Award, 
+  BarChart3, Calendar, RefreshCw, TrendingUp, ShoppingBag, Award, 
   ShieldAlert, CheckCircle, XCircle, FileSpreadsheet, Printer, Download, Clock, History, AlertCircle
 } from 'lucide-react';
+import RupiahIcon from '@/components/RupiahIcon';
 import { runBackend } from '@/lib/api';
 import { Transaksi, AuditLog } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
@@ -217,7 +218,7 @@ export default function RekapView() {
                 activeTab === 'KasShift' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
               }`}
             >
-              <DollarSign className="w-3.5 h-3.5" />
+              <RupiahIcon className="w-3.5 h-3.5" />
               <span>Rekap Kas Shift</span>
             </button>
           </div>
@@ -527,7 +528,7 @@ export default function RekapView() {
       {activeTab === 'KasShift' && (
         <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
           <div className="px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-600 flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-[#1E4648]" />
+            <RupiahIcon className="w-4 h-4 text-[#1E4648]" />
             <span>Rekap Tutup Kasir (Kas Shift)</span>
           </div>
 

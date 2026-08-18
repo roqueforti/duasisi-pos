@@ -4,6 +4,8 @@ import { UserRole } from './types';
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL || 'https://script.google.com/macros/s/AKfycbwhy6jhKdsCJSOrDzVO1Av1NXwK1mgJ5u-_7PsefOihNwhsSnTO1C26RfRHrvqHDyWEMA/exec';
 
 const SESSION_KEY = 'gas_session_token';
+const ACTIVITY_KEY = 'gas_session_last_activity';
+export const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 Menit Tidak Ada Interaksi
 
 export interface BackendSessionPayload {
   role: UserRole;
@@ -11,15 +13,62 @@ export interface BackendSessionPayload {
   exp: number;
 }
 
+export function touchSessionActivity(): void {
+  if (typeof window !== 'undefined') {
+    const now = Date.now();
+    localStorage.setItem(ACTIVITY_KEY, String(now));
+    
+    // Also extend expiration time of stored token payload so client doesn't prematurely drop
+    const currentToken = localStorage.getItem(SESSION_KEY);
+    if (currentToken) {
+      try {
+        const parts = currentToken.split('.');
+        if (parts.length === 2) {
+          let b64 = parts[0].replace(/-/g, '+').replace(/_/g, '/');
+          while (b64.length % 4) b64 += '=';
+          const jsonStr = decodeURIComponent(
+            Array.prototype.map
+              .call(atob(b64), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          );
+          const data = JSON.parse(jsonStr);
+          data.exp = now + SESSION_IDLE_TIMEOUT_MS;
+          
+          // Re-encode payload part
+          const newPayloadStr = unescape(encodeURIComponent(JSON.stringify(data)));
+          let newB64 = btoa(newPayloadStr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          const refreshedToken = `${newB64}.${parts[1]}`;
+          localStorage.setItem(SESSION_KEY, refreshedToken);
+        }
+      } catch (e) {
+        // Silently continue if cannot re-encode
+      }
+    }
+  }
+}
+
+export function getLastActivityTime(): number {
+  if (typeof window !== 'undefined') {
+    const val = localStorage.getItem(ACTIVITY_KEY);
+    if (val) {
+      const num = Number(val);
+      if (!isNaN(num) && num > 0) return num;
+    }
+  }
+  return Date.now();
+}
+
 export function setBackendSession(token: string): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(SESSION_KEY, token);
+    touchSessionActivity();
   }
 }
 
 export function clearBackendSession(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(ACTIVITY_KEY);
   }
 }
 
@@ -51,10 +100,17 @@ export function parseSessionToken(token?: string | null): BackendSessionPayload 
   }
 }
 
+export function isSessionIdleExpired(): boolean {
+  const token = getBackendSession();
+  if (!token) return true;
+  const lastAct = getLastActivityTime();
+  return Date.now() - lastAct > SESSION_IDLE_TIMEOUT_MS;
+}
+
 export function isSessionValid(): boolean {
   const payload = parseSessionToken();
   if (!payload) return false;
-  return Number(payload.exp) > Date.now();
+  return !isSessionIdleExpired();
 }
 
 type SessionExpiredListener = (message: string) => void;
@@ -67,7 +123,7 @@ export function onSessionExpired(listener: SessionExpiredListener): () => void {
   };
 }
 
-export function notifySessionExpired(message = 'Sesi Anda telah kedaluwarsa demi keamanan. Silakan login kembali.'): void {
+export function notifySessionExpired(message = 'Sesi Anda telah kedaluwarsa karena tidak ada aktivitas selama 30 menit. Silakan login kembali.'): void {
   clearBackendSession();
   sessionExpiredListeners.forEach((listener) => {
     try {
@@ -81,13 +137,14 @@ export function notifySessionExpired(message = 'Sesi Anda telah kedaluwarsa demi
 export async function runBackend<T = any>(action: string, ...args: any[]): Promise<T> {
   const sessionToken = getBackendSession();
 
-  // Jika token ada tetapi sudah kedaluwarsa secara lokal
+  // Cek apakah tidak ada interaksi selama 30 menit
   if (sessionToken) {
-    const payload = parseSessionToken(sessionToken);
-    if (payload && payload.exp <= Date.now()) {
-      notifySessionExpired('Sesi Anda telah kedaluwarsa demi keamanan. Silakan login kembali.');
-      throw new Error('Sesi tidak valid atau sudah kedaluwarsa. Silakan login kembali.');
+    if (isSessionIdleExpired()) {
+      notifySessionExpired('Sesi Anda telah kedaluwarsa karena tidak ada aktivitas selama 30 menit. Silakan masukkan PIN kembali.');
+      throw new Error('Sesi kedaluwarsa karena tidak ada aktivitas.');
     }
+    // Refresh user activity timestamp on API call
+    touchSessionActivity();
   }
 
   const payload: Record<string, any> = { action, args };
