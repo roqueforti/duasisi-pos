@@ -42,6 +42,9 @@ const ALLOWED_API_ACTIONS = Object.freeze({
   getPriorityConfig: true, savePriorityConfig: true,
   getKategoriList: true, tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true,
   getAbsensiConfig: true, saveAbsensiConfig: true, updateMasterShift: true,
+  getJadwalKerjaList: true, saveJadwalKerjaBatch: true, hapusJadwalKerja: true,
+  getCutiList: true, tambahCuti: true, updateStatusCuti: true, hapusCuti: true,
+  getHariLiburList: true, tambahHariLibur: true, hapusHariLibur: true,
   getPipelineConfigData: true, savePipelineConfigData: true,
   saveSecuritySettings: true, getSecuritySettings: true, recoverPin: true
 });
@@ -58,6 +61,9 @@ const MANAGER_API_ACTIONS = Object.freeze({
   savePoinConfig: true, savePriorityConfig: true,
   tambahKategori: true, updateKategori: true, hapusKategori: true, toggleAktifKategori: true,
   saveAbsensiConfig: true, updateMasterShift: true,
+  saveJadwalKerjaBatch: true, hapusJadwalKerja: true,
+  updateStatusCuti: true, hapusCuti: true,
+  tambahHariLibur: true, hapusHariLibur: true,
   getPipelineConfigData: true, savePipelineConfigData: true,
   saveSecuritySettings: true, getSecuritySettings: true
 });
@@ -260,16 +266,32 @@ function getAbsensiConfig() {
   const props = PropertiesService.getScriptProperties();
   return {
     jamBuka: props.getProperty("ABSENSI_JAM_BUKA") || "07:00",
-    toleransiTelatMenit: Number(props.getProperty("ABSENSI_TOLERANSI_MENIT") || 15)
+    toleransiTelatMenit: Number(props.getProperty("ABSENSI_TOLERANSI_MENIT") !== null ? props.getProperty("ABSENSI_TOLERANSI_MENIT") : 15),
+    aktifDenda: props.getProperty("ABSENSI_AKTI_DENDA") === "true",
+    tipeDenda: props.getProperty("ABSENSI_TIPE_DENDA") || "MENIT", // "MENIT" | "JAM" | "FLAT"
+    tarifDenda: Number(props.getProperty("ABSENSI_TARIF_DENDA") || 1000),
+    tunjanganKehadiranPerHari: Number(props.getProperty("PAYROLL_TUNJANGAN_KEHADIRAN") || 15000),
+    insentifDropOffPerTahap: Number(props.getProperty("PAYROLL_INSENTIF_DROPOFF") || 1500)
   };
 }
 
-function saveAbsensiConfig(jamBuka, toleransiMenit) {
+function saveAbsensiConfig(config) {
   try {
     const props = PropertiesService.getScriptProperties();
-    props.setProperty("ABSENSI_JAM_BUKA", jamBuka || "07:00");
-    props.setProperty("ABSENSI_TOLERANSI_MENIT", String(Number(toleransiMenit) || 0));
-    return { success: true, message: "Konfigurasi absensi berhasil disimpan!" };
+    if (typeof config === 'object' && config !== null) {
+      if (config.jamBuka !== undefined) props.setProperty("ABSENSI_JAM_BUKA", String(config.jamBuka));
+      if (config.toleransiTelatMenit !== undefined) props.setProperty("ABSENSI_TOLERANSI_MENIT", String(Number(config.toleransiTelatMenit) || 0));
+      if (config.aktifDenda !== undefined) props.setProperty("ABSENSI_AKTI_DENDA", String(config.aktifDenda === true || config.aktifDenda === "true"));
+      if (config.tipeDenda !== undefined) props.setProperty("ABSENSI_TIPE_DENDA", String(config.tipeDenda));
+      if (config.tarifDenda !== undefined) props.setProperty("ABSENSI_TARIF_DENDA", String(Number(config.tarifDenda) || 0));
+      if (config.tunjanganKehadiranPerHari !== undefined) props.setProperty("PAYROLL_TUNJANGAN_KEHADIRAN", String(Number(config.tunjanganKehadiranPerHari) || 0));
+      if (config.insentifDropOffPerTahap !== undefined) props.setProperty("PAYROLL_INSENTIF_DROPOFF", String(Number(config.insentifDropOffPerTahap) || 0));
+    } else {
+      // Legacy signature compatibility
+      props.setProperty("ABSENSI_JAM_BUKA", arguments[0] || "07:00");
+      props.setProperty("ABSENSI_TOLERANSI_MENIT", String(Number(arguments[1]) || 0));
+    }
+    return { success: true, message: "Konfigurasi absensi, denda & insentif berhasil disimpan!" };
   } catch (err) {
     return { success: false, message: err.toString() };
   }

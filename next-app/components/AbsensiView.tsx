@@ -1,21 +1,55 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, LogIn, LogOut, RefreshCw, UserCheck } from 'lucide-react';
+import { 
+  Clock, 
+  LogIn, 
+  LogOut, 
+  RefreshCw, 
+  UserCheck, 
+  Calendar as CalendarIcon, 
+  AlertTriangle, 
+  Settings, 
+  Plus, 
+  Trash2, 
+  CheckCircle, 
+  XCircle, 
+  FileText, 
+  Users, 
+  ShieldAlert, 
+  Sun, 
+  Moon, 
+  Coffee, 
+  Check, 
+  X,
+  ChevronRight,
+  TrendingDown
+} from 'lucide-react';
 import { runBackend } from '@/lib/api';
-import { Pegawai } from '@/lib/types';
+import { 
+  PegawaiDetail, 
+  AbsensiConfig, 
+  JadwalKerjaItem, 
+  CutiItem, 
+  HariLiburItem,
+  UserRole
+} from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import { formatTime } from '@/lib/utils';
+import RupiahIcon from '@/components/RupiahIcon';
 
 interface AbsensiRecord {
   id: string;
   tanggal: string;
+  tanggalRaw?: string;
   namaPegawai: string;
   shift: string;
   clockIn: string;
   clockOut: string;
   durasi: string;
   catatan: string;
+  menitTelat?: number;
+  denda?: number;
 }
 
 interface MasterShift {
@@ -23,46 +57,107 @@ interface MasterShift {
   nama: string;
   jamMasuk: string;
   jamKeluar: string;
+  keterangan?: string;
 }
 
-export default function AbsensiView() {
-  const { showAlert } = useDialog();
-  const [pegawaiList, setPegawaiList] = useState<Pegawai[]>([]);
+const HARI_NAMES = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+
+export default function AbsensiView({ currentRole }: { currentRole?: UserRole } = {}) {
+  const { showAlert, showConfirm } = useDialog();
+  const [activeTab, setActiveTab] = useState<'presensi' | 'jadwal' | 'cuti' | 'libur'>('presensi');
+
+  // Master Data
+  const [pegawaiList, setPegawaiList] = useState<PegawaiDetail[]>([]);
   const [shiftList, setShiftList] = useState<MasterShift[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Presensi State
   const [namaPegawai, setNamaPegawai] = useState('');
   const [shift, setShift] = useState('Shift 1 (Pagi)');
   const [catatan, setCatatan] = useState('');
-  const [loading, setLoading] = useState(false);
   const [rekap, setRekap] = useState<AbsensiRecord[]>([]);
+
+  // Config & Denda State
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [config, setConfig] = useState<AbsensiConfig>({
+    jamBuka: '07:00',
+    toleransiTelatMenit: 15,
+    aktifDenda: false,
+    tipeDenda: 'MENIT',
+    tarifDenda: 1000,
+    tunjanganKehadiranPerHari: 15000,
+    insentifDropOffPerTahap: 1500
+  });
+
+  // Jadwal Kerja State
+  const now = new Date();
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const [selectedBulanJadwal, setSelectedBulanJadwal] = useState(currentMonthStr);
+  const [jadwalList, setJadwalList] = useState<JadwalKerjaItem[]>([]);
+  const [showAddJadwalModal, setShowAddJadwalModal] = useState(false);
+  const [formJadwal, setFormJadwal] = useState({
+    idPegawai: '',
+    namaPegawai: '',
+    tanggal: new Date().toISOString().split('T')[0],
+    shift: 'Shift 1 (Pagi)',
+    status: 'Masuk' as 'Masuk' | 'Libur' | 'Cuti' | 'Tukar Shift',
+    catatan: ''
+  });
+
+  // Cuti & Izin State
+  const [cutiList, setCutiList] = useState<CutiItem[]>([]);
+  const [showAddCutiModal, setShowAddCutiModal] = useState(false);
+  const [formCuti, setFormCuti] = useState({
+    idPegawai: '',
+    namaPegawai: '',
+    jenisCuti: 'Cuti Tahunan',
+    tglMulai: new Date().toISOString().split('T')[0],
+    tglSelesai: new Date().toISOString().split('T')[0],
+    jumlahHari: 1,
+    alasan: ''
+  });
+
+  // Hari Libur State
+  const [liburList, setLiburList] = useState<HariLiburItem[]>([]);
+  const [showAddLiburModal, setShowAddLiburModal] = useState(false);
+  const [formLibur, setFormLibur] = useState({
+    tanggal: new Date().toISOString().split('T')[0],
+    namaLibur: '',
+    kategori: 'Libur Nasional' as 'Libur Nasional' | 'Libur Outlet',
+    keterangan: ''
+  });
 
   const loadInitialData = async () => {
     setLoading(true);
     try {
-      const [rekapRes, pegawaiRes, shiftRes] = await Promise.all([
+      const [rekapRes, pegRes, shiftRes, configRes, jadwalRes, cutiRes, liburRes] = await Promise.all([
         runBackend<AbsensiRecord[]>('getRekapAbsensi').catch(() => []),
-        runBackend<Pegawai[]>('getPegawaiList').catch(() => []),
-        runBackend<MasterShift[]>('getMasterShiftList').catch(() => [])
+        runBackend<PegawaiDetail[]>('getPegawaiList').catch(() => []),
+        runBackend<MasterShift[]>('getMasterShiftList').catch(() => []),
+        runBackend<AbsensiConfig>('getAbsensiConfig').catch(() => null),
+        runBackend<JadwalKerjaItem[]>('getJadwalKerjaList', selectedBulanJadwal).catch(() => []),
+        runBackend<CutiItem[]>('getCutiList', selectedBulanJadwal).catch(() => []),
+        runBackend<HariLiburItem[]>('getHariLiburList', String(now.getFullYear())).catch(() => [])
       ]);
 
       if (Array.isArray(rekapRes)) setRekap(rekapRes);
-      if (Array.isArray(pegawaiRes) && pegawaiRes.length > 0) {
-        const activeStaff = pegawaiRes.filter((s: any) => s.status !== 'Resign' && s.status !== 'Non-Aktif');
+      if (Array.isArray(pegRes) && pegRes.length > 0) {
+        const activeStaff = pegRes.filter(s => s.status !== 'Nonaktif' && s.status !== 'Resign');
         setPegawaiList(activeStaff);
         if (activeStaff.length > 0) {
           setNamaPegawai(activeStaff[0].nama);
+          setFormJadwal(prev => ({ ...prev, idPegawai: activeStaff[0].id, namaPegawai: activeStaff[0].nama }));
+          setFormCuti(prev => ({ ...prev, idPegawai: activeStaff[0].id, namaPegawai: activeStaff[0].nama }));
         }
-      } else {
-        setPegawaiList([
-          { nama: 'Siti Rahma', jabatan: 'Kasir', role: 'STAFF' },
-          { nama: 'Budi Santoso', jabatan: 'Operator Laundry', role: 'STAFF' }
-        ]);
-        setNamaPegawai('Siti Rahma');
       }
-
       if (Array.isArray(shiftRes) && shiftRes.length > 0) {
         setShiftList(shiftRes);
         setShift(shiftRes[0].nama);
       }
+      if (configRes) setConfig(configRes);
+      if (Array.isArray(jadwalRes)) setJadwalList(jadwalRes);
+      if (Array.isArray(cutiRes)) setCutiList(cutiRes);
+      if (Array.isArray(liburRes)) setLiburList(liburRes);
     } catch (err) {
       console.error(err);
     } finally {
@@ -72,14 +167,15 @@ export default function AbsensiView() {
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [selectedBulanJadwal]);
 
+  // Presensi Actions
   const handleClockIn = async () => {
     if (!namaPegawai.trim()) { await showAlert('Pilih nama pegawai!', 'warning'); return; }
     setLoading(true);
     try {
-      const res = await runBackend<{message: string}>('clockInPegawai', namaPegawai.trim(), shift, catatan.trim());
-      await showAlert(res.message || 'Clock In Berhasil', 'success');
+      const res = await runBackend<{ message: string }>('clockInPegawai', namaPegawai.trim(), shift, catatan.trim());
+      await showAlert(res?.message || 'Clock In Berhasil', 'success');
       setCatatan('');
       loadInitialData();
     } catch (err) {
@@ -93,8 +189,8 @@ export default function AbsensiView() {
     if (!namaPegawai.trim()) { await showAlert('Pilih nama pegawai!', 'warning'); return; }
     setLoading(true);
     try {
-      const res = await runBackend<{message: string}>('clockOutPegawai', namaPegawai.trim(), catatan.trim());
-      await showAlert(res.message || 'Clock Out Berhasil', 'success');
+      const res = await runBackend<{ message: string }>('clockOutPegawai', namaPegawai.trim(), catatan.trim());
+      await showAlert(res?.message || 'Clock Out Berhasil', 'success');
       setCatatan('');
       loadInitialData();
     } catch (err) {
@@ -104,150 +200,981 @@ export default function AbsensiView() {
     }
   };
 
+  // Config & Denda Actions
+  const handleSaveConfig = async () => {
+    setLoading(true);
+    try {
+      const res = await runBackend<{ success: boolean; message?: string }>('saveAbsensiConfig', config);
+      if (!res?.success) throw new Error(res?.message || 'Gagal menyimpan');
+      setShowConfigModal(false);
+      await showAlert('Pengaturan denda & absensi berhasil disimpan!', 'success');
+      loadInitialData();
+    } catch (err) {
+      await showAlert('Gagal menyimpan konfigurasi absensi.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Jadwal Actions
+  const handleSaveJadwal = async () => {
+    if (!formJadwal.namaPegawai || !formJadwal.tanggal) {
+      await showAlert('Pegawai dan tanggal wajib dipilih!', 'warning');
+      return;
+    }
+    const d = new Date(formJadwal.tanggal);
+    const dayIndex = (d.getDay() + 6) % 7; // 0: Senin
+    const hari = HARI_NAMES[dayIndex];
+
+    setLoading(true);
+    try {
+      await runBackend('saveJadwalKerjaBatch', [{
+        ...formJadwal,
+        hari
+      }]);
+      setShowAddJadwalModal(false);
+      await showAlert('Jadwal kerja berhasil ditambahkan!', 'success');
+      loadInitialData();
+    } catch (err) {
+      await showAlert('Gagal menyimpan jadwal', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteJadwal = async (id: string) => {
+    const confirm = await showConfirm('Hapus jadwal kerja ini?');
+    if (!confirm) return;
+    try {
+      await runBackend('hapusJadwalKerja', id);
+      loadInitialData();
+      await showAlert('Jadwal berhasil dihapus.', 'success');
+    } catch (err) {
+      await showAlert('Gagal menghapus jadwal', 'error');
+    }
+  };
+
+  // Cuti Actions
+  const handleSaveCuti = async () => {
+    if (!formCuti.namaPegawai || !formCuti.tglMulai || !formCuti.tglSelesai) {
+      await showAlert('Lengkapi data pengajuan cuti!', 'warning');
+      return;
+    }
+    setLoading(true);
+    try {
+      await runBackend('tambahCuti', formCuti);
+      setShowAddCutiModal(false);
+      await showAlert('Pengajuan cuti berhasil dicatat!', 'success');
+      loadInitialData();
+    } catch (err) {
+      await showAlert('Gagal mengajukan cuti', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateStatusCuti = async (id: string, status: 'Disetujui' | 'Ditolak') => {
+    try {
+      await runBackend('updateStatusCuti', id, status);
+      loadInitialData();
+      await showAlert(`Status cuti berhasil diubah menjadi ${status}!`, 'success');
+    } catch (err) {
+      await showAlert('Gagal mengubah status cuti', 'error');
+    }
+  };
+
+  const handleDeleteCuti = async (id: string) => {
+    const confirm = await showConfirm('Hapus data cuti ini?');
+    if (!confirm) return;
+    try {
+      await runBackend('hapusCuti', id);
+      loadInitialData();
+      await showAlert('Data cuti berhasil dihapus.', 'success');
+    } catch (err) {
+      await showAlert('Gagal menghapus cuti', 'error');
+    }
+  };
+
+  // Hari Libur Actions
+  const handleSaveLibur = async () => {
+    if (!formLibur.namaLibur || !formLibur.tanggal) {
+      await showAlert('Tanggal dan nama libur wajib diisi!', 'warning');
+      return;
+    }
+    setLoading(true);
+    try {
+      await runBackend('tambahHariLibur', formLibur);
+      setShowAddLiburModal(false);
+      setFormLibur({ tanggal: new Date().toISOString().split('T')[0], namaLibur: '', kategori: 'Libur Nasional', keterangan: '' });
+      await showAlert('Hari libur berhasil ditambahkan!', 'success');
+      loadInitialData();
+    } catch (err) {
+      await showAlert('Gagal menambah libur', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteLibur = async (id: string) => {
+    const confirm = await showConfirm('Hapus hari libur ini?');
+    if (!confirm) return;
+    try {
+      await runBackend('hapusHariLibur', id);
+      loadInitialData();
+      await showAlert('Hari libur dihapus.', 'success');
+    } catch (err) {
+      await showAlert('Gagal menghapus libur', 'error');
+    }
+  };
+
+  // Total denda terakumulasi
+  const totalDendaBulanIni = rekap.reduce((acc, r) => acc + (r.denda || 0), 0);
+
   return (
-    <div className="p-3 md:p-4 space-y-4 w-full">
-      {/* Clock In / Out Box */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4">
-        <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-slate-600">
-          <Clock className="w-4 h-4 text-[#1E4648]" />
-          <span>Presensi Shift Pegawai</span>
+    <div className="p-4 lg:p-6 space-y-6 max-w-7xl mx-auto w-full">
+      
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div>
+          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2.5">
+            <Clock className="w-6 h-6 text-[#1E4648]" />
+            <span>Absensi, Jadwal & Manajemen Cuti</span>
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Presensi shift, jadwal kerja (roster), pengajuan cuti/izin, hari libur, dan kalkulasi denda keterlambatan.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Pilih Pegawai *</label>
-            <select
-              value={namaPegawai}
-              onChange={(e) => setNamaPegawai(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white font-medium text-slate-600"
-            >
-              {pegawaiList.map((p, idx) => (
-                <option key={idx} value={p.nama}>
-                  {p.nama} {p.jabatan ? `(${p.jabatan})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Pilih Shift</label>
-            <select
-              value={shift}
-              onChange={(e) => setShift(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] bg-white text-slate-600"
-            >
-              {shiftList.length > 0 ? (
-                shiftList.map((s, idx) => (
-                  <option key={idx} value={s.nama}>
-                    {s.nama} ({formatTime(s.jamMasuk)} - {formatTime(s.jamKeluar)})
-                  </option>
-                ))
-              ) : (
-                <>
-                  <option value="Shift 1 (Pagi)">Shift 1 (07.00 - 15.00)</option>
-                  <option value="Shift 2 (Sore/Malam)">Shift 2 (15.00 - 23.00)</option>
-                </>
-              )}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Catatan (Opsional)</label>
-            <input
-              type="text"
-              value={catatan}
-              onChange={(e) => setCatatan(e.target.value)}
-              placeholder="Keterangan shift..."
-              className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={handleClockIn}
-            disabled={loading}
-            className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-medium py-2 rounded-md text-xs transition flex items-center justify-center gap-1.5 disabled:opacity-50"
-          >
-            <LogIn className="w-3.5 h-3.5" /> Clock In (Masuk)
-          </button>
-          <button
-            onClick={handleClockOut}
-            disabled={loading}
-            className="flex-1 bg-[#FF9500] hover:bg-amber-700 text-white font-medium py-2 rounded-md text-xs transition flex items-center justify-center gap-1.5 disabled:opacity-50"
-          >
-            <LogOut className="w-3.5 h-3.5" /> Clock Out (Pulang)
-          </button>
-        </div>
-      </div>
-
-      {/* Rekap Absensi Table */}
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden w-full">
-        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-            <UserCheck className="w-4 h-4 text-[#1E4648]" />
-            <span>Riwayat Absensi</span>
-          </div>
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={loadInitialData}
-            className="p-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition"
-            title="Refresh"
+            title="Segarkan Data"
+            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 transition"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+
+          <button
+            onClick={() => setShowConfigModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition shadow-2xs"
+          >
+            <Settings className="w-3.5 h-3.5 text-[#1E4648]" />
+            <span>Pengaturan Denda & Shift</span>
           </button>
         </div>
-
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                <th className="py-3 px-4">Tanggal</th>
-                <th className="py-3 px-4">Pegawai</th>
-                <th className="py-3 px-4">Shift</th>
-                <th className="py-3 px-4">Clock In</th>
-                <th className="py-3 px-4">Clock Out</th>
-                <th className="py-3 px-4">Durasi</th>
-                <th className="py-3 px-4">Catatan</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                Array.from({ length: 4 }).map((_, idx) => (
-                  <tr key={idx} className="animate-pulse">
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-28" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
-                  </tr>
-                ))
-              ) : rekap.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-slate-400">
-                    Belum ada data absensi
-                  </td>
-                </tr>
-              ) : (
-                rekap.map((r) => {
-                  const isLate = r.catatan?.includes('[TERLAMBAT');
-                  return (
-                  <tr key={r.id} className={`hover:bg-slate-50/80 transition-colors ${isLate ? 'bg-rose-50/50' : ''}`}>
-                    <td className="py-3 px-4 text-slate-600 font-medium">{r.tanggal}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-600">{r.namaPegawai}</td>
-                    <td className="py-3 px-4 text-slate-600">{r.shift}</td>
-                    <td className={`py-3 px-4 font-medium ${isLate ? 'text-rose-600' : 'text-[#1E4648]'}`}>{r.clockIn}</td>
-                    <td className="py-3 px-4 text-[#FF9500] font-medium">{r.clockOut || '-'}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-600">{r.durasi}</td>
-                    <td className={`py-3 px-4 ${isLate ? 'text-rose-600 font-medium' : 'text-slate-500'}`}>{r.catatan}</td>
-                  </tr>
-                )})
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
+
+      {/* Navigation Sub-Tabs */}
+      <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 gap-1 overflow-x-auto">
+        {[
+          { id: 'presensi', label: 'Presensi & Rekap', icon: UserCheck },
+          { id: 'jadwal', label: 'Jadwal Kerja (Roster)', icon: CalendarIcon },
+          { id: 'cuti', label: 'Manajemen Cuti & Izin', icon: Coffee },
+          { id: 'libur', label: 'Hari Libur & Kalender', icon: Sun },
+        ].map(t => {
+          const IconComp = t.icon;
+          const isActive = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id as any)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
+                isActive ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              <IconComp className="w-4 h-4" />
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 1. TAB PRESENSI & REKAP */}
+      {/* ========================================================================= */}
+      {activeTab === 'presensi' && (
+        <div className="space-y-5">
+          {/* Clock In / Out Box */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                <Clock className="w-4 h-4 text-[#1E4648]" />
+                <span>Clock In / Clock Out Shift</span>
+              </div>
+
+              {config.aktifDenda && (
+                <div className="flex items-center gap-1.5 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full text-[11px] font-bold text-rose-700">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>
+                    Denda Aktif: Rp {config.tarifDenda.toLocaleString('id-ID')} / {config.tipeDenda === 'MENIT' ? 'Menit' : config.tipeDenda === 'JAM' ? 'Jam' : 'Telat'} (Toleransi {config.toleransiTelatMenit} Menit)
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Nama Pegawai *</label>
+                <select
+                  value={namaPegawai}
+                  onChange={e => setNamaPegawai(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#1E4648]"
+                >
+                  {pegawaiList.map(p => (
+                    <option key={p.id} value={p.nama}>
+                      {p.nama} ({p.jabatan})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Pilih Shift</label>
+                <select
+                  value={shift}
+                  onChange={e => setShift(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#1E4648]"
+                >
+                  {shiftList.length > 0 ? (
+                    shiftList.map(s => (
+                      <option key={s.id} value={s.nama}>
+                        {s.nama} ({formatTime(s.jamMasuk)} - {formatTime(s.jamKeluar)})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Shift 1 (Pagi)">Shift 1 (07:00 - 15:00)</option>
+                      <option value="Shift 2 (Sore/Malam)">Shift 2 (15:00 - 23:00)</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Catatan / Keterangan (Opsional)</label>
+                <input
+                  type="text"
+                  value={catatan}
+                  onChange={e => setCatatan(e.target.value)}
+                  placeholder="Misal: Tukar shift / izin keluar sebentar..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-[#1E4648]"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleClockIn}
+                disabled={loading}
+                className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-50"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Clock In (Masuk Shift)</span>
+              </button>
+              <button
+                onClick={handleClockOut}
+                disabled={loading}
+                className="flex-1 bg-[#FF9500] hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-50"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Clock Out (Selesai Shift)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Rekap Absensi Table */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-[#1E4648]" />
+                <h3 className="text-xs font-bold text-slate-800">Riwayat & Log Kehadiran Pegawai</h3>
+              </div>
+
+              {config.aktifDenda && (
+                <div className="text-xs text-rose-700 font-bold bg-rose-50 px-3 py-1 rounded-xl border border-rose-200">
+                  Total Denda Keterlambatan: Rp {totalDendaBulanIni.toLocaleString('id-ID')}
+                </div>
+              )}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                    <th className="py-3 px-4">Tanggal</th>
+                    <th className="py-3 px-4">Pegawai</th>
+                    <th className="py-3 px-4">Shift</th>
+                    <th className="py-3 px-4">Clock In</th>
+                    <th className="py-3 px-4">Clock Out</th>
+                    <th className="py-3 px-4">Durasi</th>
+                    <th className="py-3 px-4">Denda Keterlambatan</th>
+                    <th className="py-3 px-4">Catatan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {loading ? (
+                    Array.from({ length: 4 }).map((_, idx) => (
+                      <tr key={idx} className="animate-pulse">
+                        <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
+                        <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-28" /></td>
+                        <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
+                        <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
+                        <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
+                        <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
+                        <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
+                        <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
+                      </tr>
+                    ))
+                  ) : rekap.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                        <UserCheck className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="font-semibold text-xs">Belum ada riwayat absensi pada periode ini.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    rekap.map(r => {
+                      const isLate = r.catatan?.includes('[TERLAMBAT');
+                      return (
+                        <tr key={r.id} className={`hover:bg-slate-50/80 transition-colors ${isLate ? 'bg-rose-50/30' : ''}`}>
+                          <td className="py-3 px-4 font-semibold text-slate-700">{r.tanggal}</td>
+                          <td className="py-3 px-4 font-bold text-slate-900">{r.namaPegawai}</td>
+                          <td className="py-3 px-4 text-slate-600">{r.shift}</td>
+                          <td className={`py-3 px-4 font-bold ${isLate ? 'text-rose-600' : 'text-[#1E4648]'}`}>
+                            {r.clockIn}
+                          </td>
+                          <td className="py-3 px-4 text-amber-700 font-semibold">{r.clockOut || '-'}</td>
+                          <td className="py-3 px-4 font-semibold text-slate-700">{r.durasi}</td>
+                          <td className="py-3 px-4">
+                            {r.denda && r.denda > 0 ? (
+                              <span className="bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded text-[11px] border border-rose-200">
+                                - Rp {r.denda.toLocaleString('id-ID')}
+                              </span>
+                            ) : isLate ? (
+                              <span className="text-amber-600 font-semibold text-[11px]">Telat ({r.menitTelat || 0} mnt)</span>
+                            ) : (
+                              <span className="text-emerald-600 font-semibold text-[11px]">Tepat Waktu</span>
+                            )}
+                          </td>
+                          <td className={`py-3 px-4 ${isLate ? 'text-rose-600 font-medium' : 'text-slate-500'}`}>
+                            {r.catatan}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. TAB JADWAL KERJA (ROSTER) */}
+      {/* ========================================================================= */}
+      {activeTab === 'jadwal' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-slate-600">Pilih Bulan Roster:</label>
+              <input
+                type="month"
+                value={selectedBulanJadwal}
+                onChange={e => setSelectedBulanJadwal(e.target.value)}
+                className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#1E4648]"
+              />
+            </div>
+
+            <button
+              onClick={() => setShowAddJadwalModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah Penugasan Jadwal</span>
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                    <th className="py-3.5 px-4">Tanggal & Hari</th>
+                    <th className="py-3.5 px-4">Nama Pegawai</th>
+                    <th className="py-3.5 px-4">Penugasan Shift</th>
+                    <th className="py-3.5 px-4">Status Roster</th>
+                    <th className="py-3.5 px-4">Catatan</th>
+                    <th className="py-3.5 px-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {jadwalList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-slate-400">
+                        <CalendarIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="font-semibold text-xs">Belum ada roster jadwal untuk bulan ini.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    jadwalList.map(j => (
+                      <tr key={j.id} className="hover:bg-slate-50 transition">
+                        <td className="py-3 px-4 font-bold text-slate-800">
+                          {j.tanggal} <span className="text-slate-400 font-semibold">({j.hari})</span>
+                        </td>
+                        <td className="py-3 px-4 font-bold text-[#1E4648]">{j.namaPegawai}</td>
+                        <td className="py-3 px-4 text-slate-700">{j.shift}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            j.status === 'Masuk' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                            j.status === 'Libur' ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
+                            {j.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-500">{j.catatan || '-'}</td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => handleDeleteJadwal(j.id)}
+                            className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                            title="Hapus Jadwal"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. TAB MANAJEMEN CUTI & IZIN */}
+      {/* ========================================================================= */}
+      {activeTab === 'cuti' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="text-xs font-bold text-slate-600">
+              Daftar Permohonan & Catatan Cuti Pegawai
+            </div>
+
+            <button
+              onClick={() => setShowAddCutiModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Ajukan / Catat Cuti Baru</span>
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                    <th className="py-3.5 px-4">Pegawai</th>
+                    <th className="py-3.5 px-4">Jenis Cuti</th>
+                    <th className="py-3.5 px-4">Rentang Tanggal</th>
+                    <th className="py-3.5 px-4">Durasi</th>
+                    <th className="py-3.5 px-4">Alasan</th>
+                    <th className="py-3.5 px-4">Status Persetujuan</th>
+                    <th className="py-3.5 px-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {cutiList.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <Coffee className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="font-semibold text-xs">Belum ada data pengajuan cuti.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    cutiList.map(c => (
+                      <tr key={c.id} className="hover:bg-slate-50 transition">
+                        <td className="py-3 px-4 font-bold text-slate-900">{c.namaPegawai}</td>
+                        <td className="py-3 px-4 font-semibold text-teal-800">{c.jenisCuti}</td>
+                        <td className="py-3 px-4 text-slate-700">
+                          {c.tglMulai} s/d {c.tglSelesai}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-slate-800">{c.jumlahHari} Hari</td>
+                        <td className="py-3 px-4 text-slate-600">{c.alasan || '-'}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                            c.status === 'Disetujui' ? 'bg-emerald-100 text-emerald-800' :
+                            c.status === 'Pending' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {c.status === 'Pending' && (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateStatusCuti(c.id, 'Disetujui')}
+                                  className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                                  title="Setujui Cuti"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateStatusCuti(c.id, 'Ditolak')}
+                                  className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                                  title="Tolak Cuti"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
+                            <button
+                              onClick={() => handleDeleteCuti(c.id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. TAB HARI LIBUR & KALENDER */}
+      {/* ========================================================================= */}
+      {activeTab === 'libur' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="text-xs font-bold text-slate-600">
+              Daftar Tanggal Merah Nasional & Hari Libur Outlet
+            </div>
+
+            <button
+              onClick={() => setShowAddLiburModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah Hari Libur</span>
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                    <th className="py-3.5 px-4">Tanggal</th>
+                    <th className="py-3.5 px-4">Nama Hari Libur</th>
+                    <th className="py-3.5 px-4">Kategori</th>
+                    <th className="py-3.5 px-4">Keterangan</th>
+                    <th className="py-3.5 px-4 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {liburList.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-slate-400">
+                        <Sun className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                        <p className="font-semibold text-xs">Belum ada data hari libur khusus yang dicatat.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    liburList.map(l => (
+                      <tr key={l.id} className="hover:bg-slate-50 transition">
+                        <td className="py-3 px-4 font-bold text-rose-600">{l.tanggal}</td>
+                        <td className="py-3 px-4 font-bold text-slate-800">{l.namaLibur}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                            l.kategori === 'Libur Nasional' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-teal-50 text-teal-800 border border-teal-200'
+                          }`}>
+                            {l.kategori}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-500">{l.keterangan || '-'}</td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => handleDeleteLibur(l.id)}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition"
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL PENGATURAN DENDA & SHIFT ==================== */}
+      {showConfigModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-4">
+              <div>
+                <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-[#1E4648]" />
+                  <span>Pengaturan Denda & Parameter Absensi</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Konfigurasi keterlambatan, toleransi, dan insentif payroll</p>
+              </div>
+              <button onClick={() => setShowConfigModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Toleransi Menit */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Toleransi Keterlambatan (Menit)</label>
+                <input
+                  type="number"
+                  value={config.toleransiTelatMenit}
+                  onChange={e => setConfig({ ...config, toleransiTelatMenit: Number(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[#1E4648] focus:outline-none focus:border-[#1E4648]"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Contoh: 15 menit pertama tidak dikenakan denda.</p>
+              </div>
+
+              {/* Denda Toggle */}
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="font-bold text-slate-800 block text-xs">Denda Keterlambatan (Opsional)</label>
+                    <span className="text-[10px] text-slate-500">Aktifkan pemotongan otomatis pada payroll</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={config.aktifDenda}
+                    onChange={e => setConfig({ ...config, aktifDenda: e.target.checked })}
+                    className="w-4 h-4 rounded text-[#1E4648] focus:ring-[#1E4648]"
+                  />
+                </div>
+
+                {config.aktifDenda && (
+                  <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Aturan Denda</label>
+                      <select
+                        value={config.tipeDenda}
+                        onChange={e => setConfig({ ...config, tipeDenda: e.target.value as any })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#1E4648]"
+                      >
+                        <option value="MENIT">Per Menit Telat</option>
+                        <option value="JAM">Per Jam Telat</option>
+                        <option value="FLAT">Flat Per Keterlambatan</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Tarif Denda (Rp)</label>
+                      <input
+                        type="number"
+                        value={config.tarifDenda}
+                        onChange={e => setConfig({ ...config, tarifDenda: Number(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-rose-600 focus:outline-none focus:border-[#1E4648]"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Tunjangan Kehadiran Default */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Standar Tunjangan Kehadiran (Rp / Hari Hadir)</label>
+                <input
+                  type="number"
+                  value={config.tunjanganKehadiranPerHari}
+                  onChange={e => setConfig({ ...config, tunjanganKehadiranPerHari: Number(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-emerald-700 focus:outline-none focus:border-[#1E4648]"
+                />
+              </div>
+
+              {/* Insentif Drop Off Per Tahap */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Standar Insentif Drop Off (Rp / Tahap Selesai)</label>
+                <input
+                  type="number"
+                  value={config.insentifDropOffPerTahap}
+                  onChange={e => setConfig({ ...config, insentifDropOffPerTahap: Number(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-amber-700 focus:outline-none focus:border-[#1E4648]"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Dihitung dari banyaknya kontribusi tahap drop off yang diselesaikan staf.</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-5">
+              <button
+                onClick={() => setShowConfigModal(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition"
+              >
+                Batal
+              </button>
+              <button
+                disabled={loading}
+                onClick={handleSaveConfig}
+                className="px-5 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl font-bold transition shadow-sm disabled:opacity-50"
+              >
+                Simpan Konfigurasi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL TAMBAH JADWAL ==================== */}
+      {showAddJadwalModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <h3 className="font-bold text-slate-800 text-sm">Tambah Penugasan Roster Jadwal</h3>
+              <button onClick={() => setShowAddJadwalModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Pilih Pegawai *</label>
+                <select
+                  value={formJadwal.idPegawai}
+                  onChange={e => {
+                    const p = pegawaiList.find(x => x.id === e.target.value);
+                    setFormJadwal({ ...formJadwal, idPegawai: e.target.value, namaPegawai: p?.nama || '' });
+                  }}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                >
+                  {pegawaiList.map(p => (
+                    <option key={p.id} value={p.id}>{p.nama} ({p.jabatan})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Tanggal *</label>
+                <input
+                  type="date"
+                  value={formJadwal.tanggal}
+                  onChange={e => setFormJadwal({ ...formJadwal, tanggal: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Shift</label>
+                <select
+                  value={formJadwal.shift}
+                  onChange={e => setFormJadwal({ ...formJadwal, shift: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                >
+                  {shiftList.map(s => (
+                    <option key={s.id} value={s.nama}>{s.nama} ({formatTime(s.jamMasuk)} - {formatTime(s.jamKeluar)})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Status Roster</label>
+                <select
+                  value={formJadwal.status}
+                  onChange={e => setFormJadwal({ ...formJadwal, status: e.target.value as any })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                >
+                  <option value="Masuk">Masuk Bertugas</option>
+                  <option value="Libur">Hari Libur Mingguan</option>
+                  <option value="Cuti">Cuti / Izin</option>
+                  <option value="Tukar Shift">Tukar Shift</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Catatan</label>
+                <input
+                  type="text"
+                  value={formJadwal.catatan}
+                  onChange={e => setFormJadwal({ ...formJadwal, catatan: e.target.value })}
+                  placeholder="Catatan penugasan..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-4">
+              <button onClick={() => setShowAddJadwalModal(false)} className="px-3.5 py-2 bg-slate-100 rounded-xl font-bold">Batal</button>
+              <button onClick={handleSaveJadwal} className="px-4 py-2 bg-[#1E4648] text-white rounded-xl font-bold">Simpan Jadwal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL TAMBAH CUTI ==================== */}
+      {showAddCutiModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <h3 className="font-bold text-slate-800 text-sm">Formulir Pengajuan / Pencatatan Cuti</h3>
+              <button onClick={() => setShowAddCutiModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Pilih Pegawai *</label>
+                <select
+                  value={formCuti.idPegawai}
+                  onChange={e => {
+                    const p = pegawaiList.find(x => x.id === e.target.value);
+                    setFormCuti({ ...formCuti, idPegawai: e.target.value, namaPegawai: p?.nama || '' });
+                  }}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                >
+                  {pegawaiList.map(p => (
+                    <option key={p.id} value={p.id}>{p.nama} ({p.jabatan})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Jenis Cuti / Izin</label>
+                <select
+                  value={formCuti.jenisCuti}
+                  onChange={e => setFormCuti({ ...formCuti, jenisCuti: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                >
+                  <option value="Cuti Tahunan">Cuti Tahunan</option>
+                  <option value="Sakit">Sakit (Dengan / Tanpa Surat Dokter)</option>
+                  <option value="Izin Khusus">Izin Keperluan Khusus</option>
+                  <option value="Cuti Menikah">Cuti Menikah</option>
+                  <option value="Cuti Melahirkan">Cuti Melahirkan</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tgl Mulai *</label>
+                  <input
+                    type="date"
+                    value={formCuti.tglMulai}
+                    onChange={e => setFormCuti({ ...formCuti, tglMulai: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tgl Selesai *</label>
+                  <input
+                    type="date"
+                    value={formCuti.tglSelesai}
+                    onChange={e => setFormCuti({ ...formCuti, tglSelesai: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Jumlah Hari</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formCuti.jumlahHari}
+                  onChange={e => setFormCuti({ ...formCuti, jumlahHari: Number(e.target.value) || 1 })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Alasan Cuti / Keterangan</label>
+                <textarea
+                  rows={2}
+                  value={formCuti.alasan}
+                  onChange={e => setFormCuti({ ...formCuti, alasan: e.target.value })}
+                  placeholder="Keterangan keperluan cuti..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-4">
+              <button onClick={() => setShowAddCutiModal(false)} className="px-3.5 py-2 bg-slate-100 rounded-xl font-bold">Batal</button>
+              <button onClick={handleSaveCuti} className="px-4 py-2 bg-[#1E4648] text-white rounded-xl font-bold">Simpan Cuti</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL TAMBAH LIBUR ==================== */}
+      {showAddLiburModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <h3 className="font-bold text-slate-800 text-sm">Tambah Hari Libur / Tanggal Merah</h3>
+              <button onClick={() => setShowAddLiburModal(false)}><X className="w-4 h-4 text-slate-400" /></button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Tanggal *</label>
+                <input
+                  type="date"
+                  value={formLibur.tanggal}
+                  onChange={e => setFormLibur({ ...formLibur, tanggal: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nama Hari Libur *</label>
+                <input
+                  type="text"
+                  value={formLibur.namaLibur}
+                  onChange={e => setFormLibur({ ...formLibur, namaLibur: e.target.value })}
+                  placeholder="Misal: Idul Fitri, Libur Maintenance Outlet..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Kategori Libur</label>
+                <select
+                  value={formLibur.kategori}
+                  onChange={e => setFormLibur({ ...formLibur, kategori: e.target.value as any })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                >
+                  <option value="Libur Nasional">Libur Nasional / Tanggal Merah</option>
+                  <option value="Libur Outlet">Libur Khusus Operasional Outlet</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Keterangan (Opsional)</label>
+                <input
+                  type="text"
+                  value={formLibur.keterangan}
+                  onChange={e => setFormLibur({ ...formLibur, keterangan: e.target.value })}
+                  placeholder="Catatan libur..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-4">
+              <button onClick={() => setShowAddLiburModal(false)} className="px-3.5 py-2 bg-slate-100 rounded-xl font-bold">Batal</button>
+              <button onClick={handleSaveLibur} className="px-4 py-2 bg-[#1E4648] text-white rounded-xl font-bold">Simpan Hari Libur</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

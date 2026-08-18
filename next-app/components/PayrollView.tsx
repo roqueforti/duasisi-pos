@@ -287,12 +287,13 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
       `Kehadiran    : ${item.jumlahHadir} Hari (${item.totalJamKerja} Jam Kerja)`,
       `-----------------------------------------`,
       `*PENERIMAAN:*`,
-      `+ Gaji Pokok   : Rp ${item.gajiPokok.toLocaleString('id-ID')}`,
-      `+ Tunjangan    : Rp ${item.tunjangan.toLocaleString('id-ID')}`,
-      `+ Bonus/Komisi : Rp ${item.bonusKomisi.toLocaleString('id-ID')}`,
+      `+ Gaji Pokok            : Rp ${item.gajiPokok.toLocaleString('id-ID')}`,
+      `+ Tunjangan Kehadiran   : Rp ${(item.tunjanganKehadiran || item.tunjangan).toLocaleString('id-ID')} (${item.jumlahHadir} Hari Hadir)`,
+      `+ Insentif Drop Off     : Rp ${(item.insentifDropOff || item.bonusKomisi).toLocaleString('id-ID')} (${item.totalTahapDropOff || 0} Tahap Selesai)`,
       ``,
       `*POTONGAN:*`,
-      `- Potongan     : Rp ${item.potongan.toLocaleString('id-ID')}`,
+      item.dendaTelat && item.dendaTelat > 0 ? `- Denda Keterlambatan   : Rp ${item.dendaTelat.toLocaleString('id-ID')} (${item.jumlahTelat}x Telat)` : null,
+      `- Potongan Lain/Rutin   : Rp ${(item.potonganRutin || item.potongan || 0).toLocaleString('id-ID')}`,
       `-----------------------------------------`,
       `*TOTAL GAJI BERSIH (TAKE HOME PAY):*`,
       `👉 *Rp ${item.totalGajiBersih.toLocaleString('id-ID')}*`,
@@ -301,7 +302,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
       `Status Bayar    : *${item.statusPembayaran.toUpperCase()}*`,
       ``,
       `_Terima kasih atas kerja keras dan dedikasinya di Dua Sisi Laundry!_`
-    ].join('\n');
+    ].filter(Boolean).join('\n');
 
     const url = rawPhone 
       ? `https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`
@@ -516,9 +517,9 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                 <th className="py-3.5 px-4">Pegawai</th>
                 <th className="py-3.5 px-3">Absensi</th>
                 <th className="py-3.5 px-3 text-right">Gaji Pokok</th>
-                <th className="py-3.5 px-3 text-right">Tunjangan</th>
-                <th className="py-3.5 px-3 text-right">Bonus/Komisi</th>
-                <th className="py-3.5 px-3 text-right">Potongan</th>
+                <th className="py-3.5 px-3 text-right">Tunjangan Hadir</th>
+                <th className="py-3.5 px-3 text-right">Insentif Drop Off</th>
+                <th className="py-3.5 px-3 text-right">Potongan & Denda</th>
                 <th className="py-3.5 px-4 text-right font-black text-slate-900">Total Bersih</th>
                 <th className="py-3.5 px-3">Rekening</th>
                 <th className="py-3.5 px-3 text-center">Status</th>
@@ -546,19 +547,24 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                     Rp {item.gajiPokok.toLocaleString('id-ID')}
                   </td>
 
-                  {/* Tunjangan */}
+                  {/* Tunjangan Hadir */}
                   <td className="py-3.5 px-3 text-right font-semibold text-slate-700">
-                    Rp {item.tunjangan.toLocaleString('id-ID')}
+                    <div>Rp {(item.tunjanganKehadiran || item.tunjangan).toLocaleString('id-ID')}</div>
+                    <div className="text-[10px] text-slate-400 font-normal">{item.jumlahHadir} Hari Hadir</div>
                   </td>
 
-                  {/* Bonus */}
+                  {/* Insentif Drop Off */}
                   <td className="py-3.5 px-3 text-right font-semibold text-emerald-600">
-                    +Rp {item.bonusKomisi.toLocaleString('id-ID')}
+                    <div>+Rp {(item.insentifDropOff || item.bonusKomisi).toLocaleString('id-ID')}</div>
+                    <div className="text-[10px] text-emerald-700/80 font-normal">{item.totalTahapDropOff || 0} Tahap Selesai</div>
                   </td>
 
-                  {/* Potongan */}
+                  {/* Potongan & Denda */}
                   <td className="py-3.5 px-3 text-right font-semibold text-rose-500">
-                    -Rp {item.potongan.toLocaleString('id-ID')}
+                    <div>-Rp {item.potongan.toLocaleString('id-ID')}</div>
+                    {item.dendaTelat && item.dendaTelat > 0 ? (
+                      <div className="text-[10px] text-rose-600 font-normal">Denda: Rp {item.dendaTelat.toLocaleString('id-ID')}</div>
+                    ) : null}
                   </td>
 
                   {/* Total Bersih */}
@@ -710,16 +716,22 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                       <span className="font-bold">Rp {activeSlipItem.gajiPokok.toLocaleString('id-ID')}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-600">Tunjangan</span>
-                      <span className="font-bold">Rp {activeSlipItem.tunjangan.toLocaleString('id-ID')}</span>
+                      <div>
+                        <span className="text-slate-600">Tunjangan Kehadiran</span>
+                        <div className="text-[10px] text-slate-400 font-normal">{activeSlipItem.jumlahHadir} Hari Hadir</div>
+                      </div>
+                      <span className="font-bold">Rp {(activeSlipItem.tunjanganKehadiran || activeSlipItem.tunjangan).toLocaleString('id-ID')}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-600">Bonus / Komisi</span>
-                      <span className="font-bold text-emerald-600">+Rp {activeSlipItem.bonusKomisi.toLocaleString('id-ID')}</span>
+                      <div>
+                        <span className="text-slate-600">Insentif Drop Off</span>
+                        <div className="text-[10px] text-emerald-600 font-normal">{activeSlipItem.totalTahapDropOff || 0} Tahap Selesai</div>
+                      </div>
+                      <span className="font-bold text-emerald-600">+Rp {(activeSlipItem.insentifDropOff || activeSlipItem.bonusKomisi).toLocaleString('id-ID')}</span>
                     </div>
                     <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-slate-800">
                       <span>Total Penerimaan</span>
-                      <span>Rp {(activeSlipItem.gajiPokok + activeSlipItem.tunjangan + activeSlipItem.bonusKomisi).toLocaleString('id-ID')}</span>
+                      <span>Rp {(activeSlipItem.gajiPokok + (activeSlipItem.tunjanganKehadiran || activeSlipItem.tunjangan) + (activeSlipItem.insentifDropOff || activeSlipItem.bonusKomisi)).toLocaleString('id-ID')}</span>
                     </div>
                   </div>
                 </div>
@@ -730,13 +742,18 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                     B. POTONGAN
                   </div>
                   <div className="p-3 space-y-2 text-xs">
+                    {activeSlipItem.dendaTelat && activeSlipItem.dendaTelat > 0 ? (
+                      <div className="flex justify-between">
+                        <div>
+                          <span className="text-slate-600">Denda Keterlambatan</span>
+                          <div className="text-[10px] text-rose-500 font-normal">{activeSlipItem.jumlahTelat}x Terlambat</div>
+                        </div>
+                        <span className="font-bold text-rose-500">-Rp {activeSlipItem.dendaTelat.toLocaleString('id-ID')}</span>
+                      </div>
+                    ) : null}
                     <div className="flex justify-between">
                       <span className="text-slate-600">Potongan Rutin / BPJS / Kasbon</span>
-                      <span className="font-bold text-rose-500">-Rp {activeSlipItem.potongan.toLocaleString('id-ID')}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-400">
-                      <span>Keterlambatan</span>
-                      <span>{activeSlipItem.jumlahTelat > 0 ? `${activeSlipItem.jumlahTelat}x Tercatat` : '0'}</span>
+                      <span className="font-bold text-rose-500">-Rp {(activeSlipItem.potonganRutin || activeSlipItem.potongan || 0).toLocaleString('id-ID')}</span>
                     </div>
                     <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-slate-800">
                       <span>Total Potongan</span>

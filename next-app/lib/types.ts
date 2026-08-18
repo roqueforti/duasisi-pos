@@ -177,6 +177,48 @@ export interface PegawaiDetail {
   kontakDaruratNoHp?: string;
 }
 
+export interface AbsensiConfig {
+  jamBuka: string;
+  toleransiTelatMenit: number;
+  aktifDenda: boolean;
+  tipeDenda: 'MENIT' | 'JAM' | 'FLAT';
+  tarifDenda: number;
+  tunjanganKehadiranPerHari: number;
+  insentifDropOffPerTahap: number;
+}
+
+export interface JadwalKerjaItem {
+  id: string;
+  idPegawai: string;
+  namaPegawai: string;
+  tanggal: string; // YYYY-MM-DD
+  hari: string;
+  shift: string;
+  status: 'Masuk' | 'Libur' | 'Cuti' | 'Tukar Shift';
+  catatan?: string;
+}
+
+export interface CutiItem {
+  id: string;
+  idPegawai: string;
+  namaPegawai: string;
+  jenisCuti: 'Cuti Tahunan' | 'Sakit' | 'Izin Khusus' | 'Cuti Menikah' | 'Cuti Melahirkan' | string;
+  tglMulai: string;
+  tglSelesai: string;
+  jumlahHari: number;
+  alasan: string;
+  status: 'Disetujui' | 'Pending' | 'Ditolak';
+  waktuPengajuan?: string;
+}
+
+export interface HariLiburItem {
+  id: string;
+  tanggal: string;
+  namaLibur: string;
+  kategori: 'Libur Nasional' | 'Libur Outlet';
+  keterangan?: string;
+}
+
 export interface PayrollItem {
   idPegawai: string;
   nama: string;
@@ -192,8 +234,13 @@ export interface PayrollItem {
   periode: string; // "YYYY-MM"
   gajiPokok: number;
   tunjangan: number;
+  tunjanganKehadiran?: number;
   bonusKomisi: number;
+  insentifDropOff?: number;
+  totalTahapDropOff?: number;
   potongan: number;
+  potonganRutin?: number;
+  dendaTelat?: number;
   totalGajiBersih: number;
 
   jumlahHadir: number;

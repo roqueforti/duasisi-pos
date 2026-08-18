@@ -182,6 +182,58 @@ function ensurePayrollHeaders_(sh) {
     return;
   }
 }
+const SHEET_PAYROLL = "MasterPayroll";
+const SHEET_JADWAL = "MasterJadwal";
+const SHEET_CUTI = "MasterCuti";
+const SHEET_HARI_LIBUR = "MasterHariLibur";
+
+function getDropoffContributionsMap_(startDateStr, endDateStr) {
+  const sh = SS.getSheetByName(SHEET_PIPELINE);
+  if (!sh) return {};
+  const data = sh.getDataRange().getValues();
+  const map = {}; // staffName/staffId -> count
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    // [ID, No Nota, Step, Nama Step, Status, Assigned Staff, Mesin ID, Waktu Mulai, Waktu Selesai, Catatan]
+    const status = String(row[4] || "");
+    const staff = String(row[5] || "").trim();
+    const waktuSelesai = row[8];
+    if (status === "Selesai" && staff) {
+      if (waktuSelesai) {
+        const tgl = fmtWib(waktuSelesai, "yyyy-MM-dd");
+        if (startDateStr && endDateStr && (tgl < startDateStr || tgl > endDateStr)) {
+          continue;
+        }
+      }
+      map[staff] = (map[staff] || 0) + 1;
+    }
+  }
+  return map;
+}
+
+function getDendaAbsensiMap_(absensiList, config) {
+  const map = {};
+  if (!config.aktifDenda) return map;
+  absensiList.forEach(a => {
+    if (a.catatan && a.catatan.includes("[TERLAMBAT")) {
+      const match = a.catatan.match(/\[TERLAMBAT (\d+) Menit/);
+      if (match) {
+        const menit = parseInt(match[1], 10);
+        const overMenit = Math.max(0, menit - config.toleransiTelatMenit);
+        let denda = 0;
+        if (config.tipeDenda === "MENIT") {
+          denda = overMenit * config.tarifDenda;
+        } else if (config.tipeDenda === "JAM") {
+          denda = Math.ceil(overMenit / 60) * config.tarifDenda;
+        } else if (config.tipeDenda === "FLAT") {
+          denda = config.tarifDenda;
+        }
+        map[a.namaPegawai] = (map[a.namaPegawai] || 0) + denda;
+      }
+    }
+  });
+  return map;
+}
 
 function getPayrollSummary(periodeStr) {
   const targetPeriode = periodeStr || fmtWib(new Date(), "yyyy-MM");
@@ -197,6 +249,9 @@ function getPayrollSummary(periodeStr) {
   
   const absensiList = getRekapAbsensi(startDateStr, endDateStr);
   const kinerjaList = getRekapKinerjaPegawai(startDateStr, endDateStr);
+  const dropoffMap = getDropoffContributionsMap_(startDateStr, endDateStr);
+  const config = getAbsensiConfig();
+  const dendaMap = getDendaAbsensiMap_(absensiList, config);
 
   let shPay = SS.getSheetByName(SHEET_PAYROLL);
   if (!shPay) {
@@ -241,13 +296,26 @@ function getPayrollSummary(periodeStr) {
     const totalOmzet = empKin ? empKin.totalOmzet : 0;
     const totalTransaksi = empKin ? empKin.totalTransaksi : 0;
 
+    // Kontribusi drop off per tahap
+    const totalTahapDropOff = (dropoffMap[peg.nama] || 0) + (dropoffMap[peg.id] || 0);
+    const insentifDropOff = totalTahapDropOff * (config.insentifDropOffPerTahap || 1500);
+
+    // Tunjangan kehadiran otomatis (bila belum diatur khusus)
+    const tunjanganKehadiranOtomatis = jumlahHadir * (config.tunjanganKehadiranPerHari || 15000);
+    const tunjangan = peg.tunjangan > 0 ? peg.tunjangan : tunjanganKehadiranOtomatis;
+
+    // Denda absensi terlambat
+    const dendaTelat = dendaMap[peg.nama] || 0;
+    const potonganRutin = peg.potongan || 0;
+    const totalPotongan = potonganRutin + dendaTelat;
+
     const savedPay = paidMap[peg.id];
 
     const gajiPokok = savedPay ? savedPay.gajiPokok : (peg.gajiPokok || 0);
-    const tunjangan = savedPay ? savedPay.tunjangan : (peg.tunjangan || 0);
-    const potongan = savedPay ? savedPay.potongan : (peg.potongan || 0);
-    const bonusKomisi = savedPay ? savedPay.bonusKomisi : 0;
-    const totalGajiBersih = savedPay ? savedPay.totalGajiBersih : Math.max(0, (gajiPokok + tunjangan + bonusKomisi) - potongan);
+    const bonusKomisi = savedPay ? savedPay.bonusKomisi : insentifDropOff;
+    const finalTunjangan = savedPay ? savedPay.tunjangan : tunjangan;
+    const finalPotongan = savedPay ? savedPay.potongan : totalPotongan;
+    const totalGajiBersih = savedPay ? savedPay.totalGajiBersih : Math.max(0, (gajiPokok + finalTunjangan + bonusKomisi) - finalPotongan);
 
     return {
       idPegawai: peg.id,
@@ -263,9 +331,14 @@ function getPayrollSummary(periodeStr) {
       
       periode: targetPeriode,
       gajiPokok: gajiPokok,
-      tunjangan: tunjangan,
+      tunjangan: finalTunjangan,
+      tunjanganKehadiran: tunjanganKehadiranOtomatis,
       bonusKomisi: bonusKomisi,
-      potongan: potongan,
+      insentifDropOff: insentifDropOff,
+      totalTahapDropOff: totalTahapDropOff,
+      potongan: finalPotongan,
+      potonganRutin: potonganRutin,
+      dendaTelat: dendaTelat,
       totalGajiBersih: totalGajiBersih,
 
       jumlahHadir: jumlahHadir,
@@ -473,15 +546,49 @@ function getRekapAbsensi(startDateStr, endDateStr) {
   const sh = SS.getSheetByName(SHEET_ABSENSI);
   if (!sh) return [];
   const data = sh.getDataRange().getValues(); data.shift();
+  const config = getAbsensiConfig();
+
   const filtered = data.filter(r => {
     if (!r[1]) return false;
     const tgl = fmtWib(r[1], "yyyy-MM-dd");
     return (!startDateStr || !endDateStr || (tgl >= startDateStr && tgl <= endDateStr));
   });
-  return filtered.map(r => ({
-    id: r[0], tanggal: fmtWib(r[1], "dd/MM/yyyy"), namaPegawai: r[2], shift: r[3],
-    clockIn: r[4], clockOut: r[5] || "-", durasi: r[6] || "-", catatan: r[7] || "-"
-  })).reverse();
+
+  return filtered.map(r => {
+    const catatan = r[7] || "-";
+    let menitTelat = 0;
+    let denda = 0;
+    if (catatan.includes("[TERLAMBAT")) {
+      const match = catatan.match(/\[TERLAMBAT (\d+) Menit/);
+      if (match) {
+        menitTelat = parseInt(match[1], 10);
+        const overMenit = Math.max(0, menitTelat - config.toleransiTelatMenit);
+        if (config.aktifDenda) {
+          if (config.tipeDenda === "MENIT") {
+            denda = overMenit * config.tarifDenda;
+          } else if (config.tipeDenda === "JAM") {
+            denda = Math.ceil(overMenit / 60) * config.tarifDenda;
+          } else if (config.tipeDenda === "FLAT") {
+            denda = config.tarifDenda;
+          }
+        }
+      }
+    }
+
+    return {
+      id: r[0],
+      tanggal: fmtWib(r[1], "dd/MM/yyyy"),
+      tanggalRaw: fmtWib(r[1], "yyyy-MM-dd"),
+      namaPegawai: r[2],
+      shift: r[3],
+      clockIn: r[4],
+      clockOut: r[5] || "-",
+      durasi: r[6] || "-",
+      catatan: catatan,
+      menitTelat: menitTelat,
+      denda: denda
+    };
+  }).reverse();
 }
 
 // ============================================================
@@ -515,6 +622,214 @@ function hapusMasterShift(id) {
     if (rows[i][0] === id) { sh.deleteRow(i + 1); return true; }
   }
   return false;
+}
+
+// ============================================================
+// JADWAL KERJA PEGAWAI (ROSTER)
+// ============================================================
+function getJadwalKerjaList(bulanTahun) {
+  let sh = SS.getSheetByName(SHEET_JADWAL);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_JADWAL);
+    sh.appendRow(["ID", "ID Pegawai", "Nama Pegawai", "Tanggal", "Hari", "Shift", "Status", "Catatan"]);
+  }
+  const data = sh.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  data.shift();
+
+  return data
+    .filter(r => {
+      if (!bulanTahun) return true;
+      const tgl = r[3] ? fmtWib(r[3], "yyyy-MM") : "";
+      return tgl === bulanTahun;
+    })
+    .map(r => ({
+      id: r[0],
+      idPegawai: r[1] || "",
+      namaPegawai: r[2] || "",
+      tanggal: r[3] ? fmtWib(r[3], "yyyy-MM-dd") : "",
+      hari: r[4] || "",
+      shift: r[5] || "Shift 1 (Pagi)",
+      status: r[6] || "Masuk", // Masuk | Libur | Cuti | Tukar Shift
+      catatan: r[7] || ""
+    }));
+}
+
+function saveJadwalKerjaBatch(rows) {
+  let sh = SS.getSheetByName(SHEET_JADWAL);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_JADWAL);
+    sh.appendRow(["ID", "ID Pegawai", "Nama Pegawai", "Tanggal", "Hari", "Shift", "Status", "Catatan"]);
+  }
+  if (Array.isArray(rows)) {
+    rows.forEach(r => {
+      const id = r.id || generateId("JDW");
+      sh.appendRow([
+        id,
+        r.idPegawai || "",
+        r.namaPegawai || "",
+        r.tanggal ? new Date(r.tanggal) : new Date(),
+        r.hari || "",
+        r.shift || "Shift 1 (Pagi)",
+        r.status || "Masuk",
+        r.catatan || ""
+      ]);
+    });
+  }
+  return { success: true, message: "Jadwal kerja berhasil disimpan!" };
+}
+
+function hapusJadwalKerja(id) {
+  const sh = SS.getSheetByName(SHEET_JADWAL);
+  if (!sh) return false;
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
+      sh.deleteRow(i + 1);
+      return { success: true, message: "Jadwal berhasil dihapus." };
+    }
+  }
+  return { success: false, message: "Jadwal tidak ditemukan." };
+}
+
+// ============================================================
+// MANAJEMEN CUTI & IZIN
+// ============================================================
+function getCutiList(bulanTahun) {
+  let sh = SS.getSheetByName(SHEET_CUTI);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_CUTI);
+    sh.appendRow(["ID", "ID Pegawai", "Nama Pegawai", "Jenis Cuti", "Tgl Mulai", "Tgl Selesai", "Jumlah Hari", "Alasan", "Status", "Waktu Pengajuan"]);
+  }
+  const data = sh.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  data.shift();
+
+  return data
+    .filter(r => {
+      if (!bulanTahun) return true;
+      const tgl = r[4] ? fmtWib(r[4], "yyyy-MM") : "";
+      return !tgl || tgl === bulanTahun;
+    })
+    .map(r => ({
+      id: r[0],
+      idPegawai: r[1] || "",
+      namaPegawai: r[2] || "",
+      jenisCuti: r[3] || "Cuti Tahunan",
+      tglMulai: r[4] ? fmtWib(r[4], "yyyy-MM-dd") : "",
+      tglSelesai: r[5] ? fmtWib(r[5], "yyyy-MM-dd") : "",
+      jumlahHari: Number(r[6]) || 1,
+      alasan: r[7] || "",
+      status: r[8] || "Disetujui", // "Disetujui" | "Pending" | "Ditolak"
+      waktuPengajuan: r[9] ? fmtWib(r[9], "yyyy-MM-dd HH:mm") : ""
+    })).reverse();
+}
+
+function tambahCuti(data) {
+  let sh = SS.getSheetByName(SHEET_CUTI);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_CUTI);
+    sh.appendRow(["ID", "ID Pegawai", "Nama Pegawai", "Jenis Cuti", "Tgl Mulai", "Tgl Selesai", "Jumlah Hari", "Alasan", "Status", "Waktu Pengajuan"]);
+  }
+  const id = generateId("CUT");
+  const now = new Date();
+  sh.appendRow([
+    id,
+    data.idPegawai || "",
+    data.namaPegawai || "",
+    data.jenisCuti || "Cuti Tahunan",
+    data.tglMulai ? new Date(data.tglMulai) : now,
+    data.tglSelesai ? new Date(data.tglSelesai) : now,
+    Number(data.jumlahHari) || 1,
+    data.alasan || "",
+    data.status || "Disetujui",
+    now
+  ]);
+  return { success: true, id: id, message: "Pengajuan cuti/izin berhasil dicatat!" };
+}
+
+function updateStatusCuti(id, status) {
+  const sh = SS.getSheetByName(SHEET_CUTI);
+  if (!sh) return { success: false, message: "Sheet Cuti belum ada." };
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
+      sh.getRange(i + 1, 9).setValue(status);
+      return { success: true, message: `Status cuti berhasil diubah menjadi ${status}!` };
+    }
+  }
+  return { success: false, message: "Data cuti tidak ditemukan." };
+}
+
+function hapusCuti(id) {
+  const sh = SS.getSheetByName(SHEET_CUTI);
+  if (!sh) return { success: false };
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
+      sh.deleteRow(i + 1);
+      return { success: true, message: "Data cuti berhasil dihapus." };
+    }
+  }
+  return { success: false };
+}
+
+// ============================================================
+// HARI LIBUR NASIONAL & OUTLET
+// ============================================================
+function getHariLiburList(tahun) {
+  let sh = SS.getSheetByName(SHEET_HARI_LIBUR);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_HARI_LIBUR);
+    sh.appendRow(["ID", "Tanggal", "Nama Libur", "Kategori", "Keterangan"]);
+  }
+  const data = sh.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  data.shift();
+
+  return data
+    .filter(r => {
+      if (!tahun) return true;
+      const tgl = r[1] ? fmtWib(r[1], "yyyy") : "";
+      return !tgl || tgl === String(tahun);
+    })
+    .map(r => ({
+      id: r[0],
+      tanggal: r[1] ? fmtWib(r[1], "yyyy-MM-dd") : "",
+      namaLibur: r[2] || "",
+      kategori: r[3] || "Libur Nasional", // Libur Nasional | Libur Outlet
+      keterangan: r[4] || ""
+    })).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+}
+
+function tambahHariLibur(data) {
+  let sh = SS.getSheetByName(SHEET_HARI_LIBUR);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_HARI_LIBUR);
+    sh.appendRow(["ID", "Tanggal", "Nama Libur", "Kategori", "Keterangan"]);
+  }
+  const id = generateId("HBR");
+  sh.appendRow([
+    id,
+    data.tanggal ? new Date(data.tanggal) : new Date(),
+    data.namaLibur || "Hari Libur",
+    data.kategori || "Libur Nasional",
+    data.keterangan || ""
+  ]);
+  return { success: true, id: id, message: "Hari libur berhasil ditambahkan!" };
+}
+
+function hapusHariLibur(id) {
+  const sh = SS.getSheetByName(SHEET_HARI_LIBUR);
+  if (!sh) return { success: false };
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === id) {
+      sh.deleteRow(i + 1);
+      return { success: true, message: "Hari libur berhasil dihapus." };
+    }
+  }
+  return { success: false };
 }
 
 // ============================================================
