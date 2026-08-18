@@ -15,35 +15,7 @@ export interface BackendSessionPayload {
 
 export function touchSessionActivity(): void {
   if (typeof window !== 'undefined') {
-    const now = Date.now();
-    localStorage.setItem(ACTIVITY_KEY, String(now));
-    
-    // Also extend expiration time of stored token payload so client doesn't prematurely drop
-    const currentToken = localStorage.getItem(SESSION_KEY);
-    if (currentToken) {
-      try {
-        const parts = currentToken.split('.');
-        if (parts.length === 2) {
-          let b64 = parts[0].replace(/-/g, '+').replace(/_/g, '/');
-          while (b64.length % 4) b64 += '=';
-          const jsonStr = decodeURIComponent(
-            Array.prototype.map
-              .call(atob(b64), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-              .join('')
-          );
-          const data = JSON.parse(jsonStr);
-          data.exp = now + SESSION_IDLE_TIMEOUT_MS;
-          
-          // Re-encode payload part
-          const newPayloadStr = unescape(encodeURIComponent(JSON.stringify(data)));
-          let newB64 = btoa(newPayloadStr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-          const refreshedToken = `${newB64}.${parts[1]}`;
-          localStorage.setItem(SESSION_KEY, refreshedToken);
-        }
-      } catch (e) {
-        // Silently continue if cannot re-encode
-      }
-    }
+    localStorage.setItem(ACTIVITY_KEY, String(Date.now()));
   }
 }
 
@@ -135,10 +107,11 @@ export function notifySessionExpired(message = 'Sesi Anda telah kedaluwarsa kare
 }
 
 export async function runBackend<T = any>(action: string, ...args: any[]): Promise<T> {
-  const sessionToken = getBackendSession();
+  const isPublicAction = action === 'verifikasiPin' || action === 'recoverPin' || action === 'getTransaksiByNota';
+  const sessionToken = isPublicAction ? null : getBackendSession();
 
-  // Cek apakah tidak ada interaksi selama 30 menit
-  if (sessionToken) {
+  // Untuk action yang membutuhkan autentikasi: periksa apakah inaktif selama 30 menit
+  if (!isPublicAction && sessionToken) {
     if (isSessionIdleExpired()) {
       notifySessionExpired('Sesi Anda telah kedaluwarsa karena tidak ada aktivitas selama 30 menit. Silakan masukkan PIN kembali.');
       throw new Error('Sesi kedaluwarsa karena tidak ada aktivitas.');
@@ -148,7 +121,7 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
   }
 
   const payload: Record<string, any> = { action, args };
-  if (sessionToken) payload.sessionToken = sessionToken;
+  if (!isPublicAction && sessionToken) payload.sessionToken = sessionToken;
 
   const response = await fetch(GAS_API_URL, {
     method: 'POST',

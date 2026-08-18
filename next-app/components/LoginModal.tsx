@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserRole } from '@/lib/types';
-import { runBackend, setBackendSession } from '@/lib/api';
+import { runBackend, setBackendSession, clearBackendSession } from '@/lib/api';
 import { KeyRound, Loader2, Clock, AlertTriangle } from 'lucide-react';
 
 interface LoginModalProps {
@@ -28,6 +28,7 @@ export default function LoginModal({ onSuccess, initialNotice }: LoginModalProps
     setErrorMsg('');
 
     try {
+      clearBackendSession();
       const res = await runBackend<{ success: boolean; role?: UserRole; label?: string; message?: string; sessionToken?: string }>('verifikasiPin', pinValue);
       if (res && res.success) {
         if (!res.role) throw new Error('Role pengguna tidak diterima');

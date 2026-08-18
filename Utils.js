@@ -91,7 +91,7 @@ function createSessionToken_(role, label) {
   const payload = Utilities.base64EncodeWebSafe(JSON.stringify({
     role: role,
     label: label,
-    exp: Date.now() + (30 * 60 * 1000)
+    exp: Date.now() + (24 * 60 * 60 * 1000)
   })).replace(/=+$/, "");
   return payload + "." + signSessionPayload_(payload);
 }
