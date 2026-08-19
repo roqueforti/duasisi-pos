@@ -139,28 +139,28 @@ export default function CustomerLandingPage() {
   const currentStepIdx = foundTx ? getStepIndex(foundTx.status) : 0;
 
   return (
-    <div className="min-h-screen bg-[#061113] text-white relative selection:bg-white selection:text-black overflow-x-hidden font-sans flex flex-col justify-between">
-      {/* Dynamic Molten Metal Ambient Background (Teal/Emerald Fluid) */}
-      <div className="fixed inset-0 pointer-events-none z-0 opacity-80">
+    <div className="min-h-screen bg-[#040e10] text-white relative selection:bg-white selection:text-black overflow-x-hidden font-sans flex flex-col justify-between">
+      {/* Dynamic Molten Metal Ambient Background (Crystal Clear Luminous Teal) */}
+      <div className="fixed inset-0 pointer-events-none z-0">
         <MoltenMetal
-          color1="#061618"
-          color2="#185257"
-          color3="#9EECE3"
-          speed={0.3}
+          color1="#041214"
+          color2="#1BA5A0"
+          color3="#FFFFFF"
+          speed={0.35}
           scale={3.8}
           detail={3}
-          glow={1.6}
-          coreSize={0.1}
+          glow={1.8}
+          coreSize={0.12}
           swirl={1}
           fold={-0.2}
-          blackPoint={0.05}
-          brightness={1.25}
+          blackPoint={0.04}
+          brightness={1.35}
           colorMode="molten"
           grain={true}
-          grainIntensity={0.04}
+          grainIntensity={0.03}
           mouseInteraction={true}
           mouseStrength={0.3}
-          opacity={0.85}
+          opacity={1.0}
         />
       </div>
 
