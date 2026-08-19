@@ -219,7 +219,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             nama: c.nama,
             noHp: c.noHp,
             alamat: c.alamat,
-            memberStatus: c.isRepeatOrder ? 'Member Regular' : 'Pelanggan Baru',
+            memberStatus: c.memberStatus || (c.isRepeatOrder ? 'Member Regular' : 'Pelanggan Baru'),
+            poin: Number(c.saldoPoin || c.poin || 0),
           })));
         }
       },
@@ -2006,7 +2007,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         if (found) {
                           setCustomer({
                             ...found,
-                            memberStatus: 'Member Regular',
+                            memberStatus: found.memberStatus || 'Member Regular',
+                            poin: Number(found.poin || 0),
                           });
                         }
                       }}
@@ -2015,12 +2017,40 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       <option value="">-- Cari / Pilih Pelanggan Terdaftar --</option>
                       {customerList.map((c) => (
                         <option key={c.noHp} value={c.noHp}>
-                          {c.nama} ({c.noHp}) {c.alamat ? `· ${c.alamat}` : ''}
+                          {c.nama} ({c.noHp}) {c.poin ? `· ⭐ ${c.poin} Poin` : ''} {c.alamat ? `· ${c.alamat}` : ''}
                         </option>
                       ))}
                     </select>
                   </div>
                 ) : null}
+
+                {/* Member Points Card & Loyalty Projection */}
+                {(customerMode === 'MEMBER' || customerSource === 'TERDAFTAR' || (customer.poin !== undefined && customer.poin > 0)) && (
+                  <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-300/90 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-[#FF9500] text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
+                        <Star className="w-4 h-4 fill-white text-white" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-xs text-slate-900">Poin Loyalitas Pelanggan</span>
+                          <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-md text-[9px] font-black uppercase">
+                            {customer.memberStatus || 'Member'}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-600 mt-0.5">
+                          Saldo Saat Ini: <span className="font-bold text-slate-900 font-mono">{customer.poin || 0} Poin</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-[9px] font-bold text-amber-800 uppercase block">Dapat dari Order Ini</span>
+                      <span className="text-xs font-black text-emerald-700 font-mono bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 inline-block">
+                        +{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Customer Identity Inputs */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2134,13 +2164,13 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                   />
                 </div>
 
-                {/* Line Items Summary Box */}
-                <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 space-y-2">
+                {/* Line Items & Financial Breakdown Summary Box */}
+                <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 space-y-2.5">
                   <div className="flex justify-between items-center pb-1.5 border-b border-slate-200/70 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <span>Item Pesanan ({cartArray.length})</span>
                     <span>Subtotal</span>
                   </div>
-                  <div className="max-h-28 overflow-y-auto space-y-1.5 pr-1">
+                  <div className="max-h-24 overflow-y-auto space-y-1.5 pr-1">
                     {cartArray.map((i, idx) => (
                       <div key={idx} className="flex justify-between text-xs text-slate-700">
                         <span className="font-semibold truncate pr-2">
@@ -2152,12 +2182,28 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       </div>
                     ))}
                   </div>
-                  {diskonApplied.nilai > 0 && (
-                    <div className="pt-1.5 border-t border-slate-200/70 flex justify-between text-xs text-emerald-700 font-bold">
-                      <span>Potongan Diskon ({diskonApplied.kode}):</span>
-                      <span className="font-mono">-Rp {diskonApplied.nilai.toLocaleString('id-ID')}</span>
+
+                  {/* Financial Breakdown */}
+                  <div className="pt-2 border-t border-slate-200 space-y-1 text-xs">
+                    <div className="flex justify-between text-slate-600 font-semibold">
+                      <span>Subtotal Item:</span>
+                      <span className="font-mono">Rp {(subtotalCart || 0).toLocaleString('id-ID')}</span>
                     </div>
-                  )}
+                    {diskonApplied.nilai > 0 && (
+                      <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50/80 px-2 py-1 rounded-lg border border-emerald-200/60">
+                        <span className="flex items-center gap-1">
+                          <Tag className="w-3.5 h-3.5" /> Diskon ({diskonApplied.kode}):
+                        </span>
+                        <span className="font-mono">-Rp {diskonApplied.nilai.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-amber-800 font-bold pt-0.5">
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Perolehan Poin:
+                      </span>
+                      <span className="font-mono">+{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2176,7 +2222,12 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                   <span>{cartArray.reduce((acc, c) => acc + c.qty, 0)} Pcs / Paket</span>
                   {diskonApplied.nilai > 0 && (
                     <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded font-semibold">
-                      Diskon Aktif
+                      Diskon -Rp {diskonApplied.nilai.toLocaleString('id-ID')}
+                    </span>
+                  )}
+                  {Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
+                    <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded font-semibold">
+                      +{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin
                     </span>
                   )}
                 </div>
