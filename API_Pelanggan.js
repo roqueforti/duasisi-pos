@@ -278,6 +278,64 @@ function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan, statusMember) 
   return { success: true, message: "Data pelanggan berhasil diperbarui!" };
 }
 
+function tambahPelanggan(data) {
+  const noHp = String(data.noHp || data.hp || "").trim();
+  const nama = String(data.nama || data.namaPelanggan || "").trim();
+  const alamat = String(data.alamat || "").trim();
+  const catatan = String(data.catatan || "").trim();
+  const isMember = data.isMember === true || data.statusMember === "MEMBER";
+
+  if (!noHp) return { success: false, message: "Nomor WhatsApp/HP wajib diisi!" };
+  if (!nama) return { success: false, message: "Nama pelanggan wajib diisi!" };
+
+  const cleanHp = normalizePhone(noHp);
+  if (!cleanHp || cleanHp.length < 8) return { success: false, message: "Nomor HP tidak valid (minimal 8 digit)." };
+
+  let shP = SS.getSheetByName(SHEET_PELANGGAN);
+  if (!shP) {
+    shP = SS.insertSheet(SHEET_PELANGGAN);
+    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member"]);
+  }
+
+  if (shP.getMaxColumns() < 10) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 10 - shP.getMaxColumns());
+    shP.getRange(1, 10).setValue("Status Member");
+  }
+
+  const pData = shP.getDataRange().getValues();
+  for (let i = 1; i < pData.length; i++) {
+    if (normalizePhone(pData[i][0]) === cleanHp) {
+      return { success: false, message: "Nomor HP " + cleanHp + " sudah terdaftar atas nama " + pData[i][1] + "." };
+    }
+  }
+
+  const now = new Date();
+  shP.appendRow([
+    cleanHp,
+    nama,
+    alamat,
+    now,
+    0, // total order
+    0, // total belanja
+    "", // terakhir order
+    catatan,
+    0, // saldo poin
+    isMember ? "MEMBER" : "UMUM"
+  ]);
+
+  addAuditLog(data.petugas || "Staff", "Tambah Pelanggan", cleanHp, "Pendaftaran manual: " + nama + (isMember ? " (Member)" : " (Umum)"));
+  return { 
+    success: true, 
+    message: "Pelanggan " + nama + " berhasil ditambahkan!",
+    pelanggan: {
+      noHp: cleanHp,
+      nama: nama,
+      alamat: alamat,
+      statusMember: isMember ? "MEMBER" : "UMUM"
+    }
+  };
+}
+
 function getRiwayatPelangganByHp(noHp) {
   const cleanHp = normalizePhone(noHp);
   if (!cleanHp) return [];

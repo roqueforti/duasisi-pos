@@ -19,7 +19,9 @@ import {
   ChevronRight,
   ShieldAlert,
   Download,
-  Upload
+  Upload,
+  Plus,
+  UserPlus
 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
@@ -55,6 +57,15 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [search, setSearch] = useState<string>('');
   const [filterKategori, setFilterKategori] = useState<'Semua' | 'Member' | 'Lama' | 'Baru'>('Semua');
   const [sortBy, setSortBy] = useState<'terakhir' | 'order' | 'spend'>('terakhir');
+
+  // Add Customer Modal State
+  const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [addNama, setAddNama] = useState<string>('');
+  const [addNoHp, setAddNoHp] = useState<string>('');
+  const [addAlamat, setAddAlamat] = useState<string>('');
+  const [addCatatan, setAddCatatan] = useState<string>('');
+  const [addStatusMember, setAddStatusMember] = useState<boolean>(false);
+  const [savingAdd, setSavingAdd] = useState<boolean>(false);
 
   // Detail & Edit Modal State
   const [showDetailModal, setShowDetailModal] = useState<boolean>(false);
@@ -204,6 +215,36 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
     }
   };
 
+  const handleTambahPelanggan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addNama.trim() || !addNoHp.trim()) {
+      await showAlert('Nama dan nomor WhatsApp/HP wajib diisi!', 'warning');
+      return;
+    }
+    setSavingAdd(true);
+    try {
+      const res = await runBackend<{ success: boolean; message: string }>('tambahPelanggan', {
+        nama: addNama.trim(),
+        noHp: addNoHp.trim(),
+        alamat: addAlamat.trim(),
+        catatan: addCatatan.trim(),
+        isMember: addStatusMember
+      });
+      if (res && res.success) {
+        clearCache('getDaftarPelanggan');
+        setShowAddModal(false);
+        await loadDataPelanggan();
+        await showAlert(res.message || 'Pelanggan berhasil ditambahkan!', 'success');
+      } else {
+        await showAlert(res?.message || 'Gagal menambahkan pelanggan', 'error');
+      }
+    } catch (err: any) {
+      await showAlert('Terjadi kesalahan: ' + (err.message || String(err)), 'error');
+    } finally {
+      setSavingAdd(false);
+    }
+  };
+
   // Filter & Sort Logic
   const countMember = pelangganList.filter(p => p.isMember || p.statusMember === 'MEMBER').length;
   const countLama = pelangganList.filter(p => !p.isMember && p.statusMember !== 'MEMBER' && p.totalOrder > 1).length;
@@ -250,6 +291,22 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
         </div>
 
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <button
+            type="button"
+            onClick={() => {
+              setAddNama('');
+              setAddNoHp('');
+              setAddAlamat('');
+              setAddCatatan('');
+              setAddStatusMember(false);
+              setShowAddModal(true);
+            }}
+            className="px-3.5 py-2 bg-[#1E4648] hover:bg-[#163436] text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Tambah Pelanggan</span>
+          </button>
+
           {currentRole === 'MANAGER' && (
             <>
               <button 
@@ -754,6 +811,136 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tambah Pelanggan Baru */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#1E4648] text-white flex items-center justify-center shadow-xs">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-slate-800">Tambah Pelanggan Baru</h3>
+                  <p className="text-[11px] text-slate-500">Daftarkan pelanggan manual ke database & keanggotaan</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleTambahPelanggan} className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Nama Lengkap Pelanggan <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={addNama}
+                  onChange={(e) => setAddNama(e.target.value)}
+                  placeholder="Contoh: Budi Santoso"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Nomor WhatsApp / HP <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={addNoHp}
+                  onChange={(e) => setAddNoHp(e.target.value)}
+                  placeholder="Contoh: 081234567890"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-mono font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Format: 08xxxxxxxx (minimal 8 digit). Digunakan untuk kirim resi E-Struk via WhatsApp.</p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Status Keanggotaan Member</label>
+                <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">⭐</span>
+                    <div>
+                      <div className="font-bold text-xs text-slate-800">
+                        {addStatusMember ? 'Daftarkan sebagai Member Resmi' : 'Pelanggan Reguler / Umum'}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        {addStatusMember ? 'Mendapat benefit loyalitas dan promo member' : 'Pelanggan umum tanpa kartu member'}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAddStatusMember(!addStatusMember)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      addStatusMember ? 'bg-amber-500' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        addStatusMember ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Alamat (Opsional)</label>
+                <input
+                  type="text"
+                  value={addAlamat}
+                  onChange={(e) => setAddAlamat(e.target.value)}
+                  placeholder="Alamat rumah / outlet jemput"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
+                <textarea
+                  rows={2}
+                  value={addCatatan}
+                  onChange={(e) => setAddCatatan(e.target.value)}
+                  placeholder="Catatan khusus, preferensi pewangi, alergi kain, dll."
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
+                />
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="flex gap-2.5 pt-3 border-t border-slate-100 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingAdd}
+                  className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-md transition disabled:opacity-50 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{savingAdd ? 'Menyimpan...' : 'Simpan Pelanggan Baru'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
