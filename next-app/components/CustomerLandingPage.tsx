@@ -23,7 +23,7 @@ import {
   Calendar,
   Layers
 } from 'lucide-react';
-import GradientWaves from '@/components/GradientWaves';
+import MoltenMetal from '@/components/MoltenMetal';
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
 import ENotaView from '@/components/ENotaView';
@@ -87,30 +87,28 @@ export default function CustomerLandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#081719] text-white relative selection:bg-teal-400 selection:text-slate-950 overflow-x-hidden font-sans">
-      {/* Dynamic Ambient Background Waves */}
-      <div className="fixed inset-0 pointer-events-none z-0 opacity-70">
-        <GradientWaves
-          horizonColor="#07181A"
-          waveColor="#1E5256"
-          crestColor="#7FE1D6"
+    <div className="min-h-screen bg-[#061415] text-white relative selection:bg-teal-400 selection:text-slate-950 overflow-x-hidden font-sans">
+      {/* Dynamic MoltenMetal Ambient Background (Dua SiSi Fluid Teal Theme) */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-85">
+        <MoltenMetal
+          color1="#07191B"
+          color2="#1F696E"
+          color3="#9DF3E9"
           speed={0.3}
-          amplitude={2.2}
-          waveScale={0.6}
-          waveRatio={0.9}
-          swell={32}
-          turbulence={18}
-          tilt={1.11}
-          zoom={1.0}
-          height={5.5}
-          fogDepth={16}
-          detail="medium"
-          brightness={1.1}
-          opacity={0.85}
-          mouseInteraction={true}
-          parallaxStrength={0.4}
+          scale={3.5}
+          detail={3}
+          glow={1.6}
+          coreSize={0.1}
+          swirl={1}
+          fold={-0.2}
+          blackPoint={0.05}
+          brightness={1.25}
+          colorMode="molten"
           grain={true}
           grainIntensity={0.04}
+          mouseInteraction={true}
+          mouseStrength={0.3}
+          opacity={0.9}
         />
       </div>
 
