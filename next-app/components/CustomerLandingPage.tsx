@@ -417,100 +417,159 @@ export default function CustomerLandingPage() {
           </div>
 
           {/* 4. RESULT CARD (Lacak Cucian Stepper / Poin Member) - Solid Minimalist Dark Card */}
-          {foundTx && (
-            <div className="w-full max-w-lg rounded-2xl border border-[#153a3e] bg-[#061517] p-5 text-left mb-6 shadow-2xl animate-fade-in">
-              {/* Header info */}
-              <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
-                <div>
-                  <span className="text-[10px] text-white/50 uppercase tracking-wider block font-mono">No. Nota</span>
-                  <span className="text-sm font-bold font-mono text-white">{foundTx.noNota}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-white/50 uppercase tracking-wider block">Layanan</span>
-                  <span className="text-xs font-semibold text-teal-300">{foundTx.tingkatLayanan || foundTx.tipe || 'Drop Off'}</span>
-                </div>
-              </div>
+          {foundTx && (() => {
+            const isDropOffOrder = Boolean(
+              foundTx.tipe === 'FullService' ||
+              (foundTx.items && foundTx.items.some((it) => {
+                const name = (it.layanan || '').toLowerCase();
+                return (
+                  name.includes('cuci') ||
+                  name.includes('setrika') ||
+                  name.includes('kiloan') ||
+                  name.includes('satuan') ||
+                  name.includes('bedcover') ||
+                  name.includes('selimut') ||
+                  name.includes('express') ||
+                  name.includes('kilat') ||
+                  name.includes('reguler') ||
+                  name.includes('drop off') ||
+                  name.includes('dry clean')
+                ) && !name.includes('koin') && !name.includes('self service');
+              })) ||
+              (['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika', 'Siap Diambil'].includes(foundTx.status) && foundTx.tipe !== 'SelfService')
+            );
 
-              {/* Live Progress Stepper (Khusus Drop Off) */}
-              <div className="py-2 mb-4">
-                <div className="text-xs font-semibold text-white/80 mb-3 flex items-center justify-between">
-                  <span>Alur Proses Cuci</span>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-[#0a272a] border border-teal-500/40 text-teal-300 font-bold">
-                    Status: {foundTx.status || 'Diterima'}
-                  </span>
+            return (
+              <div className="w-full max-w-lg rounded-2xl border border-[#153a3e] bg-[#061517] p-5 text-left mb-6 shadow-2xl animate-fade-in">
+                {/* Header info */}
+                <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+                  <div>
+                    <span className="text-[10px] text-white/50 uppercase tracking-wider block font-mono">No. Nota</span>
+                    <span className="text-sm font-bold font-mono text-white">{foundTx.noNota}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-white/50 uppercase tracking-wider block">Layanan</span>
+                    <span className="text-xs font-semibold text-teal-300">
+                      {isDropOffOrder ? (foundTx.tingkatLayanan || 'Drop Off') : 'Self Service / Pembelian'}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Step indicator bar */}
-                <div className="space-y-2">
-                  {ORDER_STEPS.map((step, idx) => {
-                    const isDone = idx < currentStepIdx;
-                    const isCurrent = idx === currentStepIdx;
-                    return (
-                      <div
-                        key={step.key}
-                        className={`flex items-center gap-3 p-2 rounded-xl transition ${
-                          isCurrent
-                            ? 'bg-[#0e3135] border border-teal-400/40 text-white shadow-inner'
-                            : isDone
-                            ? 'text-white/80'
-                            : 'text-white/30'
-                        }`}
-                      >
-                        <div className="shrink-0">
-                          {isDone ? (
-                            <div className="w-5 h-5 rounded-full bg-teal-500 text-black flex items-center justify-center font-bold text-[10px]">
-                              ✓
+                {isDropOffOrder ? (
+                  /* Live Progress Stepper (Khusus Drop Off) */
+                  <div className="py-2 mb-4">
+                    <div className="text-xs font-semibold text-white/80 mb-3 flex items-center justify-between">
+                      <span>Alur Proses Cuci</span>
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-[#0a272a] border border-teal-500/40 text-teal-300 font-bold">
+                        Status: {foundTx.status || 'Diterima'}
+                      </span>
+                    </div>
+
+                    {/* Step indicator bar */}
+                    <div className="space-y-2">
+                      {ORDER_STEPS.map((step, idx) => {
+                        const isDone = idx < currentStepIdx;
+                        const isCurrent = idx === currentStepIdx;
+                        return (
+                          <div
+                            key={step.key}
+                            className={`flex items-center gap-3 p-2 rounded-xl transition ${
+                              isCurrent
+                                ? 'bg-[#0e3135] border border-teal-400/40 text-white shadow-inner'
+                                : isDone
+                                ? 'text-white/80'
+                                : 'text-white/30'
+                            }`}
+                          >
+                            <div className="shrink-0">
+                              {isDone ? (
+                                <div className="w-5 h-5 rounded-full bg-teal-500 text-black flex items-center justify-center font-bold text-[10px]">
+                                  ✓
+                                </div>
+                              ) : isCurrent ? (
+                                <div className="w-5 h-5 rounded-full bg-white text-slate-950 flex items-center justify-center font-bold text-[10px] animate-pulse">
+                                  ●
+                                </div>
+                              ) : (
+                                <div className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center text-[10px]">
+                                  {idx + 1}
+                                </div>
+                              )}
                             </div>
-                          ) : isCurrent ? (
-                            <div className="w-5 h-5 rounded-full bg-white text-slate-950 flex items-center justify-center font-bold text-[10px] animate-pulse">
-                              ●
-                            </div>
-                          ) : (
-                            <div className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center text-[10px]">
-                              {idx + 1}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 text-xs font-medium">{step.label}</div>
-                        {isCurrent && (
-                          <span className="text-[10px] text-teal-300 font-mono font-semibold animate-pulse">
-                            Sedang Berlangsung
-                          </span>
-                        )}
+                            <div className="flex-1 text-xs font-medium">{step.label}</div>
+                            {isCurrent && (
+                              <span className="text-[10px] text-teal-300 font-mono font-semibold animate-pulse">
+                                Sedang Berlangsung
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  /* Self Service / Retail Item: Tampilan Langsung Selesai di Tempat */
+                  <div className="py-2 mb-4">
+                    <div className="p-3.5 rounded-xl bg-[#092226] border border-teal-500/30 flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-teal-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-xs text-white block">Layanan Mandiri / Langsung Selesai</span>
+                        <p className="text-[11px] text-white/70 leading-relaxed mt-0.5">
+                          Nota ini berisi layanan <strong>Self Service (Koin)</strong> atau pembelian produk outlet. Transaksi langsung selesai di tempat tanpa proses pengerjaan bertahap.
+                        </p>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    </div>
+                  </div>
+                )}
 
-              {/* Summary Details & E-Nota CTA */}
-              <div className="bg-[#030d0f] rounded-xl p-3 border border-white/5 space-y-1.5 text-xs text-white/70 mb-4">
-                <div className="flex justify-between">
-                  <span>Pelanggan</span>
-                  <span className="text-white font-medium">{foundTx.namaPelanggan || 'Pelanggan'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Estimasi Selesai</span>
-                  <span className="text-white font-medium">{foundTx.estimasi || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Status Pembayaran</span>
-                  <span className={`font-bold ${foundTx.statusPembayaran === 'DP' || foundTx.statusPembayaran === 'Belum Bayar' ? 'text-amber-400' : 'text-emerald-400'}`}>
-                    {foundTx.statusPembayaran || 'Lunas'}
-                  </span>
-                </div>
-              </div>
+                {/* Summary Details & E-Nota CTA */}
+                <div className="bg-[#030d0f] rounded-xl p-3 border border-white/5 space-y-1.5 text-xs text-white/70 mb-4">
+                  <div className="flex justify-between">
+                    <span>Pelanggan</span>
+                    <span className="text-white font-medium">{foundTx.namaPelanggan || 'Pelanggan'}</span>
+                  </div>
+                  {isDropOffOrder && (
+                    <div className="flex justify-between">
+                      <span>Estimasi Selesai</span>
+                      <span className="text-white font-medium">{foundTx.estimasi || '-'}</span>
+                    </div>
+                  )}
 
-              <button
-                type="button"
-                onClick={() => setViewFullNota(foundTx.noNota)}
-                className="w-full bg-white hover:bg-slate-100 text-black font-semibold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-lg cursor-pointer"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Buka E-Nota Bukti Pembayaran</span>
-              </button>
-            </div>
-          )}
+                  {/* Rincian item jika ada pembelian item / multi-item */}
+                  {foundTx.items && foundTx.items.length > 0 && (
+                    <div className="border-t border-white/10 pt-2 mt-2 space-y-1">
+                      <span className="text-[10px] text-white/40 uppercase tracking-wider block font-semibold mb-1">Rincian Nota:</span>
+                      {foundTx.items.map((it, idx) => (
+                        <div key={idx} className="flex justify-between text-xs text-white/80">
+                          <span>{it.qty}x {it.layanan}</span>
+                          <span className="font-mono text-white/60">Rp {(it.subtotal || (it.qty * it.hargaSatuan) || 0).toLocaleString('id-ID')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="border-t border-white/10 pt-2 flex justify-between items-center">
+                    <span>Total Pembayaran</span>
+                    <span className="text-white font-mono font-bold">
+                      Rp {(foundTx.total || 0).toLocaleString('id-ID')}
+                      <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${foundTx.statusPembayaran === 'DP' || foundTx.statusPembayaran === 'Belum Bayar' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                        {foundTx.statusPembayaran || 'Lunas'}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setViewFullNota(foundTx.noNota)}
+                  className="w-full bg-white hover:bg-slate-100 text-black font-semibold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-lg cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Buka E-Nota Bukti Pembayaran</span>
+                </button>
+              </div>
+            );
+          })()}
 
           {foundPoin && (
             <div className="w-full max-w-lg rounded-2xl border border-[#153a3e] bg-[#061517] p-5 text-left mb-6 shadow-2xl animate-fade-in">
