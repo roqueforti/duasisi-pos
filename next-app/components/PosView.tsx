@@ -195,6 +195,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             satuan: item.satuan || 'paket',
             icon: item.icon,
             kategori: item.kategori || (item.tipe === 'FullService' ? 'Drop Off' : 'Self Service'),
+            kategoriDropOff: item.kategoriDropOff || '',
             kategoriWarna: item.kategoriWarna,
             kategoriIcon: item.kategoriIcon,
             idInventory: item.idInventory || null,
@@ -536,8 +537,36 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     }
   }, [toastMsg]);
 
+  // Auto-sync tingkatLayanan to mapped priority of Drop Off item in cart
+  useEffect(() => {
+    const items = Object.values(cart);
+    const dropOffItem = items.find(i => (i as any).kategoriDropOff || i.tipe === 'FullService' || (i.kategori || '').toLowerCase().includes('drop'));
+    if (dropOffItem) {
+      const mappedPri = (dropOffItem as any).kategoriDropOff;
+      if (mappedPri) {
+        setTingkatLayanan(mappedPri);
+      } else {
+        const nLower = (dropOffItem.layanan || '').toLowerCase();
+        if (nLower.includes('kilat')) setTingkatLayanan('Kilat');
+        else if (nLower.includes('express') || nLower.includes('ekspres')) setTingkatLayanan('Express');
+        else if (nLower.includes('sameday')) setTingkatLayanan('Sameday');
+      }
+    }
+  }, [cart]);
+
   // Cart Helper
   const updateCart = (layanan: LayananItem, delta: number, catatanOverride?: string) => {
+    if (delta > 0) {
+      if (layanan.kategoriDropOff) {
+        setTingkatLayanan(layanan.kategoriDropOff);
+      } else if (layanan.tipe === 'FullService' || (layanan.kategori || '').toLowerCase().includes('drop')) {
+        const nLower = (layanan.layanan || '').toLowerCase();
+        if (nLower.includes('kilat')) setTingkatLayanan('Kilat');
+        else if (nLower.includes('express') || nLower.includes('ekspres')) setTingkatLayanan('Express');
+        else if (nLower.includes('sameday')) setTingkatLayanan('Sameday');
+      }
+    }
+
     setCart((prev) => {
       const existing = prev[layanan.layanan];
       const newQty = (existing ? existing.qty : 0) + delta;
@@ -556,6 +585,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           qty: newQty,
           tipe: layanan.tipe,
           satuan: layanan.satuan,
+          kategori: layanan.kategori,
+          kategoriDropOff: layanan.kategoriDropOff || '',
           idInventory: layanan.idInventory || null,
           inventoryDeductionQty: layanan.inventoryDeductionQty,
           catatan: catatanOverride !== undefined ? catatanOverride : (existing?.catatan || '')

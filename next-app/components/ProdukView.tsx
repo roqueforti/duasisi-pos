@@ -412,6 +412,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       } else {
         await runBackend('tambahLayanan', payload);
       }
+      clearCache('getLayananListAll');
+      clearCache('getLayananList');
       setShowModal(false);
       loadProduk();
       await showAlert('Layanan berhasil disimpan!', 'success');

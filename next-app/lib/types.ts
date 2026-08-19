@@ -9,6 +9,7 @@ export interface LayananItem {
   satuan?: string;
   icon?: string;
   kategori?: string;
+  kategoriDropOff?: string;
   kategoriWarna?: string;
   kategoriIcon?: string;
   idInventory?: string | null;
@@ -23,6 +24,7 @@ export interface CartItem {
   satuan?: string;
   catatan?: string;
   kategori?: 'Self Service' | 'Drop Off' | 'Add On' | 'Makanan dan Minuman' | string;
+  kategoriDropOff?: string;
   idInventory?: string | null;
   inventoryDeductionQty?: number;
 }
