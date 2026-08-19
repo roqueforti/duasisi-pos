@@ -50,7 +50,6 @@ function simpanPelangganJikaBaru(nama, noHp, alamat, totalBelanja, catatan) {
   const spend = Number(totalBelanja) || 0;
   const props = PropertiesService.getScriptProperties();
   const poinRate = Number(props.getProperty("POIN_RATE") || 10000);
-  const poinAdded = poinRate > 0 ? Math.floor(spend / poinRate) : 0;
 
   if (foundRowIdx > 0) {
     // Update existing customer stats
@@ -60,6 +59,8 @@ function simpanPelangganJikaBaru(nama, noHp, alamat, totalBelanja, catatan) {
     const currentSpend = Number(data[foundRowIdx - 1][5]) || 0;
     const currentNotes = data[foundRowIdx - 1][7] || "";
     const currentPoin = Number(data[foundRowIdx - 1][8]) || 0;
+    const isMember = String(data[foundRowIdx - 1][9] || "").toUpperCase() === "MEMBER";
+    const poinAdded = (isMember && poinRate > 0) ? Math.floor(spend / poinRate) : 0;
 
     if (nama && nama.trim()) shP.getRange(foundRowIdx, 2).setValue(nama.trim());
     if (alamat && alamat.trim()) shP.getRange(foundRowIdx, 3).setValue(alamat.trim());
@@ -67,11 +68,13 @@ function simpanPelangganJikaBaru(nama, noHp, alamat, totalBelanja, catatan) {
     shP.getRange(foundRowIdx, 6).setValue(currentSpend + spend);
     shP.getRange(foundRowIdx, 7).setValue(now);
     if (catatan && catatan.trim()) shP.getRange(foundRowIdx, 8).setValue(catatan.trim());
-    shP.getRange(foundRowIdx, 9).setValue(currentPoin + poinAdded);
+    if (isMember) {
+      shP.getRange(foundRowIdx, 9).setValue(currentPoin + poinAdded);
+    }
   } else {
-    // Insert new customer record
-    // ["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin"]
-    shP.appendRow([cleanHp, nama ? nama.trim() : "Pelanggan Baru", alamat || "", now, 1, spend, now, catatan || "", poinAdded]);
+    // Insert new regular customer record (Status: UMUM, Poin: 0)
+    // ["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member"]
+    shP.appendRow([cleanHp, nama ? nama.trim() : "Pelanggan Umum", alamat || "", now, 1, spend, now, catatan || "", 0, "UMUM"]);
   }
 }
 

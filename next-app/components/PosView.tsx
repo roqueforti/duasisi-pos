@@ -2340,9 +2340,9 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
                     {!showQuickAddMember ? (
                       <select
-                        value={customer.noHp}
+                        value={customer.isMember ? customer.noHp : ''}
                         onChange={(e) => {
-                          const found = customerList.find((c) => c.noHp === e.target.value);
+                          const found = customerList.find((c) => c.noHp === e.target.value && c.isMember);
                           if (found) {
                             setCustomer({
                               ...found,
@@ -2354,12 +2354,16 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         }}
                         className="w-full px-3 py-2.5 bg-white border border-amber-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648]"
                       >
-                        <option value="">-- Cari / Pilih Member --</option>
-                        {customerList.map((c) => (
-                          <option key={c.noHp} value={c.noHp}>
-                            {c.isMember ? '⭐' : '👤'} {c.nama} ({c.noHp}) {c.poin ? `· ${c.poin} Poin` : ''} {c.totalOrder ? `· ${c.totalOrder}x order` : ''}
-                          </option>
-                        ))}
+                        <option value="">-- Cari / Pilih Member Terdaftar --</option>
+                        {customerList.filter((c) => c.isMember).length === 0 ? (
+                          <option value="" disabled>Belum ada member terdaftar (Klik + Daftar Member Baru)</option>
+                        ) : (
+                          customerList.filter((c) => c.isMember).map((c) => (
+                            <option key={c.noHp} value={c.noHp}>
+                              ⭐ {c.nama} ({c.noHp}) {c.poin ? `· ${c.poin} Poin` : ''} {c.totalOrder ? `· ${c.totalOrder}x order` : ''}
+                            </option>
+                          ))
+                        )}
                       </select>
                     ) : (
                       /* Quick Inline Member Registration Form */
@@ -2429,8 +2433,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                   </div>
                 )}
 
-                {/* Member Points Card & Loyalty Projection */}
-                {(customerMode === 'MEMBER' || (customer.poin !== undefined && customer.poin > 0)) && (
+                {/* Member Points Card & Loyalty Projection (ONLY FOR VERIFIED MEMBERS) */}
+                {customerMode === 'MEMBER' && customer.isMember && (
                   <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-300/90 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-[#FF9500] text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
@@ -2438,7 +2442,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       </div>
                       <div>
                         <div className="font-extrabold text-xs text-slate-900">
-                          Poin Loyalitas Pelanggan
+                          Poin Loyalitas Pelanggan (Member)
                         </div>
                         <div className="text-[11px] text-slate-600 mt-0.5">
                           Saldo Saat Ini: <span className="font-bold text-slate-900 font-mono">{customer.poin || 0} Poin</span>
@@ -2514,34 +2518,17 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           </button>
                         </div>
                       );
-                    } else if ((detected.totalOrder || 0) > 1) {
-                      return (
-                        <div className="bg-teal-50 border border-teal-200 rounded-xl p-2.5 flex items-center justify-between text-xs flex-wrap gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">🔁</span>
-                            <div>
-                              <div className="font-bold text-teal-950">Pelanggan Lama Terdaftar: {detected.nama}</div>
-                              <div className="text-[10px] text-teal-700">Riwayat: {detected.totalOrder}x Transaksi · Saldo: {detected.poin || 0} Poin</div>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleDaftarMemberQuick(detected.nama, detected.noHp, detected.alamat)}
-                            className="px-2.5 py-1 bg-[#1E4648] hover:bg-[#163536] text-white rounded-lg font-bold text-[11px] transition shadow-2xs flex items-center gap-1"
-                          >
-                            <Sparkles className="w-3 h-3 text-amber-300" />
-                            <span>Daftarkan Member?</span>
-                          </button>
-                        </div>
-                      );
                     } else {
                       return (
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between text-xs flex-wrap gap-2">
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <span className="text-base">✨</span>
+                          <div className="flex items-center gap-2 text-slate-700">
+                            <span className="text-base">👤</span>
                             <div>
-                              <div className="font-bold text-slate-800">Pelanggan Baru ({detected.nama})</div>
-                              <div className="text-[10px] text-slate-400">Baru 1x transaksi. Tawarkan member loyalitas.</div>
+                              <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                <span>Pelanggan Umum: {detected.nama}</span>
+                                <span className="text-[10px] bg-slate-200 text-slate-700 font-semibold px-2 py-0.2 rounded-full">Bukan Member</span>
+                              </div>
+                              <div className="text-[10px] text-slate-500">Pernah order {detected.totalOrder || 1}x sebelumnya · Belum terdaftar member</div>
                             </div>
                           </div>
                           <button
@@ -2551,10 +2538,10 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                               setShowQuickAddMember(true);
                               setNewMemberForm({ nama: detected.nama || customer.nama, noHp: detected.noHp || customer.noHp, alamat: detected.alamat || '', tglLahir: (detected as any)?.tglLahir || '' });
                             }}
-                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-[11px] transition shadow-2xs flex items-center gap-1"
+                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-[11px] transition shadow-2xs flex items-center gap-1 cursor-pointer"
                           >
                             <Sparkles className="w-3 h-3 text-white" />
-                            <span>+ Jadikan Member</span>
+                            <span>+ Daftarkan Member</span>
                           </button>
                         </div>
                       );
