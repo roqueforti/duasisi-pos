@@ -2262,15 +2262,15 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 <span className="text-2xl sm:text-3xl font-black text-white font-mono drop-shadow-sm leading-tight block mt-0.5">
                   Rp {(grandTotal || 0).toLocaleString('id-ID')}
                 </span>
-                <div className="mt-0.5 flex items-center justify-center gap-2 text-[10px] text-slate-400 font-medium">
-                  <span>{cartArray.reduce((acc, c) => acc + c.qty, 0)} Pcs / Paket</span>
+                <div className="mt-0.5 flex items-center justify-center gap-1.5 text-[10px] font-medium">
                   {diskonApplied.nilai > 0 && (
-                    <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded font-semibold">
+                    <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full font-semibold">
                       Diskon -Rp {diskonApplied.nilai.toLocaleString('id-ID')}
                     </span>
                   )}
                   {Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
-                    <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded font-semibold">
+                    <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-bold flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-300" />
                       +{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin
                     </span>
                   )}
