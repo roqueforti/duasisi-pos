@@ -23,7 +23,8 @@ import {
   Star,
   Coffee,
   ExternalLink,
-  Laptop
+  Laptop,
+  ChevronDown
 } from 'lucide-react';
 import MoltenMetal from '@/components/MoltenMetal';
 import CardNav, { CardNavItem } from '@/components/CardNav';
@@ -667,11 +668,29 @@ export default function CustomerLandingPage() {
               <span className="font-semibold">Work From Laundry</span>
             </div>
           </div>
+
+          {/* 6. Animated Scroll Down Indicator */}
+          <div className="pt-8 sm:pt-10">
+            <button
+              type="button"
+              onClick={() => {
+                document.getElementById('pilihan-layanan')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="group inline-flex flex-col items-center gap-1.5 text-white/50 hover:text-teal-300 transition cursor-pointer"
+            >
+              <span className="text-[11px] font-medium tracking-wide group-hover:text-white transition-colors">
+                Scroll untuk info layanan & outlet
+              </span>
+              <div className="w-7 h-7 rounded-full border border-white/20 bg-white/[0.04] group-hover:border-teal-400 group-hover:bg-teal-950/60 flex items-center justify-center transition shadow-lg animate-bounce">
+                <ChevronDown className="w-3.5 h-3.5 text-white/70 group-hover:text-teal-300 transition" />
+              </div>
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* 6. Penjelasan Layanan: Drop Off & Self Service (Section Terpisah di Bawah Lipatan) */}
-      <section className="relative z-20 w-full bg-[#040e10] py-20 border-t border-white/10 text-left">
+      {/* 7. Penjelasan Layanan: Drop Off & Self Service (Section Terpisah di Bawah Lipatan) */}
+      <section id="pilihan-layanan" className="relative z-20 w-full bg-[#040e10] py-20 border-t border-white/10 text-left">
         <div className="max-w-5xl mx-auto px-4 space-y-6">
           <div className="text-center mb-8">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Pilihan Layanan Kami</h2>
