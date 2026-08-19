@@ -546,129 +546,210 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
       </div>
 
       {/* Transaction Table */}
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                <th className="py-3 px-4">No Nota</th>
-                <th className="py-3 px-4">Tanggal</th>
-                <th className="py-3 px-4">Pelanggan</th>
-                <th className="py-3 px-4">Kasir</th>
-                <th className="py-3 px-4">Total</th>
-                <th className="py-3 px-4">Status Bayar</th>
-                <th className="py-3 px-4 text-right">Aksi & Approval</th>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold text-[11px]">
+                <th className="py-2.5 px-3.5">No Nota</th>
+                <th className="py-2.5 px-3">Tanggal & Kasir</th>
+                <th className="py-2.5 px-3">Pelanggan</th>
+                <th className="py-2.5 px-3">Layanan & Item</th>
+                <th className="py-2.5 px-3">Status Pengerjaan</th>
+                <th className="py-2.5 px-3">Total Tagihan</th>
+                <th className="py-2.5 px-3">Pembayaran</th>
+                <th className="py-2.5 px-3.5 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 Array.from({ length: 5 }).map((_, idx) => (
                   <tr key={idx} className="animate-pulse">
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-28" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16 ml-auto" /></td>
+                    <td className="py-2.5 px-3.5"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
+                    <td className="py-2.5 px-3"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
+                    <td className="py-2.5 px-3"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
+                    <td className="py-2.5 px-3"><div className="h-3.5 bg-slate-100 rounded w-32" /></td>
+                    <td className="py-2.5 px-3"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
+                    <td className="py-2.5 px-3"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
+                    <td className="py-2.5 px-3"><div className="h-3.5 bg-slate-100 rounded w-14" /></td>
+                    <td className="py-2.5 px-3.5"><div className="h-3.5 bg-slate-100 rounded w-16 ml-auto" /></td>
                   </tr>
                 ))
               ) : filteredTx.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     Belum ada riwayat transaksi
                   </td>
                 </tr>
               ) : (
-                filteredTx.map((tx) => (
-                  <tr key={tx.noNota} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-600">
-                      {tx.noNota}
-                      {tx.statusVoid === 'PendingApproval' && (
-                        <div className="text-[10px] text-[#FF9500] font-semibold bg-[#FF9500]/10 border border-[#FF9500]/30 px-1.5 py-0.5 rounded mt-0.5 inline-block">
-                          Pending Void
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-slate-500">{tx.tanggal}</td>
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-700">{tx.namaPelanggan || '-'}</div>
-                      {tx.noHp && <div className="text-[10px] text-slate-400">{maskPhone(tx.noHp)}</div>}
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-slate-600">{tx.petugas || '-'}</td>
-                    <td className="py-3 px-4">
-                      <div className="font-bold text-[#1E4648]">Rp {(tx?.total || 0).toLocaleString('id-ID')}</div>
-                      {tx.sisaTagihan && tx.sisaTagihan > 0 ? (
-                        <div className="text-[10px] text-rose-600 font-bold">
-                          Sisa: Rp {(tx?.sisaTagihan || 0).toLocaleString('id-ID')}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`text-[11px] font-bold px-2.5 py-1 rounded-md border ${
-                          tx.statusVoid === 'Approved' || tx.status === 'Void' || tx.status === 'Batal'
-                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                            : tx.statusPembayaran === 'DP' || (tx.sisaTagihan || 0) > 0
-                              ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        }`}
-                      >
-                        <span>{tx.statusVoid === 'Approved' || tx.status === 'Void' || tx.status === 'Batal' ? 'VOID' : tx.statusPembayaran || ((tx.sisaTagihan || 0) > 0 ? 'DP' : 'Lunas')}</span>
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => setSelectedTx(tx)}
-                          className="p-1.5 text-slate-500 hover:text-slate-600 hover:bg-slate-100 rounded transition"
-                          title="Detail Nota"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handlePrintReceipt(tx)}
-                          className="p-1.5 text-slate-500 hover:text-slate-600 hover:bg-slate-100 rounded transition"
-                          title="Cetak Struk"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                        </button>
-                        
-                        {/* Send WA Notification */}
-                        <button
-                          onClick={() => tx.status === 'Siap Diambil' ? handleSendSiapWA(tx) : handleWhatsAppStruk(tx)}
-                          className="p-1.5 text-[#1E4648] hover:bg-[#B5C9C9]/20 rounded transition"
-                          title={tx.status === 'Siap Diambil' ? "Kirim WA Siap Diambil" : "Kirim WA Struk"}
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                        </button>
+                filteredTx.map((tx) => {
+                  const isDropOff = Boolean(tx.tipe === 'FullService' || tx.tipe === 'Drop Off' || (tx.tipe as string) === 'DropOff');
+                  const isSelfService = Boolean(tx.tipe === 'SelfService' || tx.tipe === 'Self Service');
+                  const speedLower = String(tx.tingkatLayanan || 'Reguler').toLowerCase();
 
-                        {/* DP Pelunasan Button (FR-POS-16) */}
-                        {tx.sisaTagihan && tx.sisaTagihan > 0 ? (
-                          <button
-                            onClick={() => { setTxToLunas(tx); setPelunasanNominalInput((tx.sisaTagihan || 0).toString()); setShowPelunasanModal(true); }}
-                            className="p-1 text-xs bg-[#1E4648] text-white hover:bg-[#1E4648] rounded px-2 font-semibold transition"
-                            title="Pelunasan DP"
-                          >
-                            Lunas
-                          </button>
-                        ) : null}
-
-                        {/* Void Request Button (FR-POS-24) */}
-                        {tx.status !== 'Batal' && tx.status !== 'Void' && tx.statusVoid !== 'PendingApproval' && tx.statusVoid !== 'Approved' && (
-                          <button
-                            onClick={() => { setTxToVoid(tx); setShowVoidModal(true); }}
-                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded transition"
-                            title="Ajukan Void Transaksi"
-                          >
-                            <ShieldAlert className="w-3.5 h-3.5" />
-                          </button>
+                  return (
+                    <tr key={tx.noNota} className="hover:bg-slate-50/80 transition-colors text-xs">
+                      {/* 1. No Nota */}
+                      <td className="py-2.5 px-3.5 font-bold text-slate-700 whitespace-nowrap">
+                        <div className="font-mono text-xs">{tx.noNota}</div>
+                        {tx.statusVoid === 'PendingApproval' && (
+                          <span className="text-[9px] text-[#FF9500] font-semibold bg-[#FF9500]/10 border border-[#FF9500]/30 px-1 py-0.2 rounded mt-0.5 inline-block">
+                            Pending Void
+                          </span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+
+                      {/* 2. Tanggal & Kasir */}
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <div className="font-medium text-slate-700 text-[11px]">{tx.tanggal}</div>
+                        <div className="text-[10px] text-slate-400">Kasir: {tx.petugas || 'Kasir'}</div>
+                      </td>
+
+                      {/* 3. Pelanggan */}
+                      <td className="py-2.5 px-3">
+                        <div className="font-semibold text-slate-800 text-xs truncate max-w-[120px]">{tx.namaPelanggan || '-'}</div>
+                        {tx.noHp && <div className="text-[10px] text-slate-400 font-mono">{maskPhone(tx.noHp)}</div>}
+                      </td>
+
+                      {/* 4. Layanan & Item (Compact) */}
+                      <td className="py-2.5 px-3 min-w-[140px] max-w-[200px]">
+                        <div className="flex items-center gap-1 mb-0.5 flex-wrap">
+                          {isDropOff ? (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                              speedLower.includes('kilat') ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                              speedLower.includes('express') ? 'bg-amber-50 text-amber-800 border-amber-200' :
+                              'bg-teal-50 text-teal-800 border-teal-200'
+                            }`}>
+                              Drop Off · {tx.tingkatLayanan || 'Reguler'}
+                            </span>
+                          ) : isSelfService ? (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border bg-sky-50 text-sky-800 border-sky-200">
+                              Self Service (Koin)
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border bg-slate-100 text-slate-700 border-slate-200">
+                              Retail / FnB
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-600 truncate leading-tight" title={(tx.items || []).map(i => `${i.qty}x ${i.layanan}`).join(', ')}>
+                          {(tx.items && tx.items.length > 0)
+                            ? tx.items.map(i => `${i.qty}x ${i.layanan}`).join(', ')
+                            : (tx.tipe || 'Layanan')}
+                        </p>
+                      </td>
+
+                      {/* 5. Status Pengerjaan (Produksi) */}
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        {isDropOff ? (() => {
+                          const st = String(tx.status || 'Diterima');
+                          const badgeCls =
+                            st === 'Siap Diambil'
+                              ? 'bg-teal-50 text-teal-800 border-teal-300 font-extrabold'
+                              : st === 'Selesai'
+                              ? 'bg-slate-100 text-slate-700 border-slate-200'
+                              : st === 'Dicuci'
+                              ? 'bg-blue-50 text-blue-800 border-blue-200'
+                              : st === 'Dikeringkan'
+                              ? 'bg-amber-50 text-amber-800 border-amber-200'
+                              : (st.includes('Lipat') || st.includes('Setrika'))
+                              ? 'bg-purple-50 text-purple-800 border-purple-200'
+                              : 'bg-slate-50 text-slate-600 border-slate-200';
+
+                          return (
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeCls}`}>
+                              <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                              <span>{st}</span>
+                            </span>
+                          );
+                        })() : (
+                          <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">
+                            Selesai di Tempat
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 6. Total Tagihan */}
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <div className="font-bold text-[#1E4648] text-xs">Rp {(tx?.total || 0).toLocaleString('id-ID')}</div>
+                        {tx.sisaTagihan && tx.sisaTagihan > 0 ? (
+                          <div className="text-[9px] text-rose-600 font-bold">
+                            Sisa: Rp {(tx?.sisaTagihan || 0).toLocaleString('id-ID')}
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-400">{tx.metodeBayar || 'Tunai'}</div>
+                        )}
+                      </td>
+
+                      {/* 7. Status Pembayaran */}
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                            tx.statusVoid === 'Approved' || tx.status === 'Void' || tx.status === 'Batal'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : tx.statusPembayaran === 'DP' || (tx.sisaTagihan || 0) > 0
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}
+                        >
+                          <span>{tx.statusVoid === 'Approved' || tx.status === 'Void' || tx.status === 'Batal' ? 'VOID' : tx.statusPembayaran || ((tx.sisaTagihan || 0) > 0 ? 'DP' : 'Lunas')}</span>
+                        </span>
+                      </td>
+
+                      {/* 8. Aksi & Approval */}
+                      <td className="py-2.5 px-3.5 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setSelectedTx(tx)}
+                            className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
+                            title="Detail Nota"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handlePrintReceipt(tx)}
+                            className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
+                            title="Cetak Struk"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                          
+                          {/* Send WA Notification */}
+                          <button
+                            onClick={() => tx.status === 'Siap Diambil' ? handleSendSiapWA(tx) : handleWhatsAppStruk(tx)}
+                            className="p-1.5 text-[#1E4648] hover:bg-[#B5C9C9]/20 rounded-lg transition"
+                            title={tx.status === 'Siap Diambil' ? "Kirim WA Siap Diambil" : "Kirim WA Struk"}
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* DP Pelunasan Button */}
+                          {tx.sisaTagihan && tx.sisaTagihan > 0 ? (
+                            <button
+                              onClick={() => { setTxToLunas(tx); setPelunasanNominalInput((tx.sisaTagihan || 0).toString()); setShowPelunasanModal(true); }}
+                              className="p-1 text-[11px] bg-[#1E4648] text-white hover:bg-[#163536] rounded px-2 font-semibold transition shadow-2xs"
+                              title="Pelunasan DP"
+                            >
+                              Lunas
+                            </button>
+                          ) : null}
+
+                          {/* Void Request Button */}
+                          {tx.status !== 'Batal' && tx.status !== 'Void' && tx.statusVoid !== 'PendingApproval' && tx.statusVoid !== 'Approved' && (
+                            <button
+                              onClick={() => { setTxToVoid(tx); setShowVoidModal(true); }}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition"
+                              title="Ajukan Void Transaksi"
+                            >
+                              <ShieldAlert className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

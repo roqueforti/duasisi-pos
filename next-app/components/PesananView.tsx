@@ -225,17 +225,20 @@ export default function PesananView() {
     return null;
   }, [kanbanColumns]);
 
-  // Count summaries for quick tabs
+  // Count summaries for quick tabs with daily re-chat check
   const summaryCounts = useMemo(() => {
     let siapCount = 0;
     let belumWaCount = 0;
     let diprosesCount = 0;
+    const todayDateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
     orders.forEach(o => {
       const isSiap = o.status === 'Siap Diambil' || (o.pipeline && o.pipeline.some(p => p.namaStep === 'Siap Diambil' && p.status === 'Aktif'));
       if (isSiap) {
         siapCount++;
-        if (!waReminders[o.noNota]) {
+        const reminded = waReminders[o.noNota];
+        const isRemindedToday = Boolean(reminded && reminded.includes(todayDateStr));
+        if (!isRemindedToday) {
           belumWaCount++;
         }
       } else {
@@ -248,6 +251,8 @@ export default function PesananView() {
 
   const filteredOrders = useMemo(() => {
     const keyword = query.trim().toLowerCase();
+    const todayDateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+
     return orders.filter((order) => {
       const orderPriority = order.tingkatLayanan || 'Reguler';
       const priorityMatch = priority === 'Semua' || orderPriority.toLowerCase() === priority.toLowerCase();
@@ -261,7 +266,11 @@ export default function PesananView() {
       const isSiap = order.status === 'Siap Diambil' || (order.pipeline && order.pipeline.some(p => p.namaStep === 'Siap Diambil' && p.status === 'Aktif'));
       if (filterTab === 'Diproses') return !isSiap;
       if (filterTab === 'SiapDiambil') return isSiap;
-      if (filterTab === 'BelumWA') return isSiap && !waReminders[order.noNota];
+      if (filterTab === 'BelumWA') {
+        const reminded = waReminders[order.noNota];
+        const isRemindedToday = Boolean(reminded && reminded.includes(todayDateStr));
+        return isSiap && !isRemindedToday;
+      }
 
       return true;
     });
@@ -328,6 +337,16 @@ export default function PesananView() {
     );
     const isSiapDiambil = order.status === 'Siap Diambil' || next === 'Selesai';
     const remindedTime = waReminders[order.noNota];
+    const todayDateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    const isRemindedToday = Boolean(remindedTime && remindedTime.includes(todayDateStr));
+
+    const daysInOutlet = (() => {
+      if (!order.tanggal) return 0;
+      const orderDate = new Date(order.tanggal);
+      if (isNaN(orderDate.getTime())) return 0;
+      const diffMs = Date.now() - orderDate.getTime();
+      return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    })();
 
     return (
       <article key={order.noNota} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md">
@@ -378,14 +397,16 @@ export default function PesananView() {
         {isSiapDiambil ? (
           <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Di Outlet:</span>
-              {remindedTime ? (
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                {daysInOutlet > 0 ? `Di Rak ${daysInOutlet} Hari:` : 'Status Di Rak:'}
+              </span>
+              {isRemindedToday ? (
                 <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full" title={`Terakhir dikirim: ${remindedTime}`}>
-                  <Check className="w-3 h-3 stroke-[3]" /> Sudah di-WA
+                  <Check className="w-3 h-3 stroke-[3]" /> Sudah di-WA Hari Ini
                 </span>
               ) : (
                 <span className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-full animate-pulse">
-                  <AlertCircle className="w-3 h-3" /> Belum di-WA
+                  <AlertCircle className="w-3 h-3" /> {remindedTime ? 'Butuh Re-chat Hari Ini' : 'Belum di-WA'}
                 </span>
               )}
             </div>
@@ -396,7 +417,11 @@ export default function PesananView() {
               className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white transition hover:bg-emerald-700 shadow-xs"
             >
               <MessageCircle className="h-3.5 w-3.5" />
-              <span>{remindedTime ? 'Kirim Ulang Notifikasi WA' : 'Kirim WA Siap Diambil'}</span>
+              <span>
+                {isRemindedToday
+                  ? 'Kirim Ulang WhatsApp'
+                  : (remindedTime ? `Kirim Re-chat WA (Hari ke-${daysInOutlet + 1})` : 'Kirim WA Siap Diambil')}
+              </span>
             </button>
 
             {/* Tombol Serahkan / Selesai */}

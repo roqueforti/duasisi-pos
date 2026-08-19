@@ -97,26 +97,53 @@ export function useGlobalNotifications(currentRole: UserRole) {
         }
       } catch (e) {}
 
-      // 2. Check Active Drop Off Orders
+      // 2. Check Active Drop Off Orders & Uncollected Laundry needing Daily Re-chat
       try {
-        const pesananList = await runBackend<any[]>('getPesananDropOffList');
+        const pesananList = await runBackend<any[]>('getTransaksiByPipeline', 'Semua');
         if (Array.isArray(pesananList)) {
           const activeOrders = pesananList.filter(p => p.status !== 'Selesai' && p.status !== 'Batal' && p.status !== 'Void');
           counts.pesanan = activeOrders.length;
           if (activeOrders.length > 0) {
-            const readyToPickup = activeOrders.filter(p => p.status === 'Siap Diambil').length;
-            items.push({
-              id: `pesanan-active-${activeOrders.length}`,
-              category: 'pesanan',
-              title: `📦 ${activeOrders.length} Pesanan Drop-off Aktif`,
-              message: readyToPickup > 0 
-                ? `${readyToPickup} pesanan siap diambil pelanggan, ${activeOrders.length - readyToPickup} sedang dalam proses pencucian/setrika.`
-                : `${activeOrders.length} pesanan sedang dikerjakan dalam pipeline antrean.`,
-              type: 'info',
-              timestamp: nowStr,
-              targetTab: 'pesanan',
-              count: activeOrders.length
-            });
+            const readyOrders = activeOrders.filter(p => p.status === 'Siap Diambil' || (p.pipeline && p.pipeline.some((step: any) => step.namaStep === 'Siap Diambil' && step.status === 'Aktif')));
+            const readyToPickup = readyOrders.length;
+            
+            // Check how many need daily WA re-chat (not reminded today)
+            const todayDateKey = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+            let unremindedToday = 0;
+            if (typeof window !== 'undefined') {
+              readyOrders.forEach(o => {
+                const lastRemind = localStorage.getItem('wa_reminder_' + o.noNota);
+                if (!lastRemind || !lastRemind.includes(todayDateKey)) {
+                  unremindedToday++;
+                }
+              });
+            }
+
+            if (readyToPickup > 0) {
+              items.push({
+                id: `pesanan-ready-${readyToPickup}-${unremindedToday}`,
+                category: 'pesanan',
+                title: `🧺 ${readyToPickup} Cucian Siap Diambil di Rak${unremindedToday > 0 ? ` (${unremindedToday} Butuh Re-chat)` : ''}`,
+                message: unremindedToday > 0
+                  ? `Terdapat ${readyToPickup} nota cucian di rak outlet. ${unremindedToday} nota belum dikirimi reminder WhatsApp hari ini.`
+                  : `Terdapat ${readyToPickup} nota cucian rapi di rak outlet siap diserahkan ke pelanggan.`,
+                type: unremindedToday > 0 ? 'warning' : 'info',
+                timestamp: nowStr,
+                targetTab: 'pesanan',
+                count: readyToPickup
+              });
+            } else {
+              items.push({
+                id: `pesanan-active-${activeOrders.length}`,
+                category: 'pesanan',
+                title: `📦 ${activeOrders.length} Pesanan Drop-off Sedang Diproses`,
+                message: `${activeOrders.length} pesanan sedang dikerjakan dalam pipeline antrean cuci/kering/lipat.`,
+                type: 'info',
+                timestamp: nowStr,
+                targetTab: 'pesanan',
+                count: activeOrders.length
+              });
+            }
           }
         }
       } catch (e) {}
