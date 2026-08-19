@@ -26,6 +26,25 @@ import { clearBackendSession, parseSessionToken, onSessionExpired, notifySession
 import { clearCache } from '@/lib/cache';
 import { useGlobalNotifications } from '@/lib/useGlobalNotifications';
 
+const VALID_TABS = [
+  'dashboard', 'transaksi', 'riwayat', 'pesanan', 'absensi',
+  'pelanggan', 'inventory', 'pegawai', 'payroll', 'produk',
+  'kategori', 'langkah', 'shift', 'menu', 'rekap', 'keamanan'
+];
+
+const MANAGER_ONLY_TABS = [
+  'pegawai', 'payroll', 'produk', 'kategori', 'langkah',
+  'shift', 'menu', 'rekap', 'keamanan'
+];
+
+function getValidInitialTab(savedTab: string | null, role: UserRole): string {
+  const fallback = role === 'MANAGER' ? 'dashboard' : 'transaksi';
+  if (!savedTab || !VALID_TABS.includes(savedTab)) return fallback;
+  if (role === 'MANAGER' && savedTab === 'transaksi') return 'dashboard';
+  if (role !== 'MANAGER' && MANAGER_ONLY_TABS.includes(savedTab)) return 'transaksi';
+  return savedTab;
+}
+
 export default function HomePage() {
   const [currentRole, setCurrentRole] = useState<UserRole>('');
   const [currentTab, setCurrentTab] = useState<string>('transaksi');
@@ -34,6 +53,15 @@ export default function HomePage() {
   const [publicNotaToken, setPublicNotaToken] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+
+  const handleTabChange = (tab: string) => {
+    setCurrentTab(tab);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('duasisi_last_active_tab', tab);
+      } catch (e) {}
+    }
+  };
 
   const {
     notifications,
@@ -53,7 +81,11 @@ export default function HomePage() {
     if (payload) {
       if (!isSessionIdleExpired()) {
         setCurrentRole(payload.role);
-        setCurrentTab(payload.role === 'MANAGER' ? 'dashboard' : 'transaksi');
+        let savedTab: string | null = null;
+        try {
+          savedTab = localStorage.getItem('duasisi_last_active_tab');
+        } catch (e) {}
+        setCurrentTab(getValidInitialTab(savedTab, payload.role));
         touchSessionActivity();
       } else {
         notifySessionExpired('Sesi sebelumnya telah kedaluwarsa karena tidak ada aktivitas. Silakan masukkan PIN untuk melanjutkan.');
@@ -111,11 +143,12 @@ export default function HomePage() {
   const handleLoginSuccess = (role: UserRole) => {
     setCurrentRole(role);
     setSessionNotice(null);
-    if (role === 'MANAGER') {
-      setCurrentTab('dashboard');
-    } else {
-      setCurrentTab('transaksi');
-    }
+    let savedTab: string | null = null;
+    try {
+      savedTab = localStorage.getItem('duasisi_last_active_tab');
+    } catch (e) {}
+    const initialTab = getValidInitialTab(savedTab, role);
+    handleTabChange(initialTab);
   };
 
   const handleLogout = () => {
@@ -155,7 +188,7 @@ export default function HomePage() {
           {/* Sidebar Navigation */}
           <Sidebar
             currentTab={currentTab}
-            setCurrentTab={setCurrentTab}
+            setCurrentTab={handleTabChange}
             currentRole={currentRole}
             isSidebarOpen={isSidebarOpen}
             setIsSidebarOpen={setIsSidebarOpen}
@@ -174,7 +207,7 @@ export default function HomePage() {
                 handleGlobalRefresh();
                 refreshNotifications();
               }}
-              onNavigate={(tab) => setCurrentTab(tab)}
+              onNavigate={(tab) => handleTabChange(tab)}
               notifications={notifications}
               unreadCount={unreadCount}
               onMarkAsRead={markAsRead}

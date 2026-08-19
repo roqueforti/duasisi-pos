@@ -60,7 +60,26 @@ export default function RekapView() {
   const [data, setData] = useState<LaporanResponse | null>(null);
 
   // Active Tab: 'Laporan' | 'ApprovalVoid' | 'AuditTrail' | 'KasShift'
-  const [activeTab, setActiveTab] = useState<'Laporan' | 'ApprovalVoid' | 'AuditTrail' | 'KasShift'>('Laporan');
+  const [activeTab, setActiveTabState] = useState<'Laporan' | 'ApprovalVoid' | 'AuditTrail' | 'KasShift'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('duasisi_rekap_subtab');
+        if (saved && ['Laporan', 'ApprovalVoid', 'AuditTrail', 'KasShift'].includes(saved)) {
+          return saved as 'Laporan' | 'ApprovalVoid' | 'AuditTrail' | 'KasShift';
+        }
+      } catch (e) {}
+    }
+    return 'Laporan';
+  });
+
+  const setActiveTab = (tab: 'Laporan' | 'ApprovalVoid' | 'AuditTrail' | 'KasShift') => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('duasisi_rekap_subtab', tab);
+      } catch (e) {}
+    }
+  };
 
   // Void Approval State
   const [pendingVoidList, setPendingVoidList] = useState<Transaksi[]>([]);

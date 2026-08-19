@@ -70,7 +70,26 @@ interface ProdukViewProps {
 
 export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const { showAlert, showConfirm, showPrompt } = useDialog();
-  const [activeSubTab, setActiveSubTab] = useState<'Produk' | 'DropOff' | 'Promo' | 'Loyalitas'>('Produk');
+  const [activeSubTab, setActiveSubTabState] = useState<'Produk' | 'DropOff' | 'Promo' | 'Loyalitas'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('duasisi_produk_subtab');
+        if (saved && ['Produk', 'DropOff', 'Promo', 'Loyalitas'].includes(saved)) {
+          return saved as 'Produk' | 'DropOff' | 'Promo' | 'Loyalitas';
+        }
+      } catch (e) {}
+    }
+    return 'Produk';
+  });
+
+  const setActiveSubTab = (tab: 'Produk' | 'DropOff' | 'Promo' | 'Loyalitas') => {
+    setActiveSubTabState(tab);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('duasisi_produk_subtab', tab);
+      } catch (e) {}
+    }
+  };
   const [layananList, setLayananList] = useState<LayananItemBackend[]>([]);
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
   const [promoList, setPromoList] = useState<PromoVoucher[]>(defaultPromos);
