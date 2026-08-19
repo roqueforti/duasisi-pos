@@ -158,13 +158,13 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
         <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl border border-slate-200 my-auto z-10">
           <RefreshCw className="w-10 h-10 text-[#1E4648] animate-spin mx-auto mb-4" />
           <h3 className="text-base font-bold text-slate-800 mb-1">Memverifikasi E-Nota...</h3>
-          <p className="text-xs text-slate-500">Mengecek sertifikat keamanan di Cloud Dua SiSi POS</p>
+          <p className="text-xs text-slate-500">Mengecek sertifikat keamanan di Cloud Dua SiSi Laundry</p>
         </div>
       ) : errorMsg || !tx ? (
         <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl border border-rose-200 my-auto z-10">
           <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-slate-800 mb-2">E-Nota Tidak Ditemukan</h3>
-          <p className="text-xs text-slate-600">{errorMsg || 'Nomor nota tidak terdaftar pada sistem server Dua SiSi POS.'}</p>
+          <p className="text-xs text-slate-600">{errorMsg || 'Nomor nota tidak terdaftar pada sistem server Dua SiSi Laundry.'}</p>
         </div>
       ) : (
         /* Split Layout: Receipt on Left, Control Panel on Right */
@@ -345,7 +345,7 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
                 *{tx.noNota}*
               </div>
               <p className="text-[8px] text-slate-400 italic">
-                E-Nota resmi Cloud Dua SiSi POS
+                E-Nota resmi Cloud Dua SiSi Laundry
               </p>
             </div>
           </div>
