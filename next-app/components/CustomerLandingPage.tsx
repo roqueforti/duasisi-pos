@@ -3,25 +3,15 @@
 import React, { useState } from 'react';
 import {
   Search,
-  Sparkles,
-  CheckCircle2,
-  Clock,
-  MapPin,
-  Phone,
-  Wifi,
-  Shirt,
-  Coins,
-  ShieldCheck,
   ArrowRight,
-  ExternalLink,
-  MessageCircle,
-  AlertCircle,
   RefreshCw,
+  AlertCircle,
+  MessageCircle,
+  MapPin,
+  Clock,
+  Wifi,
   Lock,
-  FileText,
-  User,
-  Calendar,
-  Layers
+  ExternalLink
 } from 'lucide-react';
 import MoltenMetal from '@/components/MoltenMetal';
 import { runBackend } from '@/lib/api';
@@ -38,7 +28,7 @@ export default function CustomerLandingPage() {
     e.preventDefault();
     const query = searchNota.trim().toUpperCase();
     if (!query) {
-      setSearchError('Silakan masukkan nomor nota Anda.');
+      setSearchError('Masukkan nomor nota Anda (Contoh: LDY-260819-0001)');
       return;
     }
 
@@ -58,11 +48,11 @@ export default function CustomerLandingPage() {
       } else {
         setSearchError(
           res?.message ||
-            `Nota "${query}" tidak ditemukan. Pastikan format nomor nota sesuai (Contoh: LDY-260819-0001).`
+            `Nota "${query}" tidak ditemukan. Pastikan format nomor nota sesuai.`
         );
       }
     } catch (err) {
-      setSearchError('Gagal memuat status cucian. Silakan periksa koneksi internet Anda.');
+      setSearchError('Gagal memuat status cucian. Periksa koneksi Anda.');
     } finally {
       setSearching(false);
     }
@@ -76,7 +66,7 @@ export default function CustomerLandingPage() {
           <button
             type="button"
             onClick={() => setFoundTx(null)}
-            className="bg-white/90 hover:bg-white text-slate-900 border border-slate-300 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xl cursor-pointer backdrop-blur-md"
+            className="bg-white hover:bg-slate-100 text-black px-4 py-2 rounded-full text-xs font-semibold transition flex items-center gap-1.5 shadow-2xl cursor-pointer"
           >
             ← Kembali ke Beranda
           </button>
@@ -87,15 +77,15 @@ export default function CustomerLandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#061415] text-white relative selection:bg-teal-400 selection:text-slate-950 overflow-x-hidden font-sans">
-      {/* Dynamic MoltenMetal Ambient Background (Dua SiSi Fluid Teal Theme) */}
-      <div className="fixed inset-0 pointer-events-none z-0 opacity-85">
+    <div className="min-h-screen bg-[#061113] text-white relative selection:bg-white selection:text-black overflow-x-hidden font-sans flex flex-col justify-between">
+      {/* Dynamic Molten Metal Ambient Background (Teal/Emerald Fluid) */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-80">
         <MoltenMetal
-          color1="#07191B"
-          color2="#1F696E"
-          color3="#9DF3E9"
+          color1="#061618"
+          color2="#185257"
+          color3="#9EECE3"
           speed={0.3}
-          scale={3.5}
+          scale={3.8}
           detail={3}
           glow={1.6}
           coreSize={0.1}
@@ -108,212 +98,138 @@ export default function CustomerLandingPage() {
           grainIntensity={0.04}
           mouseInteraction={true}
           mouseStrength={0.3}
-          opacity={0.9}
+          opacity={0.85}
         />
       </div>
 
-      {/* Main Content Container */}
-      <div className="relative z-10 flex flex-col min-h-screen">
-        {/* Navigation Bar */}
-        <header className="w-full border-b border-teal-500/20 bg-slate-950/75 backdrop-blur-xl sticky top-0 z-30 shadow-lg">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-md">
-                <img
-                  src="/assets/logo-full-black.svg"
-                  alt="Dua SiSi"
-                  className="h-5 w-auto"
-                />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-black text-sm tracking-wide text-white">DUA SISI LAUNDRY</span>
-                <span className="text-[10px] text-teal-300 font-medium">Express & Self Service Coin</span>
-              </div>
+      {/* 1. Ultra-Clean Floating Pill Navbar */}
+      <header className="relative z-20 w-full pt-4 sm:pt-6 px-4">
+        <div className="max-w-4xl mx-auto rounded-full border border-white/10 bg-white/[0.04] backdrop-blur-2xl px-5 py-3 flex items-center justify-between shadow-2xl">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center p-1 shadow-md">
+              <img
+                src="/assets/logo-full-black.svg"
+                alt="Dua SiSi"
+                className="h-4 w-auto filter brightness-0"
+              />
             </div>
-
-            <div className="flex items-center gap-2.5">
-              <a
-                href="https://wa.me/6289682020699"
-                target="_blank"
-                rel="noreferrer"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-md"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>WhatsApp CS</span>
-              </a>
-            </div>
-          </div>
-        </header>
-
-        {/* Hero Section */}
-        <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16 flex flex-col items-center justify-center text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-950/90 border border-teal-400/40 text-teal-200 text-xs font-semibold mb-6 backdrop-blur-md shadow-lg">
-            <Sparkles className="w-3.5 h-3.5 text-teal-300" />
-            <span>Portal Resmi Pelanggan Dua SiSi Laundry</span>
+            <span className="font-bold text-sm tracking-tight text-white">Dua SiSi Laundry</span>
           </div>
 
-          {/* High-Contrast Crisp Heading */}
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white max-w-3xl leading-[1.15] mb-5 drop-shadow-md">
-            Cucian Bersih, Cepat, & Terpantau{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-200 via-teal-300 to-emerald-300">
-              Secara Real-Time
-            </span>
-          </h1>
-
-          <p className="text-sm sm:text-base text-slate-200 max-w-2xl mb-8 leading-relaxed font-medium drop-shadow-xs">
-            Layanan Drop Off & Self Service Coin Laundry modern di Malang. Masukkan nomor nota Anda di bawah untuk mengecek status pencucian atau unduh E-Nota resmi.
-          </p>
-
-          {/* Search Box Card */}
-          <div className="w-full max-w-xl bg-slate-950/80 border border-teal-500/40 backdrop-blur-2xl p-5 sm:p-6 rounded-2xl shadow-2xl mb-12 text-left ring-1 ring-teal-500/20">
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-bold text-teal-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Search className="w-4 h-4 text-teal-400" />
-                <span>Lacak Status Cucian / E-Nota</span>
-              </label>
-              <span className="text-[10px] font-mono text-teal-400/80 bg-teal-950/80 px-2 py-0.5 rounded border border-teal-800/60">
-                Contoh: LDY-260819-0001
-              </span>
-            </div>
-
-            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2.5">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  value={searchNota}
-                  onChange={(e) => setSearchNota(e.target.value)}
-                  placeholder="Ketik Nomor Nota..."
-                  className="w-full bg-slate-900/90 border border-slate-700 focus:border-teal-400 text-white font-mono text-sm px-4 py-3 rounded-xl outline-hidden transition placeholder:text-slate-500 shadow-inner"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={searching}
-                className="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold text-xs px-6 py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-50 shrink-0 border border-teal-400/30"
-              >
-                {searching ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Mengecek...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Cek Nota</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            {searchError && (
-              <div className="mt-3.5 p-3 rounded-xl bg-rose-950/90 border border-rose-600/60 text-rose-100 text-xs flex items-start gap-2.5 shadow-md">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{searchError}</span>
-              </div>
-            )}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <a
+              href="https://maps.google.com/?q=Dua+SiSi+Laundry+Malang"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-white/70 hover:text-white transition px-3 py-1.5 hidden sm:inline-block"
+            >
+              Lokasi Outlet
+            </a>
+            <a
+              href="https://wa.me/6289682020699"
+              target="_blank"
+              rel="noreferrer"
+              className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs px-4 py-1.5 rounded-full transition shadow-md flex items-center gap-1.5"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span>Hubungi CS</span>
+            </a>
           </div>
+        </div>
+      </header>
 
-          {/* Service Feature Highlights */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full text-left mb-12">
-            <div className="bg-slate-950/70 border border-teal-800/50 backdrop-blur-xl p-5 rounded-2xl shadow-xl hover:border-teal-500/50 transition">
-              <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300 mb-3 shadow-inner">
-                <Shirt className="w-5 h-5" />
-              </div>
-              <h2 className="font-bold text-sm text-white mb-1.5">Drop Off Service</h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Tinggal serahkan pakaian, staf kami mencuci, mengeringkan, dan menyetrika dengan rapi. Pilihan Reguler, Express, atau Kilat.
-              </p>
-            </div>
+      {/* 2. Hero Centerpiece (Minimalist & Luxury) */}
+      <main className="relative z-10 max-w-4xl mx-auto px-4 py-12 sm:py-20 flex flex-col items-center justify-center text-center my-auto">
+        {/* Subtle Pill Pill Tag */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-md text-xs text-white/80 mb-6 shadow-sm">
+          <span className="bg-white text-slate-950 font-bold px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider">
+            PORTAL
+          </span>
+          <span className="font-medium">Layanan Cuci & E-Nota Resmi</span>
+        </div>
 
-            <div className="bg-slate-950/70 border border-teal-800/50 backdrop-blur-xl p-5 rounded-2xl shadow-xl hover:border-teal-500/50 transition">
-              <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300 mb-3 shadow-inner">
-                <Coins className="w-5 h-5" />
-              </div>
-              <h2 className="font-bold text-sm text-white mb-1.5">Self Service Coin</h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Cuci & keringkan pakaian secara mandiri dengan mesin kapasitas besar. Higienis 1 mesin 1 pelanggan, selesai 60 menit.
-              </p>
-            </div>
+        {/* Clean, Massive Solid White Typography */}
+        <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white max-w-2xl leading-[1.08] mb-5">
+          Cucian Bersih. Cepat & Terpantau.
+        </h1>
 
-            <div className="bg-slate-950/70 border border-teal-800/50 backdrop-blur-xl p-5 rounded-2xl shadow-xl hover:border-teal-500/50 transition">
-              <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300 mb-3 shadow-inner">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <h2 className="font-bold text-sm text-white mb-1.5">E-Nota & Poin Reward</h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Bukti transaksi digital resmi anti hilang, dapat diunduh PDF/PNG, serta dapatkan poin cashback diskon tiap transaksi.
-              </p>
+        <p className="text-sm sm:text-base text-white/60 max-w-md mb-9 leading-relaxed font-normal">
+          Lacak status pengerjaan cucian Anda secara real-time atau unduh E-Nota bukti pembayaran resmi.
+        </p>
+
+        {/* 3. Minimalist Floating Pill Search Bar */}
+        <div className="w-full max-w-md mb-6">
+          <form
+            onSubmit={handleSearch}
+            className="rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl p-1.5 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]"
+          >
+            <div className="pl-3.5 pr-2 text-white/40">
+              <Search className="w-4 h-4" />
             </div>
+            <input
+              type="text"
+              value={searchNota}
+              onChange={(e) => setSearchNota(e.target.value)}
+              placeholder="Ketik nomor nota (LDY-260819-0001)..."
+              className="flex-1 bg-transparent border-none text-white text-xs sm:text-sm outline-hidden placeholder:text-white/40 font-mono"
+            />
+            <button
+              type="submit"
+              disabled={searching}
+              className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs px-5 py-2.5 rounded-full transition flex items-center gap-1.5 shadow-lg cursor-pointer disabled:opacity-60 shrink-0"
+            >
+              {searching ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <>
+                  <span>Cek</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
+          </form>
+
+          {searchError && (
+            <div className="mt-3 py-2 px-3.5 rounded-full border border-rose-500/30 bg-rose-950/60 backdrop-blur-md text-rose-200 text-xs flex items-center justify-center gap-1.5 animate-fade-in shadow-md">
+              <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span>{searchError}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 4. Elegant Minimalist Info Badges */}
+        <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-white/50 pt-2">
+          <div className="px-3 py-1 rounded-full border border-white/5 bg-white/[0.02] backdrop-blur-sm flex items-center gap-1.5">
+            <Clock className="w-3 h-3 text-white/60" />
+            <span>07.00 - 22.00 WIB</span>
           </div>
-
-          {/* Outlet Info & Location Card */}
-          <div className="w-full bg-slate-950/80 border border-teal-700/50 backdrop-blur-2xl rounded-2xl p-6 sm:p-7 text-left flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
-            <div className="space-y-2.5">
-              <div className="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>Lokasi & Fasilitas Outlet</span>
-              </div>
-              <h2 className="text-base font-bold text-white">
-                Dua SiSi Laundry Malang
-              </h2>
-              <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
-                Jl. Pangestu Raya, Kasin, Ampeldento, Kec. Karang Ploso, Kabupaten Malang, Jawa Timur 65152 (Belakang Kampus UMM 3)
-              </p>
-              <div className="flex flex-wrap items-center gap-4 text-xs text-teal-200 pt-1">
-                <span className="flex items-center gap-1.5 bg-teal-950/80 px-2.5 py-1 rounded-lg border border-teal-800/60">
-                  <Clock className="w-3.5 h-3.5 text-teal-400" />
-                  <span>07.00 - 22.00 WIB (Buka Setiap Hari)</span>
-                </span>
-                <span className="flex items-center gap-1.5 bg-teal-950/80 px-2.5 py-1 rounded-lg border border-teal-800/60">
-                  <Wifi className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Free WiFi: DuaSisiLaundry (Pass: datanglagi)</span>
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto shrink-0">
-              <a
-                href="https://maps.google.com/?q=Dua+SiSi+Laundry+Malang"
-                target="_blank"
-                rel="noreferrer"
-                className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 border border-slate-600 shadow-md"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Petunjuk Arah</span>
-              </a>
-              <a
-                href="https://wa.me/6289682020699"
-                target="_blank"
-                rel="noreferrer"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md"
-              >
-                <Phone className="w-3.5 h-3.5" />
-                <span>Hubungi CS</span>
-              </a>
-            </div>
+          <div className="px-3 py-1 rounded-full border border-white/5 bg-white/[0.02] backdrop-blur-sm flex items-center gap-1.5">
+            <MapPin className="w-3 h-3 text-white/60" />
+            <span>Karangploso, Malang (Belakang UMM 3)</span>
           </div>
-        </main>
-
-        {/* Footer with Discreet Staff Portal Link */}
-        <footer className="w-full border-t border-teal-900/40 bg-slate-950/90 backdrop-blur-md py-6 text-center text-xs text-slate-400">
-          <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div>
-              © {new Date().getFullYear()} Dua SiSi Laundry. All rights reserved.
-            </div>
-            <div className="flex items-center gap-4">
-              <a
-                href="/terminal-pos-internal"
-                className="text-slate-400 hover:text-teal-300 transition flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded bg-slate-900/80 border border-slate-800"
-                title="Akses Kasir / Staff"
-              >
-                <Lock className="w-3 h-3 text-teal-400" />
-                <span>Portal Kasir POS</span>
-              </a>
-            </div>
+          <div className="px-3 py-1 rounded-full border border-white/5 bg-white/[0.02] backdrop-blur-sm flex items-center gap-1.5">
+            <Wifi className="w-3 h-3 text-white/60" />
+            <span>Free WiFi: DuaSisiLaundry</span>
           </div>
-        </footer>
-      </div>
+        </div>
+      </main>
+
+      {/* 5. Minimalist Clean Footer */}
+      <footer className="relative z-20 w-full pb-6 px-4 text-center text-xs text-white/40">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-white/5 pt-4">
+          <div>
+            © {new Date().getFullYear()} Dua SiSi Laundry.
+          </div>
+          <a
+            href="/terminal-pos-internal"
+            className="text-white/40 hover:text-white/80 transition flex items-center gap-1 text-[11px]"
+            title="Akses Staf / Kasir"
+          >
+            <Lock className="w-3 h-3" />
+            <span>Terminal POS</span>
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }
