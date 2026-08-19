@@ -174,10 +174,10 @@ export default function DriftWall({
           const meta = columnMeta[c];
           if (!meta) continue;
           const paused = wallHoveredRef.current && pauseOnHover;
-          const factor = paused || hoveredColRef.current === c ? 0 : 1;
+          const factor = paused ? 0 : 1;
           const target = baseVelocities[c] * factor;
 
-          const ease = 1 - Math.exp(-dt / (target === 0 ? 0.16 : 0.28));
+          const ease = 1 - Math.exp(-dt / 0.25);
           velocitiesRef.current[c] += (target - velocitiesRef.current[c]) * ease;
           let next = (offsetsRef.current[c] ?? 0) + velocitiesRef.current[c] * dt;
           next = ((next % meta.copyHeight) + meta.copyHeight) % meta.copyHeight;

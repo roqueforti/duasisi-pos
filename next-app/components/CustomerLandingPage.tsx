@@ -686,18 +686,21 @@ export default function CustomerLandingPage() {
         <div className="w-full h-[460px] sm:h-[540px] overflow-hidden relative">
           <DriftWall
             items={OUTLET_GALLERY}
-            columns={7}
-            tileWidth={230}
-            tileHeight={150}
-            gap={18}
-            tilt={14}
-            turn={-12}
-            speed={32}
-            parallax={0.6}
-            pauseOnHover={true}
+            columns={6}
+            tileWidth={240}
+            tileHeight={155}
+            gap={16}
+            tilt={0}
+            turn={0}
+            roll={0}
+            depth={0}
+            speed={20}
+            variance={0.15}
+            parallax={0.2}
+            pauseOnHover={false}
             overlayColor="transparent"
             dim={1.0}
-            lift={56}
+            lift={36}
           />
         </div>
       </section>
