@@ -63,6 +63,7 @@ import {
   generateReceiptEscPos,
 } from '@/lib/bluetoothPrinter';
 import PrinterModal from '@/components/PrinterModal';
+import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { validateAttendanceSecurity } from '@/lib/attendanceSecurity';
 import { useDialog } from '@/components/DialogProvider';
 
@@ -2401,13 +2402,12 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Alamat Lengkap *</label>
-                            <input
-                              type="text"
-                              placeholder="Alamat rumah / outlet *"
+                            <AddressAutocomplete
+                              label="Alamat Lengkap Member"
+                              required
                               value={newMemberForm.alamat}
-                              onChange={(e) => setNewMemberForm({ ...newMemberForm, alamat: e.target.value })}
-                              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648]"
+                              onChange={(addr) => setNewMemberForm({ ...newMemberForm, alamat: addr })}
+                              placeholder="Ketik nama jalan / komplek / kos..."
                             />
                           </div>
                         </div>

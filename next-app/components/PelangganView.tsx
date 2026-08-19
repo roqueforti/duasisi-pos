@@ -29,6 +29,7 @@ import { maskPhone } from '@/lib/utils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
+import AddressAutocomplete from '@/components/AddressAutocomplete';
 
 export interface PelangganItem {
   noHp: string;
@@ -475,14 +476,13 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                   </div>
 
                   <div>
-                    <label className="block font-bold text-amber-950 text-xs mb-1">Alamat Tempat Tinggal (Member) *</label>
-                    <input
-                      type="text"
+                    <AddressAutocomplete
+                      label="Alamat Tempat Tinggal (Member)"
+                      required
                       value={editAlamat}
-                      onChange={(e) => setEditAlamat(e.target.value)}
-                      placeholder="Alamat rumah / titik jemput laundry"
+                      onChange={(addr) => setEditAlamat(addr)}
+                      placeholder="Ketik nama jalan / komplek / kos..."
                       readOnly={currentRole !== 'MANAGER'}
-                      className="w-full px-3.5 py-2 bg-white border border-amber-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648]"
                     />
                   </div>
                 </div>
@@ -490,14 +490,12 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
 
               {!editStatusMember && (
                 <div>
-                  <label className="block font-bold text-slate-700 text-xs mb-1">Alamat (Opsional)</label>
-                  <input
-                    type="text"
+                  <AddressAutocomplete
+                    label="Alamat (Opsional)"
                     value={editAlamat}
-                    onChange={(e) => setEditAlamat(e.target.value)}
-                    placeholder="Alamat rumah / domisili"
+                    onChange={(addr) => setEditAlamat(addr)}
+                    placeholder="Ketik nama jalan / komplek / kos..."
                     readOnly={currentRole !== 'MANAGER'}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs outline-none focus:border-[#1E4648] focus:bg-white"
                   />
                 </div>
               )}
@@ -967,16 +965,12 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                   </div>
 
                   <div>
-                    <label className="block font-bold text-amber-950 mb-1">
-                      Alamat Tempat Tinggal Member <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
+                    <AddressAutocomplete
+                      label="Alamat Tempat Tinggal Member"
                       required
                       value={addAlamat}
-                      onChange={(e) => setAddAlamat(e.target.value)}
-                      placeholder="Alamat rumah lengkap / titik jemput member"
-                      className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg font-semibold text-slate-800 outline-none focus:border-[#1E4648]"
+                      onChange={(addr) => setAddAlamat(addr)}
+                      placeholder="Ketik nama jalan / komplek / kos..."
                     />
                   </div>
 
