@@ -2618,52 +2618,80 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 </div>
 
                 {/* Priority Option automatically appears if cart contains Drop Off items */}
-                {cartArray.some((i) => i.tipe === 'FullService') && (
-                  <div className="bg-amber-50/70 border border-amber-200/90 p-3.5 rounded-2xl space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="block font-bold text-amber-950 text-xs">
-                        Prioritas Pengerjaan Cucian Drop Off:
-                      </label>
-                      <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full">
-                        Otomatis Masuk Antrean SOP
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {dropOffPriorities.filter(p => p.aktif !== false).map((pri) => (
-                        <button
-                          key={pri.nama}
-                          type="button"
-                          onClick={() => setTingkatLayanan(pri.nama)}
-                          className={`py-2 px-3 rounded-xl font-bold text-xs border transition flex items-center gap-1.5 ${
-                            tingkatLayanan === pri.nama
-                              ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
-                              : 'bg-white text-slate-700 border-amber-200/90 hover:bg-amber-100/50'
-                          }`}
-                        >
-                          <span>{pri.nama}</span>
-                          {pri.durasiJam && (
-                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
-                              tingkatLayanan === pri.nama ? 'bg-teal-900/40 text-teal-200' : 'bg-slate-100 text-slate-500'
-                            }`}>
-                              {pri.durasiJam} Jam
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
+                {cartArray.some((i) => i.tipe === 'FullService' || (i as any).kategoriDropOff || (i.kategori || '').toLowerCase().includes('drop')) && (() => {
+                  const dropOffItemsInCart = cartArray.filter(
+                    (i) => i.tipe === 'FullService' || (i as any).kategoriDropOff || (i.kategori || '').toLowerCase().includes('drop')
+                  );
+                  const registeredCartCategories = Array.from(
+                    new Set(
+                      dropOffItemsInCart
+                        .map((i) => (i as any).kategoriDropOff)
+                        .filter((k): k is string => Boolean(k && k.trim()))
+                    )
+                  );
 
-                    {/* Estimasi Maksimal Selesai */}
-                    <div className="pt-2 border-t border-amber-200/70 flex items-center justify-between flex-wrap gap-1.5 text-xs">
-                      <span className="text-amber-950 font-semibold flex items-center gap-1.5 text-[11px]">
-                        <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                        <span>Estimasi Maksimal Selesai:</span>
-                      </span>
-                      <span className="font-mono font-bold text-[#1E4648] bg-white px-2 py-0.5 rounded-lg border border-amber-300 shadow-2xs text-[11px]">
-                        {calculateEstimasi(tingkatLayanan)}
-                      </span>
+                  const displayedPriorities = dropOffPriorities.filter((p) => {
+                    if (p.aktif === false) return false;
+                    if (registeredCartCategories.length > 0) {
+                      return registeredCartCategories.some((cat) => cat.toLowerCase() === p.nama.toLowerCase());
+                    }
+                    return true;
+                  });
+
+                  const finalPriorities = displayedPriorities.length > 0 
+                    ? displayedPriorities 
+                    : (registeredCartCategories.length > 0 
+                        ? registeredCartCategories.map(cat => ({ nama: cat, durasiJam: 0, aktif: true }))
+                        : dropOffPriorities.filter(p => p.aktif !== false)
+                      );
+
+                  return (
+                    <div className="bg-amber-50/70 border border-amber-200/90 p-3.5 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block font-bold text-amber-950 text-xs">
+                          Prioritas Pengerjaan Cucian Drop Off:
+                        </label>
+                        <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full">
+                          {finalPriorities.length === 1 ? 'Sesuai Layanan Terpilih' : 'Otomatis Masuk Antrean SOP'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {finalPriorities.map((pri) => (
+                          <button
+                            key={pri.nama}
+                            type="button"
+                            onClick={() => setTingkatLayanan(pri.nama)}
+                            className={`py-2 px-3 rounded-xl font-bold text-xs border transition flex items-center gap-1.5 ${
+                              tingkatLayanan.toLowerCase() === pri.nama.toLowerCase()
+                                ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
+                                : 'bg-white text-slate-700 border-amber-200/90 hover:bg-amber-100/50'
+                            }`}
+                          >
+                            <span>{pri.nama}</span>
+                            {pri.durasiJam ? (
+                              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                                tingkatLayanan.toLowerCase() === pri.nama.toLowerCase() ? 'bg-teal-900/40 text-teal-200' : 'bg-slate-100 text-slate-500'
+                              }`}>
+                                {pri.durasiJam} Jam
+                              </span>
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Estimasi Maksimal Selesai */}
+                      <div className="pt-2 border-t border-amber-200/70 flex items-center justify-between flex-wrap gap-1.5 text-xs">
+                        <span className="text-amber-950 font-semibold flex items-center gap-1.5 text-[11px]">
+                          <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                          <span>Estimasi Maksimal Selesai:</span>
+                        </span>
+                        <span className="font-mono font-bold text-[#1E4648] bg-white px-2 py-0.5 rounded-lg border border-amber-300 shadow-2xs text-[11px]">
+                          {calculateEstimasi(tingkatLayanan)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Catatan Tambahan */}
                 <div>
