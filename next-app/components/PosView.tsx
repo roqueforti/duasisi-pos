@@ -129,11 +129,29 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [btPrinting, setBtPrinting] = useState(false);
   const [showStrukModal, setShowStrukModal] = useState(false);
 
-  // Expense tracking for shift close
-  const [shiftExpenseDesc, setShiftExpenseDesc] = useState<string>('');
-  const [shiftExpenseAmount, setShiftExpenseAmount] = useState<string>('');
+  // Expense tracking for shift close (Item-per-Item)
+  const [expenseItemList, setExpenseItemList] = useState<Array<{ nama: string; nominal: string }>>([
+    { nama: '', nominal: '' }
+  ]);
   const [shiftExpenseCategory, setShiftExpenseCategory] = useState<string>('');
   const [expensePhotos, setExpensePhotos] = useState<Array<{ file: File; preview: string }>>([]);
+
+  const totalShiftExpense = expenseItemList.reduce((sum, item) => sum + (Number(item.nominal) || 0), 0);
+
+  const handleAddExpenseItem = () => {
+    setExpenseItemList(prev => [...prev, { nama: '', nominal: '' }]);
+  };
+
+  const handleRemoveExpenseItem = (idx: number) => {
+    setExpenseItemList(prev => {
+      const updated = prev.filter((_, i) => i !== idx);
+      return updated.length > 0 ? updated : [{ nama: '', nominal: '' }];
+    });
+  };
+
+  const handleUpdateExpenseItem = (idx: number, field: 'nama' | 'nominal', value: string) => {
+    setExpenseItemList(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  };
 
   // Modals for the 8-Step Flow:
   const [showTambahItemModal, setShowTambahItemModal] = useState<boolean>(false);
@@ -1157,7 +1175,12 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         }
       }
 
-      // 2. Close shift with merchant & expense data
+      // 2. Format items into clean itemized description & send
+      const formattedExpenseDesc = expenseItemList
+        .filter(item => item.nama.trim())
+        .map(item => `${item.nama.trim()}${Number(item.nominal) > 0 ? ` (Rp ${(Number(item.nominal) || 0).toLocaleString('id-ID')})` : ''}`)
+        .join(', ');
+
       const result = await runBackend<{ success: boolean; message?: string; selisihKas?: number; selisihMerchant?: number }>('closeKasShift', {
         shiftId: shiftAktif.idShift,
         mode: closeShiftMode,
@@ -1167,8 +1190,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         handoverConfirmed: closeShiftMode === 'SERAH_TERIMA',
         userName: shiftAktif.namaKasir,
         // Expense data
-        expenseDesc: shiftExpenseDesc.trim(),
-        expenseAmount: Number(shiftExpenseAmount) || 0,
+        expenseDesc: formattedExpenseDesc,
+        expenseAmount: totalShiftExpense,
         expenseCategory: shiftExpenseCategory || 'Operasional',
         expensePhotos: photoUrls,
       });
@@ -1182,8 +1205,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       setSaldoMerchantAkhirInput('');
       setReplacementEmployeeId('');
       setHandoverResult(null);
-      setShiftExpenseDesc('');
-      setShiftExpenseAmount('');
+      setExpenseItemList([{ nama: '', nominal: '' }]);
       setShiftExpenseCategory('');
       setExpensePhotos([]);
       
@@ -3575,16 +3597,16 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         <span>Total Pemasukan Tunai:</span>
                         <span className="font-semibold text-teal-700">+ Rp {(shiftAktif?.totalOmzetTunai || 0).toLocaleString('id-ID')}</span>
                       </div>
-                      {Number(shiftExpenseAmount) > 0 && (
-                        <div className="flex justify-between text-rose-600">
-                          <span>Pengeluaran Belanja Kas:</span>
-                          <span className="font-semibold">- Rp {(Number(shiftExpenseAmount) || 0).toLocaleString('id-ID')}</span>
+                      {totalShiftExpense > 0 && (
+                        <div className="flex justify-between text-rose-600 font-semibold">
+                          <span>Total Belanja Barang Shift:</span>
+                          <span>- Rp {totalShiftExpense.toLocaleString('id-ID')}</span>
                         </div>
                       )}
                       <hr className="border-teal-200/60 my-1" />
                       <div className="flex justify-between text-xs font-bold text-teal-950">
                         <span>Ekspektasi Uang Laci:</span>
-                        <span>Rp {((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0) - (Number(shiftExpenseAmount) || 0)).toLocaleString('id-ID')}</span>
+                        <span>Rp {((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0) - totalShiftExpense).toLocaleString('id-ID')}</span>
                       </div>
                     </div>
 
@@ -3602,12 +3624,12 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       </div>
                       {kasAkhirFisik && (
                         <div className={`mt-2 p-2 rounded-lg text-xs font-bold flex items-center justify-between ${
-                          (Number(kasAkhirFisik) || 0) === ((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0) - (Number(shiftExpenseAmount) || 0)) 
+                          (Number(kasAkhirFisik) || 0) === ((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0) - totalShiftExpense) 
                             ? 'bg-emerald-100 text-emerald-800' 
                             : 'bg-amber-100 text-amber-800'
                         }`}>
                           <span>Selisih Kas Laci:</span>
-                          <span>Rp {((Number(kasAkhirFisik) || 0) - ((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0) - (Number(shiftExpenseAmount) || 0))).toLocaleString('id-ID')}</span>
+                          <span>Rp {((Number(kasAkhirFisik) || 0) - ((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0) - totalShiftExpense)).toLocaleString('id-ID')}</span>
                         </div>
                       )}
                     </div>
@@ -3719,49 +3741,75 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
                 {/* RIGHT COLUMN: Belanja Barang & Slot Foto Nota */}
                 <div className="space-y-5">
-                  {/* Card Belanja Barang */}
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3.5">
-                    <h4 className="font-bold text-slate-800 text-sm flex items-center justify-between">
-                      <span className="flex items-center gap-2">
+                  {/* Card Belanja Barang (Item per Item) */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2">
                         <Receipt className="w-4 h-4 text-rose-600" />
                         Pencatatan Belanja Barang Operasional
+                      </h4>
+                      <span className="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 font-bold px-2 py-0.5 rounded-full">
+                        Item per Item
                       </span>
-                      <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-semibold">Pengeluaran</span>
-                    </h4>
+                    </div>
+                    <p className="text-xs text-slate-500">Catat rincian setiap barang yang dibeli selama shift beserta nominal biayanya (opsional).</p>
 
-                    {/* Field 1: Daftar Beli Barang Apa Aja */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Beli Barang Apa Aja? (Rincian Belanja)
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={shiftExpenseDesc}
-                        onChange={(e) => setShiftExpenseDesc(e.target.value)}
-                        placeholder="Contoh: Beli sabun cair 5L, plastik laundry 2 pack, lakban bening, bensin kurir antar jemput"
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20"
-                      />
+                    {/* Dynamic Item Rows */}
+                    <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                      {expenseItemList.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-white p-2 border border-slate-200 rounded-xl shadow-2xs">
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              value={item.nama}
+                              onChange={(e) => handleUpdateExpenseItem(idx, 'nama', e.target.value)}
+                              placeholder={`Barang #${idx + 1} (contoh: Sabun Cuci 5L)`}
+                              className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 outline-none focus:border-[#1E4648]"
+                            />
+                          </div>
+                          <div className="w-32 relative">
+                            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-[11px]">Rp</div>
+                            <input
+                              type="number"
+                              value={item.nominal}
+                              onChange={(e) => handleUpdateExpenseItem(idx, 'nominal', e.target.value)}
+                              placeholder="0"
+                              className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-[#1E4648]"
+                            />
+                          </div>
+                          {expenseItemList.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExpenseItem(idx)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                              title="Hapus baris ini"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
 
-                    {/* Field 2: Berapa Uangnya */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Berapa Uangnya? (Total Biaya Belanja Rp)
-                      </label>
-                      <div className="relative">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">Rp</div>
-                        <input
-                          type="number"
-                          value={shiftExpenseAmount}
-                          onChange={(e) => setShiftExpenseAmount(e.target.value)}
-                          placeholder="0 (kosongkan jika tidak ada belanja)"
-                          className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20"
-                        />
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={handleAddExpenseItem}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1E4648] hover:text-[#163536] bg-teal-50 hover:bg-teal-100/80 px-3 py-1.5 rounded-lg transition cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Tambah Barang</span>
+                      </button>
+
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-500 block">Total Belanja Barang:</span>
+                        <span className="text-sm font-bold text-rose-700">Rp {totalShiftExpense.toLocaleString('id-ID')}</span>
                       </div>
-                      <p className="text-[10px] text-slate-400 mt-1">Nominal ini otomatis memotong perhitungan kas akhir laci.</p>
                     </div>
 
-                    {/* Field 3: Slot Foto Bukti Nota Pembelian */}
+                    <p className="text-[10px] text-slate-400">Total belanja otomatis memotong perhitungan kas akhir laci.</p>
+
+                    {/* Slot Foto Bukti Nota Pembelian */}
                     <div className="pt-2 border-t border-slate-200">
                       <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                         <Camera className="w-3.5 h-3.5 text-blue-600" />
