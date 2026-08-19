@@ -23,6 +23,7 @@ import {
 import { Mesin, Transaksi, LayananBahanBaku } from '@/lib/types';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
+import { formatWaPhone } from '@/lib/utils';
 import { DropOffPriorityItem } from './ProdukView';
 
 function getWorkflowIcon(status: string) {
@@ -123,10 +124,9 @@ export default function PesananView() {
   // Handle WhatsApp Reminder for ready-for-pickup orders
   const handleSendSiapWA = (order: Transaksi, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    let rawPhone = String(order.noHp || '').replace(/[^0-9]/g, '');
-    if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
+    const rawPhone = formatWaPhone(order.noHp);
     if (!rawPhone) {
-      alert('Nomor WhatsApp pelanggan tidak ditemukan pada nota ini.');
+      alert('Nomor WhatsApp pelanggan tidak valid atau belum diisi.');
       return;
     }
 

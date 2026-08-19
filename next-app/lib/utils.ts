@@ -40,3 +40,24 @@ export function formatTime(timeStr: string | undefined | null): string {
     return timeStr;
   }
 }
+
+/**
+ * Normalisasi nomor HP ke format WhatsApp internasional (62xxxx).
+ * Menangani input:
+ * - "089682020699" -> "6289682020699"
+ * - "89682020699"  -> "6289682020699"
+ * - "+6289682020699" -> "6289682020699"
+ * - "6289682020699" -> "6289682020699"
+ */
+export function formatWaPhone(hp: string | undefined | null): string {
+  if (!hp) return '';
+  let clean = String(hp).replace(/\D/g, '');
+  if (clean.startsWith('0')) {
+    clean = '62' + clean.slice(1);
+  } else if (clean.startsWith('8')) {
+    clean = '62' + clean;
+  } else if (clean.startsWith('62')) {
+    // already valid
+  }
+  return clean;
+}

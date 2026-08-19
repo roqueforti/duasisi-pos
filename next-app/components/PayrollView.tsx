@@ -28,6 +28,7 @@ import RupiahIcon from '@/components/RupiahIcon';
 import { runBackend } from '@/lib/api';
 import { toCSV, downloadCSV } from '@/lib/csvUtils';
 import { UserRole, PayrollItem, PayrollSummary, PegawaiDetail } from '@/lib/types';
+import { formatWaPhone } from '@/lib/utils';
 import { useDialog } from '@/components/DialogProvider';
 
 const BULAN_OPTIONS = [
@@ -273,8 +274,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
   };
 
   const handleSendSlipWhatsApp = (item: PayrollItem) => {
-    let rawPhone = String(item.noHp || '').replace(/[^0-9]/g, '');
-    if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
+    const rawPhone = formatWaPhone(item.noHp);
 
     const bulanLabel = BULAN_OPTIONS.find(b => b.value === selectedBulan)?.label || selectedBulan;
 

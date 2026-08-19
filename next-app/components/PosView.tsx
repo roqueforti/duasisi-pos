@@ -54,6 +54,7 @@ import {
 import { LayananItem, CartItem, ShiftKasir, AbsensiConfig, UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
+import { formatWaPhone } from '@/lib/utils';
 import {
   isBluetoothSupported,
   getActiveDeviceInfo,
@@ -3123,7 +3124,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 <button
                   type="button"
                   onClick={() => {
-                    const phone = String(completedOrderData.noHp || '').replace(/^0/, '62').replace(/\D/g, '');
+                    const phone = formatWaPhone(completedOrderData.noHp);
                     const nama = completedOrderData.pelanggan || 'Pelanggan';
                     const noNota = completedOrderData.trxId || '';
                     const tanggal = `${completedOrderData.tanggal || ''}, ${completedOrderData.waktu || ''}`;

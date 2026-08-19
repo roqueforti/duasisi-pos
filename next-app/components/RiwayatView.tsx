@@ -5,7 +5,7 @@ import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, 
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { maskPhone, eNotaUrl as buildENotaUrl } from '@/lib/utils';
+import { maskPhone, eNotaUrl as buildENotaUrl, formatWaPhone } from '@/lib/utils';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import PrinterModal from '@/components/PrinterModal';
 import { UserRole } from '@/lib/types';
@@ -162,10 +162,9 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   };
 
   const handleSendSiapWA = async (tx: Transaksi) => {
-    let rawPhone = String(tx.noHp || '').replace(/[^0-9]/g, '');
-    if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
+    const rawPhone = formatWaPhone(tx.noHp);
     if (!rawPhone) {
-      await showAlert('Nomor HP / WhatsApp pelanggan tidak tersedia.', 'warning');
+      await showAlert('Nomor HP / WhatsApp pelanggan tidak tersedia atau tidak valid.', 'warning');
       return;
     }
 
@@ -200,8 +199,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   };
 
   const handleWhatsAppStruk = (tx: Transaksi) => {
-    let rawPhone = String(tx.noHp || '').replace(/[^0-9]/g, '');
-    if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
+    const rawPhone = formatWaPhone(tx.noHp);
 
     const eNotaUrl = buildENotaUrl(tx.noNota);
     const itemsStr = (tx.items || []).map((i: any) =>

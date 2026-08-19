@@ -18,6 +18,7 @@ import {
   Scissors
 } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
+import { formatWaPhone } from '@/lib/utils';
 import {
   isBluetoothSupported,
   getActiveDeviceInfo,
@@ -179,9 +180,7 @@ export default function PrinterModal({
 
   const handleWhatsAppShare = () => {
     if (!activeTx) return;
-    let rawPhone = String(activeTx.noHp || '').replace(/[^0-9]/g, '');
-    if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.slice(1);
-    if (!rawPhone.startsWith('62')) rawPhone = '62' + rawPhone;
+    const rawPhone = formatWaPhone(activeTx.noHp);
 
     const itemsText = (activeTx.items || [])
       .map((item: any) => `• ${item.layanan || item.nama} (x${item.qty}) = Rp ${(Number(item.subtotal || item.qty * item.hargaSatuan) || 0).toLocaleString('id-ID')}`)
