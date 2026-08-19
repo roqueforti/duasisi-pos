@@ -18,6 +18,7 @@ import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
 import { maskPhone } from '@/lib/utils';
 import { useDialog } from '@/components/DialogProvider';
+import GradientWaves from '@/components/GradientWaves';
 
 interface ENotaViewProps {
   noNota: string;
@@ -151,9 +152,32 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-3 sm:p-6 text-black select-none overflow-y-auto">
-      {/* Background Graphic Watermark */}
-      <div className="fixed inset-0 bg-[radial-gradient(#000000_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.03] pointer-events-none" />
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-3 sm:p-6 text-black select-none overflow-y-auto bg-slate-950">
+      {/* Fullscreen Dynamic Gradient Waves Background */}
+      <div className="fixed inset-0 pointer-events-auto z-0 overflow-hidden print:hidden">
+        <GradientWaves
+          horizonColor="#5227FF"
+          waveColor="#FF9FFC"
+          crestColor="#FFFFFF"
+          speed={0.4}
+          amplitude={2.5}
+          waveScale={0.6}
+          waveRatio={0.9}
+          swell={35}
+          turbulence={20}
+          tilt={1.11}
+          zoom={1.0}
+          height={5.5}
+          fogDepth={15}
+          detail="medium"
+          brightness={1.0}
+          opacity={1.0}
+          mouseInteraction={true}
+          parallaxStrength={0.5}
+          grain={true}
+          grainIntensity={0.05}
+        />
+      </div>
 
       {loading ? (
         <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-xl border border-slate-200 my-auto z-10">
