@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import LoginModal from '@/components/LoginModal';
@@ -45,24 +46,10 @@ function getValidInitialTab(savedTab: string | null, role: UserRole): string {
   return savedTab;
 }
 
-export default function HomePage() {
+function PosAppRoot() {
   const [currentRole, setCurrentRole] = useState<UserRole>('');
   const [currentTab, setCurrentTab] = useState<string>('transaksi');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const [publicNotaParam, setPublicNotaParam] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('nota') || null;
-    }
-    return null;
-  });
-  const [publicNotaToken, setPublicNotaToken] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('t') || null;
-    }
-    return null;
-  });
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
 
@@ -114,7 +101,6 @@ export default function HomePage() {
     let lastTouch = 0;
     const handleUserInteraction = () => {
       const now = Date.now();
-      // Throttle recording to once every 5 seconds to optimize performance
       if (now - lastTouch > 5000) {
         lastTouch = now;
         touchSessionActivity();
@@ -140,18 +126,6 @@ export default function HomePage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const nota = params.get('nota');
-      const t = params.get('t');
-      if (nota || t) {
-        setPublicNotaParam(nota || null);
-        setPublicNotaToken(t || null);
-      }
-    }
-  }, []);
-
   const handleLoginSuccess = (role: UserRole) => {
     setCurrentRole(role);
     setSessionNotice(null);
@@ -174,23 +148,6 @@ export default function HomePage() {
     clearCache();
     setRefreshKey((prev) => prev + 1);
   };
-
-  // If viewing public E-Nota (via ?t=... or ?nota=...), completely isolate and render ENotaView
-  if (publicNotaParam !== null || publicNotaToken !== null) {
-    return (
-      <ENotaView
-        noNota={publicNotaParam || ''}
-        token={publicNotaToken || undefined}
-        onBackToApp={() => {
-          setPublicNotaParam(null);
-          setPublicNotaToken(null);
-          if (typeof window !== 'undefined') {
-            window.history.replaceState({}, '', window.location.pathname);
-          }
-        }}
-      />
-    );
-  }
 
   return (
     <>
@@ -250,5 +207,41 @@ export default function HomePage() {
         </div>
       )}
     </>
+  );
+}
+
+function PageDispatcher() {
+  const searchParams = useSearchParams();
+  const publicNotaParam = searchParams.get('nota');
+  const publicNotaToken = searchParams.get('t');
+
+  // If there's an E-Nota token or nota param, render ONLY ENotaView without touching login or POS app
+  if (publicNotaParam || publicNotaToken) {
+    return (
+      <ENotaView
+        noNota={publicNotaParam || ''}
+        token={publicNotaToken || undefined}
+        onBackToApp={() => {
+          if (typeof window !== 'undefined') {
+            window.location.href = '/';
+          }
+        }}
+      />
+    );
+  }
+
+  return <PosAppRoot />;
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400 mb-3" />
+        <span className="text-xs font-semibold text-slate-400">Memuat Dua SiSi POS...</span>
+      </div>
+    }>
+      <PageDispatcher />
+    </Suspense>
   );
 }
