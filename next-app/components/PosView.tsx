@@ -304,10 +304,15 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     setShiftLoading(true);
     try {
       const data = await runBackend<ShiftKasir | null>('getKasShiftAktif', 'OUTLET-UTAMA');
-      setShiftAktif(data || null);
+      if (data && data.idShift) {
+        setShiftAktif(data);
+      } else {
+        setShiftAktif(null);
+      }
     } catch (error) {
       console.error('Gagal memuat kas shift:', error);
       setToastMsg('Kas shift belum dapat dimuat. Periksa koneksi backend.');
+      setShiftAktif(null);
     } finally {
       setShiftLoading(false);
     }
