@@ -629,11 +629,15 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
     setPaymentSubmitting(true);
     try {
+      const hasDropOff = cartArray.some((i) => i.tipe === 'FullService');
+      const hasSelfService = cartArray.some((i) => i.tipe === 'SelfService');
+      const autoTipeLayanan = hasDropOff ? 'FullService' : (hasSelfService ? 'SelfService' : (tipeLayanan || ''));
+
       const res = await runBackend<{ success: boolean; noNota: string; total: number; token?: string }>('simpanTransaksi', {
         namaPelanggan: custName,
         noHp: customer.noHp,
         kasir,
-        tipeLayanan,
+        tipeLayanan: autoTipeLayanan,
         tingkatLayanan,
         metodeBayar,
         nominalBayar: metodeBayar === 'Tunai' ? bayar : total,
@@ -662,7 +666,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           return { ...i, hargaSatuan: Number(i.hargaSatuan) || 0, qty: Number(i.qty) || 0 };
         }),
         catatan: catatanOrderInput,
-        tipeLayanan,
+        tipeLayanan: autoTipeLayanan,
         tingkatLayanan,
         estimasiSelesai: estimasi,
         waktu: new Date().toLocaleTimeString('id-ID') + ' WIB',
@@ -2062,52 +2066,43 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1.5">Kategori Order / Alur</label>
-                    <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
-                      <button
-                        type="button"
-                        onClick={() => setTipeLayanan('')}
-                        className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition ${
-                          tipeLayanan === ''
-                            ? 'bg-[#1E4648] text-white shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                        title="Produk Retail, Add-on, atau Minuman"
-                      >
-                        Retail / FnB
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setTipeLayanan('SelfService')}
-                        className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition ${
-                          tipeLayanan === 'SelfService'
-                            ? 'bg-[#1E4648] text-white shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                        title="Cuci / Kering Mandiri"
-                      >
-                        Self Service
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setTipeLayanan('FullService')}
-                        className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition ${
-                          tipeLayanan === 'FullService'
-                            ? 'bg-[#1E4648] text-white shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                        title="Pengerjaan Lengkap SOP Outlet"
-                      >
-                        Drop Off
-                      </button>
+                    <label className="block font-bold text-slate-700 mb-1.5">Komposisi Transaksi (Terdeteksi Otomatis)</label>
+                    <div className="flex flex-wrap items-center gap-1.5 py-0.5">
+                      {cartArray.some((i) => i.tipe === 'FullService') && (
+                        <span className="px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-900 font-bold text-[11px] flex items-center gap-1 shadow-2xs">
+                          🧺 Drop Off
+                        </span>
+                      )}
+                      {cartArray.some((i) => i.tipe === 'SelfService') && (
+                        <span className="px-2.5 py-1.5 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-900 font-bold text-[11px] flex items-center gap-1 shadow-2xs">
+                          ⚡ Self Service
+                        </span>
+                      )}
+                      {cartArray.some((i) => !i.tipe || (i.tipe !== 'FullService' && i.tipe !== 'SelfService')) && (
+                        <span className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-900 font-bold text-[11px] flex items-center gap-1 shadow-2xs">
+                          🛒 Retail / FnB
+                        </span>
+                      )}
+                      {cartArray.length === 0 && (
+                        <span className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-500 font-bold text-[11px]">
+                          Belum ada item
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Priority Option if Drop Off */}
-                {tipeLayanan === 'FullService' && (
-                  <div className="bg-teal-50/70 border border-teal-200/80 p-3 rounded-2xl space-y-2">
-                    <label className="block font-bold text-teal-900">Prioritas Pengerjaan Drop Off</label>
+                {/* Priority Option automatically appears if cart contains Drop Off items */}
+                {cartArray.some((i) => i.tipe === 'FullService') && (
+                  <div className="bg-amber-50/70 border border-amber-200/90 p-3.5 rounded-2xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="block font-bold text-amber-950 text-xs">
+                        Prioritas Pengerjaan Cucian Drop Off:
+                      </label>
+                      <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full">
+                        Otomatis Masuk Antrean SOP
+                      </span>
+                    </div>
                     <div className="grid grid-cols-3 gap-2">
                       {(['Reguler', 'Express', 'Kilat'] as const).map((pri) => (
                         <button
@@ -2117,7 +2112,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           className={`py-2 rounded-xl font-bold text-xs border transition ${
                             tingkatLayanan === pri
                               ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
-                              : 'bg-white text-slate-700 border-teal-200/80 hover:bg-teal-100/40'
+                              : 'bg-white text-slate-700 border-amber-200/90 hover:bg-amber-100/50'
                           }`}
                         >
                           {pri}
