@@ -20,6 +20,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import MoltenMetal from '@/components/MoltenMetal';
+import CardNav, { CardNavItem } from '@/components/CardNav';
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
 import ENotaView from '@/components/ENotaView';
@@ -56,6 +57,38 @@ function getStepIndex(statusStr: string): number {
   if (s.includes('cuci') || s.includes('washer') || s.includes('proses')) return 1;
   return 0; // Diterima
 }
+
+const NAV_ITEMS: CardNavItem[] = [
+  {
+    label: 'Layanan',
+    bgColor: '#0c282b',
+    textColor: '#ffffff',
+    links: [
+      { label: 'Drop Off Express & Kilat', href: 'https://wa.me/6289682020699?text=Halo%20Dua%20SiSi%20Laundry,%20mau%20order%20Drop%20Off' },
+      { label: 'Self Service Coin 60 Menit', href: 'https://wa.me/6289682020699?text=Halo%20Dua%20SiSi%20Laundry,%20tanya%20Self%20Service%20Coin' },
+      { label: 'Bedcover, Selimut & Satuan', href: 'https://wa.me/6289682020699?text=Halo%20Dua%20SiSi%20Laundry,%20tanya%20Cuci%20Bedcover' }
+    ]
+  },
+  {
+    label: 'Outlet',
+    bgColor: '#113539',
+    textColor: '#ffffff',
+    links: [
+      { label: 'Petunjuk Arah Google Maps', href: 'https://maps.google.com/?q=Dua+SiSi+Laundry+Malang' },
+      { label: 'Jam Buka: 07.00 - 22.00 WIB', href: 'https://maps.google.com/?q=Dua+SiSi+Laundry+Malang' },
+      { label: 'Free WiFi: DuaSisiLaundry', href: 'https://maps.google.com/?q=Dua+SiSi+Laundry+Malang' }
+    ]
+  },
+  {
+    label: 'Bantuan',
+    bgColor: '#18474d',
+    textColor: '#ffffff',
+    links: [
+      { label: 'WhatsApp CS Hotline', href: 'https://wa.me/6289682020699' },
+      { label: 'Kritik & Saran Layanan', href: 'https://wa.me/6289682020699?text=Halo%20Dua%20SiSi%20Laundry,%20saya%20ingin%20memberikan%20saran' }
+    ]
+  }
+];
 
 export default function CustomerLandingPage() {
   const [activeTab, setActiveTab] = useState<'lacak' | 'poin'>('lacak');
@@ -179,40 +212,20 @@ export default function CustomerLandingPage() {
         />
       </div>
 
-      {/* 1. Ultra-Clean Floating Pill Navbar */}
-      <header className="relative z-20 w-full pt-4 sm:pt-6 px-4">
-        <div className="max-w-4xl mx-auto rounded-full border border-white/10 bg-white/[0.04] backdrop-blur-2xl px-5 py-3 flex items-center justify-between shadow-2xl">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center p-1 shadow-md">
-              <img
-                src="/assets/logo-full-black.svg"
-                alt="Dua SiSi"
-                className="h-4 w-auto filter brightness-0"
-              />
-            </div>
-            <span className="font-bold text-sm tracking-tight text-white">Dua SiSi Laundry</span>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <a
-              href="https://maps.google.com/?q=Dua+SiSi+Laundry+Malang"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-white/70 hover:text-white transition px-3 py-1.5 hidden sm:inline-block"
-            >
-              Lokasi Outlet
-            </a>
-            <a
-              href="https://wa.me/6289682020699"
-              target="_blank"
-              rel="noreferrer"
-              className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs px-4 py-1.5 rounded-full transition shadow-md flex items-center gap-1.5"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-              <span>Hubungi CS</span>
-            </a>
-          </div>
-        </div>
+      {/* 1. React Bits Interactive Animated CardNav */}
+      <header className="relative z-30 w-full pt-4 sm:pt-6 px-4">
+        <CardNav
+          logo="/assets/logo-full-black.svg"
+          logoAlt="Dua SiSi"
+          brandTitle="Dua SiSi Laundry"
+          items={NAV_ITEMS}
+          baseColor="rgba(255, 255, 255, 0.05)"
+          menuColor="#ffffff"
+          buttonBgColor="#ffffff"
+          buttonTextColor="#000000"
+          ctaText="WhatsApp CS"
+          onCtaClick={() => window.open('https://wa.me/6289682020699', '_blank')}
+        />
       </header>
 
       {/* 2. Hero Centerpiece with Tab Switcher */}
