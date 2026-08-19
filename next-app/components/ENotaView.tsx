@@ -171,14 +171,11 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
         /* Split Layout: Thermal Receipt on Left, Control Panel on Right */
         <div className="w-full max-w-3xl flex flex-col md:flex-row items-center md:items-start justify-center gap-5 relative z-10 my-auto py-4">
           
-          {/* LEFT: MONOCHROME THERMAL PAPER RECEIPT */}
+          {/* LEFT: MONOCHROME THERMAL PAPER RECEIPT (Square Corners) */}
           <div
             id="enota-print-area"
-            className="w-full max-w-[340px] sm:max-w-[360px] bg-white border border-black/80 rounded-2xl p-4 sm:p-5 shadow-xl text-black font-mono text-[10.5px] leading-tight relative overflow-hidden shrink-0 print:shadow-none print:border-none print:p-0 print:m-0 print:bg-white print:max-w-full"
+            className="w-full max-w-[340px] sm:max-w-[360px] bg-white border border-black/80 rounded-none p-4 sm:p-5 shadow-xl text-black font-mono text-[10.5px] leading-tight relative overflow-hidden shrink-0 print:shadow-none print:border-none print:p-0 print:m-0 print:bg-white print:max-w-full"
           >
-            {/* Top Zig-Zag Thermal Paper Decoration */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-[radial-gradient(circle,#000000_1px,transparent_1px)] [background-size:6px_6px] opacity-20 print:hidden" />
-
             {/* Receipt Header */}
             <div className="text-center pb-2 border-b border-dashed border-black space-y-0.5">
               <div className="inline-block p-1 mb-0.5">
@@ -244,7 +241,7 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
 
               <div className="flex justify-between items-center pt-0.5 font-sans text-[9.5px]">
                 <span className="font-mono text-[10.5px]">STATUS ORDER:</span>
-                <span className="font-bold uppercase border border-black px-1 py-0.2 rounded-xs">
+                <span className="font-bold uppercase border border-black px-1 py-0.2 rounded-none">
                   {tx.status || 'Diterima'}
                 </span>
               </div>
@@ -312,7 +309,7 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
               {tx.statusPembayaran && (
                 <div className="flex justify-between items-center pt-0.5">
                   <span>STATUS BAYAR:</span>
-                  <span className="font-bold uppercase border border-black px-1 rounded-xs text-[9.5px]">
+                  <span className="font-bold uppercase border border-black px-1 rounded-none text-[9.5px]">
                     {tx.statusPembayaran}
                   </span>
                 </div>
@@ -332,7 +329,7 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
 
             {/* Wi-Fi Info Section */}
             <div className="py-1.5 border-b border-dashed border-black text-[9px] text-center space-y-0.5">
-              <div className="font-bold">📶 WiFi: DuaSisiLaundry</div>
+              <div className="font-bold">WiFi: DuaSisiLaundry</div>
               <div>Password: datanglagi</div>
             </div>
 

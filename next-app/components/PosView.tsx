@@ -3203,7 +3203,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               <div className="flex-1 overflow-y-auto py-4 px-2 flex justify-center bg-slate-100/80 rounded-2xl my-3 border border-slate-200/80 shadow-inner">
                 {successModalTab === 'struk' ? (
                   /* THERMAL RECEIPT PREVIEW */
-                  <div className={`bg-white p-5 rounded-lg shadow-md border border-slate-300 font-mono text-[11px] leading-tight text-slate-800 my-auto ${paperSize === '80mm' ? 'w-[320px]' : 'w-[260px]'}`}>
+                  <div className={`bg-white p-5 rounded-none shadow-md border border-slate-300 font-mono text-[11px] leading-tight text-slate-800 my-auto ${paperSize === '80mm' ? 'w-[320px]' : 'w-[260px]'}`}>
                     <div className="text-center space-y-0.5 pb-2 border-b border-dashed border-slate-300">
                       <div className="text-sm font-black tracking-wide text-slate-900">DUA SISI LAUNDRY</div>
                       <div className="text-[10px] text-slate-500 font-sans">Express & Self Service Coin Laundry</div>
@@ -3292,7 +3292,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     </div>
 
                     <div className="py-1.5 border-b border-dashed border-slate-300 text-[9px] text-center space-y-0.5 text-slate-600">
-                      <div className="font-bold">📶 WiFi: DuaSisiLaundry</div>
+                      <div className="font-bold">WiFi: DuaSisiLaundry</div>
                       <div>Password: datanglagi</div>
                     </div>
 
