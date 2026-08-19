@@ -425,3 +425,74 @@ function importPelangganBatch(payload) {
 
   return { success: true, added: addedCount, updated: updatedCount };
 }
+
+function cekPoinPelanggan(phone) {
+  const norm = normalizePhone(phone);
+  if (!norm || norm.length < 9) {
+    return { success: false, message: "Format nomor WhatsApp tidak valid. Masukkan minimal 9 digit." };
+  }
+
+  const shP = SS.getSheetByName(SHEET_PELANGGAN);
+  if (!shP) return { success: false, message: "Database pelanggan belum tersedia." };
+  const pData = shP.getDataRange().getValues();
+  if (pData.length <= 1) return { success: false, message: "Data pelanggan tidak ditemukan." };
+  pData.shift();
+
+  for (let i = 0; i < pData.length; i++) {
+    const r = pData[i];
+    const hp = normalizePhone(r[0]);
+    if (hp === norm || hp.endsWith(norm) || norm.endsWith(hp)) {
+      const nama = String(r[1] || "Pelanggan");
+      const nameParts = nama.split(" ");
+      const maskedName = nameParts.map(part => {
+        if (part.length <= 2) return part;
+        return part.substring(0, 2) + "*".repeat(Math.min(part.length - 2, 4));
+      }).join(" ");
+
+      const isMember = String(r[9] || "").toUpperCase() === "MEMBER";
+      const totalTx = Number(r[4]) || 0;
+      const saldoPoin = Number(r[8]) || 0;
+
+      // Ambil transaksi aktif (jika ada)
+      const activeOrders = [];
+      try {
+        const shT = SS.getSheetByName(SHEET_TRANSAKSI);
+        if (shT) {
+          const tData = shT.getDataRange().getValues();
+          for (let j = tData.length - 1; j >= 1; j--) {
+            const tr = tData[j];
+            const tHp = normalizePhone(tr[2]);
+            if (tHp === hp) {
+              const status = String(tr[8] || "Diterima");
+              if (status !== "Selesai" && status !== "Dibatalkan") {
+                activeOrders.push({
+                  noNota: String(tr[0]),
+                  tipe: String(tr[4]),
+                  status: status,
+                  estimasiSelesai: tr[18] ? fmtWib(tr[18], "dd/MM HH:mm") : "-"
+                });
+              }
+              if (activeOrders.length >= 3) break;
+            }
+          }
+        }
+      } catch (e) {}
+
+      return {
+        success: true,
+        pelanggan: {
+          maskedNama: maskedName,
+          maskedHp: maskPhone(hp),
+          saldoPoin: saldoPoin,
+          totalOrder: totalTx,
+          isMember: isMember,
+          statusMember: isMember ? "MEMBER VIP" : "PELANGGAN REGULER",
+          activeOrders: activeOrders
+        }
+      };
+    }
+  }
+
+  return { success: false, message: "Nomor WhatsApp belum terdaftar sebagai pelanggan di Dua SiSi Laundry." };
+}
+

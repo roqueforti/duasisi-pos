@@ -107,7 +107,11 @@ export function notifySessionExpired(message = 'Sesi Anda telah kedaluwarsa kare
 }
 
 export async function runBackend<T = any>(action: string, ...args: any[]): Promise<T> {
-  const isPublicAction = action === 'verifikasiPin' || action === 'recoverPin' || action === 'getTransaksiByNota';
+  const isPublicAction =
+    action === 'verifikasiPin' ||
+    action === 'recoverPin' ||
+    action === 'getTransaksiByNota' ||
+    action === 'cekPoinPelanggan';
   const sessionToken = isPublicAction ? null : getBackendSession();
 
   // Untuk action yang membutuhkan autentikasi: periksa apakah inaktif selama 30 menit

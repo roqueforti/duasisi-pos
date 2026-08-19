@@ -44,11 +44,11 @@ const ALLOWED_API_ACTIONS = Object.freeze({
   getAbsensiConfig: true, saveAbsensiConfig: true, updateMasterShift: true,
   getJadwalKerjaList: true, saveJadwalKerjaBatch: true, hapusJadwalKerja: true,
   getCutiList: true, tambahCuti: true, updateStatusCuti: true, hapusCuti: true,
-  getHariLiburList: true, tambahHariLibur: true, hapusHariLibur: true,
   getPipelineConfigData: true, savePipelineConfigData: true,
-  saveSecuritySettings: true, getSecuritySettings: true, recoverPin: true
+  saveSecuritySettings: true, getSecuritySettings: true, recoverPin: true,
+  cekPoinPelanggan: true
 });
-const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true, recoverPin: true });
+const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true, recoverPin: true, cekPoinPelanggan: true });
 const MANAGER_API_ACTIONS = Object.freeze({
   tambahLayanan: true, updateLayanan: true, toggleAktifLayanan: true, hapusLayanan: true, regenerateProductCodes: true,
   tambahInventory: true, hapusInventory: true, updateInventoryItem: true,
