@@ -73,8 +73,9 @@ function createPipelineForNota(noNota, tipe, items, petugas) {
   if (tipe === "FullService" && items && items.length > 0) {
     const allLayanan = getLayananListAll();
     items.forEach(item => {
-      const lay = allLayanan.find(l => l.nama === item.layanan);
-      if (lay && Array.isArray(lay.pipelineSteps)) {
+      const layName = String(item.layanan || item.nama || "").trim().toLowerCase();
+      const lay = allLayanan.find(l => String(l.nama || l.layanan || "").trim().toLowerCase() === layName);
+      if (lay && Array.isArray(lay.pipelineSteps) && lay.pipelineSteps.length > 0) {
         lay.pipelineSteps.forEach(s => {
           if (typeof s === 'object' && s.nama) {
             if (!config.find(c => String(c.nama).toLowerCase() === String(s.nama).toLowerCase())) {
@@ -229,31 +230,28 @@ function updateDropoffStatus(data) {
       return { success: false, message: "Order void/batal tidak dapat diproses." };
     }
 
-    const currentIndex = getDropoffStatusIndex_(txRows[txIndex][5]);
-    const targetIndex = getDropoffStatusIndex_(statusBaru);
-    if (targetIndex < 0) return { success: false, message: "Status drop-off tidak valid." };
-    if (targetIndex !== currentIndex + 1) return { success: false, message: "Status harus dilanjutkan satu tahap secara berurutan." };
-
-    let machine = null;
-    let machineId = "";
-    if (statusBaru === "Dicuci") {
-      machineId = String(data.washerId || "");
-      machine = findMachineRow_(machineId, "washer");
-    } else if (statusBaru === "Dikeringkan") {
-      machineId = String(data.dryerId || "");
-      machine = findMachineRow_(machineId, "dryer");
-    }
-    if (machine && !machine.success) return { success: false, message: machine.message };
-
     const pipelineRows = shP.getDataRange().getValues();
     let activeRow = -1;
     let targetRow = -1;
     for (let i = 1; i < pipelineRows.length; i++) {
       if (String(pipelineRows[i][1]) !== noNota) continue;
       if (pipelineRows[i][4] === "Aktif") activeRow = i;
-      if (pipelineRows[i][3] === statusBaru) targetRow = i;
+      if (String(pipelineRows[i][3]).toLowerCase() === String(statusBaru).toLowerCase()) targetRow = i;
     }
-    if (activeRow < 0 || targetRow < 0) return { success: false, message: "Pipeline order belum sesuai schema terbaru." };
+    if (statusBaru !== "Selesai" && targetRow < 0) {
+      return { success: false, message: "Tahap " + statusBaru + " tidak terdaftar pada alur pengerjaan nota ini." };
+    }
+
+    let machine = null;
+    let machineId = "";
+    if (statusBaru === "Dicuci") {
+      machineId = String(data.washerId || "");
+      if (machineId) machine = findMachineRow_(machineId, "washer");
+    } else if (statusBaru === "Dikeringkan") {
+      machineId = String(data.dryerId || "");
+      if (machineId) machine = findMachineRow_(machineId, "dryer");
+    }
+    if (machine && !machine.success) return { success: false, message: machine.message };
 
     const now = new Date();
     const previousMachineId = String(pipelineRows[activeRow][6] || "");

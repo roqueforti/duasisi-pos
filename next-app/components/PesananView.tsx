@@ -22,9 +22,6 @@ import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { DropOffPriorityItem } from './ProdukView';
 
-const workflow = ['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika', 'Siap Diambil', 'Selesai'] as const;
-type DropoffStatus = (typeof workflow)[number];
-
 function getWorkflowIcon(status: string) {
   const s = (status || '').toLowerCase();
   if (s.includes('cuci')) return WashingMachine;
@@ -41,11 +38,6 @@ interface StaffItem {
   jabatan?: string;
 }
 
-function nextStatus(status: string): DropoffStatus | null {
-  const index = workflow.indexOf(status as DropoffStatus);
-  return index >= 0 && index < workflow.length - 1 ? workflow[index + 1] : null;
-}
-
 function activeMachine(order: Transaksi) {
   const active = order.pipeline?.find((step) => step.status === 'Aktif');
   return active?.mesinId || active?.washerId || active?.dryerId || '';
@@ -57,6 +49,7 @@ export default function PesananView() {
   const [staff, setStaff] = useState<StaffItem[]>([]);
   const [layananList, setLayananList] = useState<any[]>([]);
   const [inventoryList, setInventoryList] = useState<any[]>([]);
+  const [masterSteps, setMasterSteps] = useState<any[]>([]);
   const [dropOffPriorities, setDropOffPriorities] = useState<DropOffPriorityItem[]>([
     { id: 'p1', nama: 'Reguler', durasiJam: 48, icon: 'Clock', warna: 'bg-teal-100 text-teal-800 border-teal-300', aktif: true },
     { id: 'p2', nama: 'Express', durasiJam: 24, icon: 'Flame', warna: 'bg-amber-100 text-amber-800 border-amber-300', aktif: true },
@@ -77,18 +70,20 @@ export default function PesananView() {
     setLoading(true);
     setError('');
     try {
-      const [orderData, machineData, staffData, priorityData, layData, invData] = await Promise.all([
+      const [orderData, machineData, staffData, priorityData, layData, invData, pipeData] = await Promise.all([
         runBackend<Transaksi[]>('getTransaksiByPipeline', 'Semua'),
         runBackend<Mesin[]>('getMesinList'),
         runBackend<StaffItem[]>('getPegawaiList'),
         runBackend<DropOffPriorityItem[]>('getPriorityConfig').catch(() => null),
         runBackend<any[]>('getLayananListAll').catch(() => []),
         runBackend<any[]>('getInventoryList').catch(() => []),
+        runBackend<any[]>('getPipelineConfigData').catch(() => []),
       ]);
       setOrders(Array.isArray(orderData) ? orderData : []);
       setMachines(Array.isArray(machineData) ? machineData : []);
       setLayananList(Array.isArray(layData) ? layData : []);
       setInventoryList(Array.isArray(invData) ? invData : []);
+      setMasterSteps(Array.isArray(pipeData) ? pipeData : []);
       if (Array.isArray(priorityData) && priorityData.length > 0) {
         setDropOffPriorities(priorityData);
       }
@@ -109,6 +104,65 @@ export default function PesananView() {
     return () => window.clearTimeout(timer);
   }, [loadData]);
 
+  // Dynamically compute Kanban columns from Master Steps and all active orders
+  const kanbanColumns = useMemo(() => {
+    const cols: string[] = [];
+    if (Array.isArray(masterSteps) && masterSteps.length > 0) {
+      masterSteps.forEach((s) => {
+        const name = String(s.nama || '').trim();
+        if (name && !cols.includes(name) && name !== 'Selesai' && name !== 'Pesanan Diterima') {
+          cols.push(name);
+        }
+      });
+    } else {
+      ['Dicuci', 'Dikeringkan', 'Disetrika', 'Dilipat', 'Siap Diambil'].forEach((name) => {
+        if (!cols.includes(name)) cols.push(name);
+      });
+    }
+
+    orders.forEach((o) => {
+      if (Array.isArray(o.pipeline)) {
+        o.pipeline.forEach((p) => {
+          const name = String(p.namaStep || '').trim();
+          if (name && !cols.includes(name) && name !== 'Selesai' && name !== 'Pesanan Diterima') {
+            cols.push(name);
+          }
+        });
+      }
+      const statusStr = String(o.status || '');
+      if (statusStr && !cols.includes(statusStr) && statusStr !== 'Selesai' && statusStr !== 'Pesanan Diterima') {
+        cols.push(statusStr);
+      }
+    });
+
+    return cols;
+  }, [masterSteps, orders]);
+
+  // Determine the next step tailored specifically to each order's pipeline
+  const getNextStatusForOrder = useCallback((order: Transaksi): string | null => {
+    if (Array.isArray(order.pipeline) && order.pipeline.length > 0) {
+      const realSteps = order.pipeline.filter((p) => p.namaStep !== 'Pesanan Diterima');
+      const activeIdx = realSteps.findIndex(
+        (p) => p.status === 'Aktif' || p.namaStep.toLowerCase() === (order.status || '').toLowerCase()
+      );
+      if (activeIdx >= 0 && activeIdx < realSteps.length - 1) {
+        return realSteps[activeIdx + 1].namaStep;
+      }
+      if (activeIdx === realSteps.length - 1) {
+        return 'Selesai';
+      }
+    }
+
+    const curIdx = kanbanColumns.indexOf(order.status);
+    if (curIdx >= 0 && curIdx < kanbanColumns.length - 1) {
+      return kanbanColumns[curIdx + 1];
+    }
+    if (curIdx === kanbanColumns.length - 1) {
+      return 'Selesai';
+    }
+    return null;
+  }, [kanbanColumns]);
+
   const filteredOrders = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     return orders.filter((order) => {
@@ -122,11 +176,15 @@ export default function PesananView() {
     });
   }, [orders, priority, query]);
 
-  const targetStatus = selected ? nextStatus(selected.status) : null;
+  const targetStatus = selected ? getNextStatusForOrder(selected) : null;
+  const isTargetWasher = targetStatus?.toLowerCase().includes('cuci');
+  const isTargetDryer = targetStatus?.toLowerCase().includes('kering');
+  const requiresMachine = Boolean(isTargetWasher || isTargetDryer);
+
   const availableMachines = machines.filter((machine) => {
     if (machine.status !== 'Kosong') return false;
-    if (targetStatus === 'Dicuci') return machine.tipe === 'Washer';
-    if (targetStatus === 'Dikeringkan') return machine.tipe === 'Dryer';
+    if (isTargetWasher) return machine.tipe === 'Washer';
+    if (isTargetDryer) return machine.tipe === 'Dryer';
     return false;
   });
 
@@ -139,8 +197,8 @@ export default function PesananView() {
 
   const handleProgress = async () => {
     if (!selected || !targetStatus) return;
-    if ((targetStatus === 'Dicuci' || targetStatus === 'Dikeringkan') && !machineId) {
-      setError(`Pilih ${targetStatus === 'Dicuci' ? 'washer' : 'dryer'} yang kosong.`);
+    if (requiresMachine && !machineId) {
+      setError(`Pilih ${isTargetWasher ? 'washer' : 'dryer'} yang kosong.`);
       return;
     }
     setSubmitting(true);
@@ -149,8 +207,8 @@ export default function PesananView() {
       const result = await runBackend<{ success: boolean; message?: string }>('updateDropoffStatus', {
         noNota: selected.noNota,
         status: targetStatus,
-        washerId: targetStatus === 'Dicuci' ? machineId : '',
-        dryerId: targetStatus === 'Dikeringkan' ? machineId : '',
+        washerId: isTargetWasher ? machineId : '',
+        dryerId: isTargetDryer ? machineId : '',
         assignedStaff: staffName,
         catatan: note.trim(),
         userName: staffName || 'Staff',
@@ -168,7 +226,7 @@ export default function PesananView() {
   };
 
   const renderCard = (order: Transaksi) => {
-    const next = nextStatus(order.status);
+    const next = getNextStatusForOrder(order);
     const machine = activeMachine(order);
     const orderPriority = order.tingkatLayanan || 'Reguler';
     const priConfig = dropOffPriorities.find((p) => p.nama.toLowerCase() === orderPriority.toLowerCase());
@@ -290,8 +348,12 @@ export default function PesananView() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">{filteredOrders.map(renderCard)}</div>
       ) : (
         <div className="flex snap-x gap-3 overflow-x-auto pb-3">
-          {workflow.slice(0, -1).map((status) => {
-            const statusOrders = filteredOrders.filter((order) => order.status === status);
+          {kanbanColumns.map((status) => {
+            const statusOrders = filteredOrders.filter((order) => {
+              if (order.status === status) return true;
+              const activeStep = order.pipeline?.find((p) => p.status === 'Aktif');
+              return activeStep?.namaStep === status;
+            });
             const StatusIcon = getWorkflowIcon(status);
             return (
               <section key={status} className="w-[86vw] max-w-[320px] shrink-0 snap-start rounded-2xl bg-slate-100/80 p-3 sm:w-[300px] border border-slate-200/80 shadow-2xs">
@@ -320,9 +382,9 @@ export default function PesananView() {
             <div className="mt-4 space-y-3">
               <div><label className="mb-1 block text-xs font-bold text-slate-700">Staf Memproses</label><select value={staffName} onChange={(event) => setStaffName(event.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-[#1E4648]">{staff.map((item) => <option key={item.id} value={item.nama}>{item.nama}{item.jabatan ? ` (${item.jabatan})` : ''}</option>)}</select></div>
 
-              {(targetStatus === 'Dicuci' || targetStatus === 'Dikeringkan') && (
+              {requiresMachine && (
                 <div>
-                  <label className="mb-1 block text-xs font-bold text-slate-700">{targetStatus === 'Dicuci' ? 'Washer' : 'Dryer'} *</label>
+                  <label className="mb-1 block text-xs font-bold text-slate-700">{isTargetWasher ? 'Washer' : 'Dryer'} *</label>
                   <select value={machineId} onChange={(event) => setMachineId(event.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-[#1E4648]">
                     <option value="">Pilih mesin kosong...</option>
                     {availableMachines.map((machine) => <option key={machine.id} value={machine.id}>{machine.id} · {machine.nama}</option>)}
@@ -403,7 +465,7 @@ export default function PesananView() {
 
             <div className="mt-4 flex gap-2">
               <button onClick={() => setSelected(null)} disabled={submitting} className="rounded-lg bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-600">Batal</button>
-              <button onClick={handleProgress} disabled={submitting || ((targetStatus === 'Dicuci' || targetStatus === 'Dikeringkan') && !machineId)} className="flex-1 rounded-lg bg-[#1E4648] py-2.5 text-xs font-bold text-white disabled:opacity-50">{submitting ? 'Menyimpan...' : `Konfirmasi ${targetStatus}`}</button>
+              <button onClick={handleProgress} disabled={submitting || (requiresMachine && !machineId)} className="flex-1 rounded-lg bg-[#1E4648] py-2.5 text-xs font-bold text-white disabled:opacity-50">{submitting ? 'Menyimpan...' : `Konfirmasi ${targetStatus}`}</button>
             </div>
           </div>
         </div>
