@@ -29,9 +29,9 @@ export default function RootLayout({
       <head>
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self' https://script.google.com https://script.googleusercontent.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com; frame-src 'self';"
+          content="default-src 'self' https://script.google.com https://script.googleusercontent.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://script.google.com https://script.googleusercontent.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://script.google.com https://script.googleusercontent.com https:; frame-src 'self' https://www.google.com https://maps.google.com;"
         />
-        <meta name="viewport" content="width=1280, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -55,7 +55,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${plusJakartaSans.variable} font-sans bg-[#F8FAFC] text-slate-700 antialiased h-full overflow-hidden`}>
+      <body className={`${plusJakartaSans.variable} font-sans bg-[#F8FAFC] text-slate-700 antialiased min-h-screen overflow-y-auto`}>
         <DialogProvider>
           {children}
         </DialogProvider>
