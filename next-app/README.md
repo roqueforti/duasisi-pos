@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📱 Dua Sisi Laundry — Next.js 16 PWA Frontend
 
-## Getting Started
+Frontend Point of Sale (POS) dan Portal Publik Mandiri Pelanggan untuk **Dua Sisi Laundry**, dibangun dengan Next.js 16 (Turbopack & App Router), React 19, TypeScript, dan Tailwind CSS.
 
-First, run the development server:
+---
+
+## 🚀 Fitur & Komponen Utama
+
+### 1. Terminal POS Internal (`/duasisi-terminal-pos`)
+- **`PosAppRoot.tsx`**: Shell aplikasi utama, handler sesi login PIN (Staff & Manager), auto-logout inaktivitas 30 menit, dan switching tab.
+- **`PosView.tsx`**: Modul kasir utama, katalog kategori, rekomendasi upselling, pendaftaran member cepat dengan OpenStreetMap autocomplete, kalkulator pembayaran, struk Bluetooth thermal printer, dan notifikasi WhatsApp.
+- **`PesananView.tsx`**: Papan Kanban dinamis pesanan drop-off (Dicuci, Dikeringkan, Disetrika, Dilipat, Siap Diambil), penugasan staf dan mesin cuci/dryer.
+- **`MesinView.tsx`**: Monitoring status operasional mesin washer dan dryer secara langsung.
+- **`ShiftKasirView.tsx`**: Manajemen kas modal awal, input pengeluaran operasional (dengan upload foto kamera ke Drive), dan serah terima kasir.
+- **`PresensiView.tsx`**: Presensi masuk & pulang pegawai dengan GPS Geolocation & kamera selfie langsung.
+- **`PelangganView.tsx`**: CRM data pelanggan, riwayat order, saldo poin loyalitas, dan pencarian alamat.
+- **`StokInventoryView.tsx`**: Pengendalian stok bahan baku, alert min-stok, dan riwayat mutasi.
+- **`RekapView.tsx`**: Laporan keuangan, analitik omzet, metode bayar, dan performa kasir (Khusus Manager).
+- **`PengaturanView.tsx`**: Konfigurasi layanan, multi-bahan baku (BOM), pipeline tahapan, dan pengaturan PIN keamanan.
+
+### 2. Portal Publik Pelanggan (`/`)
+- **`CustomerLandingPage.tsx`**:
+  - **Lacak Cucian Horizontal**: Stepper proses pengerjaan drop-off modern menyamping dengan estimasi selesai otomatis.
+  - **Cek Saldo Poin Member**: Cek akumulasi poin cashback hanya dengan memasukkan No. HP.
+  - **3D DriftWall Galeri**: Showcase fasilitas outlet asli interaktif tanpa foto AI.
+- **`ENotaView.tsx` (`/enota?t=<token>`)**: Lembar E-Nota digital resmi pelanggan yang dapat dicetak atau disimpan sebagai PDF.
+
+---
+
+## 🛠️ Tech Stack & Library
+
+- **Framework**: Next.js 16.2.11 (Turbopack Engine)
+- **UI Library**: React 19, Lucide React Icons, Canvas Confetti
+- **Styling**: Tailwind CSS, Custom Glassmorphism & Modern Minimalist Dark Theme
+- **State & Data Layer**: Client-side Cache In-Memory Layer (`lib/cache.ts`) & Google Apps Script RPC Client (`lib/api.ts`)
+- **Perangkat Keras**: Web Bluetooth API (`lib/bluetoothPrinter.ts`)
+
+---
+
+## 💻 Panduan Menjalankan
 
 ```bash
+# Masuk ke direktori next-app
+cd next-app
+
+# Install dependensi
+npm install
+
+# Jalankan server lokal
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Validasi TypeScript
+npx tsc --noEmit
+
+# Build bundle produksi
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🌐 Rute Halaman (App Router)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Rute URL | Akses | Fungsi |
+|:---|:---|:---|
+| `/` | Publik | Landing Page & Portal Mandiri Pelanggan (Lacak Cucian & Cek Poin) |
+| `/duasisi-terminal-pos` | Internal | Terminal Utama Kasir POS & Operasional Outlet |
+| `/enota` | Publik | E-Nota Digital Pelanggan (Terproteksi Token Obfuscation) |
+| `/lupa-pin` | Internal | Pemulihan PIN Staff/Manager via Google Drive / Security Question |
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
