@@ -127,7 +127,11 @@ function getLayananListAll() {
           bahanBakuList = [{ idInventory: rawInv, qty: deductionSingle, tahap: 'Dicuci' }];
         }
       } else {
-        bahanBakuList = [{ idInventory: rawInv, qty: deductionSingle, tahap: 'Dicuci' }];
+        if (r[6] === "FullService" || katKey.includes("drop")) {
+          bahanBakuList = [{ idInventory: rawInv, qty: deductionSingle, tahap: 'Dicuci' }];
+        } else {
+          bahanBakuList = [];
+        }
       }
     }
 

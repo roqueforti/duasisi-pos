@@ -863,27 +863,26 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         )}
                       </td>
                       <td className="py-1.5 px-3 whitespace-nowrap">
-                        {item.bahanBakuList && item.bahanBakuList.length > 0 ? (
+                        {(item.tipe === 'FullService' || (item.kategori || '').toLowerCase().includes('drop')) && item.bahanBakuList && item.bahanBakuList.length > 0 ? (
                           <div className="flex flex-col gap-1 max-w-[180px]">
                             {item.bahanBakuList.map((b, bIdx) => {
                               const inv = inventoryList.find(i => i.id === b.idInventory);
                               return (
-                                <span key={bIdx} className="text-[9px] font-mono text-orange-900 bg-orange-50/90 px-1.5 py-0.5 rounded border border-orange-200 truncate" title={`${inv?.nama || b.idInventory}: ${b.qty} ${inv?.satuan || 'unit'} (${b.tahap || 'Dicuci'})`}>
-                                  <strong>{inv?.nama || b.idInventory}</strong>: {b.qty} {inv?.satuan || 'unit'}
-                                  <span className="text-orange-600/80 text-[8px] ml-1">({b.tahap || 'Dicuci'})</span>
+                                <span key={bIdx} className="text-[10px] font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 truncate" title={`${inv?.nama || b.idInventory}: ${b.qty} ${inv?.satuan || 'unit'}`}>
+                                  <strong className="text-slate-800">{inv?.nama || b.idInventory}</strong>: {b.qty} {inv?.satuan || 'unit'}
                                 </span>
                               );
                             })}
                           </div>
                         ) : (item.idInventory && item.idInventory !== 'none' && inventoryList.some(inv => inv.id === item.idInventory)) ? (
                           <div className="flex items-center gap-1">
-                            <span className="font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 text-[11px] font-mono">
+                            <span className="font-bold text-[#1E4648] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/80 text-[11px] font-mono">
                               {item.inventoryDeductionQty !== undefined && item.inventoryDeductionQty !== null ? item.inventoryDeductionQty : 1}
-                              <span className="text-orange-900/70 font-medium text-[9px] ml-1">
+                              <span className="text-teal-900/80 font-medium text-[9px] ml-1">
                                 {inventoryList.find(inv => inv.id === item.idInventory)?.satuan || 'unit'}
                               </span>
                             </span>
-                            <span className="text-[9px] text-slate-400">/ trx</span>
+                            <span className="text-[9px] text-slate-400 font-medium">/ trx</span>
                           </div>
                         ) : (
                           <span className="text-slate-400 text-[10px] italic">Tanpa Stok</span>
