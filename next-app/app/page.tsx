@@ -186,7 +186,7 @@ export default function HomePage() {
               {currentTab === 'transaksi' && <PosView currentRole={currentRole} />}
               {currentTab === 'riwayat' && <RiwayatView currentRole={currentRole} />}
               {currentTab === 'pesanan' && <PesananView />}
-              {currentTab === 'absensi' && <AbsensiView />}
+              {currentTab === 'absensi' && <AbsensiView currentRole={currentRole} />}
               {currentTab === 'pelanggan' && <PelangganView currentRole={currentRole} />}
               {currentTab === 'inventory' && <InventoryView currentRole={currentRole} />}
               {currentTab === 'pegawai' && <PegawaiView currentRole={currentRole} />}

@@ -17,6 +17,7 @@ import {
   FileText, 
   Users, 
   ShieldAlert, 
+  ShieldCheck,
   Sun, 
   Moon, 
   Coffee, 
@@ -24,7 +25,11 @@ import {
   X,
   ChevronRight,
   TrendingDown,
-  Sparkles
+  Sparkles,
+  MapPin,
+  Globe,
+  Navigation,
+  LocateFixed
 } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { 
@@ -38,6 +43,7 @@ import {
 import { useDialog } from '@/components/DialogProvider';
 import { formatTime } from '@/lib/utils';
 import RupiahIcon from '@/components/RupiahIcon';
+import { getCurrentGpsLocation, getClientIpAddress, validateAttendanceSecurity } from '@/lib/attendanceSecurity';
 
 interface AbsensiRecord {
   id: string;
@@ -80,6 +86,9 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
 
   // Config & Denda State
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [configModalTab, setConfigModalTab] = useState<'shift' | 'security'>('shift');
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [ipLoading, setIpLoading] = useState(false);
   const [config, setConfig] = useState<AbsensiConfig>({
     jamBuka: '07:00',
     toleransiTelatMenit: 15,
@@ -87,7 +96,13 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
     tipeDenda: 'MENIT',
     tarifDenda: 1000,
     tunjanganKehadiranPerHari: 15000,
-    insentifDropOffPerTahap: 1500
+    insentifDropOffPerTahap: 1500,
+    aktifIpWhitelist: false,
+    ipWhitelist: '',
+    aktifGeofence: false,
+    outletLatitude: 0,
+    outletLongitude: 0,
+    geofenceRadiusMeter: 100
   });
 
   // Jadwal Kerja State
@@ -236,6 +251,13 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
     if (!namaPegawai.trim()) { await showAlert('Pilih nama pegawai!', 'warning'); return; }
     setLoading(true);
     try {
+      // 1. Validasi Keamanan Presensi: IP & GPS Whitelist
+      const sec = await validateAttendanceSecurity(config);
+      if (!sec.valid) {
+        await showAlert(sec.message || 'Validasi lokasi/IP presensi gagal.', 'warning');
+        return;
+      }
+
       const res = await runBackend<{ message: string }>('clockInPegawai', namaPegawai.trim(), shift, catatan.trim());
       await showAlert(res?.message || 'Clock In Berhasil', 'success');
       setCatatan('');
@@ -251,6 +273,13 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
     if (!namaPegawai.trim()) { await showAlert('Pilih nama pegawai!', 'warning'); return; }
     setLoading(true);
     try {
+      // 1. Validasi Keamanan Presensi: IP & GPS Whitelist
+      const sec = await validateAttendanceSecurity(config);
+      if (!sec.valid) {
+        await showAlert(sec.message || 'Validasi lokasi/IP presensi gagal.', 'warning');
+        return;
+      }
+
       const res = await runBackend<{ message: string }>('clockOutPegawai', namaPegawai.trim(), catatan.trim());
       await showAlert(res?.message || 'Clock Out Berhasil', 'success');
       setCatatan('');
@@ -259,6 +288,44 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
       await showAlert('Gagal Clock Out', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGetGpsCurrent = async () => {
+    setGpsLoading(true);
+    try {
+      const loc = await getCurrentGpsLocation();
+      setConfig(prev => ({
+        ...prev,
+        outletLatitude: parseFloat(loc.latitude.toFixed(6)),
+        outletLongitude: parseFloat(loc.longitude.toFixed(6)),
+      }));
+      await showAlert(`Titik koordinat berhasil didapatkan!\nLat: ${loc.latitude.toFixed(6)}, Lng: ${loc.longitude.toFixed(6)}\nAkurasi GPS: ±${Math.round(loc.accuracy)} meter`, 'success');
+    } catch (err: any) {
+      await showAlert(err.message || 'Gagal mengambil lokasi GPS.', 'error');
+    } finally {
+      setGpsLoading(false);
+    }
+  };
+
+  const handleGetIpCurrent = async () => {
+    setIpLoading(true);
+    try {
+      const ip = await getClientIpAddress();
+      if (!ip) throw new Error('Tidak dapat mendeteksi IP jaringan saat ini.');
+      const currentList = (config.ipWhitelist || '').split(/[\n,;]/).map(s => s.trim()).filter(Boolean);
+      if (!currentList.includes(ip)) {
+        currentList.push(ip);
+      }
+      setConfig(prev => ({
+        ...prev,
+        ipWhitelist: currentList.join(', ')
+      }));
+      await showAlert(`IP ${ip} berhasil ditambahkan ke daftar whitelist!`, 'success');
+    } catch (err: any) {
+      await showAlert(err.message || 'Gagal mendeteksi IP.', 'error');
+    } finally {
+      setIpLoading(false);
     }
   };
 
@@ -416,13 +483,18 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
 
-          <button
-            onClick={() => setShowConfigModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition shadow-2xs"
-          >
-            <Settings className="w-3.5 h-3.5 text-[#1E4648]" />
-            <span>Pengaturan Denda & Shift</span>
-          </button>
+          {currentRole === 'MANAGER' && (
+            <button
+              onClick={() => {
+                setConfigModalTab('shift');
+                setShowConfigModal(true);
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition shadow-2xs"
+            >
+              <Settings className="w-3.5 h-3.5 text-[#1E4648]" />
+              <span>Pengaturan Denda & Keamanan</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -458,20 +530,34 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
         <div className="space-y-5">
           {/* Clock In / Out Box */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
                 <Clock className="w-4 h-4 text-[#1E4648]" />
                 <span>Clock In / Clock Out Shift</span>
               </div>
 
-              {config.aktifDenda && (
-                <div className="flex items-center gap-1.5 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full text-[11px] font-bold text-rose-700">
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  <span>
-                    Denda Aktif: Rp {config.tarifDenda.toLocaleString('id-ID')} / {config.tipeDenda === 'MENIT' ? 'Menit' : config.tipeDenda === 'JAM' ? 'Jam' : 'Telat'} (Toleransi {config.toleransiTelatMenit} Menit)
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {config.aktifGeofence && (
+                  <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full text-[10px] font-bold text-emerald-800" title={`Geofence Radius: ${config.geofenceRadiusMeter || 100}m`}>
+                    <MapPin className="w-3 h-3 text-emerald-600" />
+                    <span>GPS Whitelist Aktif</span>
+                  </div>
+                )}
+                {config.aktifIpWhitelist && (
+                  <div className="flex items-center gap-1 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full text-[10px] font-bold text-sky-800">
+                    <Globe className="w-3 h-3 text-sky-600" />
+                    <span>IP Whitelist Aktif</span>
+                  </div>
+                )}
+                {config.aktifDenda && (
+                  <div className="flex items-center gap-1.5 bg-rose-50 border border-rose-200 px-3 py-1 rounded-full text-[11px] font-bold text-rose-700">
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>
+                      Denda Aktif: Rp {config.tarifDenda.toLocaleString('id-ID')} / {config.tipeDenda === 'MENIT' ? 'Menit' : config.tipeDenda === 'JAM' ? 'Jam' : 'Telat'} (Toleransi {config.toleransiTelatMenit} Menit)
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-4">
@@ -648,30 +734,32 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
               />
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => {
-                  setJadwalModalMode('weekly_off');
-                  setShowAddJadwalModal(true);
-                }}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
-                title="Generate otomatis 1 bulan jadwal dengan jatah 1 hari libur per minggu"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Auto Roster (6 Kerja + 1 Libur)</span>
-              </button>
+            {currentRole === 'MANAGER' && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    setJadwalModalMode('weekly_off');
+                    setShowAddJadwalModal(true);
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                  title="Generate otomatis 1 bulan jadwal dengan jatah 1 hari libur per minggu"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Auto Roster (6 Kerja + 1 Libur)</span>
+                </button>
 
-              <button
-                onClick={() => {
-                  setJadwalModalMode('single');
-                  setShowAddJadwalModal(true);
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Jadwal Harian</span>
-              </button>
-            </div>
+                <button
+                  onClick={() => {
+                    setJadwalModalMode('single');
+                    setShowAddJadwalModal(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah Jadwal Harian</span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
@@ -684,13 +772,13 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                     <th className="py-3.5 px-4">Penugasan Shift</th>
                     <th className="py-3.5 px-4">Status Roster</th>
                     <th className="py-3.5 px-4">Catatan</th>
-                    <th className="py-3.5 px-4 text-right">Aksi</th>
+                    {currentRole === 'MANAGER' && <th className="py-3.5 px-4 text-right">Aksi</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {jadwalList.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-400">
+                      <td colSpan={currentRole === 'MANAGER' ? 6 : 5} className="py-12 text-center text-slate-400">
                         <CalendarIcon className="w-10 h-10 mx-auto mb-2 opacity-30" />
                         <p className="font-semibold text-xs">Belum ada roster jadwal untuk bulan ini.</p>
                       </td>
@@ -712,15 +800,17 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                           </span>
                         </td>
                         <td className="py-3 px-4 text-slate-500">{j.catatan || '-'}</td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => handleDeleteJadwal(j.id)}
-                            className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
-                            title="Hapus Jadwal"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
+                        {currentRole === 'MANAGER' && (
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => handleDeleteJadwal(j.id)}
+                              className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                              title="Hapus Jadwal"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -761,7 +851,7 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                     <th className="py-3.5 px-4">Durasi</th>
                     <th className="py-3.5 px-4">Alasan</th>
                     <th className="py-3.5 px-4">Status Persetujuan</th>
-                    <th className="py-3.5 px-4 text-right">Aksi</th>
+                    <th className="py-3.5 px-4 text-right">{currentRole === 'MANAGER' ? 'Aksi Persetujuan' : 'Keterangan'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -791,33 +881,39 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                           </span>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {c.status === 'Pending' && (
-                              <>
-                                <button
-                                  onClick={() => handleUpdateStatusCuti(c.id, 'Disetujui')}
-                                  className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
-                                  title="Setujui Cuti"
-                                >
-                                  <Check className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleUpdateStatusCuti(c.id, 'Ditolak')}
-                                  className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                                  title="Tolak Cuti"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </>
-                            )}
-                            <button
-                              onClick={() => handleDeleteCuti(c.id)}
-                              className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition"
-                              title="Hapus"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          {currentRole === 'MANAGER' ? (
+                            <div className="flex items-center justify-end gap-1">
+                              {c.status === 'Pending' && (
+                                <>
+                                  <button
+                                    onClick={() => handleUpdateStatusCuti(c.id, 'Disetujui')}
+                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                                    title="Setujui Cuti"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateStatusCuti(c.id, 'Ditolak')}
+                                    className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                                    title="Tolak Cuti"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                onClick={() => handleDeleteCuti(c.id)}
+                                className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition"
+                                title="Hapus"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-semibold italic">
+                              {c.status === 'Pending' ? 'Menunggu Approval' : c.status === 'Disetujui' ? 'Disetujui' : 'Ditolak'}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -839,13 +935,15 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
               Daftar Tanggal Merah Nasional & Hari Libur Outlet
             </div>
 
-            <button
-              onClick={() => setShowAddLiburModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Hari Libur</span>
-            </button>
+            {currentRole === 'MANAGER' && (
+              <button
+                onClick={() => setShowAddLiburModal(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Hari Libur</span>
+              </button>
+            )}
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
@@ -857,13 +955,13 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                     <th className="py-3.5 px-4">Nama Hari Libur</th>
                     <th className="py-3.5 px-4">Kategori</th>
                     <th className="py-3.5 px-4">Keterangan</th>
-                    <th className="py-3.5 px-4 text-right">Aksi</th>
+                    {currentRole === 'MANAGER' && <th className="py-3.5 px-4 text-right">Aksi</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {liburList.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-12 text-center text-slate-400">
+                      <td colSpan={currentRole === 'MANAGER' ? 5 : 4} className="py-12 text-center text-slate-400">
                         <Sun className="w-10 h-10 mx-auto mb-2 opacity-30" />
                         <p className="font-semibold text-xs">Belum ada data hari libur khusus yang dicatat.</p>
                       </td>
@@ -881,15 +979,17 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                           </span>
                         </td>
                         <td className="py-3 px-4 text-slate-500">{l.keterangan || '-'}</td>
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => handleDeleteLibur(l.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition"
-                            title="Hapus"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
+                        {currentRole === 'MANAGER' && (
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              onClick={() => handleDeleteLibur(l.id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -900,115 +1000,274 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
         </div>
       )}
 
-      {/* ==================== MODAL PENGATURAN DENDA & SHIFT ==================== */}
-      {showConfigModal && (
+      {/* ==================== MODAL PENGATURAN DENDA, SHIFT & KEAMANAN ==================== */}
+      {showConfigModal && currentRole === 'MANAGER' && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 my-8">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 my-8 flex flex-col max-h-[92vh]">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 mb-3 shrink-0">
               <div>
                 <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
                   <Settings className="w-5 h-5 text-[#1E4648]" />
-                  <span>Pengaturan Denda & Parameter Absensi</span>
+                  <span>Pengaturan Absensi & Keamanan Whitelist</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Konfigurasi keterlambatan, toleransi, dan insentif payroll</p>
+                <p className="text-xs text-slate-400 mt-0.5">Konfigurasi parameter keterlambatan, denda, IP & lokasi GPS tablet</p>
               </div>
               <button onClick={() => setShowConfigModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 text-xs">
-              {/* Toleransi Menit */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Toleransi Keterlambatan (Menit)</label>
-                <input
-                  type="number"
-                  value={config.toleransiTelatMenit}
-                  onChange={e => setConfig({ ...config, toleransiTelatMenit: Number(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[#1E4648] focus:outline-none focus:border-[#1E4648]"
-                />
-                <p className="text-[10px] text-slate-400 mt-0.5">Contoh: 15 menit pertama tidak dikenakan denda.</p>
-              </div>
-
-              {/* Denda Toggle */}
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="font-bold text-slate-800 block text-xs">Denda Keterlambatan (Opsional)</label>
-                    <span className="text-[10px] text-slate-500">Aktifkan pemotongan otomatis pada payroll</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={config.aktifDenda}
-                    onChange={e => setConfig({ ...config, aktifDenda: e.target.checked })}
-                    className="w-4 h-4 rounded text-[#1E4648] focus:ring-[#1E4648]"
-                  />
-                </div>
-
-                {config.aktifDenda && (
-                  <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60">
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">Aturan Denda</label>
-                      <select
-                        value={config.tipeDenda}
-                        onChange={e => setConfig({ ...config, tipeDenda: e.target.value as any })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#1E4648]"
-                      >
-                        <option value="MENIT">Per Menit Telat</option>
-                        <option value="JAM">Per Jam Telat</option>
-                        <option value="FLAT">Flat Per Keterlambatan</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">Tarif Denda (Rp)</label>
-                      <input
-                        type="number"
-                        value={config.tarifDenda}
-                        onChange={e => setConfig({ ...config, tarifDenda: Number(e.target.value) || 0 })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-rose-600 focus:outline-none focus:border-[#1E4648]"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Tunjangan Kehadiran Default */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Standar Tunjangan Kehadiran (Rp / Hari Hadir)</label>
-                <input
-                  type="number"
-                  value={config.tunjanganKehadiranPerHari}
-                  onChange={e => setConfig({ ...config, tunjanganKehadiranPerHari: Number(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-emerald-700 focus:outline-none focus:border-[#1E4648]"
-                />
-              </div>
-
-              {/* Insentif Drop Off Per Tahap */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Standar Insentif Drop Off (Rp / Tahap Selesai)</label>
-                <input
-                  type="number"
-                  value={config.insentifDropOffPerTahap}
-                  onChange={e => setConfig({ ...config, insentifDropOffPerTahap: Number(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-amber-700 focus:outline-none focus:border-[#1E4648]"
-                />
-                <p className="text-[10px] text-slate-400 mt-0.5">Dihitung dari banyaknya kontribusi tahap drop off yang diselesaikan staf.</p>
-              </div>
+            {/* Modal Sub-Tabs */}
+            <div className="flex bg-slate-100 p-1 rounded-xl mb-4 gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setConfigModalTab('shift')}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  configModalTab === 'shift'
+                    ? 'bg-[#1E4648] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span>Parameter Shift & Denda</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfigModalTab('security')}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  configModalTab === 'security'
+                    ? 'bg-[#1E4648] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Keamanan IP & GPS Whitelist</span>
+              </button>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-5">
+            <div className="space-y-4 text-xs overflow-y-auto flex-1 pr-1">
+              {configModalTab === 'shift' ? (
+                <>
+                  {/* Toleransi Menit */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Toleransi Keterlambatan (Menit)</label>
+                    <input
+                      type="number"
+                      value={config.toleransiTelatMenit}
+                      onChange={e => setConfig({ ...config, toleransiTelatMenit: Number(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-[#1E4648] focus:outline-none focus:border-[#1E4648]"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-0.5">Contoh: 15 menit pertama tidak dikenakan denda.</p>
+                  </div>
+
+                  {/* Denda Toggle */}
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="font-bold text-slate-800 block text-xs">Denda Keterlambatan (Opsional)</label>
+                        <span className="text-[10px] text-slate-500">Aktifkan pemotongan otomatis pada payroll</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={config.aktifDenda}
+                        onChange={e => setConfig({ ...config, aktifDenda: e.target.checked })}
+                        className="w-4 h-4 rounded text-[#1E4648] focus:ring-[#1E4648]"
+                      />
+                    </div>
+
+                    {config.aktifDenda && (
+                      <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-slate-200/60">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Aturan Denda</label>
+                          <select
+                            value={config.tipeDenda}
+                            onChange={e => setConfig({ ...config, tipeDenda: e.target.value as any })}
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-semibold focus:outline-none focus:border-[#1E4648]"
+                          >
+                            <option value="MENIT">Per Menit Telat</option>
+                            <option value="JAM">Per Jam Telat</option>
+                            <option value="FLAT">Flat Per Keterlambatan</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Tarif Denda (Rp)</label>
+                          <input
+                            type="number"
+                            value={config.tarifDenda}
+                            onChange={e => setConfig({ ...config, tarifDenda: Number(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-rose-600 focus:outline-none focus:border-[#1E4648]"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tunjangan Kehadiran Default */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Standar Tunjangan Kehadiran (Rp / Hari Hadir)</label>
+                    <input
+                      type="number"
+                      value={config.tunjanganKehadiranPerHari}
+                      onChange={e => setConfig({ ...config, tunjanganKehadiranPerHari: Number(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-emerald-700 focus:outline-none focus:border-[#1E4648]"
+                    />
+                  </div>
+
+                  {/* Insentif Drop Off Per Tahap */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Standar Insentif Drop Off (Rp / Tahap Selesai)</label>
+                    <input
+                      type="number"
+                      value={config.insentifDropOffPerTahap}
+                      onChange={e => setConfig({ ...config, insentifDropOffPerTahap: Number(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-amber-700 focus:outline-none focus:border-[#1E4648]"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-0.5">Dihitung dari banyaknya kontribusi tahap drop off yang diselesaikan staf.</p>
+                  </div>
+                </>
+              ) : (
+                /* TAB 2: SECURITY SETTINGS (GPS GEOFENCE & IP WHITELIST) */
+                <div className="space-y-4">
+                  {/* GPS GEOFENCING SECTION */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                          <MapPin className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-800 block text-xs">Koordinat GPS Whitelist (Geofencing)</label>
+                          <span className="text-[10px] text-slate-500">Membatasi absensi hanya di sekitar lokasi outlet</span>
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={config.aktifGeofence}
+                        onChange={e => setConfig({ ...config, aktifGeofence: e.target.checked })}
+                        className="w-4 h-4 rounded text-[#1E4648] focus:ring-[#1E4648]"
+                      />
+                    </div>
+
+                    {config.aktifGeofence && (
+                      <div className="space-y-3 pt-2 border-t border-slate-200/80">
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">Latitude Outlet</label>
+                            <input
+                              type="number"
+                              step="0.000001"
+                              placeholder="-6.200000"
+                              value={config.outletLatitude || ''}
+                              onChange={e => setConfig({ ...config, outletLatitude: parseFloat(e.target.value) || 0 })}
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#1E4648]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">Longitude Outlet</label>
+                            <input
+                              type="number"
+                              step="0.000001"
+                              placeholder="106.816666"
+                              value={config.outletLongitude || ''}
+                              onChange={e => setConfig({ ...config, outletLongitude: parseFloat(e.target.value) || 0 })}
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#1E4648]"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Radius Toleransi (Meter)</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="10"
+                              max="2000"
+                              value={config.geofenceRadiusMeter || 100}
+                              onChange={e => setConfig({ ...config, geofenceRadiusMeter: Number(e.target.value) || 100 })}
+                              className="w-32 px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-[#1E4648] text-xs focus:outline-none focus:border-[#1E4648]"
+                            />
+                            <span className="text-slate-500 font-semibold text-[11px]">meter dari titik outlet</span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1">Disarankan 50 - 150 meter untuk memperhitungkan akurasi GPS dalam ruangan.</p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleGetGpsCurrent}
+                          disabled={gpsLoading}
+                          className="w-full py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-2xs"
+                        >
+                          <LocateFixed className={`w-3.5 h-3.5 text-emerald-700 ${gpsLoading ? 'animate-spin' : ''}`} />
+                          <span>{gpsLoading ? 'Mendeteksi Titik GPS...' : '📍 Ambil Titik Koordinat GPS Tablet Saat Ini'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* IP WHITELIST SECTION */}
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center">
+                          <Globe className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <label className="font-bold text-slate-800 block text-xs">IP Whitelist Outlet</label>
+                          <span className="text-[10px] text-slate-500">Hanya izinkan presensi dari jaringan Wi-Fi outlet</span>
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={config.aktifIpWhitelist}
+                        onChange={e => setConfig({ ...config, aktifIpWhitelist: e.target.checked })}
+                        className="w-4 h-4 rounded text-[#1E4648] focus:ring-[#1E4648]"
+                      />
+                    </div>
+
+                    {config.aktifIpWhitelist && (
+                      <div className="space-y-3 pt-2 border-t border-slate-200/80">
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">Daftar IP Diizinkan (Pisahkan koma)</label>
+                          <textarea
+                            rows={2}
+                            value={config.ipWhitelist || ''}
+                            onChange={e => setConfig({ ...config, ipWhitelist: e.target.value })}
+                            placeholder="Contoh: 180.252.12.34, 114.124.50.10"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#1E4648]"
+                          />
+                          <p className="text-[10px] text-slate-400 mt-1">Gunakan wildcard `*` untuk range subnet jika IP outlet bersifat dinamis (contoh: `180.252.*`).</p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleGetIpCurrent}
+                          disabled={ipLoading}
+                          className="w-full py-2.5 px-3 bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-2xs"
+                        >
+                          <Globe className={`w-3.5 h-3.5 text-sky-700 ${ipLoading ? 'animate-spin' : ''}`} />
+                          <span>{ipLoading ? 'Mendeteksi IP Jaringan...' : '🌐 Ambil & Tambahkan IP Wi-Fi Saat Ini'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-4 mt-4 shrink-0">
               <button
                 onClick={() => setShowConfigModal(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition text-xs"
               >
                 Batal
               </button>
               <button
                 disabled={loading}
                 onClick={handleSaveConfig}
-                className="px-5 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl font-bold transition shadow-sm disabled:opacity-50"
+                className="px-5 py-2.5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl font-bold transition shadow-sm disabled:opacity-50 text-xs flex items-center gap-1.5"
               >
-                Simpan Konfigurasi
+                <Check className="w-3.5 h-3.5" />
+                <span>Simpan Konfigurasi</span>
               </button>
             </div>
           </div>

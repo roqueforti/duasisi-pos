@@ -28,44 +28,9 @@ import {
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 
-export interface KategoriItem {
-  id: string;
-  nama: string;
-  aktif: string;
-  warna?: string;
-  icon?: string;
-}
-
-const PALETTE = [
-  { label: 'Teal POS', value: 'bg-teal-100 text-teal-800 border-teal-300', dot: 'bg-[#1E4648]' },
-  { label: 'Emerald Hijau', value: 'bg-emerald-100 text-emerald-800 border-emerald-300', dot: 'bg-emerald-500' },
-  { label: 'Amber Oranye', value: 'bg-amber-100 text-amber-800 border-amber-300', dot: 'bg-[#FF9500]' },
-  { label: 'Sky Biru', value: 'bg-sky-100 text-sky-800 border-sky-300', dot: 'bg-sky-500' },
-  { label: 'Rose Merah', value: 'bg-rose-100 text-rose-800 border-rose-300', dot: 'bg-rose-500' },
-  { label: 'Purple Ungu', value: 'bg-purple-100 text-purple-800 border-purple-300', dot: 'bg-purple-500' },
-  { label: 'Orange Cokelat', value: 'bg-orange-100 text-orange-800 border-orange-300', dot: 'bg-orange-500' },
-  { label: 'Slate Netral', value: 'bg-slate-100 text-slate-800 border-slate-300', dot: 'bg-slate-500' },
-];
-
-const ICON_OPTIONS = [
-  { id: 'Zap', label: 'Petir / Koin', icon: Zap },
-  { id: 'Shirt', label: 'Baju / Drop Off', icon: Shirt },
-  { id: 'Sparkles', label: 'Kilau / Setrika', icon: Sparkles },
-  { id: 'Coffee', label: 'Kopi / Minuman', icon: Coffee },
-  { id: 'Package', label: 'Paket / Deterjen', icon: Package },
-  { id: 'Tag', label: 'Tag / Label', icon: Tag },
-  { id: 'ShoppingBag', label: 'Tas / Plastik', icon: ShoppingBag },
-  { id: 'Utensils', label: 'Makanan / Snack', icon: Utensils },
-  { id: 'Flame', label: 'Kilat / Fast', icon: Flame },
-  { id: 'WashingMachine', label: 'Mesin Cuci', icon: WashingMachine },
-  { id: 'Folder', label: 'Folder Umum', icon: Folder },
-  { id: 'Star', label: 'Spesial / Bintang', icon: Star },
-];
-
-export const getIconComponent = (iconName?: string) => {
-  const found = ICON_OPTIONS.find(i => i.id === iconName);
-  return found ? found.icon : Tag;
-};
+import { PALETTE, ICON_OPTIONS, getIconComponent, KategoriItem } from '@/lib/categoryUtils';
+export { getIconComponent };
+export type { KategoriItem };
 
 export default function KategoriView({ currentRole }: { currentRole?: UserRole }) {
   const { showAlert, showConfirm } = useDialog();
@@ -133,6 +98,8 @@ export default function KategoriView({ currentRole }: { currentRole?: UserRole }
       }
       setShowModal(false);
       clearCache('getKategoriList');
+      clearCache('getLayananList');
+      clearCache('getLayananListAll');
       loadData();
       await showAlert('Kategori berhasil disimpan!', 'success');
     } catch (err: any) {
@@ -148,6 +115,8 @@ export default function KategoriView({ currentRole }: { currentRole?: UserRole }
     try {
       await runBackend('toggleAktifKategori', id, currentAktif !== 'Y');
       clearCache('getKategoriList');
+      clearCache('getLayananList');
+      clearCache('getLayananListAll');
       loadData();
       await showAlert(`Kategori berhasil di${currentAktif === 'Y' ? 'nonaktifkan' : 'aktifkan'}.`, 'success');
     } catch (err: any) {
@@ -163,6 +132,8 @@ export default function KategoriView({ currentRole }: { currentRole?: UserRole }
     try {
       await runBackend('hapusKategori', id);
       clearCache('getKategoriList');
+      clearCache('getLayananList');
+      clearCache('getLayananListAll');
       loadData();
       await showAlert('Kategori berhasil dihapus.', 'success');
     } catch (err: any) {

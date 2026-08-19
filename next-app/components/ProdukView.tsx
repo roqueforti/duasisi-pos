@@ -8,6 +8,7 @@ import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import SatuanInput from '@/components/SatuanInput';
+import { getIconComponent, KategoriItem } from '@/lib/categoryUtils';
 
 interface LayananItemBackend {
   id: string;
@@ -75,7 +76,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [idInventory, setIdInventory] = useState<string>('');
   const [inventoryDeductionQty, setInventoryDeductionQty] = useState<string>('1');
   const [kategori, setKategori] = useState<string>('Self Service');
-  const [kategoriList, setKategoriList] = useState<{id: string, nama: string, aktif: string}[]>([]);
+  const [kategoriList, setKategoriList] = useState<KategoriItem[]>([]);
   
   // Pipeline Steps selection
   const [customPipelineSteps, setCustomPipelineSteps] = useState<CustomPipelineStep[]>([]);
@@ -170,7 +171,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   const loadKategori = async () => {
     try {
-      const data = await runBackend<{id: string, nama: string, aktif: string}[]>('getKategoriList');
+      const data = await runBackend<KategoriItem[]>('getKategoriList');
       if (Array.isArray(data)) setKategoriList(data.filter(k => k.aktif === 'Y'));
     } catch (err) {
       console.error(err);
@@ -513,7 +514,17 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         <span>{item.nama}</span>
                       </td>
                       <td className="py-3 px-4 text-slate-500 font-medium">
-                        {item.kategori || '-'}
+                        {(() => {
+                          const kat = kategoriList.find(k => k.nama.toLowerCase() === (item.kategori || '').toLowerCase());
+                          if (!kat) return <span>{item.kategori || '-'}</span>;
+                          const KatIcon = getIconComponent(kat.icon);
+                          return (
+                            <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold inline-flex items-center gap-1 border shadow-2xs ${kat.warna || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                              <KatIcon className="w-3 h-3" />
+                              <span>{kat.nama}</span>
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="py-3 px-4">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-600'}`}>

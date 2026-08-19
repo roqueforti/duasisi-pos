@@ -6,15 +6,39 @@ function getLayananList(tipeFilter) {
   const shK = SS.getSheetByName(SHEET_KATEGORI);
   const katData = shK ? shK.getDataRange().getValues() : [];
   const katMap = {};
-  katData.forEach(r => { katMap[r[1]] = r[3]; });
+  const katIconMap = {};
+  katData.forEach(r => { 
+    if (r[1]) {
+      const kName = String(r[1]).trim().toLowerCase();
+      katMap[kName] = r[3]; 
+      katIconMap[kName] = r[4]; 
+    }
+  });
 
-  const data = shL.getDataRange().getValues();
+  const data = shL ? shL.getDataRange().getValues() : [];
   data.shift();
   let list = data.filter(r => r[5] === "Y");
   if (tipeFilter) list = list.filter(r => r[6] === tipeFilter);
   return list.map(r => {
     let pipelineSteps = [];
     try { if (r[7]) pipelineSteps = JSON.parse(r[7]); } catch(e) {}
+    
+    let katName = r[8];
+    if (!katName || String(katName).trim() === "") {
+      const tip = String(r[6] || "").toLowerCase();
+      const namaL = String(r[1] || "").toLowerCase();
+      if (tip === "fullservice" || namaL.includes("setrika") || namaL.includes("bed cover") || namaL.includes("karpet") || namaL.includes("drop off")) {
+        katName = "Drop Off";
+      } else if (namaL.includes("deterjen") || namaL.includes("softener") || namaL.includes("kresek") || namaL.includes("plastik") || namaL.includes("pewangi")) {
+        katName = "Add On";
+      } else if (namaL.includes("kopi") || namaL.includes("minum") || namaL.includes("snack") || namaL.includes("teh") || namaL.includes("air")) {
+        katName = "Makanan dan Minuman";
+      } else {
+        katName = "Self Service";
+      }
+    }
+    const katKey = String(katName).trim().toLowerCase();
+
     return {
       id: r[0], 
       nama: r[1], 
@@ -22,9 +46,20 @@ function getLayananList(tipeFilter) {
       satuan: r[3], 
       icon: r[4] || "🧺", 
       tipe: r[6] || "SelfService",
-      kategori: r[8] || "Self Service",
+      kategori: katName,
       idInventory: r[9] || null,
-      kategoriWarna: katMap[r[8] || "Self Service"] || "bg-slate-100 text-slate-800 border-slate-200",
+      kategoriWarna: katMap[katKey] || (
+        katKey.includes("drop") ? "bg-teal-100 text-teal-800 border-teal-300" :
+        katKey.includes("add") ? "bg-amber-100 text-amber-800 border-amber-300" :
+        katKey.includes("makan") || katKey.includes("minum") ? "bg-orange-100 text-orange-800 border-orange-300" :
+        "bg-emerald-100 text-emerald-800 border-emerald-300"
+      ),
+      kategoriIcon: katIconMap[katKey] || (
+        katKey.includes("drop") ? "Shirt" :
+        katKey.includes("add") ? "Sparkles" :
+        katKey.includes("makan") || katKey.includes("minum") ? "Coffee" :
+        "Zap"
+      ),
       pipelineSteps: pipelineSteps
     };
   });
@@ -35,13 +70,37 @@ function getLayananListAll() {
   const shK = SS.getSheetByName(SHEET_KATEGORI);
   const katData = shK ? shK.getDataRange().getValues() : [];
   const katMap = {};
-  katData.forEach(r => { katMap[r[1]] = r[3]; });
+  const katIconMap = {};
+  katData.forEach(r => { 
+    if (r[1]) {
+      const kName = String(r[1]).trim().toLowerCase();
+      katMap[kName] = r[3]; 
+      katIconMap[kName] = r[4]; 
+    }
+  });
 
-  const data = shL.getDataRange().getValues();
+  const data = shL ? shL.getDataRange().getValues() : [];
   data.shift();
   return data.map(r => {
     let pipelineSteps = [];
     try { if (r[7]) pipelineSteps = JSON.parse(r[7]); } catch(e) {}
+    
+    let katName = r[8];
+    if (!katName || String(katName).trim() === "") {
+      const tip = String(r[6] || "").toLowerCase();
+      const namaL = String(r[1] || "").toLowerCase();
+      if (tip === "fullservice" || namaL.includes("setrika") || namaL.includes("bed cover") || namaL.includes("karpet") || namaL.includes("drop off")) {
+        katName = "Drop Off";
+      } else if (namaL.includes("deterjen") || namaL.includes("softener") || namaL.includes("kresek") || namaL.includes("plastik") || namaL.includes("pewangi")) {
+        katName = "Add On";
+      } else if (namaL.includes("kopi") || namaL.includes("minum") || namaL.includes("snack") || namaL.includes("teh") || namaL.includes("air")) {
+        katName = "Makanan dan Minuman";
+      } else {
+        katName = "Self Service";
+      }
+    }
+    const katKey = String(katName).trim().toLowerCase();
+
     return {
       id: r[0], 
       nama: r[1], 
@@ -50,11 +109,22 @@ function getLayananListAll() {
       icon: r[4] || "🧺", 
       aktif: r[5], 
       tipe: r[6] === undefined || r[6] === null ? "" : r[6],
-      kategori: r[8] || "Self Service",
+      kategori: katName,
       idInventory: r[9] || null,
       hargaModal: Number(r[10]) || 0,
       inventoryDeductionQty: r[11] !== undefined && r[11] !== "" ? Number(r[11]) : 1,
-      kategoriWarna: katMap[r[8] || "Self Service"] || "bg-slate-100 text-slate-800 border-slate-200",
+      kategoriWarna: katMap[katKey] || (
+        katKey.includes("drop") ? "bg-teal-100 text-teal-800 border-teal-300" :
+        katKey.includes("add") ? "bg-amber-100 text-amber-800 border-amber-300" :
+        katKey.includes("makan") || katKey.includes("minum") ? "bg-orange-100 text-orange-800 border-orange-300" :
+        "bg-emerald-100 text-emerald-800 border-emerald-300"
+      ),
+      kategoriIcon: katIconMap[katKey] || (
+        katKey.includes("drop") ? "Shirt" :
+        katKey.includes("add") ? "Sparkles" :
+        katKey.includes("makan") || katKey.includes("minum") ? "Coffee" :
+        "Zap"
+      ),
       pipelineSteps: pipelineSteps
     };
   });
@@ -181,18 +251,21 @@ function getKategoriList() {
   if (!sh) {
     sh = SS.insertSheet(SHEET_KATEGORI);
     sh.appendRow(["ID", "Nama Kategori", "Aktif", "Warna", "Icon"]);
-    sh.appendRow([generateId("KAT"), "Self Service", "Y", "bg-emerald-100 text-emerald-800 border-emerald-200", "Zap"]);
-    sh.appendRow([generateId("KAT"), "Drop Off", "Y", "bg-teal-100 text-teal-800 border-teal-200", "Shirt"]);
-    sh.appendRow([generateId("KAT"), "Add On", "Y", "bg-amber-100 text-amber-800 border-amber-200", "Sparkles"]);
-    sh.appendRow([generateId("KAT"), "Makanan dan Minuman", "Y", "bg-orange-100 text-orange-800 border-orange-200", "Coffee"]);
   }
-  const data = sh.getDataRange().getValues();
+  let data = sh.getDataRange().getValues();
+  if (data.length <= 1) {
+    sh.appendRow([generateId("KAT"), "Self Service", "Y", "bg-emerald-100 text-emerald-800 border-emerald-300", "Zap"]);
+    sh.appendRow([generateId("KAT"), "Drop Off", "Y", "bg-teal-100 text-teal-800 border-teal-300", "Shirt"]);
+    sh.appendRow([generateId("KAT"), "Add On", "Y", "bg-amber-100 text-amber-800 border-amber-300", "Sparkles"]);
+    sh.appendRow([generateId("KAT"), "Makanan dan Minuman", "Y", "bg-orange-100 text-orange-800 border-orange-300", "Coffee"]);
+    data = sh.getDataRange().getValues();
+  }
   data.shift();
   return data.map(r => ({
     id: r[0],
     nama: r[1],
     aktif: r[2] || "Y",
-    warna: r[3] || "bg-slate-100 text-slate-800 border-slate-200",
+    warna: r[3] || "bg-slate-100 text-slate-800 border-slate-300",
     icon: r[4] || "Tag"
   }));
 }

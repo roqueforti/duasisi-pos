@@ -46,7 +46,7 @@ import {
   Folder,
   Star,
 } from 'lucide-react';
-import { LayananItem, CartItem, ShiftKasir } from '@/lib/types';
+import { LayananItem, CartItem, ShiftKasir, AbsensiConfig, UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import {
@@ -57,7 +57,7 @@ import {
   generateTagEscPos,
 } from '@/lib/bluetoothPrinter';
 import PrinterModal from '@/components/PrinterModal';
-import { UserRole } from '@/lib/types';
+import { validateAttendanceSecurity } from '@/lib/attendanceSecurity';
 import { useDialog } from '@/components/DialogProvider';
 
 interface CustomerState {
@@ -68,73 +68,15 @@ interface CustomerState {
   poin?: number;
 }
 
-const defaultLayanan: LayananItem[] = [
-  { layanan: 'Dummy 1', hargaSatuan: 10000, tipe: 'SelfService', satuan: 'paket', kategori: 'Self Service' },
-  { layanan: 'Dummy 2', hargaSatuan: 15000, tipe: 'SelfService', satuan: 'paket', kategori: 'Self Service' },
-  { layanan: 'Dummy 3', hargaSatuan: 20000, tipe: 'SelfService', satuan: 'paket', kategori: 'Self Service' },
-  { layanan: 'Dummy 4', hargaSatuan: 5000, tipe: 'SelfService', satuan: 'paket', kategori: 'Self Service' },
-  { layanan: 'Dummy 5', hargaSatuan: 12000, tipe: 'FullService', satuan: 'paket', kategori: 'Drop Off' },
-  { layanan: 'Dummy 6', hargaSatuan: 1000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Add On' },
-  { layanan: 'Dummy 7', hargaSatuan: 2000, tipe: 'SelfService', satuan: 'porsi', kategori: 'Add On' },
-  { layanan: 'Dummy 8', hargaSatuan: 3000, tipe: 'SelfService', satuan: 'pcs', kategori: 'Add On' },
-  { layanan: 'Dummy 9', hargaSatuan: 5000, tipe: 'SelfService', satuan: 'botol', kategori: 'Makanan dan Minuman' },
-  { layanan: 'Dummy 10', hargaSatuan: 7000, tipe: 'SelfService', satuan: 'cangkir', kategori: 'Makanan dan Minuman' },
-];
-
-function getLayananStyleConfig(item: LayananItem) {
-  const kat = (item.kategori || '').toLowerCase();
-  const name = (item.layanan || '').toLowerCase();
-
-  let Icon = WashingMachine;
-  let categoryName = item.kategori || 'Self Service';
-  let badgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-200/80';
-  let iconBg = 'bg-emerald-600 text-white';
-  let iconColor = 'text-white';
-
-  if (kat.includes('self') || kat.includes('koin') || item.tipe === 'SelfService' || name.includes('cuci 7') || name.includes('cuci 4') || name.includes('cuci kering')) {
-    Icon = Zap;
-    categoryName = 'Self Service';
-    badgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-200/80';
-    iconBg = 'bg-emerald-600 text-white';
-    iconColor = 'text-white';
-  } else if (kat.includes('drop') || kat.includes('full') || item.tipe === 'FullService' || name.includes('setrika') || name.includes('lipat') || name.includes('drop off')) {
-    Icon = Shirt;
-    categoryName = 'Drop Off';
-    badgeStyle = 'bg-teal-50 text-teal-800 border-teal-200/80';
-    iconBg = 'bg-[#1E4648] text-white';
-    iconColor = 'text-white';
-  } else if (
-    kat.includes('add') || kat.includes('deterjen') || kat.includes('softener') || kat.includes('pewangi') || kat.includes('parfum') || kat.includes('kresek') || kat.includes('plastik') ||
-    name.includes('deterjen') || name.includes('softener') || name.includes('kresek') || name.includes('pengering') || name.includes('parfum')
-  ) {
-    Icon = Sparkles;
-    categoryName = 'Add On';
-    badgeStyle = 'bg-amber-50 text-amber-800 border-amber-200/80';
-    iconBg = 'bg-[#FF9500] text-white';
-    iconColor = 'text-white';
-  } else if (kat.includes('makan') || kat.includes('minum') || kat.includes('snack') || kat.includes('kopi') || kat.includes('air') || kat.includes('teh') || name.includes('air') || name.includes('kopi') || name.includes('teh') || name.includes('snack')) {
-    Icon = Coffee;
-    categoryName = 'Makanan & Minuman';
-    badgeStyle = 'bg-orange-50 text-orange-800 border-orange-200/80';
-    iconBg = 'bg-orange-600 text-white';
-    iconColor = 'text-white';
-  } else {
-    Icon = Package;
-    categoryName = item.kategori || 'Layanan';
-    badgeStyle = 'bg-slate-100 text-slate-700 border-slate-200';
-    iconBg = 'bg-slate-700 text-white';
-    iconColor = 'text-white';
-  }
-
-  return { Icon, categoryName, badgeStyle, iconBg, iconColor, dot: 'bg-teal-500' };
-}
+import { getLayananStyleConfig, getIconComponent, KategoriItem } from '@/lib/categoryUtils';
 
 export default function PosView({ currentRole }: { currentRole?: UserRole } = {}) {
   const { showAlert, showConfirm } = useDialog();
-  const [layananList, setLayananList] = useState<LayananItem[]>(defaultLayanan);
+  const [layananList, setLayananList] = useState<LayananItem[]>([]);
+  const [layananLoading, setLayananLoading] = useState<boolean>(true);
   const [search, setSearch] = useState('');
   const [selectedCategoryTab, setSelectedCategoryTab] = useState<string>('Semua');
-  const [kategoriList, setKategoriList] = useState<{id: string, nama: string, aktif: string}[]>([]);
+  const [kategoriList, setKategoriList] = useState<KategoriItem[]>([]);
   const [poinRate, setPoinRate] = useState<number>(10000);
   
   // 1. Cart & Order State
@@ -237,22 +179,23 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     runBackendCached<any[]>(
       'getLayananListAll',
       (data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           const activeData = data.filter(item => item.aktif === 'Y');
-          setLayananList(activeData.length > 0 ? activeData.map((item) => ({
+          setLayananList(activeData.map((item) => ({
             layanan: item.nama,
             hargaSatuan: Number(item.harga),
             tipe: item.tipe || 'SelfService',
             satuan: item.satuan || 'paket',
-            kategori: (item.kategori as any) || 'Self Service',
+            icon: item.icon,
+            kategori: item.kategori || (item.tipe === 'FullService' ? 'Drop Off' : 'Self Service'),
             kategoriWarna: item.kategoriWarna,
+            kategoriIcon: item.kategoriIcon,
             idInventory: item.idInventory || null,
-          })) : defaultLayanan);
-        } else {
-          setLayananList(defaultLayanan);
+          })));
         }
+        setLayananLoading(false);
       },
-      10 * 60 * 1000 // 10 menit TTL â€” katalog jarang berubah
+      10 * 60 * 1000 // 10 menit TTL — katalog jarang berubah
     );
 
     // Fetch Kategori
@@ -340,6 +283,60 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     const timer = window.setTimeout(() => void refreshActiveShift(), 0);
     return () => window.clearTimeout(timer);
   }, [refreshActiveShift]);
+
+  // Dynamic categories combining Master Kategori and loaded product categories
+  const effectiveCategories = React.useMemo(() => {
+    const catsMap = new Map<string, { id: string; label: string; icon: any; warna?: string }>();
+    
+    // Always start with 'Semua'
+    catsMap.set('semua', { id: 'Semua', label: 'Semua Produk', icon: Layers, warna: '' });
+
+    // 1. Add categories from master kategoriList
+    kategoriList.forEach(k => {
+      if (k.nama && k.nama.trim()) {
+        catsMap.set(k.nama.toLowerCase().trim(), {
+          id: k.nama.trim(),
+          label: k.nama.trim(),
+          icon: getIconComponent(k.icon),
+          warna: k.warna
+        });
+      }
+    });
+
+    // 2. Add any unique categories found on loaded products
+    layananList.forEach(l => {
+      const katName = (l.kategori || (l.tipe === 'FullService' ? 'Drop Off' : 'Self Service')).trim();
+      if (katName && !catsMap.has(katName.toLowerCase())) {
+        const style = getLayananStyleConfig(l, kategoriList);
+        catsMap.set(katName.toLowerCase(), {
+          id: katName,
+          label: katName,
+          icon: style.Icon,
+          warna: l.kategoriWarna
+        });
+      }
+    });
+
+    return Array.from(catsMap.values());
+  }, [kategoriList, layananList]);
+
+  const filteredLayanan = React.useMemo(() => {
+    const searchLower = search.toLowerCase().trim();
+    return (layananList || []).filter((item) => {
+      const { categoryName } = getLayananStyleConfig(item, kategoriList);
+      const matchSearch =
+        item.layanan.toLowerCase().includes(searchLower) ||
+        categoryName.toLowerCase().includes(searchLower);
+
+      if (!matchSearch) return false;
+      if (selectedCategoryTab === 'Semua') return true;
+
+      const itemKat = categoryName.toLowerCase().trim();
+      const selectedKat = selectedCategoryTab.toLowerCase().trim();
+
+      return itemKat === selectedKat;
+    });
+  }, [layananList, search, selectedCategoryTab, kategoriList]);
 
   // Calculate totals
   const cartArray = Object.values(cart);
@@ -770,6 +767,14 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     }
     setClockInSubmitting(true);
     try {
+      // Validasi Lokasi GPS & IP Whitelist jika diaktifkan di Pengaturan
+      const absConfig = await runBackend<AbsensiConfig>('getAbsensiConfig').catch(() => null);
+      const sec = await validateAttendanceSecurity(absConfig);
+      if (!sec.valid) {
+        await showAlert(sec.message || 'Verifikasi keamanan presensi gagal.', 'warning');
+        return;
+      }
+
       const res = await runBackend<{ success: boolean; message: string }>('clockInPegawai', selectedStaff.nama, clockInShift, clockInCatatan);
       if (res && res.success) {
         setLockScreenStep(2);
@@ -1157,32 +1162,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         {/* Category Pills Row & View Toggle */}
         <div className="px-3 sm:px-4 py-3 border-b border-slate-100 flex items-center gap-2 overflow-x-auto no-scrollbar bg-slate-50/30 justify-between flex-wrap">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-            {[
-              { id: 'Semua', label: 'Semua Produk', icon: Layers },
-              ...kategoriList.map((k: any) => {
-                let IconComp = TagIcon;
-                const iconName = k.icon;
-                if (iconName === 'Zap') IconComp = Zap;
-                else if (iconName === 'Shirt') IconComp = Shirt;
-                else if (iconName === 'Sparkles') IconComp = Sparkles;
-                else if (iconName === 'Coffee') IconComp = Coffee;
-                else if (iconName === 'Package') IconComp = Package;
-                else if (iconName === 'ShoppingBag') IconComp = ShoppingBag;
-                else if (iconName === 'Utensils') IconComp = Utensils;
-                else if (iconName === 'Flame') IconComp = Flame;
-                else if (iconName === 'WashingMachine') IconComp = WashingMachine;
-                else if (iconName === 'Folder') IconComp = Folder;
-                else if (iconName === 'Star') IconComp = Star;
-                else {
-                  const kName = (k.nama || '').toLowerCase();
-                  if (kName.includes('self') || kName.includes('koin')) IconComp = Zap;
-                  else if (kName.includes('drop') || kName.includes('full') || kName.includes('cuci')) IconComp = Shirt;
-                  else if (kName.includes('add') || kName.includes('deterjen') || kName.includes('softener') || kName.includes('pewangi')) IconComp = Sparkles;
-                  else if (kName.includes('makan') || kName.includes('minum') || kName.includes('snack') || kName.includes('kopi')) IconComp = Coffee;
-                }
-                return { id: k.nama, label: k.nama, icon: IconComp, warna: k.warna };
-              })
-            ].map((tab) => {
+            {effectiveCategories.map((tab) => {
               const isActive = selectedCategoryTab === tab.id;
               const TabIcon = tab.icon;
               return (
@@ -1243,146 +1223,170 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           {catalogViewMode === 'grid' ? (
             // GRID VIEW
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 auto-rows-auto">
-            {(() => {
-              const renderCard = (item: LayananItem, idx: number) => {
-                const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
-                const { Icon, categoryName, badgeStyle, iconBg, iconColor } = getLayananStyleConfig(item);
-
-                // Track pointer start position to distinguish tap vs scroll
-                let pointerStartX = 0;
-                let pointerStartY = 0;
-
-                return (
+              {layananLoading ? (
+                // SKELETON LOADING GRID
+                Array.from({ length: 10 }).map((_, idx) => (
                   <div
-                    key={idx}
-                    onPointerDown={(e) => {
-                      pointerStartX = e.clientX;
-                      pointerStartY = e.clientY;
-                    }}
-                    onPointerUp={(e) => {
-                      const dx = Math.abs(e.clientX - pointerStartX);
-                      const dy = Math.abs(e.clientY - pointerStartY);
-                      if (dx < 8 && dy < 8) {
-                        updateCart(item, 1);
-                      }
-                    }}
-                    className={`bg-white rounded-2xl border-2 p-3 flex flex-col justify-between gap-2.5 cursor-pointer select-none active:scale-98 transition-all duration-150 touch-pan-y ${
-                      qtyInCart > 0
-                        ? 'ring-2 ring-[#1E4648]/40 border-[#1E4648] bg-[#1E4648]/[0.02] shadow-md'
-                        : 'border-slate-200/90 shadow-2xs hover:border-[#1E4648] hover:shadow-md'
-                    }`}
+                    key={`skeleton-grid-${idx}`}
+                    className="bg-white rounded-2xl border-2 border-slate-100 p-3 flex flex-col justify-between gap-3 animate-pulse shadow-2xs"
                   >
                     <div>
-                      {/* Top Category Badge & Satuan */}
-                      <div className="flex items-center justify-between gap-1 w-full pb-1.5">
-                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border shadow-2xs ${badgeStyle}`}>
-                          <Icon className="w-2.5 h-2.5 shrink-0" />
-                          <span className="truncate">{categoryName}</span>
-                        </span>
-                        {item.satuan && (
-                          <span className="text-[10px] font-bold text-slate-400">
-                            /{item.satuan}
-                          </span>
-                        )}
+                      <div className="flex items-center justify-between gap-1 w-full pb-2">
+                        <div className="h-4 bg-slate-200 rounded-md w-16" />
+                        <div className="h-3 bg-slate-100 rounded w-8" />
                       </div>
-
-                      {/* Product Icon & Name */}
                       <div className="flex items-start gap-2.5 pt-1">
-                        <div className={`w-8 h-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0 shadow-2xs`}>
-                          <Icon className={`w-4 h-4 ${iconColor}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-xs text-slate-900 leading-snug line-clamp-2">
-                            {item.layanan}
-                          </p>
+                        <div className="w-8 h-8 rounded-xl bg-slate-200 shrink-0" />
+                        <div className="flex-1 space-y-1.5 py-0.5">
+                          <div className="h-3.5 bg-slate-200 rounded w-full" />
+                          <div className="h-2.5 bg-slate-100 rounded w-2/3" />
                         </div>
                       </div>
                     </div>
-
-                    <div>
-                      {/* Harga - Prominent */}
-                      <div className="pt-1">
-                        <div className="text-sm sm:text-base font-extrabold text-[#1E4648] leading-tight font-mono">
-                          Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
-                        </div>
-                      </div>
-
-                      {/* Qty Stepper - Bottom */}
-                      <div className="flex items-center justify-between gap-1 pt-2" onClick={(e) => e.stopPropagation()}>
-                        {qtyInCart > 0 ? (
-                          <div className="flex items-center bg-[#1E4648] text-white rounded-xl overflow-hidden flex-1 h-7 shadow-xs">
-                            <button
-                              onPointerDown={(e) => e.stopPropagation()}
-                              onPointerUp={(e) => e.stopPropagation()}
-                              onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
-                              className="w-7 h-full flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
-                            >
-                              <Minus className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="text-xs font-black flex-1 text-center font-mono">{qtyInCart}</span>
-                            <button
-                              onPointerDown={(e) => e.stopPropagation()}
-                              onPointerUp={(e) => e.stopPropagation()}
-                              onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                              className="w-7 h-full flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="w-full h-7 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center hover:bg-[#1E4648] hover:text-white hover:border-[#1E4648] text-slate-500 transition shadow-2xs font-bold text-xs gap-1">
-                            <Plus className="w-3.5 h-3.5" />
-                            <span className="text-[11px] font-bold">Tambah</span>
-                          </div>
-                        )}
-                      </div>
+                    <div className="pt-2 space-y-2">
+                      <div className="h-5 bg-slate-200 rounded w-20" />
+                      <div className="h-7 bg-slate-100 rounded-xl w-full" />
                     </div>
                   </div>
-                );
-              };
+                ))
+              ) : filteredLayanan.length === 0 ? (
+                <div className="col-span-full text-center py-16 text-slate-400">
+                  <Package className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="font-semibold text-xs">Tidak ada produk ditemukan.</p>
+                </div>
+              ) : (
+                filteredLayanan.map((item, idx) => {
+                  const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
+                  const { Icon, categoryName, badgeStyle, iconBg, iconColor } = getLayananStyleConfig(item, kategoriList);
 
-              const filterLower = search.toLowerCase().trim();
-              const filteredAll = (layananList || []).filter((i) => i.layanan.toLowerCase().includes(filterLower));
+                  let pointerStartX = 0;
+                  let pointerStartY = 0;
 
-              if (selectedCategoryTab !== 'Semua') {
-                const tabFiltered = filteredAll.filter((i) => {
-                  if (selectedCategoryTab === 'Self Service') return i.kategori === 'Self Service';
-                  if (selectedCategoryTab === 'Drop Off') return i.kategori === 'Drop Off';
-                  if (selectedCategoryTab === 'Add On') return i.kategori === 'Add On';
-                  if (selectedCategoryTab === 'Makanan dan Minuman') return i.kategori === 'Makanan dan Minuman';
-                  return true;
-                });
-
-                if (tabFiltered.length === 0) {
                   return (
-                    <div className="col-span-full text-center py-12 text-slate-400 text-xs">
-                      Tidak ada produk ditemukan dalam kategori ini.
+                    <div
+                      key={`${item.layanan}-${idx}`}
+                      onPointerDown={(e) => {
+                        pointerStartX = e.clientX;
+                        pointerStartY = e.clientY;
+                      }}
+                      onPointerUp={(e) => {
+                        const dx = Math.abs(e.clientX - pointerStartX);
+                        const dy = Math.abs(e.clientY - pointerStartY);
+                        if (dx < 8 && dy < 8) {
+                          updateCart(item, 1);
+                        }
+                      }}
+                      className={`bg-white rounded-2xl border-2 p-3 flex flex-col justify-between gap-2.5 cursor-pointer select-none active:scale-98 transition-all duration-150 touch-pan-y ${
+                        qtyInCart > 0
+                          ? 'ring-2 ring-[#1E4648]/40 border-[#1E4648] bg-[#1E4648]/[0.02] shadow-md'
+                          : 'border-slate-200/90 shadow-2xs hover:border-[#1E4648] hover:shadow-md'
+                      }`}
+                    >
+                      <div>
+                        {/* Top Category Badge & Satuan */}
+                        <div className="flex items-center justify-between gap-1 w-full pb-1.5">
+                          <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border shadow-2xs ${badgeStyle}`}>
+                            <Icon className="w-2.5 h-2.5 shrink-0" />
+                            <span className="truncate">{categoryName}</span>
+                          </span>
+                          {item.satuan && (
+                            <span className="text-[10px] font-bold text-slate-400">
+                              /{item.satuan}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Product Icon & Name */}
+                        <div className="flex items-start gap-2.5 pt-1">
+                          <div className={`w-8 h-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0 shadow-2xs`}>
+                            <Icon className={`w-4 h-4 ${iconColor}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-xs text-slate-900 leading-snug line-clamp-2">
+                              {item.layanan}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        {/* Harga - Prominent */}
+                        <div className="pt-1">
+                          <div className="text-sm sm:text-base font-extrabold text-[#1E4648] leading-tight font-mono">
+                            Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
+                          </div>
+                        </div>
+
+                        {/* Qty Stepper - Bottom */}
+                        <div className="flex items-center justify-between gap-1 pt-2" onClick={(e) => e.stopPropagation()}>
+                          {qtyInCart > 0 ? (
+                            <div className="flex items-center bg-[#1E4648] text-white rounded-xl overflow-hidden flex-1 h-7 shadow-xs">
+                              <button
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onPointerUp={(e) => e.stopPropagation()}
+                                onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
+                                className="w-7 h-full flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="text-xs font-black flex-1 text-center font-mono">{qtyInCart}</span>
+                              <button
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onPointerUp={(e) => e.stopPropagation()}
+                                onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
+                                className="w-7 h-full flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="w-full h-7 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center hover:bg-[#1E4648] hover:text-white hover:border-[#1E4648] text-slate-500 transition shadow-2xs font-bold text-xs gap-1">
+                              <Plus className="w-3.5 h-3.5" />
+                              <span className="text-[11px] font-bold">Tambah</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   );
-                }
-                return tabFiltered.map(renderCard);
-              }
-
-              if (filteredAll.length === 0) {
-                return (
-                  <div className="col-span-full text-center py-12 text-slate-400 text-xs">
-                    Tidak ada produk ditemukan.
-                  </div>
-                );
-              }
-              return filteredAll.map(renderCard);
-            })()}
+                })
+              )}
             </div>
           ) : (
             // LIST VIEW
             <div className="space-y-2">
-              {(() => {
-                const renderListItem = (item: LayananItem, idx: number) => {
+              {layananLoading ? (
+                // SKELETON LOADING LIST
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <div
+                    key={`skeleton-list-${idx}`}
+                    className="flex items-center justify-between p-3.5 bg-white rounded-2xl border-2 border-slate-100 animate-pulse shadow-2xs"
+                  >
+                    <div className="flex-1 min-w-0 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-200 shrink-0" />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 bg-slate-200 rounded w-16" />
+                          <div className="h-4 bg-slate-200 rounded w-28" />
+                        </div>
+                        <div className="h-3.5 bg-slate-100 rounded w-20" />
+                      </div>
+                    </div>
+                    <div className="w-10 h-10 rounded-lg bg-slate-100 ml-4 shrink-0" />
+                  </div>
+                ))
+              ) : filteredLayanan.length === 0 ? (
+                <div className="text-center py-16 text-slate-400">
+                  <Package className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                  <p className="font-semibold text-xs">Tidak ada produk ditemukan.</p>
+                </div>
+              ) : (
+                filteredLayanan.map((item, idx) => {
                   const qtyInCart = cart[item.layanan] ? cart[item.layanan].qty : 0;
                   let pointerStartX = 0;
                   let pointerStartY = 0;
 
-                  const { Icon, categoryName, badgeStyle, iconBg, iconColor } = getLayananStyleConfig(item);
+                  const { Icon, categoryName, badgeStyle, iconBg, iconColor } = getLayananStyleConfig(item, kategoriList);
 
                   return (
                     <div
@@ -1410,7 +1414,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider border shadow-2xs ${badgeStyle}`}>
+                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border shadow-2xs ${badgeStyle}`}>
                               {categoryName}
                             </span>
                             <p className="font-bold text-xs sm:text-sm text-slate-900 leading-tight truncate">{item.layanan}</p>
@@ -1423,7 +1427,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
                       {qtyInCart > 0 ? (
                         <div 
-                          className="flex items-center bg-[#1E4648] text-white rounded-lg overflow-hidden ml-4 shrink-0" 
+                          className="flex items-center bg-[#1E4648] text-white rounded-xl overflow-hidden ml-4 shrink-0 shadow-xs" 
                           onPointerDown={(e) => e.stopPropagation()}
                           onPointerUp={(e) => e.stopPropagation()}
                           onClick={(e) => e.stopPropagation()}
@@ -1436,7 +1440,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           >
                             <Minus className="w-4 h-4" />
                           </button>
-                          <span className="text-sm font-bold px-3">{qtyInCart}</span>
+                          <span className="text-sm font-black px-3 font-mono">{qtyInCart}</span>
                           <button
                             onPointerDown={(e) => e.stopPropagation()}
                             onPointerUp={(e) => e.stopPropagation()}
@@ -1447,45 +1451,14 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           </button>
                         </div>
                       ) : (
-                        <div className="w-10 h-10 rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center hover:bg-slate-200 transition ml-4 shrink-0">
-                          <Plus className="w-5 h-5 text-slate-500" />
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center hover:bg-[#1E4648] hover:text-white hover:border-[#1E4648] transition ml-4 shrink-0 shadow-2xs">
+                          <Plus className="w-4 h-4 text-slate-500" />
                         </div>
                       )}
                     </div>
                   );
-                };
-
-                const filterLower = search.toLowerCase().trim();
-                const filteredAll = (layananList || []).filter((i) => i.layanan.toLowerCase().includes(filterLower));
-
-                if (selectedCategoryTab !== 'Semua') {
-                  const tabFiltered = filteredAll.filter((i) => {
-                    if (selectedCategoryTab === 'Self Service') return i.kategori === 'Self Service';
-                    if (selectedCategoryTab === 'Drop Off') return i.kategori === 'Drop Off';
-                    if (selectedCategoryTab === 'Add On') return i.kategori === 'Add On';
-                    if (selectedCategoryTab === 'Makanan dan Minuman') return i.kategori === 'Makanan dan Minuman';
-                    return true;
-                  });
-
-                  if (tabFiltered.length === 0) {
-                    return (
-                      <div className="col-span-full text-center py-12 text-slate-400 text-xs">
-                        Tidak ada produk ditemukan dalam kategori ini.
-                      </div>
-                    );
-                  }
-                  return tabFiltered.map(renderListItem);
-                }
-
-                if (filteredAll.length === 0) {
-                  return (
-                    <div className="col-span-full text-center py-12 text-slate-400 text-xs">
-                      Tidak ada produk ditemukan.
-                    </div>
-                  );
-                }
-                return filteredAll.map(renderListItem);
-              })()}
+                })
+              )}
             </div>
           )}
         </div>

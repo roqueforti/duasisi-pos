@@ -271,7 +271,13 @@ function getAbsensiConfig() {
     tipeDenda: props.getProperty("ABSENSI_TIPE_DENDA") || "MENIT", // "MENIT" | "JAM" | "FLAT"
     tarifDenda: Number(props.getProperty("ABSENSI_TARIF_DENDA") || 1000),
     tunjanganKehadiranPerHari: Number(props.getProperty("PAYROLL_TUNJANGAN_KEHADIRAN") || 15000),
-    insentifDropOffPerTahap: Number(props.getProperty("PAYROLL_INSENTIF_DROPOFF") || 1500)
+    insentifDropOffPerTahap: Number(props.getProperty("PAYROLL_INSENTIF_DROPOFF") || 1500),
+    aktifIpWhitelist: props.getProperty("ABSENSI_AKTIF_IP_WHITELIST") === "true",
+    ipWhitelist: props.getProperty("ABSENSI_IP_WHITELIST") || "",
+    aktifGeofence: props.getProperty("ABSENSI_AKTIF_GEOFENCE") === "true",
+    outletLatitude: Number(props.getProperty("ABSENSI_OUTLET_LAT") || 0),
+    outletLongitude: Number(props.getProperty("ABSENSI_OUTLET_LNG") || 0),
+    geofenceRadiusMeter: Number(props.getProperty("ABSENSI_GEOFENCE_RADIUS") || 100)
   };
 }
 
@@ -286,12 +292,18 @@ function saveAbsensiConfig(config) {
       if (config.tarifDenda !== undefined) props.setProperty("ABSENSI_TARIF_DENDA", String(Number(config.tarifDenda) || 0));
       if (config.tunjanganKehadiranPerHari !== undefined) props.setProperty("PAYROLL_TUNJANGAN_KEHADIRAN", String(Number(config.tunjanganKehadiranPerHari) || 0));
       if (config.insentifDropOffPerTahap !== undefined) props.setProperty("PAYROLL_INSENTIF_DROPOFF", String(Number(config.insentifDropOffPerTahap) || 0));
+      if (config.aktifIpWhitelist !== undefined) props.setProperty("ABSENSI_AKTIF_IP_WHITELIST", String(config.aktifIpWhitelist === true || config.aktifIpWhitelist === "true"));
+      if (config.ipWhitelist !== undefined) props.setProperty("ABSENSI_IP_WHITELIST", String(config.ipWhitelist || ""));
+      if (config.aktifGeofence !== undefined) props.setProperty("ABSENSI_AKTIF_GEOFENCE", String(config.aktifGeofence === true || config.aktifGeofence === "true"));
+      if (config.outletLatitude !== undefined) props.setProperty("ABSENSI_OUTLET_LAT", String(Number(config.outletLatitude) || 0));
+      if (config.outletLongitude !== undefined) props.setProperty("ABSENSI_OUTLET_LNG", String(Number(config.outletLongitude) || 0));
+      if (config.geofenceRadiusMeter !== undefined) props.setProperty("ABSENSI_GEOFENCE_RADIUS", String(Number(config.geofenceRadiusMeter) || 100));
     } else {
       // Legacy signature compatibility
       props.setProperty("ABSENSI_JAM_BUKA", arguments[0] || "07:00");
       props.setProperty("ABSENSI_TOLERANSI_MENIT", String(Number(arguments[1]) || 0));
     }
-    return { success: true, message: "Konfigurasi absensi, denda & insentif berhasil disimpan!" };
+    return { success: true, message: "Konfigurasi absensi, keamanan IP & Geofencing berhasil disimpan!" };
   } catch (err) {
     return { success: false, message: err.toString() };
   }

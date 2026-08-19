@@ -10,6 +10,7 @@ export interface LayananItem {
   icon?: string;
   kategori?: string;
   kategoriWarna?: string;
+  kategoriIcon?: string;
   idInventory?: string | null;
   inventoryDeductionQty?: number;
 }
@@ -185,6 +186,12 @@ export interface AbsensiConfig {
   tarifDenda: number;
   tunjanganKehadiranPerHari: number;
   insentifDropOffPerTahap: number;
+  aktifIpWhitelist?: boolean;
+  ipWhitelist?: string;
+  aktifGeofence?: boolean;
+  outletLatitude?: number;
+  outletLongitude?: number;
+  geofenceRadiusMeter?: number;
 }
 
 export interface JadwalKerjaItem {
