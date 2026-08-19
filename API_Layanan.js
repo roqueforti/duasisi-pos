@@ -26,6 +26,15 @@ function getLayananList(tipeFilter) {
     let katName = r[8] ? String(r[8]).trim() : "";
     const katKey = katName.toLowerCase();
 
+    let katDropOff = r[12] ? String(r[12]).trim() : "";
+    if (!katDropOff && (r[6] === "FullService" || katKey.includes("drop"))) {
+      const nLower = String(r[1] || "").toLowerCase();
+      if (nLower.includes("express") || nLower.includes("ekspres")) katDropOff = "Express";
+      else if (nLower.includes("kilat")) katDropOff = "Kilat";
+      else if (nLower.includes("sameday")) katDropOff = "Sameday";
+      else katDropOff = "Reguler";
+    }
+
     return {
       id: r[0], 
       nama: r[1], 
@@ -34,6 +43,7 @@ function getLayananList(tipeFilter) {
       icon: r[4] || "🧺", 
       tipe: r[6] || "SelfService",
       kategori: katName,
+      kategoriDropOff: katDropOff,
       idInventory: r[9] || null,
       kategoriWarna: katMap[katKey] || (
         katKey.includes("drop") ? "bg-teal-100 text-teal-800 border-teal-300" :
@@ -88,6 +98,15 @@ function getLayananListAll() {
     }
     const katKey = String(katName).trim().toLowerCase();
 
+    let katDropOff = r[12] ? String(r[12]).trim() : "";
+    if (!katDropOff && (r[6] === "FullService" || katKey.includes("drop"))) {
+      const nLower = String(r[1] || "").toLowerCase();
+      if (nLower.includes("express") || nLower.includes("ekspres")) katDropOff = "Express";
+      else if (nLower.includes("kilat")) katDropOff = "Kilat";
+      else if (nLower.includes("sameday")) katDropOff = "Sameday";
+      else katDropOff = "Reguler";
+    }
+
     return {
       id: r[0], 
       nama: r[1], 
@@ -97,6 +116,7 @@ function getLayananListAll() {
       aktif: r[5], 
       tipe: r[6] === undefined || r[6] === null ? "" : r[6],
       kategori: katName,
+      kategoriDropOff: katDropOff,
       idInventory: r[9] || null,
       hargaModal: Number(r[10]) || 0,
       inventoryDeductionQty: r[11] !== undefined && r[11] !== "" ? Number(r[11]) : 1,
@@ -161,11 +181,25 @@ function tambahLayanan(data) {
     }
   }
 
-  if (sh.getMaxColumns() < 12) {
-    sh.insertColumnsAfter(sh.getMaxColumns(), 12 - sh.getMaxColumns());
+  if (sh.getMaxColumns() < 13) {
+    sh.insertColumnsAfter(sh.getMaxColumns(), 13 - sh.getMaxColumns());
   }
 
-  sh.appendRow([id, data.nama, data.harga, data.satuan, data.icon || "🧺", "Y", data.tipe !== undefined ? data.tipe : "", pSteps, data.kategori || "Self Service", idInv, data.hargaModal || 0, data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : 1]);
+  sh.appendRow([
+    id, 
+    data.nama, 
+    data.harga, 
+    data.satuan, 
+    data.icon || "🧺", 
+    "Y", 
+    data.tipe !== undefined ? data.tipe : "", 
+    pSteps, 
+    data.kategori || "Self Service", 
+    idInv, 
+    data.hargaModal || 0, 
+    data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : 1,
+    data.kategoriDropOff || ""
+  ]);
   return { success: true, id: id };
 }
 
@@ -185,11 +219,25 @@ function updateLayanan(id, data) {
         }
       }
 
-      if (sh.getMaxColumns() < 12) {
-        sh.insertColumnsAfter(sh.getMaxColumns(), 12 - sh.getMaxColumns());
+      if (sh.getMaxColumns() < 13) {
+        sh.insertColumnsAfter(sh.getMaxColumns(), 13 - sh.getMaxColumns());
       }
 
-      sh.getRange(i + 1, 1, 1, 12).setValues([[newId, data.nama, data.harga, data.satuan, data.icon || "🧺", rows[i][5], data.tipe !== undefined ? data.tipe : rows[i][6], pSteps, data.kategori || rows[i][8], idInv, data.hargaModal !== undefined ? data.hargaModal : (Number(rows[i][10]) || 0), data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : (rows[i][11] !== undefined && rows[i][11] !== "" ? Number(rows[i][11]) : 1)]]);
+      sh.getRange(i + 1, 1, 1, 13).setValues([[
+        newId, 
+        data.nama, 
+        data.harga, 
+        data.satuan, 
+        data.icon || "🧺", 
+        rows[i][5], 
+        data.tipe !== undefined ? data.tipe : rows[i][6], 
+        pSteps, 
+        data.kategori || rows[i][8], 
+        idInv, 
+        data.hargaModal !== undefined ? data.hargaModal : (Number(rows[i][10]) || 0), 
+        data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : (rows[i][11] !== undefined && rows[i][11] !== "" ? Number(rows[i][11]) : 1),
+        data.kategoriDropOff !== undefined ? data.kategoriDropOff : (rows[i][12] || "")
+      ]]);
       return { success: true, id: newId };
     }
   }

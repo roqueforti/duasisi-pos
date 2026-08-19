@@ -1790,9 +1790,25 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               <Trash2 className="w-5 h-5" />
             </button>
             <button
-              onClick={() => setShowDetailTransaksiModal(true)}
+              onClick={() => {
+                if (cartArray.length === 0) return;
+                const dropOffItem = cartArray.find(i => (i as any).kategoriDropOff || i.tipe === 'FullService');
+                if (dropOffItem) {
+                  const mapped = (dropOffItem as any).kategoriDropOff;
+                  if (mapped) {
+                    setTingkatLayanan(mapped);
+                  } else {
+                    const nLower = (dropOffItem.layanan || '').toLowerCase();
+                    if (nLower.includes('express') || nLower.includes('ekspres')) setTingkatLayanan('Express');
+                    else if (nLower.includes('kilat')) setTingkatLayanan('Kilat');
+                    else if (nLower.includes('sameday')) setTingkatLayanan('Sameday');
+                    else setTingkatLayanan('Reguler');
+                  }
+                }
+                setShowDetailTransaksiModal(true);
+              }}
               disabled={cartArray.length === 0}
-              className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3.5 rounded-lg text-sm transition flex items-center justify-center gap-2 disabled:opacity-40 shadow-md"
+              className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3.5 rounded-lg text-sm transition flex items-center justify-center gap-2 disabled:opacity-40 shadow-md cursor-pointer"
             >
               <CreditCard className="w-5 h-5" />
               <span>Proses Bayar Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>

@@ -30,6 +30,7 @@ interface LayananItemBackend {
   aktif: string;
   tipe: 'SelfService' | 'FullService' | '';
   kategori?: string;
+  kategoriDropOff?: string;
   idInventory?: string | null;
   pipelineSteps?: any[];
   hargaModal?: number;
@@ -102,6 +103,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [satuan, setSatuan] = useState('kg');
   const [icon, setIcon] = useState('🧺');
   const [tipe, setTipe] = useState<'SelfService' | 'FullService' | ''>('');
+  const [kategoriDropOff, setKategoriDropOff] = useState<string>('Reguler');
   const [idInventory, setIdInventory] = useState<string>('');
   const [inventoryDeductionQty, setInventoryDeductionQty] = useState<string>('1');
   const [kategori, setKategori] = useState<string>('Self Service');
@@ -356,7 +358,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const handleOpenAdd = () => {
     setEditingId(null);
     setKode('');
-    setNama(''); setHarga(''); setHargaModal(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service'); setIdInventory(''); setInventoryDeductionQty('1');
+    setNama(''); setHarga(''); setHargaModal(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service'); setKategoriDropOff('Reguler'); setIdInventory(''); setInventoryDeductionQty('1');
     setCustomPipelineSteps([]);
     setShowModal(true);
   };
@@ -373,6 +375,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     // Sanitize tipe to ensure it matches the dropdown options
     const validTipe = ['SelfService', 'FullService'].includes(item.tipe || '') ? item.tipe : '';
     setTipe(validTipe as '' | 'SelfService' | 'FullService');
+    setKategoriDropOff(item.kategoriDropOff || 'Reguler');
     
     setIdInventory(item.idInventory || '');
     setKategori(item.kategori || 'Self Service');
@@ -396,6 +399,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         icon,
         tipe: tipe || '',
         kategori,
+        kategoriDropOff: (tipe === 'FullService' || (kategori || '').toLowerCase().includes('drop')) ? kategoriDropOff : '',
         idInventory: tipe === '' ? idInventory : undefined,
         inventoryDeductionQty: tipe === '' ? (isNaN(parseFloat(inventoryDeductionQty)) ? 1 : parseFloat(inventoryDeductionQty)) : undefined,
         hargaModal: Number(hargaModal) || 0,
@@ -711,9 +715,22 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         })()}
                       </td>
                       <td className="py-1.5 px-3 whitespace-nowrap">
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
-                          {!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'Bukan Layanan' : item.tipe}
-                        </span>
+                        {item.tipe === 'FullService' || (item.kategori || '').toLowerCase().includes('drop') ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-50 text-[#1E4648] border border-teal-200">
+                              Drop Off
+                            </span>
+                            {item.kategoriDropOff && (
+                              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                                {item.kategoriDropOff}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
+                            {!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'Bukan Layanan' : item.tipe}
+                          </span>
+                        )}
                       </td>
                       <td className="py-1.5 px-3">
                         {(!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '') ? (
@@ -1129,6 +1146,43 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                     </select>
                     <p className="text-[10px] text-slate-400 mt-1">Mengelompokkan layanan pada daftar antrean dan laporan.</p>
                   </div>
+
+                  {(tipe === 'FullService' || (kategori || '').toLowerCase().includes('drop')) && (
+                    <div className="p-3 bg-teal-50/70 border border-teal-200 rounded-xl space-y-2">
+                      <label className="block font-bold text-[#1E4648] text-xs">
+                        Kategori & Estimasi Deadline Drop Off *
+                      </label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {dropOffCategories.filter(d => d.aktif !== false).map(cat => {
+                          const isSel = (kategoriDropOff || 'Reguler').toLowerCase() === cat.nama.toLowerCase();
+                          const CatIcon = getIconComponent(cat.icon || 'Clock');
+                          return (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              onClick={() => setKategoriDropOff(cat.nama)}
+                              className={`py-1.5 px-2 rounded-lg border text-center transition flex flex-col items-center justify-center gap-0.5 ${
+                                isSel
+                                  ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
+                                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1 font-bold text-xs">
+                                <CatIcon className="w-3 h-3" />
+                                <span>{cat.nama}</span>
+                              </div>
+                              <span className={`text-[9px] font-mono ${isSel ? 'text-teal-200' : 'text-slate-400'}`}>
+                                {cat.durasiJam} Jam
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-slate-500">
+                        Otomatis memasang estimasi deadline waktu pengerjaan di antrean POS.
+                      </p>
+                    </div>
+                  )}
 
                   <SatuanInput
                     value={satuan}
