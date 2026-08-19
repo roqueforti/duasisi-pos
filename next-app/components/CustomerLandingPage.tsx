@@ -29,6 +29,7 @@ import MoltenMetal from '@/components/MoltenMetal';
 import CardNav, { CardNavItem } from '@/components/CardNav';
 import FoldText from '@/components/FoldText';
 import DriftWall, { DriftWallItem } from '@/components/DriftWall';
+import ClickSpark from '@/components/ClickSpark';
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
 import ENotaView from '@/components/ENotaView';
@@ -206,7 +207,15 @@ export default function CustomerLandingPage() {
   const currentStepIdx = foundTx ? getStepIndex(foundTx.status) : 0;
 
   return (
-    <div className="min-h-screen bg-[#040e10] text-white relative selection:bg-white selection:text-black overflow-x-hidden font-sans flex flex-col justify-between">
+    <ClickSpark
+      sparkColor="#2dd4bf"
+      sparkSize={12}
+      sparkRadius={22}
+      sparkCount={8}
+      duration={450}
+      extraScale={1.1}
+    >
+      <div className="min-h-screen bg-[#040e10] text-white relative selection:bg-white selection:text-black overflow-x-hidden font-sans flex flex-col justify-between">
       {/* Dynamic Molten Metal Ambient Background (Crystal Clear Luminous Teal) */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <MoltenMetal
@@ -838,6 +847,7 @@ export default function CustomerLandingPage() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </ClickSpark>
   );
 }
