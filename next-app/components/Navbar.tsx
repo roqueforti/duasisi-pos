@@ -41,6 +41,7 @@ const tabTitles: Record<string, string> = {
   transaksi: 'Point of Sale (POS)',
   riwayat: 'Riwayat Transaksi',
   pesanan: 'Manajemen Pesanan Drop-off',
+  mesin: 'Daftar & Status Mesin Operational',
   absensi: 'Presensi & Cuti',
   inventory: 'Stok Inventory Bahan',
   pegawai: 'Data Pegawai',

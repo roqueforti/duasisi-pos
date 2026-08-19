@@ -20,6 +20,7 @@ import ShiftView from '@/components/ShiftView';
 import LangkahView from '@/components/LangkahView';
 import PayrollView from '@/components/PayrollView';
 import KeamananView from '@/components/KeamananView';
+import MesinView from '@/components/MesinView';
 import { UserRole } from '@/lib/types';
 import {
   clearBackendSession,
@@ -33,7 +34,7 @@ import { clearCache } from '@/lib/cache';
 import { useGlobalNotifications } from '@/lib/useGlobalNotifications';
 
 const VALID_TABS = [
-  'dashboard', 'transaksi', 'riwayat', 'pesanan', 'absensi',
+  'dashboard', 'transaksi', 'riwayat', 'pesanan', 'mesin', 'absensi',
   'pelanggan', 'inventory', 'pegawai', 'payroll', 'produk',
   'kategori', 'langkah', 'shift', 'menu', 'rekap', 'keamanan'
 ];
@@ -194,6 +195,7 @@ export default function PosAppRoot() {
               {currentTab === 'transaksi' && <PosView currentRole={currentRole} />}
               {currentTab === 'riwayat' && <RiwayatView currentRole={currentRole} />}
               {currentTab === 'pesanan' && <PesananView />}
+              {currentTab === 'mesin' && <MesinView currentRole={currentRole} />}
               {currentTab === 'absensi' && <AbsensiView currentRole={currentRole} />}
               {currentTab === 'pelanggan' && <PelangganView currentRole={currentRole} />}
               {currentTab === 'inventory' && <InventoryView currentRole={currentRole} />}
