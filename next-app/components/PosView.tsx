@@ -843,13 +843,25 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
       const resTotal = Number(res.total) || grandTotal;
       const estimasi = calculateEstimasi(tingkatLayanan);
+      const currCust = customerList.find(c => (customer.noHp && c.noHp === customer.noHp) || (customer.nama && c.nama === customer.nama));
+      const saldoPoinLama = Number(customer.poin || currCust?.poin || 0);
+      const poinEarned = Math.floor(resTotal / (poinRate || 10000));
+      const saldoPoinBaru = saldoPoinLama + poinEarned;
+
       setCompletedOrderData({
         trxId: res.noNota,
         token: res.token || '',
         kasir,
         pelanggan: custName,
         noHp: customer.noHp,
+        isMember: Boolean(customer.isMember || customerMode === 'MEMBER'),
         metodeBayar,
+        subtotal: subtotalCart,
+        diskon: diskonApplied.nilai || 0,
+        diskonKode: diskonApplied.kode || '',
+        poinEarned,
+        saldoPoinAwal: saldoPoinLama,
+        saldoPoinAkhir: saldoPoinBaru,
         total: resTotal,
         uangBayar: Number(bayar) || resTotal,
         kembalian: Math.max(0, (Number(bayar) || resTotal) - resTotal),
@@ -2109,7 +2121,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         >
                           <div>
                             <div className="text-xs font-bold text-slate-600">{c.nama}</div>
-                            <div className="text-[11px] font-mono text-slate-500">{maskHp(c.noHp)} {c.alamat ? `â€¢ ${c.alamat}` : ''}</div>
+                            <div className="text-[11px] font-mono text-slate-500">{maskHp(c.noHp)} {c.alamat ? `• ${c.alamat}` : ''}</div>
                           </div>
                           <span className="text-[10px] font-bold px-2 py-0.5 bg-[#B5C9C9]/30 text-[#1E4648] rounded-full">
                             {c.memberStatus || 'Pelanggan'}
@@ -2929,12 +2941,28 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     <span className="text-slate-500 font-semibold">Metode Bayar</span>
                     <span className="font-bold text-slate-800">{completedOrderData.metodeBayar}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 font-semibold">Total Tagihan</span>
-                    <span className="font-mono font-black text-slate-900 text-sm">
+
+                  {/* Financial Details (Subtotal & Diskon) */}
+                  {Number(completedOrderData.diskon) > 0 && (
+                    <div className="pt-2 border-t border-slate-100 space-y-1 text-slate-600">
+                      <div className="flex justify-between items-center">
+                        <span>Subtotal Belanja:</span>
+                        <span className="font-mono font-bold">Rp {(Number(completedOrderData.subtotal) || Number(completedOrderData.total) || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-rose-600 font-bold">
+                        <span>Diskon ({completedOrderData.diskonKode || 'Promo'}):</span>
+                        <span className="font-mono">-Rp {Number(completedOrderData.diskon).toLocaleString('id-ID')}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                    <span className="text-slate-700 font-bold">Total Tagihan</span>
+                    <span className="font-mono font-black text-[#1E4648] text-base">
                       Rp {(completedOrderData?.total || 0).toLocaleString('id-ID')}
                     </span>
                   </div>
+
                   {completedOrderData.metodeBayar === 'Tunai' && (
                     <div className="pt-2 border-t border-slate-100 space-y-1">
                       <div className="flex justify-between items-center text-slate-600">
@@ -2947,6 +2975,25 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       </div>
                     </div>
                   )}
+
+                  {/* Loyalty Points Info */}
+                  <div className="pt-2 border-t border-slate-100 bg-amber-50/70 -mx-1 p-2 rounded-xl space-y-1 border border-amber-200/60 text-[11px]">
+                    <div className="flex justify-between items-center text-amber-900 font-bold">
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Poin Transaksi:</span>
+                      </span>
+                      <span className="font-mono">+{completedOrderData.poinEarned || 0} Poin</span>
+                    </div>
+                    <div className="flex justify-between items-center text-amber-800">
+                      <span>Total Saldo Poin:</span>
+                      <span className="font-mono font-bold">{completedOrderData.saldoPoinAkhir || 0} Poin</span>
+                    </div>
+                    <div className="text-[10px] text-amber-700 font-medium italic pt-0.5 border-t border-amber-200/50">
+                      Tukarkan poin dengan potongan belanja di kasir!
+                    </div>
+                  </div>
+
                   {completedOrderData.estimasiSelesai && (
                     <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-[11px]">
                       <span className="text-amber-800 font-semibold flex items-center gap-1">
@@ -2973,28 +3020,55 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     const noNota = completedOrderData.trxId || '';
                     const tanggal = `${completedOrderData.tanggal || ''}, ${completedOrderData.waktu || ''}`;
                     const total = (Number(completedOrderData?.total) || 0).toLocaleString('id-ID');
+                    const subtotal = (Number(completedOrderData?.subtotal) || Number(completedOrderData?.total) || 0).toLocaleString('id-ID');
+                    const diskonNilai = Number(completedOrderData?.diskon) || 0;
+                    const diskonKode = completedOrderData?.diskonKode || '';
+                    const poinEarned = Number(completedOrderData?.poinEarned) || 0;
+                    const saldoPoin = Number(completedOrderData?.saldoPoinAkhir) || 0;
+
                     const items = (completedOrderData.items || [])
-                      .map((i: any) => `• ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
+                      .map((i: any) => `- ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
                       .join('\n');
                     const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?t=${completedOrderData.token || noNota}`;
-                    const msg = [
-                      `Halo ${nama}! Struk dari Dua SiSi Laundry`,
+
+                    const msgLines = [
+                      `*DUA SISI LAUNDRY*`,
+                      `_Express & Self Service Laundry_`,
+                      `--------------------------------`,
+                      `Halo *${nama}*! Berikut rincian bukti transaksi Anda:`,
                       ``,
-                      `No Nota     : ${noNota}`,
-                      `Tanggal     : ${tanggal}`,
-                      `Kecepatan   : ${completedOrderData.tipeLayanan === 'FullService' ? 'Full Service' : 'Self Service'} - ${completedOrderData.tingkatLayanan || 'Reguler'}`,
+                      `*No. Nota*     : ${noNota}`,
+                      `*Tanggal*      : ${tanggal}`,
+                      `*Layanan*      : ${completedOrderData.tipeLayanan === 'FullService' ? 'Drop Off (Full Service)' : 'Self Service'} - ${completedOrderData.tingkatLayanan || 'Reguler'}`,
+                      completedOrderData.estimasiSelesai ? `*Estimasi*     : ${completedOrderData.estimasiSelesai}` : '',
                       ``,
-                      `Detail Layanan:`,
+                      `*Detail Layanan:*`,
                       items,
-                      ``,
-                      `TOTAL       : Rp ${total}`,
-                      `Metode Bayar: ${completedOrderData.metodeBayar || 'Tunai'}`,
-                      ``,
-                      `Lihat E-Nota Resmi:`,
-                      eNotaUrl,
-                      ``,
-                      `Terima kasih telah mencuci di Dua SiSi Laundry!`,
-                    ].join('\n');
+                      `--------------------------------`,
+                    ];
+
+                    if (diskonNilai > 0) {
+                      msgLines.push(`Subtotal       : Rp ${subtotal}`);
+                      msgLines.push(`Diskon (${diskonKode || 'Promo'}): -Rp ${diskonNilai.toLocaleString('id-ID')}`);
+                    }
+
+                    msgLines.push(`*TOTAL BAYAR   : Rp ${total}*`);
+                    msgLines.push(`Metode Bayar   : ${completedOrderData.metodeBayar || 'Tunai'}`);
+                    if (completedOrderData.metodeBayar === 'Tunai' && (completedOrderData.kembalian || 0) > 0) {
+                      msgLines.push(`Kembalian      : Rp ${(completedOrderData.kembalian || 0).toLocaleString('id-ID')}`);
+                    }
+
+                    msgLines.push(`--------------------------------`);
+                    msgLines.push(`⭐ *Poin Transaksi* : +${poinEarned} Poin`);
+                    msgLines.push(`⭐ *Total Saldo Poin*: ${saldoPoin} Poin`);
+                    msgLines.push(`_(Tukarkan poin Anda dengan potongan harga/layanan gratis di kasir!)_`);
+                    msgLines.push(`--------------------------------`);
+                    msgLines.push(`*Lihat E-Nota Resmi:*`);
+                    msgLines.push(eNotaUrl);
+                    msgLines.push(``);
+                    msgLines.push(`Terima kasih telah mempercayakan cucian Anda di Dua SiSi Laundry! 🙏✨`);
+
+                    const msg = msgLines.filter(Boolean).join('\n');
                     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                   }}
                   className="w-full bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition cursor-pointer"
@@ -3120,8 +3194,20 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       ))}
                     </div>
 
-                    <div className="py-2 border-b border-dashed border-slate-300 space-y-0.5 text-[10px] font-bold">
-                      <div className="flex justify-between text-slate-800">
+                    <div className="py-2 border-b border-dashed border-slate-300 space-y-0.5 text-[10px]">
+                      {Number(completedOrderData.diskon) > 0 && (
+                        <>
+                          <div className="flex justify-between text-slate-600">
+                            <span>Subtotal :</span>
+                            <span className="font-mono">Rp {(Number(completedOrderData.subtotal) || Number(completedOrderData.total) || 0).toLocaleString('id-ID')}</span>
+                          </div>
+                          <div className="flex justify-between text-rose-600 font-bold">
+                            <span>Diskon ({completedOrderData.diskonKode || 'Promo'}) :</span>
+                            <span className="font-mono">-Rp {Number(completedOrderData.diskon).toLocaleString('id-ID')}</span>
+                          </div>
+                        </>
+                      )}
+                      <div className="flex justify-between text-slate-900 font-bold pt-1 border-t border-dashed border-slate-200">
                         <span>TOTAL :</span>
                         <span className="font-mono text-xs">Rp {(Number(completedOrderData?.total) || 0).toLocaleString('id-ID')}</span>
                       </div>
@@ -3130,16 +3216,28 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         <span className="font-mono font-bold">Rp {(Number(completedOrderData?.uangBayar || completedOrderData?.total) || 0).toLocaleString('id-ID')}</span>
                       </div>
                       {(completedOrderData?.kembalian || 0) > 0 && (
-                        <div className="flex justify-between text-[#1E4648]">
+                        <div className="flex justify-between text-[#1E4648] font-bold">
                           <span>KEMBALI :</span>
                           <span className="font-mono">Rp {(Number(completedOrderData?.kembalian) || 0).toLocaleString('id-ID')}</span>
                         </div>
                       )}
                     </div>
 
-                    <div className="text-center pt-3 text-[9px] text-slate-400 space-y-1">
+                    {/* Loyalty Points Section */}
+                    <div className="py-1.5 border-b border-dashed border-slate-300 text-[9.5px] text-slate-600 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>Poin Transaksi:</span>
+                        <span className="font-bold font-mono">+{completedOrderData.poinEarned || 0} Pts</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-slate-800">
+                        <span>Total Saldo Poin:</span>
+                        <span className="font-mono">{completedOrderData.saldoPoinAkhir || 0} Pts</span>
+                      </div>
+                    </div>
+
+                    <div className="text-center pt-2.5 text-[9px] text-slate-400 space-y-0.5">
                       <div className="font-bold text-slate-600">*** TERIMA KASIH ***</div>
-                      <div>Pakaian Bersih & Rapi</div>
+                      <div>Tukarkan poin Anda dengan diskon di kasir!</div>
                       <div className="text-[8px] font-mono break-all pt-1 text-slate-400">
                         E-Nota: duasisilaundry-pos.vercel.app/?t={completedOrderData.token || completedOrderData.trxId}
                       </div>
@@ -3193,10 +3291,39 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     const noNota = completedOrderData.trxId || '';
                     const tanggal = `${completedOrderData.tanggal || ''}, ${completedOrderData.waktu || ''}`;
                     const total = (Number(completedOrderData?.total) || 0).toLocaleString('id-ID');
+                    const subtotal = (Number(completedOrderData?.subtotal) || Number(completedOrderData?.total) || 0).toLocaleString('id-ID');
+                    const diskonNilai = Number(completedOrderData?.diskon) || 0;
+                    const diskonKode = completedOrderData?.diskonKode || '';
+                    const poinEarned = Number(completedOrderData?.poinEarned) || 0;
+                    const saldoPoin = Number(completedOrderData?.saldoPoinAkhir) || 0;
+
                     const items = (completedOrderData.items || [])
-                      .map((i: any) => `• ${i.layanan} (x${i.qty}) = Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
+                      .map((i: any) => `- ${i.layanan} (x${i.qty}) = Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
                       .join('\n');
-                    const text = `DUA SISI LAUNDRY\nNo Nota: ${noNota}\nTanggal: ${tanggal}\nPelanggan: ${nama}\n\nItem:\n${items}\n\nTotal: Rp ${total}\nStatus: Lunas (${completedOrderData.metodeBayar})\nTerima kasih!`;
+
+                    const lines = [
+                      `DUA SISI LAUNDRY`,
+                      `No Nota: ${noNota}`,
+                      `Tanggal: ${tanggal}`,
+                      `Pelanggan: ${nama}`,
+                      ``,
+                      `Item:`,
+                      items,
+                      ``,
+                    ];
+
+                    if (diskonNilai > 0) {
+                      lines.push(`Subtotal: Rp ${subtotal}`);
+                      lines.push(`Diskon (${diskonKode || 'Promo'}): -Rp ${diskonNilai.toLocaleString('id-ID')}`);
+                    }
+
+                    lines.push(`Total: Rp ${total}`);
+                    lines.push(`Status: Lunas (${completedOrderData.metodeBayar})`);
+                    lines.push(`Poin Transaksi: +${poinEarned} Pts | Saldo Poin: ${saldoPoin} Pts`);
+                    lines.push(`(Tukarkan poin Anda di kasir)`);
+                    lines.push(`Terima kasih!`);
+
+                    const text = lines.join('\n');
                     navigator.clipboard.writeText(text);
                     setToastMsg('Teks struk berhasil disalin ke clipboard!');
                   }}
