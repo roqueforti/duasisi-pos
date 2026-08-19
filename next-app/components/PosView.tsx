@@ -47,6 +47,7 @@ import {
   Folder,
   Star,
   Delete,
+  Copy,
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir, AbsensiConfig, UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
@@ -57,6 +58,7 @@ import {
   requestAndConnectBluetoothDevice,
   sendRawEscPosData,
   generateTagEscPos,
+  generateReceiptEscPos,
 } from '@/lib/bluetoothPrinter';
 import PrinterModal from '@/components/PrinterModal';
 import { validateAttendanceSecurity } from '@/lib/attendanceSecurity';
@@ -120,6 +122,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   // Post Payment & Receipt State
   const [completedOrderData, setCompletedOrderData] = useState<any>(null);
   const [paperSize, setPaperSize] = useState<'58mm' | '80mm' | 'label'>('58mm');
+  const [successModalTab, setSuccessModalTab] = useState<'struk' | 'label'>('struk');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [btPrinting, setBtPrinting] = useState(false);
   const [showStrukModal, setShowStrukModal] = useState(false);
@@ -873,8 +876,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     }
   };
 
-  // â”€â”€ THERMAL LABEL PRINT (Bluetooth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const handlePrintThermalLabel = async () => {
+  // ── THERMAL PRINT (Bluetooth: Struk & Label Tag) ────────────────────────
+  const handlePrintReceipt = async (type: 'struk' | 'label' = 'struk') => {
     if (!completedOrderData) return;
     if (!isBluetoothSupported()) {
       await showAlert('Browser ini tidak mendukung Web Bluetooth.\nGunakan Chrome / Edge di Android atau Desktop.', 'warning');
@@ -885,8 +888,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       // Cek apakah printer sudah terkoneksi
       const deviceInfo = getActiveDeviceInfo();
       if (!deviceInfo.connected) {
-        // Belum konek â€” minta user pilih device
-        setToastMsg('Mencari printer Bluetoothâ€¦');
+        setToastMsg('Mencari printer Bluetooth...');
         await requestAndConnectBluetoothDevice();
       }
       // Siapkan data transaksi untuk ESC/POS
@@ -902,6 +904,9 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         tipe: completedOrderData.tipeLayanan || 'SelfService',
         tingkatLayanan: completedOrderData.tingkatLayanan || 'Reguler',
         catatan: completedOrderData.catatan || '',
+        metodeBayar: completedOrderData.metodeBayar || 'Tunai',
+        uangBayar: completedOrderData.uangBayar,
+        kembalian: completedOrderData.kembalian,
         items: (completedOrderData.items || []).map((i: any) => ({
           layanan: i.layanan,
           qty: Number(i.qty) || 1,
@@ -910,9 +915,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           catatan: i.catatan || '',
         })),
       };
-      const escData = generateTagEscPos(txForPrint as any);
+      const escData = type === 'label'
+        ? generateTagEscPos(txForPrint as any)
+        : generateReceiptEscPos(txForPrint as any, poinRate);
       await sendRawEscPosData(escData);
-      setToastMsg('âœ… Label thermal berhasil dicetak!');
+      setToastMsg(`✅ ${type === 'label' ? 'Label Tag' : 'Struk Thermal'} berhasil dicetak!`);
     } catch (err: any) {
       const msg = err?.message || 'Gagal mencetak';
       if (msg.includes('User cancelled') || msg.includes('cancelled')) {
@@ -923,6 +930,10 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     } finally {
       setBtPrinting(false);
     }
+  };
+
+  const handlePrintThermalLabel = async () => {
+    return handlePrintReceipt('label');
   };
 
   const handleOpenShift = async () => {
@@ -2869,212 +2880,354 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         </div>
       )}
 
-      {/* STEP 6: MODAL "Pembayaran Berhasil" */}
+      {/* STEP 6 & 7: UNIFIED MODAL "Pembayaran Berhasil & Live Preview Cetakan" */}
       {showSuccessModal && completedOrderData && (
         <div className="fixed inset-0 z-[600] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg p-5 sm:p-6 w-full max-w-md border border-slate-100 shadow-lg my-auto text-center animate-scale-in">
-            {/* Success Icon */}
-            <div className="w-16 h-16 rounded-full bg-[#B5C9C9]/30 text-[#1E4648] flex items-center justify-center mx-auto mb-3 shadow-inner">
-              <CheckCircle2 className="w-9 h-9" />
-            </div>
+          <div className="relative bg-white rounded-3xl w-full max-w-5xl border border-slate-200/90 shadow-2xl flex flex-col lg:flex-row overflow-hidden my-auto max-h-[94vh] animate-scale-in">
+            
+            {/* Prominent Modal Close Button - Top Right Corner */}
+            <button 
+              type="button"
+              onClick={handleCompleteFlowAndReset} 
+              className="absolute top-3.5 right-3.5 z-50 w-8 h-8 rounded-full bg-slate-800/80 hover:bg-rose-600 text-white flex items-center justify-center transition-all shadow-md backdrop-blur-xs cursor-pointer active:scale-95 border border-white/20"
+              title="Tutup & Selesai (Esc)"
+            >
+              <X className="w-4.5 h-4.5" />
+            </button>
 
-            <h3 className="text-base font-bold text-slate-600">Pembayaran Berhasil!</h3>
-            <p className="text-xs text-slate-500 font-medium mb-4">Transaksi order telah sukses disimpan</p>
-
-            {/* Summary Box */}
-            <div className="bg-slate-50/90 border border-slate-200/80 rounded-lg p-3.5 text-xs text-left space-y-1.5 mb-5">
-              <div className="flex justify-between"><span className="text-slate-500">No. Invoice:</span><span className="font-bold text-slate-700">{completedOrderData.trxId}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">Pelanggan:</span><span className="font-bold text-slate-600">{completedOrderData.pelanggan}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">Metode Bayar:</span><span className="font-bold text-slate-600">{completedOrderData.metodeBayar}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">Total Dibayar:</span><span className="font-bold text-slate-700">Rp {(completedOrderData?.total || 0).toLocaleString('id-ID')}</span></div>
-              {completedOrderData.metodeBayar === 'Tunai' && (
-                <div className="flex justify-between text-[#1E4648] font-bold pt-1 border-t border-slate-200">
-                  <span>Kembalian:</span>
-                  <span className="font-bold">Rp {(completedOrderData?.kembalian || 0).toLocaleString('id-ID')}</span>
+            {/* LEFT PANEL: Ringkasan Pembayaran & Tombol Aksi */}
+            <div className="w-full lg:w-[410px] p-5 sm:p-6 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50/50 overflow-y-auto shrink-0">
+              <div>
+                {/* Success Header Badge */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
+                    <CheckCircle2 className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800 leading-tight">Pembayaran Berhasil!</h3>
+                    <p className="text-xs text-slate-500 font-medium">Transaksi order telah sukses disimpan</p>
+                  </div>
                 </div>
-              )}
-              <div className="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-200/60">
-                <span>Waktu:</span>
-                <span>{completedOrderData.tanggal} {completedOrderData.waktu}</span>
+
+                {/* Summary Card */}
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-4 text-xs space-y-2 shadow-xs mb-4">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <span className="text-slate-500 font-semibold">No. Invoice</span>
+                    <span className="font-mono font-black text-[#1E4648] bg-teal-50 px-2 py-0.5 rounded-lg border border-teal-200">
+                      {completedOrderData.trxId}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-semibold">Pelanggan</span>
+                    <span className="font-bold text-slate-800">{completedOrderData.pelanggan}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-semibold">No. WhatsApp</span>
+                    <span className="font-mono font-semibold text-slate-700">{completedOrderData.noHp || '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-semibold">Metode Bayar</span>
+                    <span className="font-bold text-slate-800">{completedOrderData.metodeBayar}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-semibold">Total Tagihan</span>
+                    <span className="font-mono font-black text-slate-900 text-sm">
+                      Rp {(completedOrderData?.total || 0).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  {completedOrderData.metodeBayar === 'Tunai' && (
+                    <div className="pt-2 border-t border-slate-100 space-y-1">
+                      <div className="flex justify-between items-center text-slate-600">
+                        <span>Uang Diterima:</span>
+                        <span className="font-mono font-bold">Rp {(completedOrderData?.uangBayar || completedOrderData?.total || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[#1E4648] font-bold bg-teal-50/80 px-2 py-1 rounded-lg border border-teal-200/60">
+                        <span>Kembalian:</span>
+                        <span className="font-mono font-black text-sm">Rp {(completedOrderData?.kembalian || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                    </div>
+                  )}
+                  {completedOrderData.estimasiSelesai && (
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-[11px]">
+                      <span className="text-amber-800 font-semibold flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-amber-600" /> Estimasi Selesai:
+                      </span>
+                      <span className="font-mono font-bold text-amber-900">{completedOrderData.estimasiSelesai}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-1 text-[11px] text-slate-400">
+                    <span>Waktu:</span>
+                    <span>{completedOrderData.tanggal} {completedOrderData.waktu}</span>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-2">
-              {/* Kirim WA â€” utama */}
-              <button
-                onClick={() => {
-                  const phone = String(completedOrderData.noHp || '').replace(/^0/, '62').replace(/\D/g, '');
-                  const nama = completedOrderData.pelanggan || 'Pelanggan';
-                  const noNota = completedOrderData.trxId || '';
-                  const tanggal = `${completedOrderData.tanggal || ''}, ${completedOrderData.waktu || ''}`;
-                  const total = (Number(completedOrderData?.total) || 0).toLocaleString('id-ID');
-                  const items = (completedOrderData.items || [])
-                    .map((i: any) => `â€¢ ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
-                    .join('\n');
-                  const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?t=${completedOrderData.token || noNota}`;
-                  const msg = [
-                    `Halo ${nama}! Struk dari Dua SiSi Laundry`,
-                    ``,
-                    `No Nota     : ${noNota}`,
-                    `Tanggal     : ${tanggal}`,
-                    `Kecepatan   : ${completedOrderData.tipeLayanan === 'FullService' ? 'Full Service' : 'Self Service'} - Reguler`,
-                    ``,
-                    `Detail Layanan:`,
-                    items,
-                    ``,
-                    `TOTAL       : Rp ${total}`,
-                    `Metode Bayar: ${completedOrderData.metodeBayar || 'Tunai'}`,
-                    ``,
-                    `Lihat E-Nota Resmi:`,
-                    eNotaUrl,
-                    ``,
-                    `Terima kasih telah mencuci di Dua SiSi Laundry!`,
-                  ].join('\n');
-                  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-                }}
-                className="w-full bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md"
-              >
-                <Send className="w-4 h-4" />
-                <span>Kirim Struk ke WhatsApp</span>
-              </button>
-
-              {/* Cetak Label Thermal â€” cek BT */}
-              <button
-                onClick={handlePrintThermalLabel}
-                disabled={btPrinting}
-                className="w-full bg-[#B5C9C9]/20 hover:bg-[#B5C9C9]/30 disabled:opacity-50 text-[#1E4648] font-bold py-2.5 rounded-lg text-xs border border-[#B5C9C9] flex items-center justify-center gap-2"
-              >
-                {btPrinting ? (
-                  <>
-                    <Bluetooth className="w-4 h-4 animate-pulse" />
-                    <span>Menghubungkan Printerâ€¦</span>
-                  </>
-                ) : (
-                  <>
-                    <Printer className="w-4 h-4" />
-                    <span>Cetak Label Thermal</span>
-                  </>
-                )}
-              </button>
-
-              {/* Cetak Struk â€” buka PrinterModal */}
-              <button
-                onClick={() => setShowStrukModal(true)}
-                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold py-2.5 rounded-lg text-xs border border-slate-200 flex items-center justify-center gap-2"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Cetak Struk</span>
-              </button>
-
-              <button
-                onClick={handleCompleteFlowAndReset}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-lg text-xs"
-              >
-                Selesai (Tanpa Cetak)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* STEP 7: MODAL "Preview & Cetak Struk" */}
-      {showPreviewStrukModal && completedOrderData && (
-        <div className="fixed inset-0 z-[700] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg p-5 sm:p-6 w-full max-w-md border border-slate-100 shadow-lg my-auto flex flex-col max-h-[92vh]">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
-              <h3 className="text-base font-bold text-slate-600">Preview & Cetak Struk</h3>
-              <button onClick={() => setShowPreviewStrukModal(false)} className="p-1 rounded hover:bg-slate-100"><X className="w-4 h-4 text-slate-400" /></button>
-            </div>
-
-            {/* Paper Size Format Selector */}
-            <div className="py-3 flex items-center gap-2 justify-center shrink-0">
-              <span className="text-xs font-bold text-slate-600">Format Kertas:</span>
-              {[
-                { id: '58mm', label: '58mm Thermal' },
-                { id: '80mm', label: '80mm Thermal' },
-                { id: 'label', label: 'Label Tag' },
-              ].map((p) => (
+              {/* Action Buttons in Left Panel */}
+              <div className="space-y-2 pt-2">
+                {/* 1. Kirim WA */}
                 <button
-                  key={p.id}
-                  onClick={() => setPaperSize(p.id as any)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold border transition ${
-                    paperSize === p.id ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-slate-50 text-slate-600 border-slate-200'
-                  }`}
+                  type="button"
+                  onClick={() => {
+                    const phone = String(completedOrderData.noHp || '').replace(/^0/, '62').replace(/\D/g, '');
+                    const nama = completedOrderData.pelanggan || 'Pelanggan';
+                    const noNota = completedOrderData.trxId || '';
+                    const tanggal = `${completedOrderData.tanggal || ''}, ${completedOrderData.waktu || ''}`;
+                    const total = (Number(completedOrderData?.total) || 0).toLocaleString('id-ID');
+                    const items = (completedOrderData.items || [])
+                      .map((i: any) => `• ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
+                      .join('\n');
+                    const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?t=${completedOrderData.token || noNota}`;
+                    const msg = [
+                      `Halo ${nama}! Struk dari Dua SiSi Laundry`,
+                      ``,
+                      `No Nota     : ${noNota}`,
+                      `Tanggal     : ${tanggal}`,
+                      `Kecepatan   : ${completedOrderData.tipeLayanan === 'FullService' ? 'Full Service' : 'Self Service'} - ${completedOrderData.tingkatLayanan || 'Reguler'}`,
+                      ``,
+                      `Detail Layanan:`,
+                      items,
+                      ``,
+                      `TOTAL       : Rp ${total}`,
+                      `Metode Bayar: ${completedOrderData.metodeBayar || 'Tunai'}`,
+                      ``,
+                      `Lihat E-Nota Resmi:`,
+                      eNotaUrl,
+                      ``,
+                      `Terima kasih telah mencuci di Dua SiSi Laundry!`,
+                    ].join('\n');
+                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                  }}
+                  className="w-full bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition cursor-pointer"
                 >
-                  {p.label}
+                  <Send className="w-4 h-4" />
+                  <span>Kirim Struk ke WhatsApp</span>
                 </button>
-              ))}
+
+                {/* 2. Cetak Struk Thermal */}
+                <button
+                  type="button"
+                  onClick={() => handlePrintReceipt('struk')}
+                  disabled={btPrinting}
+                  className="w-full bg-white hover:bg-teal-50 border border-teal-300 text-[#1E4648] font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-2xs transition cursor-pointer disabled:opacity-50"
+                >
+                  {btPrinting ? (
+                    <>
+                      <Bluetooth className="w-4 h-4 animate-pulse text-teal-600" />
+                      <span>Menghubungkan Printer...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Printer className="w-4 h-4 text-[#1E4648]" />
+                      <span>Cetak Struk Thermal (Bluetooth)</span>
+                    </>
+                  )}
+                </button>
+
+                {/* 3. Selesai (Tanpa Cetak) */}
+                <button
+                  type="button"
+                  onClick={handleCompleteFlowAndReset}
+                  className="w-full bg-slate-200/80 hover:bg-slate-300 text-slate-700 font-bold py-2.5 px-4 rounded-xl text-xs transition cursor-pointer"
+                >
+                  Selesai (Transaksi Baru)
+                </button>
+              </div>
             </div>
 
-            {/* Thermal Struk Paper Preview */}
-            <div className="flex-1 overflow-y-auto p-4 bg-slate-100 rounded-lg font-mono text-[11px] leading-tight text-slate-600 space-y-2 border border-slate-200/80 shadow-inner">
-              <div className="text-center font-bold">
-                <div className="text-sm font-bold">DUA SISI LAUNDRY</div>
-                <div>Express & Coin Laundry</div>
-                <div className="text-[10px] font-normal text-slate-600">Jl. Pemuda No. 88, Jakarta â€¢ Telp: 0812345678</div>
-                <div className="border-b border-dashed border-slate-400 my-2" />
+            {/* RIGHT PANEL: Live Preview Cetakan (Struk & Label Tag) */}
+            <div className="flex-1 p-5 sm:p-6 flex flex-col min-w-0 bg-white overflow-hidden">
+              {/* Header Preview Toolbar */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 gap-2 flex-wrap shrink-0">
+                <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSuccessModalTab('struk')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      successModalTab === 'struk'
+                        ? 'bg-[#1E4648] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Struk Thermal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSuccessModalTab('label')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      successModalTab === 'label'
+                        ? 'bg-[#1E4648] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Tag className="w-3.5 h-3.5" />
+                    <span>Label Tag Drop Off</span>
+                  </button>
+                </div>
+
+                {successModalTab === 'struk' && (
+                  <div className="flex items-center gap-1 text-[11px]">
+                    <span className="text-slate-400 font-semibold">Format:</span>
+                    <button
+                      type="button"
+                      onClick={() => setPaperSize('58mm')}
+                      className={`px-2 py-1 rounded-md font-bold transition cursor-pointer ${paperSize === '58mm' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                      58mm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaperSize('80mm')}
+                      className={`px-2 py-1 rounded-md font-bold transition cursor-pointer ${paperSize === '80mm' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                      80mm
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-0.5 text-[10px]">
-                <div className="flex justify-between"><span>No TRX :</span><span>{completedOrderData.trxId}</span></div>
-                <div className="flex justify-between"><span>Waktu  :</span><span>{completedOrderData.tanggal} {completedOrderData.waktu}</span></div>
-                <div className="flex justify-between"><span>Kasir  :</span><span>{completedOrderData.kasir}</span></div>
-                <div className="flex justify-between"><span>Cust   :</span><span>{completedOrderData.pelanggan}</span></div>
-                <div className="border-b border-dashed border-slate-400 my-2" />
-              </div>
+              {/* Realistic Paper Scroll View */}
+              <div className="flex-1 overflow-y-auto py-4 px-2 flex justify-center bg-slate-100/80 rounded-2xl my-3 border border-slate-200/80 shadow-inner">
+                {successModalTab === 'struk' ? (
+                  /* THERMAL RECEIPT PREVIEW */
+                  <div className={`bg-white p-5 rounded-lg shadow-md border border-slate-200 font-mono text-[11px] leading-tight text-slate-800 my-auto ${paperSize === '80mm' ? 'w-[320px]' : 'w-[260px]'}`}>
+                    <div className="text-center space-y-0.5 pb-2 border-b border-dashed border-slate-300">
+                      <div className="text-sm font-black tracking-wide text-slate-900">DUA SISI LAUNDRY</div>
+                      <div className="text-[10px] text-slate-500 font-sans">Express & Self Service Laundry</div>
+                      <div className="text-[9px] text-slate-400 font-sans">Jl. Pandanwangi, Malang • 0812-3456-7890</div>
+                    </div>
 
-              {/* Items List */}
-              <div className="space-y-1">
-                {(completedOrderData.items || []).map((i: any, idx: number) => (
-                  <div key={idx}>
-                    <div className="font-bold">{i.layanan}</div>
-                    <div className="flex justify-between text-[10px]">
-                      <span>{i.qty} x Rp {(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}</span>
-                      <span>Rp {(i.qty * (Number(i.hargaSatuan) || 0)).toLocaleString('id-ID')}</span>
+                    <div className="py-2 border-b border-dashed border-slate-300 text-[10px] space-y-0.5 text-slate-600">
+                      <div className="flex justify-between"><span>No Nota :</span><span className="font-bold text-slate-900">{completedOrderData.trxId}</span></div>
+                      <div className="flex justify-between"><span>Waktu   :</span><span>{completedOrderData.tanggal} {completedOrderData.waktu}</span></div>
+                      <div className="flex justify-between"><span>Kasir   :</span><span>{completedOrderData.kasir}</span></div>
+                      <div className="flex justify-between"><span>Cust    :</span><span className="font-bold text-slate-900">{completedOrderData.pelanggan}</span></div>
+                      <div className="flex justify-between"><span>Layanan :</span><span className="font-bold text-slate-900">{completedOrderData.tipeLayanan === 'FullService' ? 'Drop Off' : 'Self Service'} ({completedOrderData.tingkatLayanan || 'Reguler'})</span></div>
+                    </div>
+
+                    <div className="py-2 border-b border-dashed border-slate-300 space-y-1.5 text-[10px]">
+                      {(completedOrderData.items || []).map((i: any, idx: number) => (
+                        <div key={idx}>
+                          <div className="font-bold text-slate-900 truncate">{i.layanan}</div>
+                          <div className="flex justify-between text-slate-600">
+                            <span>{i.qty} × Rp {(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}</span>
+                            <span className="font-bold font-mono">Rp {(i.qty * (Number(i.hargaSatuan) || 0)).toLocaleString('id-ID')}</span>
+                          </div>
+                          {i.catatan && (
+                            <div className="text-[9px] text-slate-400 italic">Catatan: {i.catatan}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="py-2 border-b border-dashed border-slate-300 space-y-0.5 text-[10px] font-bold">
+                      <div className="flex justify-between text-slate-800">
+                        <span>TOTAL :</span>
+                        <span className="font-mono text-xs">Rp {(Number(completedOrderData?.total) || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600 font-normal">
+                        <span>BAYAR ({completedOrderData.metodeBayar}):</span>
+                        <span className="font-mono font-bold">Rp {(Number(completedOrderData?.uangBayar || completedOrderData?.total) || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      {(completedOrderData?.kembalian || 0) > 0 && (
+                        <div className="flex justify-between text-[#1E4648]">
+                          <span>KEMBALI :</span>
+                          <span className="font-mono">Rp {(Number(completedOrderData?.kembalian) || 0).toLocaleString('id-ID')}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-center pt-3 text-[9px] text-slate-400 space-y-1">
+                      <div className="font-bold text-slate-600">*** TERIMA KASIH ***</div>
+                      <div>Pakaian Bersih & Rapi</div>
+                      <div className="text-[8px] font-mono break-all pt-1 text-slate-400">
+                        E-Nota: duasisilaundry-pos.vercel.app/?t={completedOrderData.token || completedOrderData.trxId}
+                      </div>
                     </div>
                   </div>
-                ))}
-                <div className="border-b border-dashed border-slate-400 my-2" />
-              </div>
-
-              {/* Financial Breakdown */}
-              <div className="space-y-0.5 font-bold">
-                <div className="flex justify-between"><span>TOTAL :</span><span>Rp {(Number(completedOrderData?.total) || 0).toLocaleString('id-ID')}</span></div>
-                <div className="flex justify-between"><span>BAYAR ({completedOrderData?.metodeBayar || 'Tunai'}):</span><span>Rp {(Number(completedOrderData?.uangBayar) || 0).toLocaleString('id-ID')}</span></div>
-                {(completedOrderData?.kembalian || 0) > 0 && (
-                  <div className="flex justify-between text-[#1E4648]"><span>KEMBALI :</span><span>Rp {(Number(completedOrderData?.kembalian) || 0).toLocaleString('id-ID')}</span></div>
-                )}
-                <div className="border-b border-dashed border-slate-400 my-2" />
-              </div>
-
-              <div className="text-center text-[10px] font-normal pt-1">
-                <div>*** TERIMA KASIH ***</div>
-                <div>Pakaian Bersih & Wangi Garansi 100%</div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 shrink-0 mt-3">
-              <button
-                onClick={handlePrintThermalLabel}
-                disabled={btPrinting}
-                className="bg-[#1E4648] hover:bg-[#163536] disabled:opacity-50 text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-xs"
-              >
-                {btPrinting ? (
-                  <><Bluetooth className="w-4 h-4 animate-pulse" /><span>Menghubungkanâ€¦</span></>
                 ) : (
-                  <><Printer className="w-4 h-4" /><span>Cetak Label Thermal</span></>
+                  /* LABEL TAG PREVIEW (Khusus Drop Off) */
+                  <div className="w-[280px] bg-white p-4 rounded-xl shadow-md border-2 border-slate-800 font-mono text-slate-900 my-auto space-y-2">
+                    <div className="bg-slate-900 text-white text-center py-1.5 rounded font-black text-xs uppercase tracking-wider">
+                      DUA SISI - LABEL CUCIAN
+                    </div>
+                    <div className="text-center py-1 border-b-2 border-slate-800">
+                      <div className="text-xs text-slate-500">NO. NOTA</div>
+                      <div className="text-base font-black tracking-wider">{completedOrderData.trxId}</div>
+                    </div>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Pelanggan:</span>
+                        <span className="font-bold">{completedOrderData.pelanggan}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">No. HP:</span>
+                        <span className="font-bold">{completedOrderData.noHp || '-'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Layanan:</span>
+                        <span className="font-bold">{completedOrderData.tingkatLayanan || 'Reguler'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Estimasi:</span>
+                        <span className="font-bold">{completedOrderData.estimasiSelesai || '-'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Petugas:</span>
+                        <span className="font-bold">{completedOrderData.kasir}</span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-dashed border-slate-400 text-center text-[10px] text-slate-500">
+                      Tempelkan pada kantong/hanger pakaian
+                    </div>
+                  </div>
                 )}
-              </button>
+              </div>
 
-              <button
-                onClick={handleCompleteFlowAndReset}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-lg text-xs"
-              >
-                Tutup & Selesai
-              </button>
+              {/* Bottom Quick Controls for Right Panel */}
+              <div className="flex items-center justify-between gap-2 pt-1 shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nama = completedOrderData.pelanggan || 'Pelanggan';
+                    const noNota = completedOrderData.trxId || '';
+                    const tanggal = `${completedOrderData.tanggal || ''}, ${completedOrderData.waktu || ''}`;
+                    const total = (Number(completedOrderData?.total) || 0).toLocaleString('id-ID');
+                    const items = (completedOrderData.items || [])
+                      .map((i: any) => `• ${i.layanan} (x${i.qty}) = Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
+                      .join('\n');
+                    const text = `DUA SISI LAUNDRY\nNo Nota: ${noNota}\nTanggal: ${tanggal}\nPelanggan: ${nama}\n\nItem:\n${items}\n\nTotal: Rp ${total}\nStatus: Lunas (${completedOrderData.metodeBayar})\nTerima kasih!`;
+                    navigator.clipboard.writeText(text);
+                    setToastMsg('Teks struk berhasil disalin ke clipboard!');
+                  }}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Salin Teks Struk</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Cetak Browser (A4/PDF)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePrintReceipt(successModalTab)}
+                    disabled={btPrinting}
+                    className="px-4 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                  >
+                    <Bluetooth className="w-3.5 h-3.5" />
+                    <span>Cetak {successModalTab === 'label' ? 'Label Tag' : 'Struk Thermal'}</span>
+                  </button>
+                </div>
+              </div>
             </div>
+
           </div>
         </div>
       )}
