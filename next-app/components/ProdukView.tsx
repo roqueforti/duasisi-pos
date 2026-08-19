@@ -118,14 +118,42 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     try {
       setLoading(true);
       const res = await runBackend<{ success: boolean; message?: string }>('regenerateProductCodes');
-      if (!res?.success) throw new Error(res?.message || 'Gagal menyesuaikan kode');
+      if (res && res.success) {
+        clearCache('getLayananList');
+        clearCache('getLayananListAll');
+        await showAlert(res.message || 'Kode produk berhasil disesuaikan menurut kategori & tipe!', 'success');
+        await loadProduk();
+        return;
+      }
+
+      // Fallback: Batch client-side update
+      const prefixCounters: Record<string, number> = {};
+      const getPrefix = (kat?: string, tip?: string) => {
+        const k = (kat || '').toLowerCase().trim();
+        const t = (tip || '').toLowerCase().trim();
+        if (t === 'selfservice' || k.includes('self')) return 'SS';
+        if (t === 'fullservice' || k.includes('drop') || k.includes('full')) return 'DO';
+        if (k.includes('add') || k.includes('tambahan')) return 'ADD';
+        if (k.includes('retail') || k.includes('eceran') || k.includes('makan') || k.includes('minum')) return 'RTL';
+        return 'PRD';
+      };
+
+      for (const item of layananList) {
+        const prefix = getPrefix(item.kategori, item.tipe);
+        prefixCounters[prefix] = (prefixCounters[prefix] || 0) + 1;
+        const newCode = `${prefix}-${String(prefixCounters[prefix]).padStart(3, '0')}`;
+        await runBackend('updateLayanan', item.id, {
+          ...item,
+          kode: newCode
+        });
+      }
       clearCache('getLayananList');
       clearCache('getLayananListAll');
-      await showAlert(res.message || 'Kode produk berhasil disesuaikan menurut kategori & tipe!', 'success');
-      loadProduk();
-    } catch (err) {
+      await showAlert('Kode produk berhasil disesuaikan menurut kategori & tipe!', 'success');
+      await loadProduk();
+    } catch (err: any) {
       console.error(err);
-      await showAlert('Gagal menyesuaikan kode produk.', 'error');
+      await showAlert('Gagal menyesuaikan kode produk: ' + (err?.message || String(err)), 'error');
     } finally {
       setLoading(false);
     }

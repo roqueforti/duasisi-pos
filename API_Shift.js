@@ -182,7 +182,7 @@ function ensurePayrollHeaders_(sh) {
     return;
   }
 }
-const SHEET_PAYROLL = "MasterPayroll";
+
 const SHEET_JADWAL = "MasterJadwal";
 const SHEET_CUTI = "MasterCuti";
 const SHEET_HARI_LIBUR = "MasterHariLibur";
