@@ -26,7 +26,14 @@ import {
   Info,
   SlidersHorizontal,
   Check,
-  AlertCircle
+  AlertCircle,
+  Shirt,
+  Droplets,
+  Flame,
+  Scissors,
+  Tag,
+  Clock,
+  Truck
 } from 'lucide-react';
 import { useDialog } from '@/components/DialogProvider';
 
@@ -35,13 +42,48 @@ export interface MasterPipelineStep {
   nama: string;
   needStaff: boolean;
   needMesin: boolean;
+  icon?: string;
 }
 
-const getStepTheme = (nama: string) => {
+export const PIPELINE_ICON_OPTIONS = [
+  { id: 'WashingMachine', label: 'Mesin Cuci (Washer)', icon: WashingMachine },
+  { id: 'Wind', label: 'Pengering (Dryer)', icon: Wind },
+  { id: 'Sparkles', label: 'Setrika Uap', icon: Sparkles },
+  { id: 'Package', label: 'Lipat & Packing', icon: Package },
+  { id: 'CheckCircle2', label: 'Siap Diambil / Selesai', icon: CheckCircle2 },
+  { id: 'Shirt', label: 'Gantung / Pakaian', icon: Shirt },
+  { id: 'Droplets', label: 'Treatment Noda', icon: Droplets },
+  { id: 'Flame', label: 'Pengering Panas', icon: Flame },
+  { id: 'Scissors', label: 'Potong / Vermak', icon: Scissors },
+  { id: 'Tag', label: 'Label & Sortir', icon: Tag },
+  { id: 'Clock', label: 'Antrean / Rendam', icon: Clock },
+  { id: 'Truck', label: 'Antar / Kurir', icon: Truck },
+  { id: 'Workflow', label: 'SOP Khusus', icon: Workflow },
+];
+
+export const getStepIconComponent = (iconName?: string, stepName?: string) => {
+  if (iconName) {
+    const found = PIPELINE_ICON_OPTIONS.find(o => o.id === iconName);
+    if (found) return found.icon;
+  }
+  const n = (stepName || '').toLowerCase();
+  if (n.includes('cuci')) return WashingMachine;
+  if (n.includes('kering')) return Wind;
+  if (n.includes('setrika') || n.includes('gosok')) return Sparkles;
+  if (n.includes('lipat') || n.includes('pack') || n.includes('kemas')) return Package;
+  if (n.includes('siap') || n.includes('ambil') || n.includes('selesai') || n.includes('rak')) return CheckCircle2;
+  if (n.includes('noda') || n.includes('spot')) return Droplets;
+  if (n.includes('antar') || n.includes('kirim')) return Truck;
+  return Workflow;
+};
+
+const getStepTheme = (nama: string, customIcon?: string) => {
   const n = (nama || '').toLowerCase();
+  const IconComponent = getStepIconComponent(customIcon, nama);
+
   if (n.includes('cuci')) {
     return {
-      icon: WashingMachine,
+      icon: IconComponent,
       bg: 'bg-sky-50/70 border-sky-200/80',
       iconBg: 'bg-sky-500 text-white',
       badge: 'bg-sky-100 text-sky-800 border-sky-300',
@@ -51,7 +93,7 @@ const getStepTheme = (nama: string) => {
   }
   if (n.includes('kering')) {
     return {
-      icon: Wind,
+      icon: IconComponent,
       bg: 'bg-amber-50/70 border-amber-200/80',
       iconBg: 'bg-amber-500 text-white',
       badge: 'bg-amber-100 text-amber-800 border-amber-300',
@@ -61,7 +103,7 @@ const getStepTheme = (nama: string) => {
   }
   if (n.includes('setrika') || n.includes('gosok')) {
     return {
-      icon: Sparkles,
+      icon: IconComponent,
       bg: 'bg-purple-50/70 border-purple-200/80',
       iconBg: 'bg-purple-600 text-white',
       badge: 'bg-purple-100 text-purple-800 border-purple-300',
@@ -71,7 +113,7 @@ const getStepTheme = (nama: string) => {
   }
   if (n.includes('lipat') || n.includes('pack') || n.includes('kemas')) {
     return {
-      icon: Package,
+      icon: IconComponent,
       bg: 'bg-teal-50/70 border-teal-200/80',
       iconBg: 'bg-teal-600 text-white',
       badge: 'bg-teal-100 text-teal-800 border-teal-300',
@@ -81,7 +123,7 @@ const getStepTheme = (nama: string) => {
   }
   if (n.includes('siap') || n.includes('ambil') || n.includes('selesai') || n.includes('rak') || n.includes('antar')) {
     return {
-      icon: CheckCircle2,
+      icon: IconComponent,
       bg: 'bg-emerald-50/70 border-emerald-200/80',
       iconBg: 'bg-emerald-600 text-white',
       badge: 'bg-emerald-100 text-emerald-800 border-emerald-300',
@@ -90,7 +132,7 @@ const getStepTheme = (nama: string) => {
     };
   }
   return {
-    icon: Workflow,
+    icon: IconComponent,
     bg: 'bg-slate-50 border-slate-200/90',
     iconBg: 'bg-slate-700 text-white',
     badge: 'bg-slate-100 text-slate-800 border-slate-300',
@@ -107,6 +149,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [namaStep, setNamaStep] = useState('');
+  const [iconStep, setIconStep] = useState<string>('WashingMachine');
   const [needStaff, setNeedStaff] = useState(false);
   const [needMesin, setNeedMesin] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -169,6 +212,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
   const handleOpenAdd = () => {
     setEditingIndex(null);
     setNamaStep('');
+    setIconStep('WashingMachine');
     setNeedStaff(true);
     setNeedMesin(false);
     setShowModal(true);
@@ -176,10 +220,28 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
 
   const handleOpenEdit = (index: number) => {
     setEditingIndex(index);
-    setNamaStep(steps[index].nama);
-    setNeedStaff(steps[index].needStaff);
-    setNeedMesin(steps[index].needMesin);
+    const target = steps[index];
+    setNamaStep(target.nama);
+    setIconStep(target.icon || 'WashingMachine');
+    setNeedStaff(target.needStaff);
+    setNeedMesin(target.needMesin);
     setShowModal(true);
+  };
+
+  const handleStepNameChange = (val: string) => {
+    setNamaStep(val);
+    // Auto-infer icon if not edited manually
+    if (editingIndex === null) {
+      const n = val.toLowerCase();
+      if (n.includes('cuci')) setIconStep('WashingMachine');
+      else if (n.includes('kering')) setIconStep('Wind');
+      else if (n.includes('setrika') || n.includes('gosok')) setIconStep('Sparkles');
+      else if (n.includes('lipat') || n.includes('pack')) setIconStep('Package');
+      else if (n.includes('siap') || n.includes('ambil') || n.includes('selesai')) setIconStep('CheckCircle2');
+      else if (n.includes('gantung') || n.includes('baju')) setIconStep('Shirt');
+      else if (n.includes('noda') || n.includes('spot')) setIconStep('Droplets');
+      else if (n.includes('antar') || n.includes('kurir')) setIconStep('Truck');
+    }
   };
 
   const handleSaveModal = async () => {
@@ -192,7 +254,8 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
       step: 0,
       nama: namaStep.trim(),
       needStaff,
-      needMesin
+      needMesin,
+      icon: iconStep
     };
 
     const newSteps = [...steps];
@@ -222,7 +285,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
   const needStaffCount = steps.filter(s => s.needStaff).length;
   const autoStepCount = steps.filter(s => !s.needMesin && !s.needStaff).length;
 
-  const modalPreviewTheme = getStepTheme(namaStep || 'Pratinjau');
+  const modalPreviewTheme = getStepTheme(namaStep || 'Pratinjau', iconStep);
 
   return (
     <div className="p-4 lg:p-6 space-y-6 max-w-7xl mx-auto w-full text-slate-700">
@@ -241,7 +304,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Standar alur kerja pengerjaan pesanan Drop Off dari awal proses pencucian hingga siap diambil pelanggan.
+              Standar alur kerja dan ikon tahapan pesanan Drop Off dari awal pencucian hingga siap diambil pelanggan.
             </p>
           </div>
         </div>
@@ -325,7 +388,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
 
           <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-1 no-scrollbar flex-wrap sm:flex-nowrap">
             {steps.map((s, idx) => {
-              const theme = getStepTheme(s.nama);
+              const theme = getStepTheme(s.nama, s.icon);
               const StepIcon = theme.icon;
               const kodeLangkah = `LKG-${String(idx + 1).padStart(2, '0')}`;
 
@@ -404,7 +467,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {steps.map((step, index) => {
-                const theme = getStepTheme(step.nama);
+                const theme = getStepTheme(step.nama, step.icon);
                 const StepIcon = theme.icon;
                 const kodeLangkah = `LKG-${String(index + 1).padStart(2, '0')}`;
 
@@ -538,8 +601,8 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
                 {editingIndex !== null ? 'Edit Master Langkah' : 'Tambah Master Langkah Baru'}
               </h3>
             </div>
-            <p className="text-xs text-slate-400 mb-5 border-b border-slate-100 pb-3">
-              Tentukan nama tahapan dan syarat pengerjaan (staf/mesin) dalam alur pipeline.
+            <p className="text-xs text-slate-400 mb-4 border-b border-slate-100 pb-3">
+              Tentukan nama tahapan, ikon visual, dan syarat pengerjaan (staf/mesin).
             </p>
             
             <div className="space-y-4 text-xs font-semibold">
@@ -548,11 +611,37 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
                 <input
                   type="text"
                   value={namaStep}
-                  onChange={(e) => setNamaStep(e.target.value)}
+                  onChange={(e) => handleStepNameChange(e.target.value)}
                   placeholder="Contoh: Dicuci, Dikeringkan, Disetrika, Dilipat..."
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white transition"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Nama langkah akan muncul pada status tracking nota pelanggan & pipeline dapur.</p>
+              </div>
+
+              {/* Icon Selector Grid */}
+              <div>
+                <label className="block text-slate-700 font-bold mb-1.5">Pilih Ikon Langkah</label>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-36 overflow-y-auto p-1 bg-slate-50 rounded-2xl border border-slate-200/90">
+                  {PIPELINE_ICON_OPTIONS.map((opt) => {
+                    const OptIcon = opt.icon;
+                    const isSelected = iconStep === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setIconStep(opt.id)}
+                        className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition ${
+                          isSelected
+                            ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
+                            : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-100'
+                        }`}
+                        title={opt.label}
+                      >
+                        <OptIcon className="w-4 h-4" />
+                        <span className="text-[8px] truncate w-full text-center font-bold">{opt.id}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Live Preview of the Step */}
@@ -585,7 +674,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
                   <div className="flex flex-col">
                     <span className="text-slate-800 font-bold group-hover:text-[#1E4648] transition">Wajib Isi Petugas (PIC Staff)</span>
                     <span className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                      Kasir/operator wajib memilih nama staf yang mengerjakan saat update status tahap ini (digunakan juga untuk kalkulasi insentif payroll).
+                      Kasir/operator wajib memilih nama staf saat update status tahap ini.
                     </span>
                   </div>
                 </label>
@@ -602,7 +691,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
                   <div className="flex flex-col">
                     <span className="text-slate-800 font-bold group-hover:text-[#1E4648] transition">Wajib Pilih Mesin Laundry</span>
                     <span className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                      Sistem akan mewajibkan kasir memilih mesin cuci (Washer) atau mesin pengering (Dryer) yang sedang berstatus Kosong.
+                      Wajib memilih mesin cuci (Washer) atau mesin pengering (Dryer) yang kosong.
                     </span>
                   </div>
                 </label>

@@ -11,6 +11,10 @@ import {
   RefreshCw,
   Search,
   WashingMachine,
+  Wind,
+  Sparkles,
+  Package,
+  Tag,
   X,
 } from 'lucide-react';
 import { Mesin, Transaksi } from '@/lib/types';
@@ -20,6 +24,16 @@ import { clearCache } from '@/lib/cache';
 const workflow = ['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika', 'Siap Diambil', 'Selesai'] as const;
 type DropoffStatus = (typeof workflow)[number];
 type Priority = 'Semua' | 'Kilat' | 'Express' | 'Reguler';
+
+function getWorkflowIcon(status: string) {
+  const s = (status || '').toLowerCase();
+  if (s.includes('cuci')) return WashingMachine;
+  if (s.includes('kering')) return Wind;
+  if (s.includes('setrika') || s.includes('gosok')) return Sparkles;
+  if (s.includes('lipat') || s.includes('pack')) return Package;
+  if (s.includes('siap') || s.includes('ambil') || s.includes('selesai')) return CheckCircle2;
+  return Tag;
+}
 
 interface StaffItem {
   id: string;
@@ -162,15 +176,21 @@ export default function PesananView() {
           <p className="line-clamp-2">{order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')}</p>
         </div>
 
-        {next && (
-          <button
-            onClick={() => openProgress(order)}
-            className="mt-3 flex w-full items-center justify-between rounded-lg bg-[#1E4648] px-3 py-2 text-[11px] font-bold text-white transition hover:bg-[#163536]"
-          >
-            <span>Lanjut ke {next}</span>
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        )}
+        {next && (() => {
+          const NextIcon = getWorkflowIcon(next);
+          return (
+            <button
+              onClick={() => openProgress(order)}
+              className="mt-3 flex w-full items-center justify-between rounded-xl bg-[#1E4648] px-3 py-2 text-[11px] font-bold text-white transition hover:bg-[#163536] shadow-2xs"
+            >
+              <div className="flex items-center gap-1.5">
+                <NextIcon className="w-3.5 h-3.5 text-teal-200" />
+                <span>Lanjut ke {next}</span>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          );
+        })()}
       </article>
     );
   };
@@ -215,11 +235,15 @@ export default function PesananView() {
         <div className="flex snap-x gap-3 overflow-x-auto pb-3">
           {workflow.slice(0, -1).map((status) => {
             const statusOrders = filteredOrders.filter((order) => order.status === status);
+            const StatusIcon = getWorkflowIcon(status);
             return (
-              <section key={status} className="w-[86vw] max-w-[320px] shrink-0 snap-start rounded-xl bg-slate-100/80 p-2.5 sm:w-[300px]">
-                <div className="mb-2 flex items-center justify-between px-1">
-                  <h3 className="text-xs font-extrabold text-slate-700">{status}</h3>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-slate-500">{statusOrders.length}</span>
+              <section key={status} className="w-[86vw] max-w-[320px] shrink-0 snap-start rounded-2xl bg-slate-100/80 p-3 sm:w-[300px] border border-slate-200/80 shadow-2xs">
+                <div className="mb-2.5 flex items-center justify-between px-1">
+                  <div className="flex items-center gap-1.5">
+                    <StatusIcon className="w-4 h-4 text-[#1E4648]" />
+                    <h3 className="text-xs font-extrabold text-slate-700">{status}</h3>
+                  </div>
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-slate-500 shadow-2xs">{statusOrders.length}</span>
                 </div>
                 <div className="space-y-2.5">{statusOrders.length ? statusOrders.map(renderCard) : <div className="rounded-lg border border-dashed border-slate-300 bg-white/70 p-5 text-center text-[11px] text-slate-400">Antrean kosong</div>}</div>
               </section>

@@ -11,15 +11,28 @@
 
 const SHEET_PIPELINE_CONFIG = "Config Pipeline";
 
+function getStepDefaultIcon_(nama) {
+  const n = (nama || "").toLowerCase();
+  if (n.includes("cuci")) return "WashingMachine";
+  if (n.includes("kering")) return "Wind";
+  if (n.includes("setrika") || n.includes("gosok")) return "Sparkles";
+  if (n.includes("lipat") || n.includes("pack") || n.includes("kemas")) return "Package";
+  if (n.includes("siap") || n.includes("ambil") || n.includes("selesai") || n.includes("rak")) return "CheckCircle2";
+  if (n.includes("noda") || n.includes("spot")) return "Droplets";
+  if (n.includes("antar") || n.includes("kirim")) return "Truck";
+  return "Workflow";
+}
+
 function getPipelineConfigData() {
   let sh = SS.getSheetByName(SHEET_PIPELINE_CONFIG);
   if (!sh) {
     sh = SS.insertSheet(SHEET_PIPELINE_CONFIG);
-    sh.appendRow(["Step", "Nama Step", "Need Staff", "Need Mesin"]);
-    sh.appendRow([1, "Dicuci", "FALSE", "TRUE"]);
-    sh.appendRow([2, "Dikeringkan", "FALSE", "TRUE"]);
-    sh.appendRow([3, "Disetrika", "TRUE", "FALSE"]);
-    sh.appendRow([4, "Siap Diambil", "FALSE", "FALSE"]);
+    sh.appendRow(["Step", "Nama Step", "Need Staff", "Need Mesin", "Icon"]);
+    sh.appendRow([1, "Dicuci", "FALSE", "TRUE", "WashingMachine"]);
+    sh.appendRow([2, "Dikeringkan", "FALSE", "TRUE", "Wind"]);
+    sh.appendRow([3, "Disetrika", "TRUE", "FALSE", "Sparkles"]);
+    sh.appendRow([4, "Dilipat", "TRUE", "FALSE", "Package"]);
+    sh.appendRow([5, "Siap Diambil", "FALSE", "FALSE", "CheckCircle2"]);
   }
   const data = sh.getDataRange().getValues();
   if (data.length <= 1) return [];
@@ -28,7 +41,8 @@ function getPipelineConfigData() {
     step: Number(r[0]) || 0,
     nama: r[1] || "",
     needStaff: r[2] === true || r[2] === "TRUE" || r[2] === "true",
-    needMesin: r[3] === true || r[3] === "TRUE" || r[3] === "true"
+    needMesin: r[3] === true || r[3] === "TRUE" || r[3] === "true",
+    icon: r[4] || getStepDefaultIcon_(r[1])
   })).sort((a, b) => a.step - b.step);
 }
 
@@ -38,10 +52,11 @@ function savePipelineConfigData(steps) {
     sh = SS.insertSheet(SHEET_PIPELINE_CONFIG);
   }
   sh.clear();
-  sh.appendRow(["Step", "Nama Step", "Need Staff", "Need Mesin"]);
+  sh.appendRow(["Step", "Nama Step", "Need Staff", "Need Mesin", "Icon"]);
   if (Array.isArray(steps)) {
     steps.forEach((s, idx) => {
-      sh.appendRow([idx + 1, s.nama, s.needStaff ? "TRUE" : "FALSE", s.needMesin ? "TRUE" : "FALSE"]);
+      const icon = s.icon || getStepDefaultIcon_(s.nama);
+      sh.appendRow([idx + 1, s.nama, s.needStaff ? "TRUE" : "FALSE", s.needMesin ? "TRUE" : "FALSE", icon]);
     });
   }
   return { success: true, message: "Master pipeline berhasil disimpan." };

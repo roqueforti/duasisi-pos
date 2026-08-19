@@ -9,6 +9,7 @@ import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import SatuanInput from '@/components/SatuanInput';
 import { getIconComponent, KategoriItem } from '@/lib/categoryUtils';
+import { getStepIconComponent } from '@/components/LangkahView';
 
 interface LayananItemBackend {
   id: string;
@@ -37,6 +38,7 @@ export interface CustomPipelineStep {
   nama: string;
   needStaff: boolean;
   needMesin: boolean;
+  icon?: string;
 }
 
 interface PromoVoucher {
@@ -865,74 +867,84 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                     {customPipelineSteps.length === 0 ? (
                       <p className="text-xs text-slate-500 italic">Belum ada langkah pipeline.</p>
                     ) : (
-                      customPipelineSteps.map((step, idx) => (
-                        <div key={idx} className="flex flex-col gap-2 p-2.5 bg-white border border-slate-200 rounded-md shadow-sm">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-700">Langkah {idx + 1}: {step.nama}</span>
-                            <div className="flex gap-1">
-                              <button onClick={() => {
-                                if (idx > 0) {
+                      customPipelineSteps.map((step, idx) => {
+                        const StepIcon = getStepIconComponent(step.icon, step.nama);
+                        return (
+                          <div key={idx} className="flex flex-col gap-2 p-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
+                            <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg bg-[#1E4648] text-white flex items-center justify-center">
+                                  <StepIcon className="w-3.5 h-3.5" />
+                                </div>
+                                <span className="text-xs font-bold text-slate-800">Langkah {idx + 1}: {step.nama}</span>
+                              </div>
+                              <div className="flex gap-1">
+                                <button onClick={() => {
+                                  if (idx > 0) {
+                                    const newArr = [...customPipelineSteps];
+                                    [newArr[idx - 1], newArr[idx]] = [newArr[idx], newArr[idx - 1]];
+                                    setCustomPipelineSteps(newArr);
+                                  }
+                                }} className="p-1 text-slate-400 hover:text-slate-600 rounded" title="Naik"><ArrowUp className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => {
+                                  if (idx < customPipelineSteps.length - 1) {
+                                    const newArr = [...customPipelineSteps];
+                                    [newArr[idx + 1], newArr[idx]] = [newArr[idx], newArr[idx + 1]];
+                                    setCustomPipelineSteps(newArr);
+                                  }
+                                }} className="p-1 text-slate-400 hover:text-slate-600 rounded" title="Turun"><ArrowDown className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => {
+                                  setCustomPipelineSteps(customPipelineSteps.filter((_, i) => i !== idx));
+                                }} className="p-1 text-rose-400 hover:text-rose-600 rounded" title="Hapus"><Trash2 className="w-3.5 h-3.5" /></button>
+                              </div>
+                            </div>
+                            <div className="flex gap-4 text-[10px] text-slate-500 font-semibold pl-8">
+                              <label className="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" checked={step.needStaff} onChange={e => {
                                   const newArr = [...customPipelineSteps];
-                                  [newArr[idx - 1], newArr[idx]] = [newArr[idx], newArr[idx - 1]];
+                                  newArr[idx].needStaff = e.target.checked;
                                   setCustomPipelineSteps(newArr);
-                                }
-                              }} className="p-1 text-slate-400 hover:text-slate-600" title="Naik"><ArrowUp className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => {
-                                if (idx < customPipelineSteps.length - 1) {
+                                }} className="rounded border-slate-300 text-[#1E4648] focus:ring-[#1E4648]" />
+                                Wajib Input Pegawai
+                              </label>
+                              <label className="flex items-center gap-1.5 cursor-pointer">
+                                <input type="checkbox" checked={step.needMesin} onChange={e => {
                                   const newArr = [...customPipelineSteps];
-                                  [newArr[idx + 1], newArr[idx]] = [newArr[idx], newArr[idx + 1]];
+                                  newArr[idx].needMesin = e.target.checked;
                                   setCustomPipelineSteps(newArr);
-                                }
-                              }} className="p-1 text-slate-400 hover:text-slate-600" title="Turun"><ArrowDown className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => {
-                                setCustomPipelineSteps(customPipelineSteps.filter((_, i) => i !== idx));
-                              }} className="p-1 text-rose-400 hover:text-rose-600" title="Hapus"><Trash2 className="w-3.5 h-3.5" /></button>
+                                }} className="rounded border-slate-300 text-[#1E4648] focus:ring-[#1E4648]" />
+                                Wajib Pilih Mesin
+                              </label>
                             </div>
                           </div>
-                          <div className="flex gap-4 text-[10px] text-slate-500 font-semibold">
-                            <label className="flex items-center gap-1.5 cursor-pointer">
-                              <input type="checkbox" checked={step.needStaff} onChange={e => {
-                                const newArr = [...customPipelineSteps];
-                                newArr[idx].needStaff = e.target.checked;
-                                setCustomPipelineSteps(newArr);
-                              }} className="rounded border-slate-300 text-[#1E4648] focus:ring-[#1E4648]" />
-                              Wajib Input Pegawai
-                            </label>
-                            <label className="flex items-center gap-1.5 cursor-pointer">
-                              <input type="checkbox" checked={step.needMesin} onChange={e => {
-                                const newArr = [...customPipelineSteps];
-                                newArr[idx].needMesin = e.target.checked;
-                                setCustomPipelineSteps(newArr);
-                              }} className="rounded border-slate-300 text-[#1E4648] focus:ring-[#1E4648]" />
-                              Wajib Pilih Mesin
-                            </label>
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                     <div className="mt-3 pt-3 border-t border-slate-200">
                       <p className="text-[11px] font-bold text-slate-600 mb-2">Pilih dari Master Langkah:</p>
                       <div className="flex flex-wrap gap-2">
                         {masterPipelineSteps.map((mst, i) => {
                           const isSelected = customPipelineSteps.some(c => c.nama === mst.nama);
+                          const MasterIcon = getStepIconComponent(mst.icon, mst.nama);
                           return (
-                            <label key={i} className={`flex items-center gap-1.5 px-2.5 py-1.5 border rounded-md cursor-pointer transition select-none ${isSelected ? 'bg-[#1E4648]/10 border-[#1E4648] text-[#1E4648]' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                            <label key={i} className={`flex items-center gap-1.5 px-2.5 py-1.5 border rounded-xl cursor-pointer transition select-none ${isSelected ? 'bg-[#1E4648]/10 border-[#1E4648] text-[#1E4648]' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                               <input 
                                 type="checkbox" 
                                 className="hidden"
                                 checked={isSelected}
                                 onChange={(e) => {
                                   if (e.target.checked) {
-                                    setCustomPipelineSteps(prev => [...prev, { step: prev.length + 1, nama: mst.nama, needStaff: mst.needStaff, needMesin: mst.needMesin }]);
+                                    setCustomPipelineSteps(prev => [...prev, { step: prev.length + 1, nama: mst.nama, needStaff: mst.needStaff, needMesin: mst.needMesin, icon: mst.icon }]);
                                   } else {
                                     setCustomPipelineSteps(prev => prev.filter(c => c.nama !== mst.nama));
                                   }
                                 }} 
                               />
-                              <div className={`w-3 h-3 rounded-sm border flex items-center justify-center ${isSelected ? 'bg-[#1E4648] border-[#1E4648]' : 'border-slate-300'}`}>
-                                {isSelected && <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                              <div className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center ${isSelected ? 'bg-[#1E4648] border-[#1E4648]' : 'border-slate-300'}`}>
+                                {isSelected && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                               </div>
-                              <span className="text-[11px] font-semibold">{mst.nama}</span>
+                              <MasterIcon className="w-3.5 h-3.5 text-slate-500" />
+                              <span className="text-[11px] font-bold">{mst.nama}</span>
                             </label>
                           );
                         })}
