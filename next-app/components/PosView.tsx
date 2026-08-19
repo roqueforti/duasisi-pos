@@ -46,6 +46,7 @@ import {
   Flame,
   Folder,
   Star,
+  Delete,
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir, AbsensiConfig, UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
@@ -2345,7 +2346,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     </button>
                   </div>
 
-                  {/* Numpad Grid - Compact & Responsive */}
+                  {/* Numpad Grid - Compact & Complete with 0, 00, 000 */}
                   <div className="grid grid-cols-3 gap-1.5 mb-1.5">
                     {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((num) => (
                       <button
@@ -2354,31 +2355,46 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         onClick={() =>
                           setUangBayarInput((prev) => (prev === '0' || !prev ? num.toString() : prev + num))
                         }
-                        className="py-2 sm:py-2.5 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-lg shadow-2xs active:scale-95 transition font-mono"
+                        className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-lg shadow-2xs active:scale-95 transition font-mono"
                       >
                         {num}
                       </button>
                     ))}
                     <button
                       type="button"
-                      onClick={() => setUangBayarInput('0')}
-                      className="py-2 sm:py-2.5 bg-white border-2 border-slate-200 hover:bg-slate-100 text-rose-600 font-bold rounded-xl text-base shadow-2xs active:scale-95 transition"
-                    >
-                      C
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '0'))}
-                      className="py-2 sm:py-2.5 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-lg shadow-2xs active:scale-95 transition font-mono"
+                      className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-lg shadow-2xs active:scale-95 transition font-mono"
                     >
                       0
                     </button>
                     <button
                       type="button"
-                      onClick={() => setUangBayarInput((prev) => prev.slice(0, -1) || '0')}
-                      className="py-2 sm:py-2.5 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-base shadow-2xs active:scale-95 transition"
+                      onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '00'))}
+                      className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-base shadow-2xs active:scale-95 transition font-mono"
                     >
-                      ⌫
+                      00
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '000'))}
+                      className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-base shadow-2xs active:scale-95 transition font-mono"
+                    >
+                      000
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput('0')}
+                      className="py-1.5 sm:py-2 bg-rose-50 border-2 border-rose-200 hover:bg-rose-100 text-rose-600 font-bold rounded-xl text-sm shadow-2xs active:scale-95 transition"
+                    >
+                      C
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput((prev) => prev.slice(0, -1) || '0')}
+                      className="col-span-2 py-1.5 sm:py-2 bg-slate-100 border-2 border-slate-200 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs shadow-2xs active:scale-95 transition flex items-center justify-center gap-1.5"
+                    >
+                      <Delete className="w-4 h-4" />
+                      <span>Hapus</span>
                     </button>
                   </div>
 
