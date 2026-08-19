@@ -641,15 +641,38 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         Rp {(item?.harga || 0).toLocaleString('id-ID')}
                       </td>
                       <td className="py-1.5 px-3 whitespace-nowrap">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.aktif === 'Y' ? 'bg-[#B5C9C9]/20 text-[#1E4648]' : 'bg-slate-100 text-slate-500'}`}>
-                          {item.aktif === 'Y' ? 'Aktif' : 'Non-Aktif'}
-                        </span>
+                        {currentRole === 'MANAGER' ? (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')}
+                            title={item.aktif === 'Y' ? 'Klik untuk Non-Aktifkan' : 'Klik untuk Aktifkan'}
+                            className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
+                          >
+                            <div
+                              className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 ease-in-out ${
+                                item.aktif === 'Y' ? 'bg-[#1E4648]' : 'bg-slate-300 group-hover:bg-slate-400'
+                              }`}
+                            >
+                              <div
+                                className={`bg-white w-3 h-3 rounded-full shadow-xs transform transition-transform duration-200 ease-in-out ${
+                                  item.aktif === 'Y' ? 'translate-x-3' : 'translate-x-0'
+                                }`}
+                              />
+                            </div>
+                            <span className={`text-[10px] font-bold ${item.aktif === 'Y' ? 'text-[#1E4648]' : 'text-slate-400'}`}>
+                              {item.aktif === 'Y' ? 'Aktif' : 'Off'}
+                            </span>
+                          </button>
+                        ) : (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.aktif === 'Y' ? 'bg-[#B5C9C9]/20 text-[#1E4648]' : 'bg-slate-100 text-slate-500'}`}>
+                            {item.aktif === 'Y' ? 'Aktif' : 'Non-Aktif'}
+                          </span>
+                        )}
                       </td>
                       <td className="py-1.5 px-3 text-right space-x-1 whitespace-nowrap">
                         {currentRole === 'MANAGER' ? (
                           <>
                             <button onClick={() => handleOpenEdit(item)} title="Edit Produk" className="p-1 rounded text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition"><Edit3 className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')} title="Aktif/Non-Aktif" className="p-1 rounded text-[#FF9500] hover:text-amber-700 hover:bg-amber-50 transition"><RotateCcw className="w-3.5 h-3.5" /></button>
                             <button onClick={() => handleHapusLayanan(item.id)} title="Hapus Produk" className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition"><Trash2 className="w-3.5 h-3.5" /></button>
                           </>
                         ) : (
