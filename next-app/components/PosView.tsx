@@ -723,8 +723,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       setVoucherMsg({ type: 'error', text: 'Masukkan kode voucher terlebih dahulu' });
       return;
     }
+    const isMemberCust = Boolean(customer.isMember || customerMode === 'MEMBER');
+    const custPhone = customer.noHp ? customer.noHp.trim() : '';
+
     try {
-      const res = await runBackend<{ valid: boolean; kode?: string; nilai?: number; message?: string }>('validasiVoucher', code, subtotalCart);
+      const res = await runBackend<{ valid: boolean; kode?: string; nilai?: number; message?: string }>('validasiVoucher', code, subtotalCart, custPhone, isMemberCust);
       if (res.valid && res.nilai !== undefined) {
         setDiskonApplied({ kode: code, nilai: res.nilai });
         setVoucherMsg({ type: 'success', text: `Voucher ${code} terpasang (Diskon - Rp ${(res.nilai || 0).toLocaleString('id-ID')})` });
@@ -733,10 +736,12 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       }
     } catch {
       // Fallback local check
-      if (code === 'HEMAT10' || code === 'DUASISI') {
+      if (code === 'HEMAT10') {
         const pot = Math.round(subtotalCart * 0.1);
         setDiskonApplied({ kode: code, nilai: pot });
         setVoucherMsg({ type: 'success', text: `Voucher ${code} terpasang (Diskon 10% - Rp ${(pot || 0).toLocaleString('id-ID')})` });
+      } else if (code === 'MEMBERVIP' && !isMemberCust) {
+        setVoucherMsg({ type: 'error', text: 'Voucher MEMBERVIP khusus untuk pelanggan Member terdaftar.' });
       } else {
         setVoucherMsg({ type: 'error', text: 'Kode voucher tidak valid' });
       }
@@ -824,6 +829,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         metodeBayar,
         nominalBayar: metodeBayar === 'Tunai' ? bayar : total,
         referensiPembayaran: refNoInput.trim(),
+        voucher: diskonApplied.kode || 'None',
         diskon: diskonApplied.nilai,
         catatan: catatanOrderInput,
         items: cartArray.map((i) => {

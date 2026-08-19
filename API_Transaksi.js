@@ -72,7 +72,7 @@ function simpanTransaksi(data) {
     sh.appendRow([
       noNota, tanggal, data.namaPelanggan || data.pelanggan || "Pelanggan Umum", data.noHp || "",
       total, status, data.estimasiSelesai || data.estimasi || "", petugas, tipe,
-      "None", "", subtotal, diskon, data.metodeBayar || "Tunai", statusPembayaran,
+      data.voucher || data.kodeVoucher || data.kodePromo || "None", "", subtotal, diskon, data.metodeBayar || "Tunai", statusPembayaran,
       nominalBayar, sisaTagihan, data.referensiPembayaran || "", data.catatan || "", data.tingkatLayanan || data.prioritas || "Reguler"
     ]);
 
