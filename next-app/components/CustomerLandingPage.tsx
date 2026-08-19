@@ -415,9 +415,9 @@ export default function CustomerLandingPage() {
           )}
         </div>
 
-        {/* 4. RESULT CARD (Lacak Cucian Stepper / Poin Member) */}
+        {/* 4. RESULT CARD (Lacak Cucian Stepper / Poin Member) - Solid Minimalist Dark Card */}
         {foundTx && (
-          <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-white/[0.05] backdrop-blur-2xl p-5 text-left mb-8 shadow-2xl animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-[#153a3e] bg-[#061517] p-5 text-left mb-8 shadow-2xl animate-fade-in">
             {/* Header info */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
               <div>
@@ -434,7 +434,7 @@ export default function CustomerLandingPage() {
             <div className="py-2 mb-4">
               <div className="text-xs font-semibold text-white/80 mb-3 flex items-center justify-between">
                 <span>Alur Proses Cuci</span>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-teal-950/80 border border-teal-500/40 text-teal-300 font-bold">
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-[#0a272a] border border-teal-500/40 text-teal-300 font-bold">
                   Status: {foundTx.status || 'Diterima'}
                 </span>
               </div>
@@ -449,7 +449,7 @@ export default function CustomerLandingPage() {
                       key={step.key}
                       className={`flex items-center gap-3 p-2 rounded-xl transition ${
                         isCurrent
-                          ? 'bg-white/[0.08] border border-teal-400/40 text-white shadow-inner'
+                          ? 'bg-[#0e3135] border border-teal-400/40 text-white shadow-inner'
                           : isDone
                           ? 'text-white/80'
                           : 'text-white/30'
@@ -483,7 +483,7 @@ export default function CustomerLandingPage() {
             </div>
 
             {/* Summary Details & E-Nota CTA */}
-            <div className="bg-black/30 rounded-xl p-3 border border-white/5 space-y-1.5 text-xs text-white/70 mb-4">
+            <div className="bg-[#030d0f] rounded-xl p-3 border border-white/5 space-y-1.5 text-xs text-white/70 mb-4">
               <div className="flex justify-between">
                 <span>Pelanggan</span>
                 <span className="text-white font-medium">{foundTx.namaPelanggan || 'Pelanggan'}</span>
@@ -512,7 +512,7 @@ export default function CustomerLandingPage() {
         )}
 
         {foundPoin && (
-          <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-white/[0.05] backdrop-blur-2xl p-5 text-left mb-8 shadow-2xl animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-[#153a3e] bg-[#061517] p-5 text-left mb-8 shadow-2xl animate-fade-in">
             {/* Member Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
               <div className="flex items-center gap-2.5">
@@ -524,13 +524,13 @@ export default function CustomerLandingPage() {
                   <span className="text-[10px] font-mono text-white/50">{foundPoin.maskedHp}</span>
                 </div>
               </div>
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-teal-950/80 border border-teal-500/40 text-teal-300">
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#0a272a] border border-teal-500/40 text-teal-300">
                 {foundPoin.statusMember}
               </span>
             </div>
 
             {/* Saldo Poin Display */}
-            <div className="bg-gradient-to-r from-teal-950/70 via-slate-900/60 to-teal-950/70 border border-teal-500/30 rounded-xl p-4 text-center mb-4 shadow-inner">
+            <div className="bg-[#030d0f] border border-teal-500/30 rounded-xl p-4 text-center mb-4 shadow-inner">
               <span className="text-[11px] text-teal-200/80 block font-medium mb-0.5">Total Saldo Poin Anda</span>
               <div className="text-3xl font-black font-mono text-white tracking-tight">
                 {foundPoin.saldoPoin} <span className="text-sm font-bold text-teal-300">Poin</span>
@@ -541,7 +541,7 @@ export default function CustomerLandingPage() {
             </div>
 
             {/* Reward Info */}
-            <div className="bg-black/30 rounded-xl p-3 border border-white/5 space-y-1.5 text-xs text-white/70 mb-4">
+            <div className="bg-[#030d0f] rounded-xl p-3 border border-white/5 space-y-1.5 text-xs text-white/70 mb-4">
               <div className="flex items-center gap-2 text-white/80 font-medium">
                 <Gift className="w-3.5 h-3.5 text-teal-400" />
                 <span>Total Riwayat Cuci: {foundPoin.totalOrder} kali</span>
@@ -558,7 +558,7 @@ export default function CustomerLandingPage() {
                 {foundPoin.activeOrders.map((ord) => (
                   <div
                     key={ord.noNota}
-                    className="p-2.5 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-between text-xs"
+                    className="p-2.5 rounded-xl bg-[#030d0f] border border-white/10 flex items-center justify-between text-xs"
                   >
                     <div>
                       <span className="font-mono font-bold text-white block">{ord.noNota}</span>
@@ -586,21 +586,21 @@ export default function CustomerLandingPage() {
 
         {/* 5. Minimalist Quick Badges & Slogan WFL */}
         <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-white/60 pt-2 mb-12">
-          <div className="px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-sm flex items-center gap-1.5">
+          <div className="px-3.5 py-1.5 rounded-full border border-[#143236] bg-[#061416] flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-teal-300" />
             <span>07.00 - 23.00 WIB</span>
           </div>
-          <div className="px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-sm flex items-center gap-1.5">
+          <div className="px-3.5 py-1.5 rounded-full border border-[#143236] bg-[#061416] flex items-center gap-1.5">
             <Wifi className="w-3.5 h-3.5 text-teal-300" />
             <span>Free WiFi</span>
           </div>
-          <div className="px-3.5 py-1.5 rounded-full border border-teal-500/30 bg-teal-950/60 backdrop-blur-sm flex items-center gap-1.5 text-teal-200">
+          <div className="px-3.5 py-1.5 rounded-full border border-teal-500/40 bg-[#0a272a] flex items-center gap-1.5 text-teal-200">
             <Laptop className="w-3.5 h-3.5 text-teal-300" />
             <span className="font-semibold">Work From Laundry</span>
           </div>
         </div>
 
-        {/* 6. Penjelasan Layanan: Drop Off & Self Service */}
+        {/* 6. Penjelasan Layanan: Drop Off & Self Service (Solid Minimalist Dark Cards) */}
         <div className="w-full text-left mb-16 space-y-4">
           <div className="text-center mb-6">
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Pilihan Layanan Kami</h2>
@@ -609,9 +609,9 @@ export default function CustomerLandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Card 1: Drop Off Service */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 shadow-xl hover:border-teal-500/30 transition">
+            <div className="rounded-2xl border border-[#143236] bg-[#061517] p-6 shadow-xl hover:border-teal-500/40 transition">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-300">
+                <div className="w-10 h-10 rounded-xl bg-[#0a272a] border border-teal-500/30 flex items-center justify-center text-teal-300">
                   <Shirt className="w-5 h-5" />
                 </div>
                 <div>
@@ -639,9 +639,9 @@ export default function CustomerLandingPage() {
             </div>
 
             {/* Card 2: Self Service Coin */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 shadow-xl hover:border-teal-500/30 transition">
+            <div className="rounded-2xl border border-[#143236] bg-[#061517] p-6 shadow-xl hover:border-teal-500/40 transition">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-300">
+                <div className="w-10 h-10 rounded-xl bg-[#0a272a] border border-teal-500/30 flex items-center justify-center text-teal-300">
                   <Coins className="w-5 h-5" />
                 </div>
                 <div>
@@ -670,54 +670,67 @@ export default function CustomerLandingPage() {
           </div>
         </div>
 
-        {/* 7. React Bits DriftWall: 3D Gallery Foto Outlet */}
-        <div className="w-full text-left mb-16">
-          <div className="text-center mb-6">
+        {/* 7. React Bits DriftWall: Full-Width 3D Gallery Foto Outlet (Tanpa Box Frame) */}
+        <div className="w-full text-center mb-8">
+          <div className="mb-4">
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Galeri Suasana Outlet</h2>
             <p className="text-xs text-white/50 mt-1">Fasilitas modern, bersih, dan nyaman untuk mencuci maupun bekerja</p>
           </div>
 
-          <div className="h-[360px] sm:h-[420px] rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-xl overflow-hidden shadow-2xl relative">
+          {/* Full-width seamless floating 3D gallery */}
+          <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-[400px] sm:h-[480px] overflow-hidden">
             <DriftWall
               items={OUTLET_GALLERY}
-              columns={4}
-              tileWidth={190}
-              tileHeight={125}
+              columns={5}
+              tileWidth={210}
+              tileHeight={138}
               gap={16}
               tilt={14}
               turn={-12}
-              speed={36}
-              parallax={0.5}
+              speed={34}
+              parallax={0.6}
               pauseOnHover={true}
               overlayColor="#040e10"
-              dim={0.7}
-              lift={48}
+              dim={0.75}
+              lift={52}
             />
           </div>
         </div>
+      </main>
 
-        {/* 8. Google Maps Embed & Google Review Bintang 5 */}
-        <div className="w-full text-left mb-12">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
-              <div>
-                {/* Google Review Bintang 5 Badge */}
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-200 text-xs font-semibold mb-2.5">
-                  <div className="flex text-amber-400">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
-                    ))}
-                  </div>
-                  <span>5.0 Bintang di Google Maps</span>
+      {/* 8. Full-Width Solid Dark Footer with Embedded Google Maps & Reviews */}
+      <footer className="relative z-20 w-full bg-[#030b0d] border-t border-white/10 pt-12 pb-8 px-4 text-left">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center mb-10">
+            {/* Left Column: Store Details & Rating */}
+            <div className="lg:col-span-5 space-y-4">
+              {/* Google Review Bintang 5 Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0d282b] border border-teal-500/40 text-amber-300 text-xs font-semibold">
+                <div className="flex text-amber-400">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
+                  ))}
                 </div>
-
-                <h2 className="text-xl sm:text-2xl font-bold text-white">Dua SiSi Laundry Malang</h2>
-                <p className="text-xs text-white/70 mt-1 max-w-xl leading-relaxed">
-                  Jl. Pangestu Raya, Kasin, Ampeldento, Kec. Karang Ploso, Kabupaten Malang, Jawa Timur 65152 (Belakang Kampus UMM 3)
-                </p>
+                <span>5.0 Bintang di Google Maps</span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <h2 className="text-2xl font-black text-white tracking-tight">Dua SiSi Laundry Malang</h2>
+              <p className="text-xs text-white/70 leading-relaxed">
+                Jl. Pangestu Raya, Kasin, Ampeldento, Kec. Karang Ploso, Kabupaten Malang, Jawa Timur 65152 (Belakang Kampus UMM 3)
+              </p>
+
+              <div className="space-y-2 text-xs text-white/60 pt-1">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Buka Setiap Hari: <strong>07.00 - 23.00 WIB</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Wifi className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Fasilitas: <strong>Free WiFi & Area Work From Laundry (WFL)</strong></span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
                 <a
                   href="https://maps.google.com/?q=Dua+SiSi+Laundry+Malang"
                   target="_blank"
@@ -739,12 +752,12 @@ export default function CustomerLandingPage() {
               </div>
             </div>
 
-            {/* Google Maps Official Iframe Embed */}
-            <div className="w-full rounded-2xl overflow-hidden border border-white/10 shadow-inner">
+            {/* Right Column: Google Maps Embedded Iframe */}
+            <div className="lg:col-span-7 rounded-2xl overflow-hidden border border-[#143236] bg-[#061416] shadow-2xl">
               <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3951.766582136624!2d112.60813967476743!3d-7.919432992104073!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e78816025fe6e1f%3A0x2b4fdea8a4f0bbcb!2sDua%20Sisi%20Laundry!5e0!3m2!1sid!2sid!4v1787119397656!5m2!1sid!2sid"
                 width="100%"
-                height="320"
+                height="280"
                 style={{ border: 0 }}
                 allowFullScreen={false}
                 loading="lazy"
@@ -753,13 +766,9 @@ export default function CustomerLandingPage() {
               />
             </div>
           </div>
-        </div>
-      </main>
 
-      {/* 9. Minimalist Clean Footer */}
-      <footer className="relative z-20 w-full pb-6 px-4 text-center text-xs text-white/40">
-        <div className="max-w-5xl mx-auto flex items-center justify-center border-t border-white/5 pt-4">
-          <div>
+          {/* Bottom Copyright */}
+          <div className="border-t border-white/5 pt-6 text-center text-xs text-white/40">
             © {new Date().getFullYear()} Dua SiSi Laundry. All rights reserved. • Work From Laundry
           </div>
         </div>
