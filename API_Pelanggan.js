@@ -151,6 +151,10 @@ function getDaftarPelanggan() {
     const totalTx = Number(r[4]) || 0;
     const isMember = String(r[9] || "").toUpperCase() === "MEMBER";
     const statusKategori = isMember ? "Member" : (totalTx > 1 ? "Pelanggan Lama" : "Pelanggan Baru");
+    let tglLahir = "";
+    if (r[10]) {
+      tglLahir = r[10] instanceof Date ? fmtWib(r[10], "yyyy-MM-dd") : String(r[10]);
+    }
 
     return {
       noHp: hp,
@@ -166,7 +170,8 @@ function getDaftarPelanggan() {
       saldoPoin: Number(r[8]) || 0,
       isMember: isMember,
       statusMember: isMember ? "MEMBER" : "UMUM",
-      statusKategori: statusKategori
+      statusKategori: statusKategori,
+      tglLahir: tglLahir
     };
   });
 }
@@ -174,16 +179,24 @@ function getDaftarPelanggan() {
 function daftarMember(data) {
   const hp = normalizePhone(data.noHp || data.hp);
   if (!hp || hp.length < 8) return { success: false, message: "Nomor WhatsApp / HP tidak valid." };
+  const nama = String(data.nama || "").trim();
+  const alamat = String(data.alamat || "").trim();
+  const tglLahir = String(data.tglLahir || data.ttl || "").trim();
+  
+  if (!nama) return { success: false, message: "Nama lengkap member wajib diisi." };
+  if (!alamat) return { success: false, message: "Alamat tempat tinggal wajib diisi untuk pendaftaran Member." };
+  if (!tglLahir) return { success: false, message: "Tanggal Lahir (TTL) wajib diisi untuk pendaftaran Member." };
   
   let shP = SS.getSheetByName(SHEET_PELANGGAN);
   if (!shP) {
     shP = SS.insertSheet(SHEET_PELANGGAN);
-    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member"]);
+    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member", "Tanggal Lahir"]);
   }
 
-  if (shP.getMaxColumns() < 10) {
-    shP.insertColumnsAfter(shP.getMaxColumns(), 10 - shP.getMaxColumns());
+  if (shP.getMaxColumns() < 11) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 11 - shP.getMaxColumns());
     shP.getRange(1, 10).setValue("Status Member");
+    shP.getRange(1, 11).setValue("Tanggal Lahir");
   }
 
   const pData = shP.getDataRange().getValues();
@@ -197,15 +210,18 @@ function daftarMember(data) {
 
   const now = new Date();
   if (foundRow > 0) {
-    if (data.nama) shP.getRange(foundRow, 2).setValue(data.nama.trim());
-    if (data.alamat) shP.getRange(foundRow, 3).setValue(data.alamat.trim());
+    if (nama) shP.getRange(foundRow, 2).setValue(nama);
+    if (alamat) shP.getRange(foundRow, 3).setValue(alamat);
+    if (tglLahir) shP.getRange(foundRow, 11).setValue(tglLahir);
     if (data.catatan) shP.getRange(foundRow, 8).setValue(data.catatan.trim());
     shP.getRange(foundRow, 10).setValue("MEMBER");
+    addAuditLog("Kasir", "Daftar Member", hp, "Upgrade ke Member: " + (nama || pData[foundRow - 1][1]));
   } else {
-    shP.appendRow([hp, data.nama ? data.nama.trim() : "Member Baru", data.alamat || "", now, 0, 0, now, data.catatan || "", 0, "MEMBER"]);
+    shP.appendRow([hp, nama, alamat, now, 0, 0, now, data.catatan || "", 0, "MEMBER", tglLahir]);
+    addAuditLog("Kasir", "Daftar Member", hp, "Pendaftaran Member Baru: " + nama);
   }
 
-  return { success: true, message: `Member ${data.nama || hp} berhasil didaftarkan!` };
+  return { success: true, message: `Member ${nama} berhasil didaftarkan!` };
 }
 
 function toggleStatusMember(noHp, makeMember) {
@@ -215,9 +231,10 @@ function toggleStatusMember(noHp, makeMember) {
   const shP = SS.getSheetByName(SHEET_PELANGGAN);
   if (!shP) return { success: false, message: "Sheet Pelanggan tidak ada." };
 
-  if (shP.getMaxColumns() < 10) {
-    shP.insertColumnsAfter(shP.getMaxColumns(), 10 - shP.getMaxColumns());
+  if (shP.getMaxColumns() < 11) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 11 - shP.getMaxColumns());
     shP.getRange(1, 10).setValue("Status Member");
+    shP.getRange(1, 11).setValue("Tanggal Lahir");
   }
 
   const pData = shP.getDataRange().getValues();
@@ -230,7 +247,7 @@ function toggleStatusMember(noHp, makeMember) {
   return { success: false, message: "Pelanggan tidak ditemukan." };
 }
 
-function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan, statusMember) {
+function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan, statusMember, tglLahir) {
   const shP = SS.getSheetByName(SHEET_PELANGGAN);
   if (!shP) return { success: false, message: "Sheet Pelanggan tidak ada." };
   
@@ -249,9 +266,10 @@ function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan, statusMember) 
 
   if (targetRowIdx === -1) return { success: false, message: "Pelanggan tidak ditemukan." };
 
-  if (shP.getMaxColumns() < 10) {
-    shP.insertColumnsAfter(shP.getMaxColumns(), 10 - shP.getMaxColumns());
+  if (shP.getMaxColumns() < 11) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 11 - shP.getMaxColumns());
     shP.getRange(1, 10).setValue("Status Member");
+    shP.getRange(1, 11).setValue("Tanggal Lahir");
   }
 
   // Update row
@@ -260,6 +278,7 @@ function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan, statusMember) 
   if (alamat !== undefined) shP.getRange(targetRowIdx, 3).setValue(alamat.trim());
   if (catatan !== undefined) shP.getRange(targetRowIdx, 8).setValue(catatan.trim());
   if (statusMember !== undefined) shP.getRange(targetRowIdx, 10).setValue(statusMember ? "MEMBER" : "UMUM");
+  if (tglLahir !== undefined) shP.getRange(targetRowIdx, 11).setValue(tglLahir);
 
   // Also update transaction records if phone changed
   if (cleanOld !== cleanNew) {
@@ -282,11 +301,17 @@ function tambahPelanggan(data) {
   const noHp = String(data.noHp || data.hp || "").trim();
   const nama = String(data.nama || data.namaPelanggan || "").trim();
   const alamat = String(data.alamat || "").trim();
+  const tglLahir = String(data.tglLahir || data.ttl || "").trim();
   const catatan = String(data.catatan || "").trim();
   const isMember = data.isMember === true || data.statusMember === "MEMBER";
 
   if (!noHp) return { success: false, message: "Nomor WhatsApp/HP wajib diisi!" };
   if (!nama) return { success: false, message: "Nama pelanggan wajib diisi!" };
+
+  if (isMember) {
+    if (!alamat) return { success: false, message: "Alamat wajib diisi untuk pendaftaran Member!" };
+    if (!tglLahir) return { success: false, message: "Tanggal Lahir (TTL) wajib diisi untuk pendaftaran Member!" };
+  }
 
   const cleanHp = normalizePhone(noHp);
   if (!cleanHp || cleanHp.length < 8) return { success: false, message: "Nomor HP tidak valid (minimal 8 digit)." };
@@ -294,12 +319,13 @@ function tambahPelanggan(data) {
   let shP = SS.getSheetByName(SHEET_PELANGGAN);
   if (!shP) {
     shP = SS.insertSheet(SHEET_PELANGGAN);
-    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member"]);
+    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member", "Tanggal Lahir"]);
   }
 
-  if (shP.getMaxColumns() < 10) {
-    shP.insertColumnsAfter(shP.getMaxColumns(), 10 - shP.getMaxColumns());
+  if (shP.getMaxColumns() < 11) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 11 - shP.getMaxColumns());
     shP.getRange(1, 10).setValue("Status Member");
+    shP.getRange(1, 11).setValue("Tanggal Lahir");
   }
 
   const pData = shP.getDataRange().getValues();
@@ -320,17 +346,19 @@ function tambahPelanggan(data) {
     "", // terakhir order
     catatan,
     0, // saldo poin
-    isMember ? "MEMBER" : "UMUM"
+    isMember ? "MEMBER" : "UMUM",
+    tglLahir
   ]);
 
   addAuditLog(data.petugas || "Staff", "Tambah Pelanggan", cleanHp, "Pendaftaran manual: " + nama + (isMember ? " (Member)" : " (Umum)"));
   return { 
     success: true, 
-    message: "Pelanggan " + nama + " berhasil ditambahkan!",
+    message: (isMember ? "Member " : "Pelanggan ") + nama + " berhasil ditambahkan!",
     pelanggan: {
       noHp: cleanHp,
       nama: nama,
       alamat: alamat,
+      tglLahir: tglLahir,
       statusMember: isMember ? "MEMBER" : "UMUM"
     }
   };

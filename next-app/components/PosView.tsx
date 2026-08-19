@@ -66,6 +66,7 @@ interface CustomerState {
   nama: string;
   noHp: string;
   alamat?: string;
+  tglLahir?: string;
   memberStatus?: string;
   isMember?: boolean;
   poin?: number;
@@ -89,7 +90,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [customerMode, setCustomerMode] = useState<'UMUM' | 'MEMBER'>('UMUM');
   const [customerSource, setCustomerSource] = useState<'BARU' | 'TERDAFTAR'>('BARU');
   const [showQuickAddMember, setShowQuickAddMember] = useState<boolean>(false);
-  const [newMemberForm, setNewMemberForm] = useState({ nama: '', noHp: '', alamat: '' });
+  const [newMemberForm, setNewMemberForm] = useState({ nama: '', noHp: '', alamat: '', tglLahir: '' });
   const [savingMember, setSavingMember] = useState<boolean>(false);
   const [voucherInput, setVoucherInput] = useState<string>('');
   const [voucherMsg, setVoucherMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -541,13 +542,22 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   }, [cartArray, subtotalCart, promoList, diskonApplied, customerList, customer, layananList, inventoryList, cart]);
 
   // Quick Member Registration Handler
-  const handleDaftarMemberQuick = async (namaVal?: string, hpVal?: string, alamatVal?: string) => {
+  const handleDaftarMemberQuick = async (namaVal?: string, hpVal?: string, alamatVal?: string, tglLahirVal?: string) => {
     const finalNama = (namaVal || newMemberForm.nama || customer.nama).trim();
     const finalHp = (hpVal || newMemberForm.noHp || customer.noHp).trim();
     const finalAlamat = (alamatVal || newMemberForm.alamat || customer.alamat || '').trim();
+    const finalTglLahir = (tglLahirVal || newMemberForm.tglLahir || '').trim();
 
     if (!finalNama || !finalHp) {
       await showAlert('Nama dan No. WhatsApp/HP wajib diisi untuk mendaftarkan member!', 'warning');
+      return;
+    }
+    if (!finalTglLahir) {
+      await showAlert('Tanggal Lahir (TTL) wajib diisi untuk pendaftaran Member!', 'warning');
+      return;
+    }
+    if (!finalAlamat) {
+      await showAlert('Alamat tempat tinggal wajib diisi untuk pendaftaran Member!', 'warning');
       return;
     }
 
@@ -556,7 +566,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       const res = await runBackend<{ success: boolean; message: string }>('daftarMember', {
         nama: finalNama,
         noHp: finalHp,
-        alamat: finalAlamat
+        alamat: finalAlamat,
+        tglLahir: finalTglLahir
       });
 
       if (res && res.success) {
@@ -570,6 +581,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               nama: c.nama,
               noHp: c.noHp,
               alamat: c.alamat,
+              tglLahir: c.tglLahir,
               isMember: isMem,
               memberStatus: isMem ? 'Member' : (totalTx > 1 ? 'Pelanggan Lama' : 'Pelanggan Baru'),
               poin: Number(c.saldoPoin || c.poin || 0),
@@ -582,6 +594,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           nama: finalNama,
           noHp: finalHp,
           alamat: finalAlamat,
+          tglLahir: finalTglLahir,
           isMember: true,
           memberStatus: 'Member',
           poin: 0,
@@ -590,7 +603,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         setCustomerMode('MEMBER');
         setCustomerSource('TERDAFTAR');
         setShowQuickAddMember(false);
-        setNewMemberForm({ nama: '', noHp: '', alamat: '' });
+        setNewMemberForm({ nama: '', noHp: '', alamat: '', tglLahir: '' });
         await showAlert(res.message || `Member ${finalNama} berhasil didaftarkan!`, 'success');
       } else {
         await showAlert(res?.message || 'Gagal mendaftarkan member baru.', 'error');
@@ -2211,7 +2224,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                             setNewMemberForm({
                               nama: customer.nama !== 'Pelanggan Umum' ? customer.nama : '',
                               noHp: customer.noHp,
-                              alamat: customer.alamat || ''
+                              alamat: customer.alamat || '',
+                              tglLahir: ''
                             });
                           }
                         }}
@@ -2267,19 +2281,34 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648]"
                           />
                         </div>
-                        <input
-                          type="text"
-                          placeholder="Alamat Lengkap / Outlet (Opsional)"
-                          value={newMemberForm.alamat}
-                          onChange={(e) => setNewMemberForm({ ...newMemberForm, alamat: e.target.value })}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648]"
-                        />
-                        <div className="flex gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Tanggal Lahir (TTL) *</label>
+                            <input
+                              type="date"
+                              required
+                              value={newMemberForm.tglLahir}
+                              onChange={(e) => setNewMemberForm({ ...newMemberForm, tglLahir: e.target.value })}
+                              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Alamat Lengkap *</label>
+                            <input
+                              type="text"
+                              placeholder="Alamat rumah / outlet *"
+                              value={newMemberForm.alamat}
+                              onChange={(e) => setNewMemberForm({ ...newMemberForm, alamat: e.target.value })}
+                              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648]"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-1">
                           <button
                             type="button"
                             disabled={savingMember}
                             onClick={() => handleDaftarMemberQuick()}
-                            className="flex-1 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-lg font-bold text-xs transition flex items-center justify-center gap-1"
+                            className="flex-1 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-lg font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>{savingMember ? 'Mendaftarkan...' : 'Simpan & Aktifkan Member'}</span>
@@ -2287,7 +2316,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           <button
                             type="button"
                             onClick={() => setShowQuickAddMember(false)}
-                            className="px-3 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs"
+                            className="px-3 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs cursor-pointer"
                           >
                             Batal
                           </button>
@@ -2417,7 +2446,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                             onClick={() => {
                               setCustomerMode('MEMBER');
                               setShowQuickAddMember(true);
-                              setNewMemberForm({ nama: detected.nama || customer.nama, noHp: detected.noHp || customer.noHp, alamat: detected.alamat || '' });
+                              setNewMemberForm({ nama: detected.nama || customer.nama, noHp: detected.noHp || customer.noHp, alamat: detected.alamat || '', tglLahir: (detected as any)?.tglLahir || '' });
                             }}
                             className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-[11px] transition shadow-2xs flex items-center gap-1"
                           >
@@ -2442,7 +2471,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           onClick={() => {
                             setCustomerMode('MEMBER');
                             setShowQuickAddMember(true);
-                            setNewMemberForm({ nama: customer.nama, noHp: customer.noHp, alamat: '' });
+                            setNewMemberForm({ nama: customer.nama, noHp: customer.noHp, alamat: '', tglLahir: '' });
                           }}
                           className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-[11px] transition shadow-2xs flex items-center gap-1"
                         >

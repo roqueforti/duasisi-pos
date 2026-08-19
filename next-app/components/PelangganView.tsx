@@ -35,6 +35,7 @@ export interface PelangganItem {
   maskedHp: string;
   nama: string;
   alamat?: string;
+  tglLahir?: string;
   tglDaftar?: string;
   totalOrder: number;
   totalSpend: number;
@@ -63,6 +64,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [addNama, setAddNama] = useState<string>('');
   const [addNoHp, setAddNoHp] = useState<string>('');
   const [addAlamat, setAddAlamat] = useState<string>('');
+  const [addTglLahir, setAddTglLahir] = useState<string>('');
   const [addCatatan, setAddCatatan] = useState<string>('');
   const [addStatusMember, setAddStatusMember] = useState<boolean>(false);
   const [savingAdd, setSavingAdd] = useState<boolean>(false);
@@ -73,6 +75,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [editNama, setEditNama] = useState<string>('');
   const [editNoHp, setEditNoHp] = useState<string>('');
   const [editAlamat, setEditAlamat] = useState<string>('');
+  const [editTglLahir, setEditTglLahir] = useState<string>('');
   const [editCatatan, setEditCatatan] = useState<string>('');
   const [editStatusMember, setEditStatusMember] = useState<boolean>(false);
   
@@ -105,6 +108,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
     setEditNama(cust.nama);
     setEditNoHp(cust.noHp);
     setEditAlamat(cust.alamat || '');
+    setEditTglLahir(cust.tglLahir || '');
     setEditCatatan(cust.catatan || '');
     setEditStatusMember(cust.isMember || cust.statusMember === 'MEMBER');
     setShowDetailModal(true);
@@ -132,6 +136,11 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
       return;
     }
 
+    if (editStatusMember && (!editAlamat.trim() || !editTglLahir.trim())) {
+      await showAlert('Member wajib mengisi Tanggal Lahir (TTL) dan Alamat!', 'warning');
+      return;
+    }
+
     setSavingEdit(true);
     try {
       const res = await runBackend<{ success: boolean; message: string }>(
@@ -141,7 +150,8 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
         editNama.trim(),
         editAlamat.trim(),
         editCatatan.trim(),
-        editStatusMember
+        editStatusMember,
+        editTglLahir.trim()
       );
 
       if (res && res.success) {
@@ -167,45 +177,52 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
       p.noHp,
       p.nama,
       p.alamat || '',
+      p.tglLahir || '',
       p.totalOrder.toString(),
       p.totalSpend.toString(),
       p.saldoPoin.toString(),
       p.catatan || ''
     ]);
-    downloadCSV('export_pelanggan.csv', toCSV(['No HP', 'Nama', 'Alamat', 'Total Order', 'Total Belanja', 'Saldo Poin', 'Catatan'], rows));
+    downloadCSV('export_pelanggan.csv', toCSV(['No HP', 'Nama', 'Alamat', 'Tanggal Lahir', 'Total Order', 'Total Belanja', 'Saldo Poin', 'Catatan'], rows));
   };
 
   const handleDownloadTemplate = () => {
-    downloadCSV('template_pelanggan_kosong.csv', toCSV(['No HP', 'Nama', 'Alamat (Opsional)'], [['081234567890', 'Budi Santoso', 'Jl. Merdeka No. 1']]));
+    downloadCSV('template_pelanggan_kosong.csv', toCSV(['No HP', 'Nama', 'Alamat (Opsional)', 'Tanggal Lahir (YYYY-MM-DD)'], [['081234567890', 'Budi Santoso', 'Jl. Merdeka No. 1', '1995-08-17']]));
   };
 
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    e.target.value = ''; // reset
 
+    setLoading(true);
     try {
-      setLoading(true);
       const text = await readFileAsText(file);
       const rows = parseCSV(text);
-      if (rows.length === 0) { await showAlert('File CSV kosong atau format salah.', 'warning'); return; }
-
-      const payload = rows.map(r => ({
-        hp: r['No HP'] || r['no hp'] || r['hp'] || '',
-        nama: r['Nama'] || r['nama'] || r['Nama Pelanggan'] || ''
-      })).filter(r => r.hp && r.nama);
-
-      if (payload.length === 0) {
-        await showAlert('Format kolom tidak sesuai. Pastikan ada kolom "No HP" dan "Nama".', 'error');
+      if (rows.length === 0) {
+        await showAlert('File CSV kosong atau format tidak sesuai.', 'warning');
         return;
       }
 
-      const res = await runBackend<{success: boolean, added?: number, updated?: number, msg?: string}>('importPelangganBatch', payload);
+      // Payload mapping
+      const payload = rows.map(r => ({
+        hp: r['no hp'] || r['nohp'] || r['hp'] || r['telepon'] || r['phone'] || '',
+        nama: r['nama'] || r['nama pelanggan'] || r['customer'] || '',
+        alamat: r['alamat'] || r['address'] || '',
+        tglLahir: r['tanggal lahir'] || r['ttl'] || r['tgl lahir'] || ''
+      })).filter(x => x.hp && x.nama);
+
+      if (payload.length === 0) {
+        await showAlert('Tidak ada data valid yang bisa diimport. Pastikan ada kolom "No HP" dan "Nama".', 'error');
+        return;
+      }
+
+      const res = await runBackend<{ success: boolean; added: number; updated: number }>('importPelangganBatch', payload);
       if (res && res.success) {
-        await showAlert(`Import berhasil! ${res.added} pelanggan baru ditambahkan, ${res.updated} data diperbarui.`, 'success');
-        loadDataPelanggan();
+        clearCache('getDaftarPelanggan');
+        await loadDataPelanggan();
+        await showAlert(`Berhasil import pelanggan! (Ditambahkan: ${res.added}, Diperbarui: ${res.updated})`, 'success');
       } else {
-        await showAlert(res?.msg || 'Gagal melakukan import data', 'error');
+        await showAlert('Gagal mengimport pelanggan.', 'error');
       }
     } catch (err) {
       console.error(err);
@@ -221,12 +238,23 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
       await showAlert('Nama dan nomor WhatsApp/HP wajib diisi!', 'warning');
       return;
     }
+    if (addStatusMember) {
+      if (!addTglLahir.trim()) {
+        await showAlert('Tanggal Lahir (TTL) wajib diisi untuk pendaftaran Member!', 'warning');
+        return;
+      }
+      if (!addAlamat.trim()) {
+        await showAlert('Alamat tempat tinggal wajib diisi untuk pendaftaran Member!', 'warning');
+        return;
+      }
+    }
     setSavingAdd(true);
     try {
       const res = await runBackend<{ success: boolean; message: string }>('tambahPelanggan', {
         nama: addNama.trim(),
         noHp: addNoHp.trim(),
-        alamat: addAlamat.trim(),
+        alamat: addStatusMember ? addAlamat.trim() : '',
+        tglLahir: addStatusMember ? addTglLahir.trim() : '',
         catatan: addCatatan.trim(),
         isMember: addStatusMember
       });
@@ -297,6 +325,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
               setAddNama('');
               setAddNoHp('');
               setAddAlamat('');
+              setAddTglLahir('');
               setAddCatatan('');
               setAddStatusMember(false);
               setShowAddModal(true);
@@ -539,7 +568,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                       <td className="py-3 px-4 text-center">
                         <button
                           onClick={() => openDetailModal(item)}
-                          className="px-2.5 py-1 bg-[#1E4648]/10 hover:bg-[#1E4648] text-[#1E4648] hover:text-white rounded-lg text-xs font-bold transition inline-flex items-center gap-1"
+                          className="px-2.5 py-1 bg-[#1E4648]/10 hover:bg-[#1E4648] text-[#1E4648] hover:text-white rounded-lg text-xs font-bold transition inline-flex items-center gap-1 cursor-pointer"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                           <span>Detail</span>
@@ -646,18 +675,48 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                   </div>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Alamat Pelanggan</label>
-                  <input
-                    type="text"
-                    value={editAlamat}
-                    onChange={(e) => setEditAlamat(e.target.value)}
-                    placeholder="Alamat rumah / outlet jemput"
-                    readOnly={currentRole !== 'MANAGER'}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">Diperlukan terutama jika sering memesan layanan Delivery/Jemput Antar.</p>
-                </div>
+                {/* Khusus Member: Tanggal Lahir (TTL) & Alamat */}
+                {editStatusMember && (
+                  <div className="p-3 bg-amber-50/40 border border-amber-200 rounded-xl space-y-3">
+                    <div>
+                      <label className="block font-bold text-amber-950 mb-1">Tanggal Lahir / TTL (Member) *</label>
+                      <input
+                        type="date"
+                        value={editTglLahir}
+                        onChange={(e) => setEditTglLahir(e.target.value)}
+                        readOnly={currentRole !== 'MANAGER'}
+                        className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
+                      />
+                      <p className="text-[10px] text-amber-800/80 mt-1">Digunakan untuk promo reward ulang tahun member.</p>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-amber-950 mb-1">Alamat Tempat Tinggal (Member) *</label>
+                      <input
+                        type="text"
+                        value={editAlamat}
+                        onChange={(e) => setEditAlamat(e.target.value)}
+                        placeholder="Alamat rumah / outlet jemput"
+                        readOnly={currentRole !== 'MANAGER'}
+                        className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
+                      />
+                      <p className="text-[10px] text-amber-800/80 mt-1">Alamat domisili atau titik jemput laundry member.</p>
+                    </div>
+                  </div>
+                )}
+
+                {!editStatusMember && currentRole === 'MANAGER' && (
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Alamat (Opsional)</label>
+                    <input
+                      type="text"
+                      value={editAlamat}
+                      onChange={(e) => setEditAlamat(e.target.value)}
+                      placeholder="Alamat rumah / outlet jemput"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold outline-none focus:border-[#1E4648]"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Catatan Khusus / Preferensi Cuci (Opsional)</label>
@@ -680,109 +739,56 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                   <span className="font-bold text-slate-600">{selectedCust.tglDaftar || '-'}</span>
                 </div>
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
+                  <span className="text-slate-500 block">Status:</span>
+                  <span className="font-bold text-slate-600">{selectedCust.statusKategori || 'Pelanggan'}</span>
+                </div>
+                <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Total Order:</span>
-                  <span className="font-bold text-slate-600">{selectedCust.totalOrder} Transaksi</span>
+                  <span className="font-bold text-slate-600">{selectedCust.totalOrder}x</span>
                 </div>
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Total Belanja:</span>
-                  <span className="font-bold text-[#1E4648]">Rp {(selectedCust?.totalSpend || 0).toLocaleString('id-ID')}</span>
+                  <span className="font-bold text-slate-600">Rp {(selectedCust.totalSpend || 0).toLocaleString('id-ID')}</span>
                 </div>
                 <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-slate-500 block">Saldo Poin:</span>
-                  <span className="font-bold text-[#FF9500]">{selectedCust?.saldoPoin || 0} Poin</span>
-                </div>
-                <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200">
-                  <span className="text-slate-500 block">Terakhir Order:</span>
-                  <span className="font-bold text-slate-600">{selectedCust.terakhirOrder || '-'}</span>
+                  <span className="font-bold text-[#FF9500]">{selectedCust.saldoPoin || 0} Poin</span>
                 </div>
               </div>
 
               {/* Transaction History Section */}
-              <div className="space-y-2">
-                <div className="font-bold text-slate-600 uppercase tracking-wider text-[11px] pb-1 border-b border-slate-100 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <History className="w-3.5 h-3.5 text-[#1E4648]" />
-                    <span>Riwayat Transaksi Pelanggan Ini</span>
-                  </span>
-                  <span className="text-slate-400 font-normal text-[10px]">({historyList.length} Order)</span>
+              <div className="border-t border-slate-200 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-700">
+                    <History className="w-4 h-4 text-[#1E4648]" />
+                    <span>Riwayat Transaksi Pelanggan</span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-semibold">{historyList.length} Transaksi Terdaftar</span>
                 </div>
 
-                <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {loadingHistory ? (
-                    <div className="py-6 text-center text-slate-400 font-medium">Memuat riwayat transaksi...</div>
+                    <div className="p-4 text-center text-slate-400 flex items-center justify-center gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#1E4648]" />
+                      <span>Memuat riwayat transaksi...</span>
+                    </div>
                   ) : historyList.length === 0 ? (
-                    <div className="py-6 text-center text-slate-400 font-medium">Belum ada riwayat transaksi terhitung</div>
+                    <div className="p-4 text-center text-slate-400 bg-slate-50 rounded-lg border border-slate-100">
+                      Belum ada riwayat transaksi untuk pelanggan ini.
+                    </div>
                   ) : (
-                    historyList.map((tx) => (
-                      <div key={tx.noNota} className="p-3 bg-white border border-slate-200 rounded-lg space-y-1 text-[11px]">
-                        <div className="flex justify-between items-center font-bold text-slate-700">
-                          <span className="font-mono text-[#1E4648]">{tx.noNota}</span>
-                          <div className="flex flex-col items-end">
-                            <span>Rp {(tx?.total || 0).toLocaleString('id-ID')}</span>
-                            <span className="text-[#FF9500] text-[9px]">+ {Math.floor((tx?.total || 0) / poinRate)} Poin</span>
-                          </div>
+                    historyList.map((tx, idx) => (
+                      <div key={idx} className="p-2.5 bg-slate-50 hover:bg-slate-100/80 rounded-lg border border-slate-200/60 transition flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-bold text-slate-800">{tx.noNota}</span>
+                          <span className="font-black text-slate-900">Rp {((tx as any).totalBayar || tx.total || 0).toLocaleString('id-ID')}</span>
                         </div>
-                        <div className="flex justify-between items-center text-slate-500 text-[10px]">
-                          <span>{tx.tanggal}</span>
-                          <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${
-                            tx.status === 'Selesai' ? 'bg-[#B5C9C9]/20 text-[#1E4648]' : 'bg-[#FF9500]/10 text-[#FF9500]'
-                          }`}>
-                            {tx.status}
+                        <div className="flex items-center justify-between text-slate-500 text-[10px]">
+                          <span>{(tx as any).waktuTransaksi || tx.tanggal}</span>
+                          <span className={`px-1.5 py-0.2 rounded font-semibold ${tx.tipe === 'FullService' ? 'bg-[#B5C9C9]/30 text-[#1E4648]' : 'bg-slate-200 text-slate-700'}`}>
+                            {tx.tipe === 'FullService' ? 'Drop Off' : 'Self Service'}
                           </span>
                         </div>
-                        {tx.items && tx.items.length > 0 && (
-                          <div className="text-[10px] text-slate-600 pt-1 border-t border-slate-100 flex flex-col gap-1">
-                            {tx.items.map((it, i) => (
-                              <div key={i} className="flex justify-between items-center bg-slate-50 px-1.5 py-0.5 rounded">
-                                <span>{it.layanan} × {it.qty}</span>
-                                <span className="font-semibold text-slate-500">Rp {(it.subtotal || 0).toLocaleString('id-ID')}</span>
-                              </div>
-                            ))}
-                            
-                            <div className="mt-1 pt-1 border-t border-slate-100 border-dashed space-y-0.5 text-slate-500">
-                              <div className="flex justify-between">
-                                <span>Subtotal</span>
-                                <span>Rp {(tx.subtotal || 0).toLocaleString('id-ID')}</span>
-                              </div>
-                              {(tx.diskon || 0) > 0 && (
-                                <div className="flex justify-between text-rose-500">
-                                  <span>Diskon</span>
-                                  <span>- Rp {(tx.diskon || 0).toLocaleString('id-ID')}</span>
-                                </div>
-                              )}
-                              <div className="flex justify-between font-bold text-slate-700">
-                                <span>Total Tagihan</span>
-                                <span>Rp {(tx.total || 0).toLocaleString('id-ID')}</span>
-                              </div>
-                            </div>
-                            
-                            <div className="mt-1 pt-1 border-t border-slate-100 border-dashed space-y-0.5">
-                              <div className="flex justify-between">
-                                <span>Metode Bayar</span>
-                                <span className="font-semibold">{tx.metodeBayar || 'Tunai'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Status Bayar</span>
-                                <span className={`font-bold ${tx.statusPembayaran === 'Lunas' ? 'text-[#1E4648]' : 'text-[#FF9500]'}`}>{tx.statusPembayaran || 'Lunas'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Kasir / Petugas</span>
-                                <span>{tx.petugas || '-'}</span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        {tx.tipe === 'FullService' && tx.pipeline && tx.pipeline.length > 0 && (
-                          <div className="pt-1 mt-1 border-t border-slate-100 flex flex-col gap-1 text-[9px]">
-                            <span className="font-bold text-slate-500 uppercase tracking-wider">Log Produksi Dropoff:</span>
-                            {tx.pipeline.map((p, i) => (
-                              <div key={i} className="flex justify-between text-slate-500">
-                                <span>- {p.namaStep} {p.status === 'Selesai' ? '✓' : ''}</span>
-                                <span className="font-semibold">{p.assignedStaff || p.mesinId || '-'}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     ))
                   )}
@@ -795,7 +801,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
               <button
                 type="button"
                 onClick={() => setShowDetailModal(false)}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs transition"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs transition cursor-pointer"
               >
                 {currentRole === 'MANAGER' ? 'Batal' : 'Tutup'}
               </button>
@@ -804,7 +810,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                   type="button"
                   onClick={handleSaveCustomerEdit}
                   disabled={savingEdit}
-                  className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-md transition"
+                  className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>{savingEdit ? 'Menyimpan...' : 'Simpan Perubahan Data Pelanggan'}</span>
@@ -826,14 +832,18 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                   <UserPlus className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm sm:text-base text-slate-800">Tambah Pelanggan Baru</h3>
-                  <p className="text-[11px] text-slate-500">Daftarkan pelanggan manual ke database & keanggotaan</p>
+                  <h3 className="font-extrabold text-sm sm:text-base text-slate-800">
+                    Tambah {addStatusMember ? 'Member Resmi Baru' : 'Pelanggan Umum Baru'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {addStatusMember ? 'Pendaftaran member lengkap dengan TTL & Alamat' : 'Pendaftaran cepat pelanggan umum (Nama & No. HP)'}
+                  </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition"
+                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -843,14 +853,14 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
             <form onSubmit={handleTambahPelanggan} className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  Nama Lengkap Pelanggan <span className="text-rose-500">*</span>
+                  Nama Lengkap {addStatusMember ? 'Member' : 'Pelanggan'} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={addNama}
                   onChange={(e) => setAddNama(e.target.value)}
-                  placeholder="Contoh: Budi Santoso"
+                  placeholder={addStatusMember ? 'Contoh: Budi Santoso (Member)' : 'Contoh: Budi Santoso'}
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
                 />
               </div>
@@ -867,20 +877,20 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                   placeholder="Contoh: 081234567890"
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-mono font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Format: 08xxxxxxxx (minimal 8 digit). Digunakan untuk kirim resi E-Struk via WhatsApp.</p>
+                <p className="text-[10px] text-slate-400 mt-1">Format: 08xxxxxxxx (minimal 8 digit). Digunakan untuk resi E-Struk & notifikasi WhatsApp.</p>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Status Keanggotaan Member</label>
+                <label className="block font-bold text-slate-700 mb-1">Tipe Pelanggan</label>
                 <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-base">⭐</span>
+                    <span className="text-base">{addStatusMember ? '⭐' : '👤'}</span>
                     <div>
                       <div className="font-bold text-xs text-slate-800">
                         {addStatusMember ? 'Daftarkan sebagai Member Resmi' : 'Pelanggan Reguler / Umum'}
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        {addStatusMember ? 'Mendapat benefit loyalitas dan promo member' : 'Pelanggan umum tanpa kartu member'}
+                        {addStatusMember ? 'Wajib mengisi TTL & Alamat untuk benefit loyalitas' : 'Cukup Nama & No. WhatsApp'}
                       </div>
                     </div>
                   </div>
@@ -900,27 +910,54 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Alamat (Opsional)</label>
-                <input
-                  type="text"
-                  value={addAlamat}
-                  onChange={(e) => setAddAlamat(e.target.value)}
-                  placeholder="Alamat rumah / outlet jemput"
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
-                />
-              </div>
+              {/* Khusus Member: Tanggal Lahir (TTL) & Alamat Wajib */}
+              {addStatusMember ? (
+                <div className="space-y-3 pt-2 border-t border-amber-200 bg-amber-50/40 p-3 rounded-xl border">
+                  <div>
+                    <label className="block font-bold text-amber-950 mb-1">
+                      Tanggal Lahir (TTL) Member <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={addTglLahir}
+                      onChange={(e) => setAddTglLahir(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg font-semibold text-slate-800 outline-none focus:border-[#1E4648]"
+                    />
+                    <p className="text-[10px] text-amber-800/80 mt-1">Digunakan untuk reward promo & diskon hari ulang tahun member.</p>
+                  </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
-                <textarea
-                  rows={2}
-                  value={addCatatan}
-                  onChange={(e) => setAddCatatan(e.target.value)}
-                  placeholder="Catatan khusus, preferensi pewangi, alergi kain, dll."
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
-                />
-              </div>
+                  <div>
+                    <label className="block font-bold text-amber-950 mb-1">
+                      Alamat Tempat Tinggal Member <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={addAlamat}
+                      onChange={(e) => setAddAlamat(e.target.value)}
+                      placeholder="Alamat rumah lengkap / titik jemput member"
+                      className="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg font-semibold text-slate-800 outline-none focus:border-[#1E4648]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
+                    <textarea
+                      rows={2}
+                      value={addCatatan}
+                      onChange={(e) => setAddCatatan(e.target.value)}
+                      placeholder="Catatan khusus, preferensi pewangi, alergi kain, dll."
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 outline-none focus:border-[#1E4648]"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-teal-50/60 border border-teal-200/80 rounded-xl text-teal-800 text-[11px] flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-teal-700 shrink-0" />
+                  <span>Pelanggan umum hanya memerlukan <strong>Nama</strong> dan <strong>Nomor WhatsApp</strong>.</span>
+                </div>
+              )}
 
               {/* Modal Footer Actions */}
               <div className="flex gap-2.5 pt-3 border-t border-slate-100 shrink-0">
@@ -937,7 +974,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                   className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-md transition disabled:opacity-50 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{savingAdd ? 'Menyimpan...' : 'Simpan Pelanggan Baru'}</span>
+                  <span>{savingAdd ? 'Menyimpan...' : (addStatusMember ? 'Simpan Member Baru' : 'Simpan Pelanggan Umum')}</span>
                 </button>
               </div>
             </form>
