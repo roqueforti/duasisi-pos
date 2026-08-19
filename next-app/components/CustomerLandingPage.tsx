@@ -669,34 +669,34 @@ export default function CustomerLandingPage() {
             </div>
           </div>
         </div>
-
-        {/* 7. React Bits DriftWall: Full-Width 3D Gallery Foto Outlet (Tanpa Box Frame) */}
-        <div className="w-full text-center mb-8">
-          <div className="mb-4">
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Galeri Suasana Outlet</h2>
-            <p className="text-xs text-white/50 mt-1">Fasilitas modern, bersih, dan nyaman untuk mencuci maupun bekerja</p>
-          </div>
-
-          {/* Full-width seamless floating 3D gallery */}
-          <div className="w-screen relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] h-[400px] sm:h-[480px] overflow-hidden">
-            <DriftWall
-              items={OUTLET_GALLERY}
-              columns={5}
-              tileWidth={210}
-              tileHeight={138}
-              gap={16}
-              tilt={14}
-              turn={-12}
-              speed={34}
-              parallax={0.6}
-              pauseOnHover={true}
-              overlayColor="#040e10"
-              dim={0.75}
-              lift={52}
-            />
-          </div>
-        </div>
       </main>
+
+      {/* 7. React Bits DriftWall: Full-Width 3D Gallery Foto Outlet (Solid Opaque & Full-Width Edge-to-Edge) */}
+      <section className="relative z-20 w-full bg-[#040e10] py-14 overflow-hidden border-t border-white/5 text-center">
+        <div className="max-w-5xl mx-auto px-4 mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Galeri Suasana Outlet</h2>
+          <p className="text-xs text-white/50 mt-1">Fasilitas modern, bersih, dan nyaman untuk mencuci maupun bekerja</p>
+        </div>
+
+        {/* 100% Full-Width Edge-to-Edge Container */}
+        <div className="w-full h-[460px] sm:h-[540px] overflow-hidden relative">
+          <DriftWall
+            items={OUTLET_GALLERY}
+            columns={7}
+            tileWidth={230}
+            tileHeight={150}
+            gap={18}
+            tilt={14}
+            turn={-12}
+            speed={32}
+            parallax={0.6}
+            pauseOnHover={true}
+            overlayColor="transparent"
+            dim={1.0}
+            lift={56}
+          />
+        </div>
+      </section>
 
       {/* 8. Full-Width Solid Dark Footer with Embedded Google Maps & Reviews */}
       <footer className="relative z-20 w-full bg-[#030b0d] border-t border-white/10 pt-12 pb-8 px-4 text-left">
