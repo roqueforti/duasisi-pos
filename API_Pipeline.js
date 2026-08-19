@@ -238,6 +238,17 @@ function updateDropoffStatus(data) {
       if (pipelineRows[i][4] === "Aktif") activeRow = i;
       if (String(pipelineRows[i][3]).toLowerCase() === String(statusBaru).toLowerCase()) targetRow = i;
     }
+
+    // Fallback find active row if not explicitly marked "Aktif"
+    if (activeRow < 0) {
+      for (let i = 1; i < pipelineRows.length; i++) {
+        if (String(pipelineRows[i][1]) === noNota && String(pipelineRows[i][3]).toLowerCase() === String(txRows[txIndex][5]).toLowerCase()) {
+          activeRow = i;
+          break;
+        }
+      }
+    }
+
     if (statusBaru !== "Selesai" && targetRow < 0) {
       return { success: false, message: "Tahap " + statusBaru + " tidak terdaftar pada alur pengerjaan nota ini." };
     }
@@ -254,25 +265,36 @@ function updateDropoffStatus(data) {
     if (machine && !machine.success) return { success: false, message: machine.message };
 
     const now = new Date();
-    const previousMachineId = String(pipelineRows[activeRow][6] || "");
-    shP.getRange(activeRow + 1, 5).setValue("Selesai");
-    shP.getRange(activeRow + 1, 9).setValue(now);
-    if (data.assignedStaff) shP.getRange(activeRow + 1, 6).setValue(data.assignedStaff);
-    if (data.catatan) shP.getRange(activeRow + 1, 10).setValue(data.catatan);
+    let previousMachineId = "";
+    if (activeRow >= 0 && pipelineRows[activeRow]) {
+      previousMachineId = String(pipelineRows[activeRow][6] || "");
+      shP.getRange(activeRow + 1, 5).setValue("Selesai");
+      shP.getRange(activeRow + 1, 9).setValue(now);
+      if (data.assignedStaff) shP.getRange(activeRow + 1, 6).setValue(data.assignedStaff);
+      if (data.catatan) shP.getRange(activeRow + 1, 10).setValue(data.catatan);
+    }
 
     if (statusBaru === "Selesai") {
-      shP.getRange(targetRow + 1, 5).setValue("Selesai");
-      shP.getRange(targetRow + 1, 8, 1, 2).setValues([[now, now]]);
-    } else {
+      // Mark all remaining steps for this order as Selesai
+      for (let i = 1; i < pipelineRows.length; i++) {
+        if (String(pipelineRows[i][1]) === noNota && pipelineRows[i][4] !== "Selesai") {
+          shP.getRange(i + 1, 5).setValue("Selesai");
+          if (!pipelineRows[i][8]) shP.getRange(i + 1, 9).setValue(now);
+        }
+      }
+    } else if (targetRow >= 0) {
       shP.getRange(targetRow + 1, 5).setValue("Aktif");
       shP.getRange(targetRow + 1, 8).setValue(now);
+      if (machineId && machine) {
+        shP.getRange(targetRow + 1, 7).setValue(machineId);
+        shP.getRange(targetRow + 1, statusBaru === "Dicuci" ? 11 : 12).setValue(machineId);
+        machine.sheet.getRange(machine.rowIndex + 1, 4, 1, 4).setValues([["Digunakan", noNota + " - " + statusBaru, now, data.estimasiSelesai || ""]]);
+      }
     }
-    if (machineId) {
-      shP.getRange(targetRow + 1, 7).setValue(machineId);
-      shP.getRange(targetRow + 1, statusBaru === "Dicuci" ? 11 : 12).setValue(machineId);
-      machine.sheet.getRange(machine.rowIndex + 1, 4, 1, 4).setValues([["Digunakan", noNota + " - " + statusBaru, now, data.estimasiSelesai || ""]]);
+
+    if (previousMachineId) {
+      try { selesaiMesin(previousMachineId); } catch(e) {}
     }
-    if (previousMachineId) selesaiMesin(previousMachineId);
 
     // Potong stok inventory bahan baku (Deterjen/Pewangi/Plastik/dll) sesuai tahap pipeline
     try {
