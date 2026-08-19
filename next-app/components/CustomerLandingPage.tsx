@@ -105,7 +105,6 @@ const OUTLET_GALLERY: DriftWallItem[] = [
   { image: '/assets/galeri/outlet-ruang-tunggu.jpeg', title: 'Lounge Work From Laundry' },
   { image: '/assets/galeri/outlet-mesin-koin.jpeg', title: 'Fasilitas Self Service Coin' },
   { image: '/assets/galeri/outlet-suasana-area-cuci.jpeg', title: 'Area Cuci Bersih & Higienis' },
-  { image: '/assets/galeri/outlet-mesin-dryer.png', title: 'Mesin Dryer Pengering Cepat' },
   { image: '/assets/galeri/outlet-suasana-modern.png', title: 'Suasana Interior Modern Dua SiSi' }
 ];
 

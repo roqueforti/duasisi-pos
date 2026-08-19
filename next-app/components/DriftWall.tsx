@@ -11,7 +11,6 @@ export interface DriftWallItem {
 
 const DEFAULT_ITEMS: DriftWallItem[] = [
   { image: '/assets/bg-outlet.jpeg', title: 'Outlet Dua SiSi Laundry' },
-  { image: '/assets/bg-outlet.png', title: 'Self Service Coin Mesin' },
   { image: 'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?w=600&auto=format&fit=crop&q=80', title: 'Modern Washing Station' },
   { image: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?w=600&auto=format&fit=crop&q=80', title: 'Clean Clothes Stacking' },
   { image: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=600&auto=format&fit=crop&q=80', title: 'Steam Iron & Packing' },
