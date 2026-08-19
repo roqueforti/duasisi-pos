@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown, Sparkles, Shirt, Clock, Flame, Star, Layers, Delete } from 'lucide-react';
+import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown, Sparkles, Shirt, Clock, Flame, Star, Layers, Delete, Search } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
@@ -76,6 +76,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [promoList, setPromoList] = useState<PromoVoucher[]>(defaultPromos);
   const [loading, setLoading] = useState(false);
   const [filterKategori, setFilterKategori] = useState<string>('Semua');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Drop Off Categories / Priorities State
   const [dropOffCategories, setDropOffCategories] = useState<DropOffPriorityItem[]>([
@@ -554,7 +555,20 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   };
 
   const uniqueKategoriList = ['Semua', ...Array.from(new Set(layananList.map(item => item.kategori || 'Self Service')))];
-  const filteredLayananList = filterKategori === 'Semua' ? layananList : layananList.filter(item => (item.kategori || 'Self Service') === filterKategori);
+  const filteredLayananList = layananList.filter(item => {
+    const matchKategori = filterKategori === 'Semua' || (item.kategori || 'Self Service') === filterKategori;
+    if (!matchKategori) return false;
+
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    const matchNama = (item.nama || '').toLowerCase().includes(q);
+    const matchKode = (item.id || '').toLowerCase().includes(q);
+    const matchTipe = (item.tipe || '').toLowerCase().includes(q);
+    const matchKat = (item.kategori || '').toLowerCase().includes(q);
+    const matchDropOff = (item.kategoriDropOff || '').toLowerCase().includes(q);
+    const matchSatuan = (item.satuan || '').toLowerCase().includes(q);
+    return matchNama || matchKode || matchTipe || matchKat || matchDropOff || matchSatuan;
+  });
 
   return (
     <div className="p-3 md:p-4 space-y-4 w-full">
@@ -603,39 +617,61 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         {activeSubTab === 'DropOff' && currentRole === 'MANAGER' && (
           <button
             onClick={handleOpenAddDropOff}
-            className="bg-[#1E4648] hover:bg-[#163536] text-white px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
+            className="bg-[#1E4648] hover:bg-[#163536] text-white px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" /> Tambah Kategori Drop Off
           </button>
         )}
 
         {activeSubTab === 'Produk' && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Search Input Filter */}
+            <div className="relative min-w-[180px] sm:w-56">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari produk / kode..."
+                className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648] focus:bg-white transition"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs w-4 h-4 flex items-center justify-center rounded-full hover:bg-slate-200 cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <select
               value={filterKategori}
               onChange={(e) => setFilterKategori(e.target.value)}
-              className="px-3 py-1.5 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] text-xs text-slate-600 bg-white shadow-sm"
+              className="px-3 py-1.5 border border-slate-200 rounded-lg outline-none focus:border-[#1E4648] text-xs font-semibold text-slate-700 bg-white shadow-2xs cursor-pointer"
             >
               {uniqueKategoriList.map(kat => (
                 <option key={kat} value={kat}>{kat === 'Semua' ? 'Semua Kategori' : kat}</option>
               ))}
             </select>
+
             {currentRole === 'MANAGER' && (
               <>
-                <button onClick={handleExportProduk} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Export Data Layanan ke CSV">
+                <button onClick={handleExportProduk} className="p-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition shadow-2xs cursor-pointer" title="Export Data Layanan ke CSV">
                   <Download className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={handleDownloadTemplateProduk} className="px-3 py-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 text-xs font-medium transition" title="Download Template Kosong">
+                <button onClick={handleDownloadTemplateProduk} className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-xs font-semibold transition shadow-2xs cursor-pointer" title="Download Template Kosong">
                   Template
                 </button>
-                <label className="cursor-pointer px-3 py-1.5 border border-[#B5C9C9] rounded-md text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-medium transition flex items-center gap-1.5" title="Import Data Layanan dari CSV">
+                <label className="cursor-pointer px-2.5 py-1.5 border border-[#B5C9C9] rounded-lg text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-semibold transition flex items-center gap-1.5 shadow-2xs" title="Import Data Layanan dari CSV">
                   <Upload className="w-3.5 h-3.5" />
                   <span>Import</span>
                   <input type="file" accept=".csv" className="hidden" onChange={handleImportProduk} />
                 </label>
                 <button
                   onClick={handleRegenerateCodes}
-                  className="px-3 py-1.5 border border-teal-200 bg-teal-50/70 hover:bg-teal-100 text-[#1E4648] rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-2xs"
+                  className="px-2.5 py-1.5 border border-teal-200 bg-teal-50/70 hover:bg-teal-100 text-[#1E4648] rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer"
                   title="Sesuaikan Kode Produk Berdasarkan Kategori & Tipe (SS-xxx, DO-xxx, ADD-xxx, RTL-xxx)"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-teal-600" />
@@ -643,7 +679,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 </button>
                 <button
                   onClick={handleOpenAdd}
-                  className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition shadow-xs"
+                  className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-xs cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" /> Tambah Layanan
                 </button>
