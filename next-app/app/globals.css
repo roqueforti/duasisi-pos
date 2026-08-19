@@ -215,3 +215,23 @@ input::placeholder, textarea::placeholder {
   font-size: 10px;
   margin-top: 4px;
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  #enota-print-area {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 480px !important;
+    background: #ffffff !important;
+  }
+}
+
