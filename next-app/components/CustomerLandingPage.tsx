@@ -536,7 +536,7 @@ export default function CustomerLandingPage() {
                 {foundPoin.saldoPoin} <span className="text-sm font-bold text-teal-300">Poin</span>
               </div>
               <p className="text-[11px] text-white/60 mt-1">
-                Setara potongan diskon <strong className="text-teal-300">Rp {(foundPoin.saldoPoin * 100).toLocaleString('id-ID')}</strong> di kasir
+                Untuk info promo & penukaran (redeem) poin, silakan tanyakan langsung ke kasir kami
               </p>
             </div>
 
