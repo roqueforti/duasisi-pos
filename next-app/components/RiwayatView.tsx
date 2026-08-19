@@ -184,7 +184,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
       `💰 *Status*   : ${statusBayar}`,
       ``,
       `📍 *Lokasi Outlet*: Dua SiSi Laundry Express & Coin`,
-      `🕒 *Jam Buka*: 07.00 - 22.00 WIB`,
+      `🕒 *Jam Buka*: 07.00 - 23.00 WIB`,
       ``,
       `Silakan datang ke outlet untuk pengambilan cucian. Terima kasih telah mencuci di Dua SiSi Laundry! 🙏✨`
     ].join('\n');
