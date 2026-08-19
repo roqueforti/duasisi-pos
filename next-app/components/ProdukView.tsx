@@ -469,71 +469,71 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       </div>
 
       {activeSubTab === 'Produk' && (
-        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
+        <div className="bg-white rounded-xl border border-slate-200/90 overflow-hidden shadow-2xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                  <th className="py-3 px-3">Kode</th>
-                  <th className="py-3 px-4">Nama Produk / Layanan</th>
-                  <th className="py-3 px-4">Kategori</th>
-                  <th className="py-3 px-4">Tipe</th>
-                  <th className="py-3 px-4">Inventory</th>
-                  <th className="py-3 px-4">Potongan Stok</th>
-                  {currentRole === 'MANAGER' && <th className="py-3 px-4">Modal & Profit</th>}
-                  <th className="py-3 px-4">Tarif Jual</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Aksi</th>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider">
+                  <th className="py-2.5 px-3">Kode</th>
+                  <th className="py-2.5 px-3">Nama Produk / Layanan</th>
+                  <th className="py-2.5 px-3">Kategori</th>
+                  <th className="py-2.5 px-3">Tipe</th>
+                  <th className="py-2.5 px-3">Inventory</th>
+                  <th className="py-2.5 px-3">Potongan Stok</th>
+                  {currentRole === 'MANAGER' && <th className="py-2.5 px-3">Modal & Profit</th>}
+                  <th className="py-2.5 px-3">Tarif Jual</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
-                  Array.from({ length: 4 }).map((_, idx) => (
+                  Array.from({ length: 5 }).map((_, idx) => (
                     <tr key={idx} className="animate-pulse">
-                      <td className="py-3 px-3"><div className="h-3.5 bg-slate-100 rounded w-14" /></td>
-                      <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-32" /></td>
-                      <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
-                      <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
-                      <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
-                      <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
-                      {currentRole === 'MANAGER' && <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>}
-                      <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-20" /></td>
-                      <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-12" /></td>
-                      <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16 ml-auto" /></td>
+                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>
+                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-28" /></td>
+                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>
+                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-14" /></td>
+                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-20" /></td>
+                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-12" /></td>
+                      {currentRole === 'MANAGER' && <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>}
+                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>
+                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-10" /></td>
+                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-12 ml-auto" /></td>
                     </tr>
                   ))
                 ) : filteredLayananList.length === 0 ? (
                   <tr><td colSpan={currentRole === 'MANAGER' ? 10 : 9} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
                 ) : (
                   filteredLayananList.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 transition">
-                      <td className="py-3 px-3">
-                        <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                    <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                      <td className="py-1.5 px-3 whitespace-nowrap">
+                        <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/80">
                           {item.id}
                         </span>
                       </td>
-                      <td className="py-3 px-4 font-semibold text-slate-600 flex items-center gap-2">
-                        <span>{item.nama}</span>
+                      <td className="py-1.5 px-3 font-semibold text-slate-700 text-xs">
+                        {item.nama}
                       </td>
-                      <td className="py-3 px-4 text-slate-500 font-medium">
+                      <td className="py-1.5 px-3 text-slate-500 font-medium whitespace-nowrap">
                         {(() => {
+                          if (!item.kategori) return <span className="text-slate-300 text-xs">-</span>;
                           const kat = kategoriList.find(k => k.nama.toLowerCase() === (item.kategori || '').toLowerCase());
-                          if (!kat) return <span>{item.kategori || '-'}</span>;
-                          const KatIcon = getIconComponent(kat.icon);
+                          const KatIcon = kat ? getIconComponent(kat.icon) : Tag;
                           return (
-                            <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold inline-flex items-center gap-1 border shadow-2xs ${kat.warna || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 border shadow-2xs ${kat?.warna || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
                               <KatIcon className="w-3 h-3" />
-                              <span>{kat.nama}</span>
+                              <span>{item.kategori}</span>
                             </span>
                           );
                         })()}
                       </td>
-                      <td className="py-3 px-4">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-600'}`}>
+                      <td className="py-1.5 px-3 whitespace-nowrap">
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
                           {!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'Bukan Layanan' : item.tipe}
                         </span>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-1.5 px-3">
                         {(!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '') ? (
                           <div className="flex items-center">
                             <select
@@ -541,7 +541,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                               onChange={(e) => {
                                 setPendingInventory(prev => ({ ...prev, [item.id]: e.target.value }));
                               }}
-                              className={`w-36 text-[10px] p-1 border rounded outline-none cursor-pointer truncate ${
+                              className={`w-32 text-[10px] py-0.5 px-1 border rounded outline-none cursor-pointer truncate ${
                                 item.idInventory 
                                   ? 'bg-emerald-50 border-emerald-200 text-emerald-700 font-bold' 
                                   : 'bg-orange-50 border-orange-200 text-orange-700 font-bold'
@@ -594,7 +594,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                     setLoading(false);
                                   }
                                 }}
-                                className="ml-1 text-[9px] font-bold px-2 py-1 rounded bg-[#1E4648] text-white hover:bg-[#153233] transition shadow-sm"
+                                className="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#1E4648] text-white hover:bg-[#153233] transition shadow-xs"
                               >
                                 Simpan
                               </button>
@@ -604,53 +604,53 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                           <span className="text-slate-300 text-xs">-</span>
                         )}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-1.5 px-3 whitespace-nowrap">
                         {item.idInventory ? (
                           <div className="flex items-center gap-1">
-                            <span className="font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded border border-orange-100 text-xs">
+                            <span className="font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 text-[11px] font-mono">
                               {item.inventoryDeductionQty !== undefined && item.inventoryDeductionQty !== null ? item.inventoryDeductionQty : 1}
-                              <span className="text-orange-900/70 font-medium text-[10px] ml-1">
+                              <span className="text-orange-900/70 font-medium text-[9px] ml-1">
                                 {inventoryList.find(inv => inv.id === item.idInventory)?.satuan || 'unit'}
                               </span>
                             </span>
-                            <span className="text-[10px] text-slate-400">/ trx</span>
+                            <span className="text-[9px] text-slate-400">/ trx</span>
                           </div>
                         ) : (
                           <span className="text-slate-300 text-xs">-</span>
                         )}
                       </td>
                       {currentRole === 'MANAGER' && (
-                        <td className="py-3 px-4 text-xs">
-                          <div className="font-semibold text-slate-600">Rp {(item?.hargaModal || 0).toLocaleString('id-ID')}</div>
+                        <td className="py-1.5 px-3 text-xs whitespace-nowrap">
+                          <div className="font-semibold text-slate-600 font-mono text-[11px]">Rp {(item?.hargaModal || 0).toLocaleString('id-ID')}</div>
                           {(() => {
                             const hJual = item?.harga || 0;
                             const hModal = item?.hargaModal || 0;
                             if (hJual > 0) {
                               const profitMargin = ((hJual - hModal) / hJual) * 100;
                               return (
-                                <div className={`text-[10px] font-bold ${profitMargin < 0 ? 'text-red-500' : (profitMargin > 30 ? 'text-emerald-600' : 'text-[#FF9500]')}`}>
+                                <div className={`text-[9px] font-bold ${profitMargin < 0 ? 'text-red-500' : (profitMargin > 30 ? 'text-emerald-600' : 'text-[#FF9500]')}`}>
                                   Margin: {profitMargin.toFixed(1)}%
                                 </div>
                               );
                             }
-                            return <div className="text-[10px] text-slate-400">Margin: -</div>;
+                            return <div className="text-[9px] text-slate-400">Margin: -</div>;
                           })()}
                         </td>
                       )}
-                      <td className="py-3 px-4 font-bold text-[#1E4648]">
+                      <td className="py-1.5 px-3 font-black text-slate-900 font-mono text-xs whitespace-nowrap">
                         Rp {(item?.harga || 0).toLocaleString('id-ID')}
                       </td>
-                      <td className="py-3 px-4">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.aktif === 'Y' ? 'bg-[#B5C9C9]/20 text-[#1E4648]' : 'bg-slate-100 text-slate-500'}`}>
+                      <td className="py-1.5 px-3 whitespace-nowrap">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.aktif === 'Y' ? 'bg-[#B5C9C9]/20 text-[#1E4648]' : 'bg-slate-100 text-slate-500'}`}>
                           {item.aktif === 'Y' ? 'Aktif' : 'Non-Aktif'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-right space-x-1">
+                      <td className="py-1.5 px-3 text-right space-x-1 whitespace-nowrap">
                         {currentRole === 'MANAGER' ? (
                           <>
-                            <button onClick={() => handleOpenEdit(item)} className="p-1 text-slate-500 hover:text-slate-600"><Edit3 className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')} className="p-1 text-[#FF9500] hover:text-[#FF9500]"><RotateCcw className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleHapusLayanan(item.id)} className="p-1 text-rose-500 hover:text-rose-700"><Trash2 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleOpenEdit(item)} title="Edit Produk" className="p-1 rounded text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition"><Edit3 className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')} title="Aktif/Non-Aktif" className="p-1 rounded text-[#FF9500] hover:text-amber-700 hover:bg-amber-50 transition"><RotateCcw className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => handleHapusLayanan(item.id)} title="Hapus Produk" className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition"><Trash2 className="w-3.5 h-3.5" /></button>
                           </>
                         ) : (
                           <span className="text-slate-400 text-xs">-</span>

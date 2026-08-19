@@ -23,21 +23,8 @@ function getLayananList(tipeFilter) {
     let pipelineSteps = [];
     try { if (r[7]) pipelineSteps = JSON.parse(r[7]); } catch(e) {}
     
-    let katName = r[8];
-    if (!katName || String(katName).trim() === "") {
-      const tip = String(r[6] || "").toLowerCase();
-      const namaL = String(r[1] || "").toLowerCase();
-      if (tip === "fullservice" || namaL.includes("setrika") || namaL.includes("bed cover") || namaL.includes("karpet") || namaL.includes("drop off")) {
-        katName = "Drop Off";
-      } else if (namaL.includes("deterjen") || namaL.includes("softener") || namaL.includes("kresek") || namaL.includes("plastik") || namaL.includes("pewangi")) {
-        katName = "Add On";
-      } else if (namaL.includes("kopi") || namaL.includes("minum") || namaL.includes("snack") || namaL.includes("teh") || namaL.includes("air")) {
-        katName = "Makanan dan Minuman";
-      } else {
-        katName = "Self Service";
-      }
-    }
-    const katKey = String(katName).trim().toLowerCase();
+    let katName = r[8] ? String(r[8]).trim() : "";
+    const katKey = katName.toLowerCase();
 
     return {
       id: r[0], 
