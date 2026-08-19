@@ -109,12 +109,66 @@ function verifySessionToken_(token) {
 }
 
 function verifikasiPin(pin) {
+  const cache = CacheService.getScriptCache();
+  const now = Date.now();
+  
+  // Check lockout state
+  const lockExpiry = cache.get("LOCKOUT_PIN_EXPIRY");
+  if (lockExpiry && Number(lockExpiry) > now) {
+    const remainingMinutes = Math.ceil((Number(lockExpiry) - now) / 60000);
+    return {
+      success: false,
+      locked: true,
+      lockoutUntil: Number(lockExpiry),
+      message: "Akses login terkunci karena terlalu banyak percobaan PIN salah. Coba lagi dalam " + remainingMinutes + " menit."
+    };
+  }
+
   const props = PropertiesService.getScriptProperties();
   const managerPin = props.getProperty("PIN_MANAGER") || PIN_MANAGER;
   const staffPin = props.getProperty("PIN_STAFF") || PIN_STAFF;
-  if (String(pin) === managerPin) return { success: true, role: "MANAGER", label: "Manager / Owner", sessionToken: createSessionToken_("MANAGER", "Manager / Owner") };
-  if (String(pin) === staffPin) return { success: true, role: "STAFF", label: "Staff / Kasir", sessionToken: createSessionToken_("STAFF", "Staff / Kasir") };
-  return { success: false, message: "PIN Salah! Akses Ditolak." };
+
+  if (String(pin) === managerPin) {
+    cache.remove("FAILED_PIN_COUNT");
+    cache.remove("LOCKOUT_PIN_EXPIRY");
+    return { success: true, role: "MANAGER", label: "Manager / Owner", sessionToken: createSessionToken_("MANAGER", "Manager / Owner") };
+  }
+
+  if (String(pin) === staffPin) {
+    cache.remove("FAILED_PIN_COUNT");
+    cache.remove("LOCKOUT_PIN_EXPIRY");
+    return { success: true, role: "STAFF", label: "Staff / Kasir", sessionToken: createSessionToken_("STAFF", "Staff / Kasir") };
+  }
+
+  // Failed attempt calculation
+  let failCount = Number(cache.get("FAILED_PIN_COUNT") || 0) + 1;
+  cache.put("FAILED_PIN_COUNT", String(failCount), 1800); // 30 minutes window
+
+  // Log to Audit Trail
+  try {
+    addAuditLog("System Security", "Percobaan PIN Gagal", "Login Terminal POS", "Percobaan PIN salah ke-" + failCount + " dari 5 batas maksimum.");
+  } catch (e) {}
+
+  if (failCount >= 5) {
+    const lockoutUntil = now + (15 * 60 * 1000); // 15 minutes lockout
+    cache.put("LOCKOUT_PIN_EXPIRY", String(lockoutUntil), 900); // 15 mins
+    try {
+      addAuditLog("System Security", "Lockout Aktif", "Terminal POS Dikunci", "Form login dikunci selama 15 menit karena 5x salah PIN berturut-turut.");
+    } catch (e) {}
+    return {
+      success: false,
+      locked: true,
+      lockoutUntil: lockoutUntil,
+      message: "Akses login dikunci selama 15 menit karena 5x salah memasukkan PIN!"
+    };
+  }
+
+  const sisa = 5 - failCount;
+  return {
+    success: false,
+    attemptsLeft: sisa,
+    message: "PIN Salah! Akses ditolak. Sisa kesempatan: " + sisa + " kali."
+  };
 }
 
 // ============ SECURITY & SANITIZATION ENGINE (ANTI-SQL/FORMULA INJECTION) ============
