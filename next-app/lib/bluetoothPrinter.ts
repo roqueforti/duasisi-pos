@@ -264,13 +264,24 @@ export function generateReceiptEscPos(tx: Transaksi, poinRate: number = 10000): 
     .line('DUA SISI LAUNDRY')
     .size(1, 1)
     .bold(false)
-    .line('Jl. Pangestu Raya, Karangploso, Malang')
+    .line('Jl. Pangestu Raya, Kasin, Karangploso, Malang')
+    .line('(Belakang Kampus UMM 3)')
+    .line('Hotline WA: +62 896-8202-0699')
     .dashedLine(32)
     .align('left')
     .twoColumn('No Nota:', tx.noNota, 32)
     .twoColumn('Tanggal:', tx.tanggal, 32)
     .twoColumn('Pelanggan:', tx.namaPelanggan.substring(0, 16), 32)
     .twoColumn('Kasir:', kasir.substring(0, 16), 32);
+
+  if (tx.tipe === 'FullService') {
+    builder.twoColumn('Layanan:', `Drop Off (${tx.tingkatLayanan || 'Reguler'})`, 32);
+    if ((tx as any).estimasi || (tx as any).estimasiSelesai) {
+      builder.twoColumn('Estimasi:', (tx as any).estimasi || (tx as any).estimasiSelesai, 32);
+    }
+  } else {
+    builder.twoColumn('Layanan:', tx.tipe === 'SelfService' ? 'Self Service' : 'Retail / Add On', 32);
+  }
 
   builder.dashedLine(32);
 
@@ -285,12 +296,13 @@ export function generateReceiptEscPos(tx: Transaksi, poinRate: number = 10000): 
   builder.dashedLine(32);
 
   if ((tx as any).diskon > 0) {
+    builder.twoColumn('Subtotal:', `Rp ${(Number((tx as any).subtotal || tx.total)).toLocaleString('id-ID')}`, 32);
     builder.twoColumn('Diskon:', `-Rp ${Number((tx as any).diskon).toLocaleString('id-ID')}`, 32);
   }
   builder
     .bold(true)
     .twoColumn('TOTAL:', `Rp ${(tx.total || 0).toLocaleString('id-ID')}`, 32)
-    .twoColumn(`Bayar (${(tx as any).metodeBayar || 'Tunai'}):`, `Rp ${Number((tx as any).nominalDP || tx.total).toLocaleString('id-ID')}`, 32);
+    .twoColumn(`Bayar (${(tx as any).metodeBayar || 'Tunai'}):`, `Rp ${Number((tx as any).nominalDP || (tx as any).uangBayar || tx.total).toLocaleString('id-ID')}`, 32);
   if ((tx as any).kembalian > 0) {
     builder.twoColumn('Kembali:', `Rp ${Number((tx as any).kembalian).toLocaleString('id-ID')}`, 32);
   }
@@ -298,19 +310,20 @@ export function generateReceiptEscPos(tx: Transaksi, poinRate: number = 10000): 
 
   if (Math.floor((tx.total || 0) / poinRate) > 0) {
     builder.dashedLine(32);
-    builder.twoColumn('Poin Didapat:', `+${Math.floor((tx.total || 0) / poinRate)} Poin`, 32);
+    builder.twoColumn('Poin Transaksi:', `+${Math.floor((tx.total || 0) / poinRate)} Pts`, 32);
+    builder.line('Tukarkan poin dg diskon di kasir');
   }
 
   builder
     .dashedLine(32)
     .align('center')
-    .line('Terima kasih sudah mencuci')
-    .line('di Dua SiSi Laundry!')
-    .line('Kritik & Saran: 0896-8202-0699')
+    .line('WiFi: DuaSisiLaundry')
+    .line('Password: datanglagi')
     .dashedLine(32)
     .bold(true)
-    .line('Powered by Dua Sisi Laundry POS')
+    .line('*** TERIMA KASIH ***')
     .bold(false)
+    .line('Kritik & Saran: +62 896-8202-0699')
     .feedLines(4);
 
   return builder.build();

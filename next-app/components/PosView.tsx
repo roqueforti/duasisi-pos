@@ -3203,11 +3203,16 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               <div className="flex-1 overflow-y-auto py-4 px-2 flex justify-center bg-slate-100/80 rounded-2xl my-3 border border-slate-200/80 shadow-inner">
                 {successModalTab === 'struk' ? (
                   /* THERMAL RECEIPT PREVIEW */
-                  <div className={`bg-white p-5 rounded-lg shadow-md border border-slate-200 font-mono text-[11px] leading-tight text-slate-800 my-auto ${paperSize === '80mm' ? 'w-[320px]' : 'w-[260px]'}`}>
+                  <div className={`bg-white p-5 rounded-lg shadow-md border border-slate-300 font-mono text-[11px] leading-tight text-slate-800 my-auto ${paperSize === '80mm' ? 'w-[320px]' : 'w-[260px]'}`}>
                     <div className="text-center space-y-0.5 pb-2 border-b border-dashed border-slate-300">
                       <div className="text-sm font-black tracking-wide text-slate-900">DUA SISI LAUNDRY</div>
-                      <div className="text-[10px] text-slate-500 font-sans">Express & Self Service Laundry</div>
-                      <div className="text-[9px] text-slate-400 font-sans">Jl. Pandanwangi, Malang • 0812-3456-7890</div>
+                      <div className="text-[10px] text-slate-500 font-sans">Express & Self Service Coin Laundry</div>
+                      <div className="text-[8.5px] text-slate-600 font-sans leading-tight">
+                        Jl. Pangestu Raya, Kasin, Karangploso, Malang (Belakang UMM 3)
+                      </div>
+                      <div className="text-[8.5px] text-slate-600 font-sans font-semibold">
+                        Hotline WA: +62 896-8202-0699
+                      </div>
                     </div>
 
                     <div className="py-2 border-b border-dashed border-slate-300 text-[10px] space-y-0.5 text-slate-600">
@@ -3224,7 +3229,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         </span>
                       </div>
                       {completedOrderData.tipeLayanan === 'FullService' && completedOrderData.estimasiSelesai && (
-                        <div className="flex justify-between text-amber-900 font-bold">
+                        <div className="flex justify-between text-slate-900 font-bold border-t border-dashed border-slate-200 pt-0.5 mt-0.5">
                           <span>Estimasi:</span>
                           <span className="text-[9.5px]">{completedOrderData.estimasiSelesai}</span>
                         </div>
@@ -3253,7 +3258,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                             <span>Subtotal :</span>
                             <span className="font-mono">Rp {(Number(completedOrderData.subtotal) || Number(completedOrderData.total) || 0).toLocaleString('id-ID')}</span>
                           </div>
-                          <div className="flex justify-between text-rose-600 font-bold">
+                          <div className="flex justify-between text-slate-900 font-bold">
                             <span>Diskon ({completedOrderData.diskonKode || 'Promo'}) :</span>
                             <span className="font-mono">-Rp {Number(completedOrderData.diskon).toLocaleString('id-ID')}</span>
                           </div>
@@ -3268,14 +3273,13 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         <span className="font-mono font-bold">Rp {(Number(completedOrderData?.uangBayar || completedOrderData?.total) || 0).toLocaleString('id-ID')}</span>
                       </div>
                       {(completedOrderData?.kembalian || 0) > 0 && (
-                        <div className="flex justify-between text-[#1E4648] font-bold">
+                        <div className="flex justify-between text-slate-900 font-bold">
                           <span>KEMBALI :</span>
                           <span className="font-mono">Rp {(Number(completedOrderData?.kembalian) || 0).toLocaleString('id-ID')}</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Loyalty Points Section */}
                     <div className="py-1.5 border-b border-dashed border-slate-300 text-[9.5px] text-slate-600 space-y-0.5">
                       <div className="flex justify-between">
                         <span>Poin Transaksi:</span>
@@ -3287,8 +3291,14 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       </div>
                     </div>
 
-                    <div className="text-center pt-2.5 text-[9px] text-slate-400 space-y-0.5">
-                      <div className="font-bold text-slate-600">*** TERIMA KASIH ***</div>
+                    <div className="py-1.5 border-b border-dashed border-slate-300 text-[9px] text-center space-y-0.5 text-slate-600">
+                      <div className="font-bold">📶 WiFi: DuaSisiLaundry</div>
+                      <div>Password: datanglagi</div>
+                    </div>
+
+                    <div className="text-center pt-2 text-[9px] text-slate-500 space-y-0.5">
+                      <div className="font-bold text-slate-700">*** TERIMA KASIH ***</div>
+                      <div>Kritik & Saran: +62 896-8202-0699</div>
                       <div>Tukarkan poin Anda dengan diskon/layanan gratis/produk di kasir!</div>
                       <div className="text-[8px] font-mono break-all pt-1 text-slate-400">
                         E-Nota: duasisilaundry-pos.vercel.app/?t={completedOrderData.token || completedOrderData.trxId}
@@ -3298,7 +3308,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 ) : (
                   /* LABEL TAG PREVIEW (Khusus Drop Off) */
                   <div className="w-[280px] bg-white p-4 rounded-xl shadow-md border-2 border-slate-800 font-mono text-slate-900 my-auto space-y-2">
-                    <div className="bg-slate-900 text-white text-center py-1.5 rounded font-black text-xs uppercase tracking-wider">
+                    <div className="text-center py-1 border-b-2 border-slate-800 font-bold">
                       DUA SISI - LABEL CUCIAN
                     </div>
                     <div className="text-center py-1 border-b-2 border-slate-800">
