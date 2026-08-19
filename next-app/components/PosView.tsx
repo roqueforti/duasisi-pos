@@ -8,6 +8,7 @@ import {
   Trash2, 
   ShoppingCart, 
   User, 
+  Tag, 
   Tag as TagIcon, 
   X,
   Lock,
@@ -1631,53 +1632,82 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
         {/* Recommendation Trigger Banner (Dynamic) */}
         {rekomendasiKasir.length > 0 && (
-          <div className="px-4 pt-3 bg-white border-t border-slate-100">
+          <div className="px-4 pt-3 pb-1 bg-white border-t border-slate-100">
             <button
               onClick={() => setShowRekomendasiModal(true)}
-              className="w-full flex items-center justify-between p-2.5 bg-linear-to-r from-[#1E4648]/10 via-[#B5C9C9]/25 to-[#FF9500]/10 border border-[#1E4648]/20 hover:border-[#1E4648] rounded-lg transition group text-left shadow-xs"
+              className="w-full flex items-center justify-between p-2.5 sm:p-3 bg-gradient-to-r from-amber-50/80 via-orange-50/30 to-teal-50/40 border border-amber-200/90 hover:border-amber-400 rounded-2xl transition-all duration-150 group text-left shadow-2xs hover:shadow-xs"
             >
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-md bg-[#1E4648] text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-[#FF9500] text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Sparkles className="w-4 h-4" />
                 </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <span>Sistem Rekomendasi Kasir</span>
-                    <span className="px-1.5 py-0.5 bg-[#FF9500] text-white text-[9px] font-extrabold rounded-full">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-slate-900 leading-tight">Rekomendasi Kasir</span>
+                    <span className="px-2 py-0.5 bg-[#FF9500] text-white text-[9px] font-black rounded-full whitespace-nowrap shadow-2xs">
                       {rekomendasiKasir.length} Saran
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-500 line-clamp-1">
-                    {rekomendasiKasir[0]?.judul || 'Saran promo, diskon, & add-on'}
+                  <p className="text-[10px] text-slate-500 truncate mt-0.5 font-medium">
+                    {rekomendasiKasir[0]?.judul || 'Ada promo & diskon untuk transaksi ini'}
                   </p>
                 </div>
               </div>
-              <span className="text-[11px] font-bold text-[#1E4648] flex items-center gap-0.5 group-hover:translate-x-0.5 transition shrink-0 ml-1">
-                Buka <ChevronRight className="w-3.5 h-3.5" />
-              </span>
+              <div className="flex items-center gap-0.5 text-xs font-bold text-[#1E4648] group-hover:translate-x-0.5 transition shrink-0 ml-2 pl-2 border-l border-amber-200/60">
+                <span>Lihat</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </div>
             </button>
           </div>
         )}
 
-        {/* Voucher Input Box */}
+        {/* Voucher & Promo Input Box */}
         <div className="px-4 py-3 bg-white border-t border-slate-100 space-y-2">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={voucherInput}
-              onChange={(e) => setVoucherInput(e.target.value)}
-              placeholder="Kode Voucher (HEMAT10)"
-              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold uppercase outline-none focus:border-[#1E4648]"
-            />
-            <button
-              onClick={handleApplyVoucher}
-              className="bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold px-4 py-2 rounded-lg transition"
-            >
-              Pasang
-            </button>
-          </div>
+          {diskonApplied.nilai > 0 ? (
+            <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <Tag className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div className="truncate">
+                  <span className="font-bold text-emerald-900 uppercase font-mono">{diskonApplied.kode}</span>
+                  <span className="text-emerald-700 ml-1.5 font-semibold">
+                    (-Rp {diskonApplied.nilai.toLocaleString('id-ID')})
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setDiskonApplied({ kode: '', nilai: 0 });
+                  setVoucherInput('');
+                  setVoucherMsg(null);
+                }}
+                className="p-1 text-emerald-600 hover:text-rose-600 hover:bg-emerald-100/60 rounded-lg transition shrink-0"
+                title="Hapus Voucher"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <div className="relative flex-1 min-w-0">
+                <Tag className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={voucherInput}
+                  onChange={(e) => setVoucherInput(e.target.value)}
+                  placeholder="Kode voucher / promo..."
+                  className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white transition"
+                />
+              </div>
+              <button
+                onClick={handleApplyVoucher}
+                className="bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-bold px-4 py-2 rounded-xl transition shrink-0 shadow-2xs"
+              >
+                Pasang
+              </button>
+            </div>
+          )}
           {voucherMsg && (
-            <div className={`text-xs font-bold ${voucherMsg.type === 'success' ? 'text-[#1E4648]' : 'text-rose-500'}`}>
+            <div className={`text-[11px] font-bold px-1 ${voucherMsg.type === 'success' ? 'text-emerald-600' : 'text-rose-500'}`}>
               {voucherMsg.text}
             </div>
           )}
