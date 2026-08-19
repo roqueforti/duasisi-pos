@@ -1958,8 +1958,18 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       {/* 4. MODAL "Detail Transaksi & Pembayaran" (Split Layout: Kiri Detail Order & Customer, Kanan Kasir & Pembayaran) */}
       {showDetailTransaksiModal && (
         <div className="fixed inset-0 z-[500] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl w-full max-w-5xl border border-slate-200/90 shadow-2xl flex flex-col lg:flex-row overflow-hidden my-auto max-h-[94vh] animate-scale-in">
+          <div className="relative bg-white rounded-3xl w-full max-w-5xl border border-slate-200/90 shadow-2xl flex flex-col lg:flex-row overflow-hidden my-auto max-h-[94vh] animate-scale-in">
             
+            {/* Prominent Modal Close Button - Top Right Corner */}
+            <button 
+              type="button"
+              onClick={() => setShowDetailTransaksiModal(false)} 
+              className="absolute top-3.5 right-3.5 z-50 w-8 h-8 rounded-full bg-slate-800/80 hover:bg-rose-600 text-white flex items-center justify-center transition-all shadow-md backdrop-blur-xs cursor-pointer active:scale-95 border border-white/20"
+              title="Tutup Modal (Esc)"
+            >
+              <X className="w-4.5 h-4.5" />
+            </button>
+
             {/* LEFT PANEL: Transaction Summary & Customer Details */}
             <div className="flex-1 flex flex-col overflow-y-auto border-b lg:border-b-0 lg:border-r border-slate-200 min-w-0 bg-white">
               {/* Header */}
@@ -1973,12 +1983,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     <p className="text-xs text-slate-400 mt-0.5">Lengkapi identitas pemesan & instruksi pengerjaan</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setShowDetailTransaksiModal(false)} 
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0"
-                >
-                  <X className="w-5 h-5" />
-                </button>
               </div>
 
               {/* Form Content */}
