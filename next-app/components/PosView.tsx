@@ -792,6 +792,16 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     setShowCustModal(false);
   };
 
+  // Estimasi selesai khusus Drop Off berdasarkan konfigurasi prioritas
+  const calculateEstimasiSelesai = (prioritasName: string = 'Reguler') => {
+    const priority = dropOffPriorities.find(p => p.nama.toLowerCase() === prioritasName.toLowerCase()) || { durasiJam: 48 };
+    const durasi = Number(priority.durasiJam) || 48;
+    const targetDate = new Date(Date.now() + durasi * 3600 * 1000);
+    const dateStr = targetDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const timeStr = targetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    return `${dateStr}, ${timeStr} WIB (${durasi} Jam)`;
+  };
+
   const handleConfirmPaymentSafe = async () => {
     if (paymentSubmitting) return;
     if (!shiftAktif) {
@@ -819,16 +829,16 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
     setPaymentSubmitting(true);
     try {
-      const hasDropOff = cartArray.some((i) => i.tipe === 'FullService');
-      const hasSelfService = cartArray.some((i) => i.tipe === 'SelfService');
-      const autoTipeLayanan = hasDropOff ? 'FullService' : (hasSelfService ? 'SelfService' : (tipeLayanan || ''));
+      const hasDropOff = cartArray.some((i) => i.tipe === 'FullService' || (i as any).kategori === 'Drop Off');
+      const hasSelfService = cartArray.some((i) => i.tipe === 'SelfService' || (i as any).kategori === 'Self Service');
+      const autoTipeLayanan = hasDropOff ? 'FullService' : (hasSelfService ? 'SelfService' : 'Retail');
 
       const res = await runBackend<{ success: boolean; noNota: string; total: number; token?: string }>('simpanTransaksi', {
         namaPelanggan: custName,
         noHp: customer.noHp,
         kasir,
         tipeLayanan: autoTipeLayanan,
-        tingkatLayanan,
+        tingkatLayanan: hasDropOff ? tingkatLayanan : 'Reguler',
         metodeBayar,
         nominalBayar: metodeBayar === 'Tunai' ? bayar : total,
         referensiPembayaran: refNoInput.trim(),
@@ -842,7 +852,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       if (!res?.success || !res.noNota) throw new Error('Backend tidak mengembalikan nomor nota');
 
       const resTotal = Number(res.total) || grandTotal;
-      const estimasi = calculateEstimasi(tingkatLayanan);
+      const estimasi = hasDropOff ? calculateEstimasiSelesai(tingkatLayanan) : '';
       const currCust = customerList.find(c => (customer.noHp && c.noHp === customer.noHp) || (customer.nama && c.nama === customer.nama));
       const saldoPoinLama = Number(customer.poin || currCust?.poin || 0);
       const poinEarned = Math.floor(resTotal / (poinRate || 10000));
@@ -2938,6 +2948,20 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     <span className="font-mono font-semibold text-slate-700">{completedOrderData.noHp || '-'}</span>
                   </div>
                   <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-semibold">Kasir / Staff</span>
+                    <span className="font-bold text-slate-800">{completedOrderData.kasir || 'Kasir'}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 font-semibold">Layanan</span>
+                    <span className="font-bold text-slate-800">
+                      {completedOrderData.tipeLayanan === 'FullService'
+                        ? `Drop Off (${completedOrderData.tingkatLayanan || 'Reguler'})`
+                        : (completedOrderData.tipeLayanan === 'SelfService' ? 'Self Service' : 'Retail / Add On')}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
                     <span className="text-slate-500 font-semibold">Metode Bayar</span>
                     <span className="font-bold text-slate-800">{completedOrderData.metodeBayar}</span>
                   </div>
@@ -2994,7 +3018,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     </div>
                   </div>
 
-                  {completedOrderData.estimasiSelesai && (
+                  {completedOrderData.tipeLayanan === 'FullService' && completedOrderData.estimasiSelesai && (
                     <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-[11px]">
                       <span className="text-amber-800 font-semibold flex items-center gap-1">
                         <Clock className="w-3 h-3 text-amber-600" /> Estimasi Selesai:
@@ -3026,6 +3050,9 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     const poinEarned = Number(completedOrderData?.poinEarned) || 0;
                     const saldoPoin = Number(completedOrderData?.saldoPoinAkhir) || 0;
 
+                    const isDropOff = completedOrderData.tipeLayanan === 'FullService';
+                    const isSelfService = completedOrderData.tipeLayanan === 'SelfService';
+
                     const items = (completedOrderData.items || [])
                       .map((i: any) => `- ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
                       .join('\n');
@@ -3039,13 +3066,25 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       ``,
                       `*No. Nota*     : ${noNota}`,
                       `*Tanggal*      : ${tanggal}`,
-                      `*Layanan*      : ${completedOrderData.tipeLayanan === 'FullService' ? 'Drop Off (Full Service)' : 'Self Service'} - ${completedOrderData.tingkatLayanan || 'Reguler'}`,
-                      completedOrderData.estimasiSelesai ? `*Estimasi*     : ${completedOrderData.estimasiSelesai}` : '',
-                      ``,
-                      `*Detail Layanan:*`,
-                      items,
-                      `--------------------------------`,
+                      `*Kasir/Staff*  : ${completedOrderData.kasir || 'Kasir'}`,
                     ];
+
+                    if (isDropOff) {
+                      msgLines.push(`*Layanan*      : Drop Off (Full Service)`);
+                      msgLines.push(`*Kecepatan*    : ${completedOrderData.tingkatLayanan || 'Reguler'}`);
+                      if (completedOrderData.estimasiSelesai) {
+                        msgLines.push(`*Estimasi Selesai*: ${completedOrderData.estimasiSelesai}`);
+                      }
+                    } else if (isSelfService) {
+                      msgLines.push(`*Layanan*      : Self Service (Cuci / Kering Mandiri)`);
+                    } else {
+                      msgLines.push(`*Kategori*     : Penjualan Produk / Retail`);
+                    }
+
+                    msgLines.push(``);
+                    msgLines.push(`*Detail Layanan:*`);
+                    msgLines.push(items);
+                    msgLines.push(`--------------------------------`);
 
                     if (diskonNilai > 0) {
                       msgLines.push(`Subtotal       : Rp ${subtotal}`);
@@ -3174,9 +3213,22 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     <div className="py-2 border-b border-dashed border-slate-300 text-[10px] space-y-0.5 text-slate-600">
                       <div className="flex justify-between"><span>No Nota :</span><span className="font-bold text-slate-900">{completedOrderData.trxId}</span></div>
                       <div className="flex justify-between"><span>Waktu   :</span><span>{completedOrderData.tanggal} {completedOrderData.waktu}</span></div>
-                      <div className="flex justify-between"><span>Kasir   :</span><span>{completedOrderData.kasir}</span></div>
+                      <div className="flex justify-between"><span>Kasir   :</span><span>{completedOrderData.kasir || 'Kasir'}</span></div>
                       <div className="flex justify-between"><span>Cust    :</span><span className="font-bold text-slate-900">{completedOrderData.pelanggan}</span></div>
-                      <div className="flex justify-between"><span>Layanan :</span><span className="font-bold text-slate-900">{completedOrderData.tipeLayanan === 'FullService' ? 'Drop Off' : 'Self Service'} ({completedOrderData.tingkatLayanan || 'Reguler'})</span></div>
+                      <div className="flex justify-between">
+                        <span>Layanan :</span>
+                        <span className="font-bold text-slate-900">
+                          {completedOrderData.tipeLayanan === 'FullService'
+                            ? `Drop Off (${completedOrderData.tingkatLayanan || 'Reguler'})`
+                            : (completedOrderData.tipeLayanan === 'SelfService' ? 'Self Service' : 'Retail / Add On')}
+                        </span>
+                      </div>
+                      {completedOrderData.tipeLayanan === 'FullService' && completedOrderData.estimasiSelesai && (
+                        <div className="flex justify-between text-amber-900 font-bold">
+                          <span>Estimasi:</span>
+                          <span className="text-[9.5px]">{completedOrderData.estimasiSelesai}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="py-2 border-b border-dashed border-slate-300 space-y-1.5 text-[10px]">
@@ -3297,6 +3349,9 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     const poinEarned = Number(completedOrderData?.poinEarned) || 0;
                     const saldoPoin = Number(completedOrderData?.saldoPoinAkhir) || 0;
 
+                    const isDropOff = completedOrderData.tipeLayanan === 'FullService';
+                    const isSelfService = completedOrderData.tipeLayanan === 'SelfService';
+
                     const items = (completedOrderData.items || [])
                       .map((i: any) => `- ${i.layanan} (x${i.qty}) = Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
                       .join('\n');
@@ -3305,12 +3360,25 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       `DUA SISI LAUNDRY`,
                       `No Nota: ${noNota}`,
                       `Tanggal: ${tanggal}`,
+                      `Kasir/Staff: ${completedOrderData.kasir || 'Kasir'}`,
                       `Pelanggan: ${nama}`,
-                      ``,
-                      `Item:`,
-                      items,
-                      ``,
                     ];
+
+                    if (isDropOff) {
+                      lines.push(`Layanan: Drop Off (Full Service) - ${completedOrderData.tingkatLayanan || 'Reguler'}`);
+                      if (completedOrderData.estimasiSelesai) {
+                        lines.push(`Estimasi Selesai: ${completedOrderData.estimasiSelesai}`);
+                      }
+                    } else if (isSelfService) {
+                      lines.push(`Layanan: Self Service (Cuci/Kering Mandiri)`);
+                    } else {
+                      lines.push(`Kategori: Penjualan Produk / Retail`);
+                    }
+
+                    lines.push(``);
+                    lines.push(`Item:`);
+                    lines.push(items);
+                    lines.push(``);
 
                     if (diskonNilai > 0) {
                       lines.push(`Subtotal: Rp ${subtotal}`);

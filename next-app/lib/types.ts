@@ -70,6 +70,7 @@ export interface Transaksi {
   alasanVoid?: string;
   catatan?: string;
   estimasiSelesai?: string;
+  estimasi?: string;
   idOutlet?: string;
   items: TransaksiItem[];
   pipeline?: PipelineStep[];

@@ -183,13 +183,23 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
                 <span className="font-bold text-slate-700">{tx.namaPelanggan} ({maskPhone(tx.noHp || '')})</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">KECEPATAN:</span>
-                <span className="font-semibold text-[#1E4648]">{tx.tingkatLayanan || 'Reguler'}</span>
+                <span className="text-slate-500">KASIR / PETUGAS:</span>
+                <span className="text-slate-700 font-semibold">{tx.petugas || 'Kasir Dua SiSi'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">KASIR:</span>
-                <span className="text-slate-600">{tx.petugas || 'Kasir Dua SiSi'}</span>
-              </div>
+              {tx.tipe === 'FullService' && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">KECEPATAN:</span>
+                    <span className="font-semibold text-[#1E4648]">{tx.tingkatLayanan || 'Reguler'}</span>
+                  </div>
+                  {tx.estimasi && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">ESTIMASI SELESAI:</span>
+                      <span className="font-semibold text-amber-900">{tx.estimasi}</span>
+                    </div>
+                  )}
+                </>
+              )}
               <div className="flex justify-between items-center pt-1">
                 <span className="text-slate-500">STATUS ORDER:</span>
                 <span className="bg-[#B5C9C9]/30 text-[#1E4648] font-bold text-[10px] px-2 py-0.5 rounded-md border border-[#B5C9C9]200">
