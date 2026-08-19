@@ -148,23 +148,89 @@ function getDaftarPelanggan() {
 
   return pData.map(r => {
     const hp = normalizePhone(r[0]);
+    const totalTx = Number(r[4]) || 0;
+    const isMember = String(r[9] || "").toUpperCase() === "MEMBER";
+    const statusKategori = isMember ? "Member" : (totalTx > 1 ? "Pelanggan Lama" : "Pelanggan Baru");
+
     return {
       noHp: hp,
       maskedHp: maskPhone(hp),
       nama: r[1] || "Pelanggan",
       alamat: r[2] || "",
       tglDaftar: r[3] ? fmtWib(r[3], "dd/MM/yyyy") : "",
-      totalOrder: Number(r[4]) || 0,
+      totalOrder: totalTx,
       totalSpend: Number(r[5]) || 0,
       terakhirOrder: r[6] ? fmtWib(r[6], "dd/MM/yyyy HH:mm") : "",
       catatan: r[7] || "",
-      isRepeatOrder: (Number(r[4]) || 0) > 1,
-      saldoPoin: Number(r[8]) || 0
+      isRepeatOrder: totalTx > 1,
+      saldoPoin: Number(r[8]) || 0,
+      isMember: isMember,
+      statusMember: isMember ? "MEMBER" : "UMUM",
+      statusKategori: statusKategori
     };
   });
 }
 
-function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan) {
+function daftarMember(data) {
+  const hp = normalizePhone(data.noHp || data.hp);
+  if (!hp || hp.length < 8) return { success: false, message: "Nomor WhatsApp / HP tidak valid." };
+  
+  let shP = SS.getSheetByName(SHEET_PELANGGAN);
+  if (!shP) {
+    shP = SS.insertSheet(SHEET_PELANGGAN);
+    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member"]);
+  }
+
+  if (shP.getMaxColumns() < 10) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 10 - shP.getMaxColumns());
+    shP.getRange(1, 10).setValue("Status Member");
+  }
+
+  const pData = shP.getDataRange().getValues();
+  let foundRow = -1;
+  for (let i = 1; i < pData.length; i++) {
+    if (normalizePhone(pData[i][0]) === hp) {
+      foundRow = i + 1;
+      break;
+    }
+  }
+
+  const now = new Date();
+  if (foundRow > 0) {
+    if (data.nama) shP.getRange(foundRow, 2).setValue(data.nama.trim());
+    if (data.alamat) shP.getRange(foundRow, 3).setValue(data.alamat.trim());
+    if (data.catatan) shP.getRange(foundRow, 8).setValue(data.catatan.trim());
+    shP.getRange(foundRow, 10).setValue("MEMBER");
+  } else {
+    shP.appendRow([hp, data.nama ? data.nama.trim() : "Member Baru", data.alamat || "", now, 0, 0, now, data.catatan || "", 0, "MEMBER"]);
+  }
+
+  return { success: true, message: `Member ${data.nama || hp} berhasil didaftarkan!` };
+}
+
+function toggleStatusMember(noHp, makeMember) {
+  const hp = normalizePhone(noHp);
+  if (!hp) return { success: false, message: "Nomor HP tidak valid." };
+
+  const shP = SS.getSheetByName(SHEET_PELANGGAN);
+  if (!shP) return { success: false, message: "Sheet Pelanggan tidak ada." };
+
+  if (shP.getMaxColumns() < 10) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 10 - shP.getMaxColumns());
+    shP.getRange(1, 10).setValue("Status Member");
+  }
+
+  const pData = shP.getDataRange().getValues();
+  for (let i = 1; i < pData.length; i++) {
+    if (normalizePhone(pData[i][0]) === hp) {
+      shP.getRange(i + 1, 10).setValue(makeMember ? "MEMBER" : "UMUM");
+      return { success: true, message: makeMember ? "Status berhasil diubah menjadi Member!" : "Status Member dinonaktifkan." };
+    }
+  }
+  return { success: false, message: "Pelanggan tidak ditemukan." };
+}
+
+function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan, statusMember) {
   const shP = SS.getSheetByName(SHEET_PELANGGAN);
   if (!shP) return { success: false, message: "Sheet Pelanggan tidak ada." };
   
@@ -183,11 +249,17 @@ function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan) {
 
   if (targetRowIdx === -1) return { success: false, message: "Pelanggan tidak ditemukan." };
 
+  if (shP.getMaxColumns() < 10) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 10 - shP.getMaxColumns());
+    shP.getRange(1, 10).setValue("Status Member");
+  }
+
   // Update row
   shP.getRange(targetRowIdx, 1).setValue(cleanNew);
   if (nama && nama.trim()) shP.getRange(targetRowIdx, 2).setValue(nama.trim());
   if (alamat !== undefined) shP.getRange(targetRowIdx, 3).setValue(alamat.trim());
   if (catatan !== undefined) shP.getRange(targetRowIdx, 8).setValue(catatan.trim());
+  if (statusMember !== undefined) shP.getRange(targetRowIdx, 10).setValue(statusMember ? "MEMBER" : "UMUM");
 
   // Also update transaction records if phone changed
   if (cleanOld !== cleanNew) {

@@ -22,6 +22,7 @@ import {
   Upload
 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
+import { clearCache } from '@/lib/cache';
 import { maskPhone } from '@/lib/utils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
@@ -39,6 +40,9 @@ export interface PelangganItem {
   catatan: string;
   isRepeatOrder: boolean;
   saldoPoin: number;
+  isMember?: boolean;
+  statusMember?: string;
+  statusKategori?: 'Member' | 'Pelanggan Lama' | 'Pelanggan Baru';
 }
 
 import { Transaksi } from '@/lib/types';
@@ -49,6 +53,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [loading, setLoading] = useState<boolean>(false);
   const [poinRate, setPoinRate] = useState<number>(10000);
   const [search, setSearch] = useState<string>('');
+  const [filterKategori, setFilterKategori] = useState<'Semua' | 'Member' | 'Lama' | 'Baru'>('Semua');
   const [sortBy, setSortBy] = useState<'terakhir' | 'order' | 'spend'>('terakhir');
 
   // Detail & Edit Modal State
@@ -58,6 +63,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [editNoHp, setEditNoHp] = useState<string>('');
   const [editAlamat, setEditAlamat] = useState<string>('');
   const [editCatatan, setEditCatatan] = useState<string>('');
+  const [editStatusMember, setEditStatusMember] = useState<boolean>(false);
   
   // History list for selected customer
   const [historyList, setHistoryList] = useState<Transaksi[]>([]);
@@ -89,6 +95,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
     setEditNoHp(cust.noHp);
     setEditAlamat(cust.alamat || '');
     setEditCatatan(cust.catatan || '');
+    setEditStatusMember(cust.isMember || cust.statusMember === 'MEMBER');
     setShowDetailModal(true);
 
     // Fetch customer transactions history
@@ -109,30 +116,35 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   };
 
   const handleSaveCustomerEdit = async () => {
-    if (!selectedCust) return;
     if (!editNama.trim() || !editNoHp.trim()) {
-      await showAlert('Nama dan No. HP pelanggan wajib diisi!', 'warning');
+      await showAlert('Nama dan No. HP wajib diisi!', 'warning');
       return;
     }
+
     setSavingEdit(true);
     try {
       const res = await runBackend<{ success: boolean; message: string }>(
         'updateDataPelanggan',
-        selectedCust.noHp,
+        selectedCust?.noHp,
         editNoHp.trim(),
         editNama.trim(),
         editAlamat.trim(),
-        editCatatan.trim()
+        editCatatan.trim(),
+        editStatusMember
       );
+
       if (res && res.success) {
-        await showAlert(res.message || 'Data pelanggan berhasil diperbarui!', 'success');
+        clearCache('getDaftarPelanggan');
+        clearCache('getTransaksiList');
+        await showAlert('Data pelanggan berhasil disimpan!', 'success');
         setShowDetailModal(false);
         loadDataPelanggan();
       } else {
-        await showAlert(res?.message || 'Gagal memperbarui data pelanggan', 'error');
+        await showAlert(res?.message || 'Gagal menyimpan perubahan data pelanggan.', 'error');
       }
     } catch (err) {
-      await showAlert('Terjadi kesalahan saat memperbarui pelanggan', 'error');
+      console.error(err);
+      await showAlert('Terjadi kesalahan jaringan saat menyimpan.', 'error');
     } finally {
       setSavingEdit(false);
     }
@@ -193,14 +205,23 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   };
 
   // Filter & Sort Logic
+  const countMember = pelangganList.filter(p => p.isMember || p.statusMember === 'MEMBER').length;
+  const countLama = pelangganList.filter(p => !p.isMember && p.statusMember !== 'MEMBER' && p.totalOrder > 1).length;
+  const countBaru = pelangganList.filter(p => !p.isMember && p.statusMember !== 'MEMBER' && p.totalOrder <= 1).length;
+
   const filteredList = pelangganList.filter((item) => {
     const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
+    const matchQuery = !q || (
       item.nama.toLowerCase().includes(q) ||
       item.noHp.includes(q) ||
       (item.alamat && item.alamat.toLowerCase().includes(q))
     );
+    if (!matchQuery) return false;
+
+    if (filterKategori === 'Member') return item.isMember || item.statusMember === 'MEMBER';
+    if (filterKategori === 'Lama') return !item.isMember && item.statusMember !== 'MEMBER' && item.totalOrder > 1;
+    if (filterKategori === 'Baru') return !item.isMember && item.statusMember !== 'MEMBER' && item.totalOrder <= 1;
+    return true;
   });
 
   const sortedList = [...filteredList].sort((a, b) => {
@@ -212,7 +233,6 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
 
   // Summary Metrics
   const totalPelanggan = pelangganList?.length || 0;
-  const repeatCount = pelangganList?.filter(p => p.totalOrder > 1).length || 0;
   const totalOmzetPelanggan = pelangganList?.reduce((acc, curr) => acc + (curr.totalSpend || 0), 0) || 0;
 
   return (
@@ -224,8 +244,8 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-slate-700 leading-tight">Data Pelanggan & Repeat Order</h1>
-            <p className="text-xs text-slate-500 font-medium">Kelola basis data pelanggan, preferensi cuci, & riwayat belanja</p>
+            <h1 className="text-base sm:text-lg font-bold text-slate-700 leading-tight">Data Pelanggan & Keanggotaan</h1>
+            <p className="text-xs text-slate-500 font-medium">Kelola basis data Pelanggan Baru, Pelanggan Lama, & Member Terdaftar</p>
           </div>
         </div>
 
@@ -270,79 +290,114 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold">
-            <Users className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Pelanggan</div>
-            <div className="text-xl font-bold text-[#1E4648]">{(totalPelanggan || 0).toLocaleString('id-ID')} Orang</div>
-          </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div 
+          onClick={() => setFilterKategori('Semua')}
+          className={`bg-white p-3.5 rounded-xl border cursor-pointer transition shadow-2xs ${filterKategori === 'Semua' ? 'border-[#1E4648] ring-1 ring-[#1E4648]' : 'border-slate-200/80 hover:border-slate-300'}`}
+        >
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Pelanggan</div>
+          <div className="text-xl font-black text-slate-800 mt-0.5">{(totalPelanggan || 0).toLocaleString('id-ID')}</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Seluruh database</div>
         </div>
 
-        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-[#FF9500]/10 text-[#FF9500] flex items-center justify-center font-bold">
-            <UserCheck className="w-5 h-5" />
+        <div 
+          onClick={() => setFilterKategori('Member')}
+          className={`bg-white p-3.5 rounded-xl border cursor-pointer transition shadow-2xs ${filterKategori === 'Member' ? 'border-amber-500 ring-1 ring-amber-500 bg-amber-50/20' : 'border-slate-200/80 hover:border-amber-300'}`}
+        >
+          <div className="text-[11px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">
+            <span>⭐ Member</span>
           </div>
-          <div>
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Repeat Order (Member)</div>
-            <div className="text-xl font-bold text-[#FF9500]">{(repeatCount || 0).toLocaleString('id-ID')} Orang</div>
-          </div>
+          <div className="text-xl font-black text-amber-900 mt-0.5">{(countMember || 0).toLocaleString('id-ID')}</div>
+          <div className="text-[10px] text-amber-700/80 mt-0.5">Terdaftar resmi</div>
         </div>
 
-        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold">
-            <TrendingUp className="w-5 h-5" />
+        <div 
+          onClick={() => setFilterKategori('Lama')}
+          className={`bg-white p-3.5 rounded-xl border cursor-pointer transition shadow-2xs ${filterKategori === 'Lama' ? 'border-teal-600 ring-1 ring-teal-600 bg-teal-50/20' : 'border-slate-200/80 hover:border-teal-300'}`}
+        >
+          <div className="text-[11px] font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1">
+            <span>🔁 Pelanggan Lama</span>
           </div>
-          <div>
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Akumulasi Belanja</div>
-            <div className="text-xl font-bold text-[#1E4648]">Rp {(totalOmzetPelanggan || 0).toLocaleString('id-ID')}</div>
+          <div className="text-xl font-black text-teal-950 mt-0.5">{(countLama || 0).toLocaleString('id-ID')}</div>
+          <div className="text-[10px] text-teal-700 mt-0.5">&gt; 1x Transaksi (Umum)</div>
+        </div>
+
+        <div 
+          onClick={() => setFilterKategori('Baru')}
+          className={`bg-white p-3.5 rounded-xl border cursor-pointer transition shadow-2xs ${filterKategori === 'Baru' ? 'border-slate-700 ring-1 ring-slate-700 bg-slate-50' : 'border-slate-200/80 hover:border-slate-300'}`}
+        >
+          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <span>✨ Pelanggan Baru</span>
           </div>
+          <div className="text-xl font-black text-slate-800 mt-0.5">{(countBaru || 0).toLocaleString('id-ID')}</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">1x Transaksi / Baru</div>
         </div>
       </div>
 
       {/* Main Table Section */}
-      <div className="bg-white rounded-lg border border-slate-200/80 shadow-2xs overflow-hidden">
-        {/* Table Search & Sort Controls */}
+      <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+        {/* Filter Tabs & Search Controls */}
         <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nama atau No. HP pelanggan..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648]"
-            />
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+            {(['Semua', 'Member', 'Lama', 'Baru'] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setFilterKategori(k)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                  filterKategori === k
+                    ? 'bg-[#1E4648] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <span>{k === 'Semua' ? 'Semua Pelanggan' : k === 'Member' ? '⭐ Member' : k === 'Lama' ? '🔁 Pelanggan Lama' : '✨ Pelanggan Baru'}</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${filterKategori === k ? 'bg-teal-900/50 text-teal-100' : 'bg-slate-200 text-slate-600'}`}>
+                  {k === 'Semua' ? totalPelanggan : k === 'Member' ? countMember : k === 'Lama' ? countLama : countBaru}
+                </span>
+              </button>
+            ))}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto text-xs font-bold">
-            <span className="text-slate-400 text-[11px] uppercase tracking-wider shrink-0">Urutkan:</span>
-            <button
-              onClick={() => setSortBy('terakhir')}
-              className={`px-3 py-1.5 rounded-lg border transition ${
-                sortBy === 'terakhir' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              Terbaru Order
-            </button>
-            <button
-              onClick={() => setSortBy('order')}
-              className={`px-3 py-1.5 rounded-lg border transition ${
-                sortBy === 'order' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              Paling Sering
-            </button>
-            <button
-              onClick={() => setSortBy('spend')}
-              className={`px-3 py-1.5 rounded-lg border transition ${
-                sortBy === 'spend' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              Belanja Tertinggi
-            </button>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari nama / HP..."
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648]"
+              />
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0 text-xs font-bold">
+              <button
+                onClick={() => setSortBy('terakhir')}
+                className={`px-2.5 py-1.5 rounded-lg border text-[11px] transition ${
+                  sortBy === 'terakhir' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-slate-50 text-slate-700 border-slate-200'
+                }`}
+                title="Urutkan Terbaru Order"
+              >
+                Terbaru
+              </button>
+              <button
+                onClick={() => setSortBy('order')}
+                className={`px-2.5 py-1.5 rounded-lg border text-[11px] transition ${
+                  sortBy === 'order' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-slate-50 text-slate-700 border-slate-200'
+                }`}
+                title="Urutkan Paling Sering"
+              >
+                Frekuensi
+              </button>
+              <button
+                onClick={() => setSortBy('spend')}
+                className={`px-2.5 py-1.5 rounded-lg border text-[11px] transition ${
+                  sortBy === 'spend' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-slate-50 text-slate-700 border-slate-200'
+                }`}
+                title="Urutkan Belanja Tertinggi"
+              >
+                Nominal
+              </button>
+            </div>
           </div>
         </div>
 
@@ -351,13 +406,13 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                <th className="py-3 px-4">No. HP (Unique Key)</th>
+                <th className="py-3 px-4">No. HP</th>
                 <th className="py-3 px-4">Nama Pelanggan</th>
+                <th className="py-3 px-4">Status / Keanggotaan</th>
                 <th className="py-3 px-4 text-center">Total Order</th>
                 <th className="py-3 px-4 text-right">Total Belanja</th>
                 <th className="py-3 px-4 text-center">Saldo Poin</th>
                 <th className="py-3 px-4">Terakhir Order</th>
-                <th className="py-3 px-4">Catatan / Preferensi</th>
                 <th className="py-3 px-4 text-center">Aksi</th>
               </tr>
             </thead>
@@ -367,75 +422,75 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                   <tr key={idx} className="animate-pulse">
                     <td className="py-3.5 px-4"><div className="h-3.5 bg-slate-100 rounded w-28" /></td>
                     <td className="py-3.5 px-4"><div className="h-3.5 bg-slate-100 rounded w-36" /></td>
+                    <td className="py-3.5 px-4"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
                     <td className="py-3.5 px-4"><div className="h-3.5 bg-slate-100 rounded w-12 mx-auto" /></td>
                     <td className="py-3.5 px-4"><div className="h-3.5 bg-slate-100 rounded w-20 ml-auto" /></td>
-                    <td className="py-3.5 px-4"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
+                    <td className="py-3.5 px-4"><div className="h-3.5 bg-slate-100 rounded w-12 mx-auto" /></td>
                     <td className="py-3.5 px-4"><div className="h-3.5 bg-slate-100 rounded w-28" /></td>
                     <td className="py-3.5 px-4"><div className="h-3.5 bg-slate-100 rounded w-16 mx-auto" /></td>
                   </tr>
                 ))
               ) : sortedList.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-slate-400 font-medium">
-                    Tidak ada data pelanggan yang cocok
+                  <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
+                    Tidak ada data pelanggan yang cocok dengan filter.
                   </td>
                 </tr>
               ) : (
-                sortedList.map((item) => (
-                  <tr key={item.noHp} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-700">
-                      {item.noHp ? maskPhone(item.noHp) : '-'}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-bold text-slate-700 flex items-center gap-1.5">
-                        <span>{item.nama}</span>
-                        {item.totalOrder > 1 && (
-                          <span className="px-1.5 py-0.5 bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/30 rounded text-[9px] font-bold uppercase">
-                            Member ({item.totalOrder}x)
+                sortedList.map((item) => {
+                  const isMem = item.isMember || item.statusMember === 'MEMBER';
+                  return (
+                    <tr key={item.noHp} className="hover:bg-slate-50/80 transition">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-700 whitespace-nowrap">
+                        {item.noHp ? maskPhone(item.noHp) : '-'}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-slate-800">{item.nama}</div>
+                        {item.alamat && (
+                          <div className="text-[10px] text-slate-400 truncate max-w-xs">{item.alamat}</div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {isMem ? (
+                          <span className="px-2 py-0.5 bg-amber-500/15 text-amber-900 border border-amber-400/40 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1">
+                            ⭐ Member
+                          </span>
+                        ) : item.totalOrder > 1 ? (
+                          <span className="px-2 py-0.5 bg-teal-500/15 text-teal-900 border border-teal-400/40 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
+                            🔁 Pelanggan Lama
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-[10px] font-semibold inline-flex items-center gap-1">
+                            ✨ Pelanggan Baru
                           </span>
                         )}
-                      </div>
-                      {item.alamat && (
-                        <div className="text-[10px] text-slate-400 truncate max-w-xs">{item.alamat}</div>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">
-                        {item.totalOrder} Transaksi
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-bold text-[#1E4648]">
-                      Rp {(item?.totalSpend || 0).toLocaleString('id-ID')}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="font-bold text-[#FF9500]">{item.saldoPoin || 0}</span>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-500 text-[11px]">
-                      {item.terakhirOrder || '-'}
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-600 text-[11px] italic max-w-xs truncate">
-                      {item.catatan || '-'}
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => openDetailModal(item)}
-                        className="px-2.5 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-lg font-bold text-[11px] transition inline-flex items-center gap-1 shadow-2xs"
-                      >
-                        {currentRole === 'MANAGER' ? (
-                          <>
-                            <Edit3 className="w-3 h-3" />
-                            <span>Detail & Edit</span>
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="w-3 h-3" />
-                            <span>Detail</span>
-                          </>
-                        )}
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md text-xs font-bold font-mono">
+                          {item.totalOrder}x
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-[#1E4648] font-mono">
+                        Rp {(item?.totalSpend || 0).toLocaleString('id-ID')}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="font-bold text-[#FF9500] font-mono">⭐ {item.saldoPoin || 0}</span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-500 text-[11px] whitespace-nowrap">
+                        {item.terakhirOrder || '-'}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => openDetailModal(item)}
+                          className="px-2.5 py-1 bg-[#1E4648]/10 hover:bg-[#1E4648] text-[#1E4648] hover:text-white rounded-lg text-xs font-bold transition inline-flex items-center gap-1"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Detail</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -495,6 +550,42 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg font-mono font-bold outline-none focus:border-[#1E4648]"
                     />
                     <p className="text-[10px] text-slate-400 mt-1">Format: 08xxxxxxxx. Digunakan untuk kirim resi E-Struk via WhatsApp.</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Status Keanggotaan Member</label>
+                  <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">⭐</span>
+                      <div>
+                        <div className="font-bold text-xs text-slate-800">
+                          {editStatusMember ? 'Member Resmi Aktif' : 'Pelanggan Reguler / Umum'}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {editStatusMember ? 'Mendapat benefit loyalitas dan prioritas promo member' : 'Pelanggan biasa tanpa kartu member'}
+                        </div>
+                      </div>
+                    </div>
+                    {currentRole === 'MANAGER' ? (
+                      <button
+                        type="button"
+                        onClick={() => setEditStatusMember(!editStatusMember)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          editStatusMember ? 'bg-amber-500' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            editStatusMember ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    ) : (
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${editStatusMember ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+                        {editStatusMember ? 'Member' : 'Umum'}
+                      </span>
+                    )}
                   </div>
                 </div>
 
