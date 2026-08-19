@@ -232,25 +232,27 @@ export default function CustomerLandingPage() {
         />
       </div>
 
-      {/* 1. React Bits Interactive Animated CardNav (Logo tanpa frame lingkaran) */}
-      <header className="relative z-30 w-full pt-4 sm:pt-6 px-4">
-        <CardNav
-          logo="/assets/logo-emblem-white.svg"
-          logoAlt="Dua SiSi"
-          brandTitle="Dua SiSi Laundry"
-          items={NAV_ITEMS}
-          baseColor="rgba(255, 255, 255, 0.05)"
-          menuColor="#ffffff"
-          buttonBgColor="#ffffff"
-          buttonTextColor="#000000"
-          ctaText="WhatsApp CS"
-          onCtaClick={() => window.open('https://wa.me/6289682020699', '_blank')}
-        />
+      {/* 1. React Bits Interactive Animated CardNav (Fixed Top Floating Layer - Never shifts content) */}
+      <header className="fixed top-4 sm:top-6 left-0 right-0 z-50 pointer-events-none px-4">
+        <div className="max-w-4xl mx-auto pointer-events-auto">
+          <CardNav
+            logo="/assets/logo-emblem-white.svg"
+            logoAlt="Dua SiSi"
+            brandTitle="Dua SiSi Laundry"
+            items={NAV_ITEMS}
+            baseColor="rgba(255, 255, 255, 0.05)"
+            menuColor="#ffffff"
+            buttonBgColor="#ffffff"
+            buttonTextColor="#000000"
+            ctaText="WhatsApp CS"
+            onCtaClick={() => window.open('https://wa.me/6289682020699', '_blank')}
+          />
+        </div>
       </header>
 
-      {/* 2. Hero Centerpiece with Tab Switcher */}
-      <main className="relative z-10 max-w-5xl mx-auto px-4 py-10 sm:py-16 flex flex-col items-center justify-center text-center my-auto w-full">
-        {/* Tab Switcher Pills */}
+      {/* 2. Hero Centerpiece with Tab Switcher - Fixed Top Clearance */}
+      <main className="relative z-10 max-w-5xl mx-auto px-4 pt-28 sm:pt-36 pb-12 flex flex-col items-center justify-start text-center w-full">
+        {/* Tab Switcher Pills - Permanently Anchored */}
         <div className="inline-flex items-center p-1 rounded-full border border-white/15 bg-white/[0.05] backdrop-blur-xl mb-6 shadow-xl">
           <button
             type="button"
@@ -288,8 +290,8 @@ export default function CustomerLandingPage() {
           </button>
         </div>
 
-        {/* 3D Animated Unfolding Typography */}
-        <div className="mb-4 max-w-2xl text-center">
+        {/* 3D Animated Unfolding Typography - Fixed Height Container */}
+        <div className="mb-3 max-w-2xl text-center min-h-[85px] sm:min-h-[110px] flex items-center justify-center">
           <FoldText
             key={activeTab}
             text={
@@ -312,20 +314,23 @@ export default function CustomerLandingPage() {
           />
         </div>
 
-        <p className="text-xs sm:text-sm text-white/60 max-w-md mb-8 leading-relaxed font-normal">
-          {activeTab === 'lacak'
-            ? 'Proteksi 2-Faktor: Masukkan nomor nota dan 4 digit terakhir nomor HP Anda untuk melacak status pengerjaan.'
-            : 'Cek akumulasi poin cashback Anda dan nikmati promo cuci hemat di kasir.'}
-        </p>
+        {/* Fixed Subtitle Container */}
+        <div className="min-h-[44px] sm:min-h-[48px] max-w-md mb-8 flex items-center justify-center">
+          <p className="text-xs sm:text-sm text-white/60 leading-relaxed font-normal">
+            {activeTab === 'lacak'
+              ? 'Proteksi 2-Faktor: Masukkan nomor nota dan 4 digit terakhir nomor HP Anda untuk melacak status pengerjaan.'
+              : 'Cek akumulasi poin cashback Anda dan nikmati promo cuci hemat di kasir.'}
+          </p>
+        </div>
 
-        {/* 3. Minimalist 2-Factor Floating Search Bar */}
+        {/* 3. Minimalist 2-Factor Floating Search Bar - Fixed Unified Dimensions */}
         <div className="w-full max-w-lg mb-6">
-          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2.5 items-center justify-center">
+          <form onSubmit={handleSearch} className="flex gap-2.5 items-center justify-center w-full">
             {activeTab === 'lacak' ? (
-              <>
+              <div className="flex flex-col sm:flex-row gap-2.5 items-center w-full">
                 {/* Input 1: No. Nota */}
-                <div className="w-full sm:flex-1 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl p-1.5 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
-                  <div className="pl-3.5 pr-2 text-white/40">
+                <div className="w-full sm:flex-1 h-12 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl px-2 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
+                  <div className="pl-2 pr-2 text-white/40">
                     <Search className="w-4 h-4" />
                   </div>
                   <input
@@ -338,8 +343,8 @@ export default function CustomerLandingPage() {
                 </div>
 
                 {/* Input 2: 4 Digit Terakhir No. HP */}
-                <div className="w-full sm:w-44 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl p-1.5 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
-                  <div className="pl-3 pr-1.5 text-white/40">
+                <div className="w-full sm:w-48 h-12 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl px-2 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
+                  <div className="pl-2 pr-1.5 text-white/40">
                     <KeyRound className="w-3.5 h-3.5" />
                   </div>
                   <input
@@ -353,16 +358,16 @@ export default function CustomerLandingPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs px-4 py-2 rounded-full transition flex items-center gap-1 shadow-lg cursor-pointer disabled:opacity-60 shrink-0 ml-1"
+                    className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs h-8 px-3.5 rounded-full transition flex items-center justify-center gap-1 shadow-lg cursor-pointer disabled:opacity-60 shrink-0 ml-1"
                   >
                     {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
                 </div>
-              </>
+              </div>
             ) : (
-              /* Tab Poin: Input No. WhatsApp */
-              <div className="w-full max-w-md rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl p-1.5 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
-                <div className="pl-3.5 pr-2 text-white/40">
+              /* Tab Poin: Input No. WhatsApp with matching height */
+              <div className="w-full h-12 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl px-2 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
+                <div className="pl-3 pr-2 text-white/40">
                   <Phone className="w-4 h-4" />
                 </div>
                 <input
@@ -375,7 +380,7 @@ export default function CustomerLandingPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs px-5 py-2.5 rounded-full transition flex items-center gap-1.5 shadow-lg cursor-pointer disabled:opacity-60 shrink-0"
+                  className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs h-8 px-4 rounded-full transition flex items-center justify-center gap-1.5 shadow-lg cursor-pointer disabled:opacity-60 shrink-0"
                 >
                   {loading ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -391,12 +396,16 @@ export default function CustomerLandingPage() {
           </form>
 
           {/* Privacy Badge info under search */}
-          {activeTab === 'lacak' && (
-            <div className="flex items-center justify-center gap-1 text-[11px] text-white/40 mt-2.5">
-              <ShieldCheck className="w-3 h-3 text-teal-400" />
-              <span>Privasi Terlindungi: Nota hanya dapat dibuka dengan kecocokan 4 digit nomor HP</span>
-            </div>
-          )}
+          <div className="min-h-[22px] mt-2.5 flex items-center justify-center">
+            {activeTab === 'lacak' ? (
+              <div className="flex items-center justify-center gap-1 text-[11px] text-white/40">
+                <ShieldCheck className="w-3 h-3 text-teal-400" />
+                <span>Privasi Terlindungi: Nota hanya dapat dibuka dengan kecocokan 4 digit nomor HP</span>
+              </div>
+            ) : (
+              <span className="text-[11px] text-white/40">Poin dapat langsung digunakan untuk potongan cuci di kasir</span>
+            )}
+          </div>
 
           {errorMsg && (
             <div className="mt-3 py-2 px-3.5 rounded-full border border-rose-500/30 bg-rose-950/60 backdrop-blur-md text-rose-200 text-xs flex items-center justify-center gap-1.5 animate-fade-in shadow-md">
