@@ -429,23 +429,8 @@ export default function CustomerLandingPage() {
           {foundTx && (() => {
             const isDropOffOrder = Boolean(
               foundTx.tipe === 'FullService' ||
-              (foundTx.items && foundTx.items.some((it) => {
-                const name = (it.layanan || '').toLowerCase();
-                return (
-                  name.includes('cuci') ||
-                  name.includes('setrika') ||
-                  name.includes('kiloan') ||
-                  name.includes('satuan') ||
-                  name.includes('bedcover') ||
-                  name.includes('selimut') ||
-                  name.includes('express') ||
-                  name.includes('kilat') ||
-                  name.includes('reguler') ||
-                  name.includes('drop off') ||
-                  name.includes('dry clean')
-                ) && !name.includes('koin') && !name.includes('self service');
-              })) ||
-              (['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika', 'Siap Diambil'].includes(foundTx.status) && foundTx.tipe !== 'SelfService')
+              (foundTx.tipe as string) === 'DropOff' ||
+              (foundTx.tipe as string) === 'Drop Off'
             );
 
             return (
