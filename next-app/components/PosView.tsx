@@ -324,7 +324,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
   const filteredLayanan = React.useMemo(() => {
     const searchLower = search.toLowerCase().trim();
-    return (layananList || []).filter((item) => {
+    const filtered = (layananList || []).filter((item) => {
       const { categoryName } = getLayananStyleConfig(item, kategoriList);
       const matchSearch =
         item.layanan.toLowerCase().includes(searchLower) ||
@@ -338,7 +338,31 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
       return itemKat === selectedKat;
     });
-  }, [layananList, search, selectedCategoryTab, kategoriList]);
+
+    // Build category index map based on effectiveCategories (Master Kategori order)
+    const categoryOrderMap = new Map<string, number>();
+    effectiveCategories.forEach((cat, index) => {
+      if (cat.id) categoryOrderMap.set(cat.id.toLowerCase().trim(), index);
+      if (cat.label) categoryOrderMap.set(cat.label.toLowerCase().trim(), index);
+    });
+
+    // Sort products matching the category tab sequence
+    return [...filtered].sort((a, b) => {
+      const { categoryName: catA } = getLayananStyleConfig(a, kategoriList);
+      const { categoryName: catB } = getLayananStyleConfig(b, kategoriList);
+
+      const keyA = (catA || '').toLowerCase().trim();
+      const keyB = (catB || '').toLowerCase().trim();
+
+      const orderA = categoryOrderMap.has(keyA) ? categoryOrderMap.get(keyA)! : 999;
+      const orderB = categoryOrderMap.has(keyB) ? categoryOrderMap.get(keyB)! : 999;
+
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return 0; // preserve original order inside same category
+    });
+  }, [layananList, search, selectedCategoryTab, kategoriList, effectiveCategories]);
 
   // Calculate totals
   const cartArray = Object.values(cart);
