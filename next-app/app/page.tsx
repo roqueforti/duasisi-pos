@@ -221,11 +221,6 @@ function PageDispatcher() {
       <ENotaView
         noNota={publicNotaParam || ''}
         token={publicNotaToken || undefined}
-        onBackToApp={() => {
-          if (typeof window !== 'undefined') {
-            window.location.href = '/';
-          }
-        }}
       />
     );
   }

@@ -13,11 +13,6 @@ function ENotaContent() {
     <ENotaView
       noNota={noNota}
       token={token}
-      onBackToApp={() => {
-        if (typeof window !== 'undefined') {
-          window.location.href = '/';
-        }
-      }}
     />
   );
 }

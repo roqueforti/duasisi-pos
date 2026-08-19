@@ -27,10 +27,9 @@ import { useDialog } from '@/components/DialogProvider';
 interface ENotaViewProps {
   noNota: string;
   token?: string;
-  onBackToApp?: () => void;
 }
 
-export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps) {
+export default function ENotaView({ noNota, token }: ENotaViewProps) {
   const { showAlert } = useDialog();
   const [loading, setLoading] = useState<boolean>(true);
   const [tx, setTx] = useState<Transaksi | null>(null);
@@ -165,15 +164,7 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
         <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl border border-rose-200 my-auto z-10">
           <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-slate-800 mb-2">E-Nota Tidak Ditemukan</h3>
-          <p className="text-xs text-slate-600 mb-6">{errorMsg || 'Nomor nota tidak terdaftar pada sistem server Dua SiSi POS.'}</p>
-          {onBackToApp && (
-            <button
-              onClick={onBackToApp}
-              className="bg-[#1E4648] text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-[#163536] transition shadow-md cursor-pointer"
-            >
-              Kembali ke Aplikasi Utama
-            </button>
-          )}
+          <p className="text-xs text-slate-600">{errorMsg || 'Nomor nota tidak terdaftar pada sistem server Dua SiSi POS.'}</p>
         </div>
       ) : (
         /* Split Layout: Receipt on Left, Control Panel on Right */
@@ -442,18 +433,6 @@ export default function ENotaView({ noNota, token, onBackToApp }: ENotaViewProps
                 )}
               </button>
             </div>
-
-            {/* 3. Back to POS (if staff) */}
-            {onBackToApp && (
-              <button
-                type="button"
-                onClick={onBackToApp}
-                className="w-full bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/40 font-semibold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Kembali ke Aplikasi Kasir</span>
-              </button>
-            )}
 
             {/* Quick Customer Note */}
             <div className="px-2 text-[10.5px] text-slate-500 text-center leading-relaxed">
