@@ -1385,9 +1385,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => setDropOffForm(prev => ({ ...prev, warna: p.class }))}
-                      className={`px-2 py-1.5 rounded-lg text-[11px] font-bold border transition text-center truncate ${p.class} ${
-                        dropOffForm.warna === p.class ? 'ring-2 ring-[#1E4648] ring-offset-1 font-extrabold' : 'opacity-70 hover:opacity-100'
+                      onClick={() => setDropOffForm(prev => ({ ...prev, warna: p.value }))}
+                      className={`px-2 py-1.5 rounded-lg text-[11px] font-bold border transition text-center truncate ${p.value} ${
+                        dropOffForm.warna === p.value ? 'ring-2 ring-[#1E4648] ring-offset-1 font-extrabold' : 'opacity-70 hover:opacity-100'
                       }`}
                     >
                       {p.label}
