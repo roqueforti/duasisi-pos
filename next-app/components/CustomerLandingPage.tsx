@@ -487,18 +487,10 @@ export default function CustomerLandingPage() {
 
       {/* 6. Minimalist Clean Footer */}
       <footer className="relative z-20 w-full pb-6 px-4 text-center text-xs text-white/40">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-white/5 pt-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-center border-t border-white/5 pt-4">
           <div>
-            © {new Date().getFullYear()} Dua SiSi Laundry.
+            © {new Date().getFullYear()} Dua SiSi Laundry. All rights reserved.
           </div>
-          <a
-            href="/terminal-pos-internal"
-            className="text-white/40 hover:text-white/80 transition flex items-center gap-1 text-[11px]"
-            title="Akses Staf / Kasir"
-          >
-            <Lock className="w-3 h-3" />
-            <span>Terminal POS</span>
-          </a>
         </div>
       </footer>
     </div>
