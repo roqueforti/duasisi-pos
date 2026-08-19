@@ -10,23 +10,19 @@ import {
   MapPin,
   Clock,
   Wifi,
-  Lock,
   Sparkles,
   CheckCircle2,
-  Circle,
   Phone,
   Gift,
   FileText,
-  X,
-  ExternalLink,
-  ChevronRight,
-  Shirt
+  KeyRound,
+  ShieldCheck,
+  ChevronRight
 } from 'lucide-react';
 import MoltenMetal from '@/components/MoltenMetal';
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
 import ENotaView from '@/components/ENotaView';
-import { maskPhone } from '@/lib/utils';
 
 interface PelangganPoinData {
   maskedNama: string;
@@ -63,7 +59,9 @@ function getStepIndex(statusStr: string): number {
 
 export default function CustomerLandingPage() {
   const [activeTab, setActiveTab] = useState<'lacak' | 'poin'>('lacak');
-  const [queryInput, setQueryInput] = useState<string>('');
+  const [searchNota, setSearchNota] = useState<string>('');
+  const [last4Phone, setLast4Phone] = useState<string>('');
+  const [phoneInput, setPhoneInput] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
@@ -74,12 +72,6 @@ export default function CustomerLandingPage() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    const query = queryInput.trim();
-    if (!query) {
-      setErrorMsg(activeTab === 'lacak' ? 'Masukkan nomor nota Anda.' : 'Masukkan nomor WhatsApp Anda.');
-      return;
-    }
-
     setLoading(true);
     setErrorMsg('');
     setFoundTx(null);
@@ -87,28 +79,51 @@ export default function CustomerLandingPage() {
 
     try {
       if (activeTab === 'lacak') {
+        const nota = searchNota.trim().toUpperCase();
+        const clean4 = last4Phone.trim().replace(/\D/g, '');
+
+        if (!nota) {
+          setErrorMsg('Masukkan nomor nota Anda (Contoh: LDY-260819-0001).');
+          setLoading(false);
+          return;
+        }
+
+        if (clean4.length !== 4) {
+          setErrorMsg('Masukkan 4 digit terakhir nomor HP Anda untuk verifikasi keamanan.');
+          setLoading(false);
+          return;
+        }
+
         const res = await runBackend<{ success?: boolean; transaksi?: Transaksi; message?: string }>(
           'getTransaksiByNota',
-          query.toUpperCase(),
-          ''
+          nota,
+          '',
+          clean4
         );
 
         if (res?.success && res.transaksi) {
           setFoundTx(res.transaksi);
         } else {
-          setErrorMsg(res?.message || `Nota "${query}" tidak ditemukan. Pastikan format nomor nota sesuai (Contoh: LDY-260819-0001).`);
+          setErrorMsg(res?.message || `Nota "${nota}" tidak cocok dengan 4 digit nomor HP yang dimasukkan.`);
         }
       } else {
         // Cek Poin by Phone
+        const phone = phoneInput.trim();
+        if (!phone || phone.length < 9) {
+          setErrorMsg('Masukkan nomor WhatsApp yang valid (minimal 9 digit).');
+          setLoading(false);
+          return;
+        }
+
         const res = await runBackend<{ success?: boolean; pelanggan?: PelangganPoinData; message?: string }>(
           'cekPoinPelanggan',
-          query
+          phone
         );
 
         if (res?.success && res.pelanggan) {
           setFoundPoin(res.pelanggan);
         } else {
-          setErrorMsg(res?.message || `Nomor "${query}" belum terdaftar sebagai pelanggan di Dua SiSi Laundry.`);
+          setErrorMsg(res?.message || `Nomor "${phone}" belum terdaftar sebagai pelanggan di Dua SiSi Laundry.`);
         }
       }
     } catch (err) {
@@ -208,7 +223,6 @@ export default function CustomerLandingPage() {
             type="button"
             onClick={() => {
               setActiveTab('lacak');
-              setQueryInput('');
               setErrorMsg('');
               setFoundTx(null);
               setFoundPoin(null);
@@ -226,7 +240,6 @@ export default function CustomerLandingPage() {
             type="button"
             onClick={() => {
               setActiveTab('poin');
-              setQueryInput('');
               setErrorMsg('');
               setFoundTx(null);
               setFoundPoin(null);
@@ -251,45 +264,89 @@ export default function CustomerLandingPage() {
 
         <p className="text-xs sm:text-sm text-white/60 max-w-md mb-8 leading-relaxed font-normal">
           {activeTab === 'lacak'
-            ? 'Pantau progres cucian Drop Off Anda langkah demi langkah atau unduh E-Nota bukti pembayaran.'
-            : 'Cek akumulasi poin cashback Anda dan tukarkan dengan diskon cuci atau deterjen di kasir.'}
+            ? 'Proteksi 2-Faktor: Masukkan nomor nota dan 4 digit terakhir nomor HP Anda untuk melacak status pengerjaan.'
+            : 'Cek akumulasi poin cashback Anda dan nikmati promo cuci hemat di kasir.'}
         </p>
 
-        {/* 3. Minimalist Floating Pill Search Bar */}
-        <div className="w-full max-w-md mb-6">
-          <form
-            onSubmit={handleSearch}
-            className="rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl p-1.5 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]"
-          >
-            <div className="pl-3.5 pr-2 text-white/40">
-              {activeTab === 'lacak' ? <Search className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
-            </div>
-            <input
-              type={activeTab === 'lacak' ? 'text' : 'tel'}
-              value={queryInput}
-              onChange={(e) => setQueryInput(e.target.value)}
-              placeholder={
-                activeTab === 'lacak'
-                  ? 'Ketik nomor nota (LDY-260819-0001)...'
-                  : 'Ketik nomor WhatsApp (08123456789)...'
-              }
-              className="flex-1 bg-transparent border-none text-white text-xs sm:text-sm outline-hidden placeholder:text-white/40 font-mono"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs px-5 py-2.5 rounded-full transition flex items-center gap-1.5 shadow-lg cursor-pointer disabled:opacity-60 shrink-0"
-            >
-              {loading ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <>
-                  <span>{activeTab === 'lacak' ? 'Lacak' : 'Cek Poin'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </>
-              )}
-            </button>
+        {/* 3. Minimalist 2-Factor Floating Search Bar */}
+        <div className="w-full max-w-lg mb-6">
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2.5 items-center justify-center">
+            {activeTab === 'lacak' ? (
+              <>
+                {/* Input 1: No. Nota */}
+                <div className="w-full sm:flex-1 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl p-1.5 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
+                  <div className="pl-3.5 pr-2 text-white/40">
+                    <Search className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={searchNota}
+                    onChange={(e) => setSearchNota(e.target.value)}
+                    placeholder="No. Nota (LDY-260819-0001)..."
+                    className="flex-1 bg-transparent border-none text-white text-xs sm:text-sm outline-hidden placeholder:text-white/40 font-mono uppercase"
+                  />
+                </div>
+
+                {/* Input 2: 4 Digit Terakhir No. HP */}
+                <div className="w-full sm:w-44 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl p-1.5 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
+                  <div className="pl-3 pr-1.5 text-white/40">
+                    <KeyRound className="w-3.5 h-3.5" />
+                  </div>
+                  <input
+                    type="tel"
+                    maxLength={4}
+                    value={last4Phone}
+                    onChange={(e) => setLast4Phone(e.target.value.replace(/\D/g, ''))}
+                    placeholder="4 digit HP..."
+                    className="flex-1 bg-transparent border-none text-white text-xs sm:text-sm outline-hidden placeholder:text-white/40 font-mono text-center"
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs px-4 py-2 rounded-full transition flex items-center gap-1 shadow-lg cursor-pointer disabled:opacity-60 shrink-0 ml-1"
+                  >
+                    {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Tab Poin: Input No. WhatsApp */
+              <div className="w-full max-w-md rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl p-1.5 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
+                <div className="pl-3.5 pr-2 text-white/40">
+                  <Phone className="w-4 h-4" />
+                </div>
+                <input
+                  type="tel"
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                  placeholder="Nomor WhatsApp (08123456789)..."
+                  className="flex-1 bg-transparent border-none text-white text-xs sm:text-sm outline-hidden placeholder:text-white/40 font-mono"
+                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs px-5 py-2.5 rounded-full transition flex items-center gap-1.5 shadow-lg cursor-pointer disabled:opacity-60 shrink-0"
+                >
+                  {loading ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <span>Cek Poin</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </form>
+
+          {/* Privacy Badge info under search */}
+          {activeTab === 'lacak' && (
+            <div className="flex items-center justify-center gap-1 text-[11px] text-white/40 mt-2.5">
+              <ShieldCheck className="w-3 h-3 text-teal-400" />
+              <span>Privasi Terlindungi: Nota hanya dapat dibuka dengan kecocokan 4 digit nomor HP</span>
+            </div>
+          )}
 
           {errorMsg && (
             <div className="mt-3 py-2 px-3.5 rounded-full border border-rose-500/30 bg-rose-950/60 backdrop-blur-md text-rose-200 text-xs flex items-center justify-center gap-1.5 animate-fade-in shadow-md">
@@ -451,7 +508,7 @@ export default function CustomerLandingPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setQueryInput(ord.noNota);
+                        setSearchNota(ord.noNota);
                         setActiveTab('lacak');
                         setFoundPoin(null);
                         setFoundTx({ noNota: ord.noNota, status: ord.status } as any);

@@ -405,7 +405,7 @@ function decodeNotaToken_(token) {
   }
 }
 
-function getTransaksiByNota(noNota, token) {
+function getTransaksiByNota(noNota, token, last4Phone) {
   var resolvedNota = noNota;
 
   // Kalau ada token, decode untuk dapat noNota (URL mode: ?t=token)
@@ -424,6 +424,25 @@ function getTransaksiByNota(noNota, token) {
   const all = getTransaksiList();
   const found = all.find(function(t) { return t.noNota === resolvedNota; });
   if (!found) return { success: false, message: 'Nota ' + resolvedNota + ' tidak ditemukan di sistem.' };
+
+  // Proteksi 2-Faktor untuk pencarian manual publik tanpa token kriptografi resmi
+  if (!token) {
+    var clean4 = String(last4Phone || '').replace(/\D/g, '');
+    if (clean4.length !== 4) {
+      return {
+        success: false,
+        message: 'Verifikasi keamanan: Masukkan 4 digit terakhir nomor HP yang terdaftar pada nota.'
+      };
+    }
+    var normPhone = normalizePhone(found.noHp || '');
+    if (!normPhone || !normPhone.endsWith(clean4)) {
+      return {
+        success: false,
+        message: 'Verifikasi gagal: 4 digit nomor HP tidak cocok dengan pemilik nota ini.'
+      };
+    }
+  }
+
   return { success: true, transaksi: found };
 }
 
