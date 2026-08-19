@@ -860,6 +860,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       const hasDropOff = cartArray.some((i) => i.tipe === 'FullService' || (i as any).kategori === 'Drop Off');
       const hasSelfService = cartArray.some((i) => i.tipe === 'SelfService' || (i as any).kategori === 'Self Service');
       const autoTipeLayanan = hasDropOff ? 'FullService' : (hasSelfService ? 'SelfService' : 'Retail');
+      const estimasi = hasDropOff ? calculateEstimasiSelesai(tingkatLayanan) : '';
 
       const res = await runBackend<{ success: boolean; noNota: string; total: number; token?: string }>('simpanTransaksi', {
         namaPelanggan: custName,
@@ -867,6 +868,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         kasir,
         tipeLayanan: autoTipeLayanan,
         tingkatLayanan: hasDropOff ? tingkatLayanan : 'Reguler',
+        estimasiSelesai: estimasi,
+        estimasi: estimasi,
         metodeBayar,
         nominalBayar: metodeBayar === 'Tunai' ? bayar : total,
         referensiPembayaran: refNoInput.trim(),
@@ -880,7 +883,6 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       if (!res?.success || !res.noNota) throw new Error('Backend tidak mengembalikan nomor nota');
 
       const resTotal = Number(res.total) || grandTotal;
-      const estimasi = hasDropOff ? calculateEstimasiSelesai(tingkatLayanan) : '';
       const currCust = customerList.find(c => (customer.noHp && c.noHp === customer.noHp) || (customer.nama && c.nama === customer.nama));
       const isActualMember = Boolean((customer.isMember || customerMode === 'MEMBER') && (customer.isMember || currCust?.isMember));
       const saldoPoinLama = Number(customer.poin || currCust?.poin || 0);

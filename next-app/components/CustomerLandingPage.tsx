@@ -568,41 +568,61 @@ export default function CustomerLandingPage() {
                 )}
 
                 {/* Summary Details & E-Nota CTA */}
-                <div className="bg-[#030d0f] rounded-xl p-3 border border-white/5 space-y-1.5 text-xs text-white/70 mb-4">
-                  <div className="flex justify-between">
-                    <span>Pelanggan</span>
-                    <span className="text-white font-medium">{foundTx.namaPelanggan || 'Pelanggan'}</span>
-                  </div>
-                  {isDropOffOrder && (
-                    <div className="flex justify-between">
-                      <span>Estimasi Selesai</span>
-                      <span className="text-white font-medium">{foundTx.estimasi || '-'}</span>
-                    </div>
-                  )}
+                {(() => {
+                  const displayEstimasi = (() => {
+                    if (foundTx.estimasi && String(foundTx.estimasi).trim()) return String(foundTx.estimasi).trim();
+                    if (foundTx.estimasiSelesai && String(foundTx.estimasiSelesai).trim()) return String(foundTx.estimasiSelesai).trim();
+                    if (isDropOffOrder) {
+                      const prioritas = String(foundTx.tingkatLayanan || 'Reguler').toLowerCase();
+                      const durasi = prioritas.includes('kilat') ? 6 : prioritas.includes('express') ? 24 : 48;
+                      const baseDate = foundTx.tanggal ? new Date(foundTx.tanggal) : new Date();
+                      const validBase = isNaN(baseDate.getTime()) ? new Date() : baseDate;
+                      const targetDate = new Date(validBase.getTime() + durasi * 3600 * 1000);
+                      const dateStr = targetDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                      const timeStr = targetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                      return `${dateStr}, ${timeStr} WIB (${durasi} Jam)`;
+                    }
+                    return '-';
+                  })();
 
-                  {/* Rincian item jika ada pembelian item / multi-item */}
-                  {foundTx.items && foundTx.items.length > 0 && (
-                    <div className="border-t border-white/10 pt-2 mt-2 space-y-1">
-                      <span className="text-[10px] text-white/40 uppercase tracking-wider block font-semibold mb-1">Rincian Nota:</span>
-                      {foundTx.items.map((it, idx) => (
-                        <div key={idx} className="flex justify-between text-xs text-white/80">
-                          <span>{it.qty}x {it.layanan}</span>
-                          <span className="font-mono text-white/60">Rp {(it.subtotal || (it.qty * it.hargaSatuan) || 0).toLocaleString('id-ID')}</span>
+                  return (
+                    <div className="bg-[#030d0f] rounded-xl p-3 border border-white/5 space-y-1.5 text-xs text-white/70 mb-4">
+                      <div className="flex justify-between">
+                        <span>Pelanggan</span>
+                        <span className="text-white font-medium">{foundTx.namaPelanggan || 'Pelanggan'}</span>
+                      </div>
+                      {isDropOffOrder && (
+                        <div className="flex justify-between">
+                          <span>Estimasi Selesai</span>
+                          <span className="text-white font-medium text-teal-300 font-mono">{displayEstimasi}</span>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )}
 
-                  <div className="border-t border-white/10 pt-2 flex justify-between items-center">
-                    <span>Total Pembayaran</span>
-                    <span className="text-white font-mono font-bold">
-                      Rp {(foundTx.total || 0).toLocaleString('id-ID')}
-                      <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${foundTx.statusPembayaran === 'DP' || foundTx.statusPembayaran === 'Belum Bayar' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
-                        {foundTx.statusPembayaran || 'Lunas'}
-                      </span>
-                    </span>
-                  </div>
-                </div>
+                      {/* Rincian item jika ada pembelian item / multi-item */}
+                      {foundTx.items && foundTx.items.length > 0 && (
+                        <div className="border-t border-white/10 pt-2 mt-2 space-y-1">
+                          <span className="text-[10px] text-white/40 uppercase tracking-wider block font-semibold mb-1">Rincian Nota:</span>
+                          {foundTx.items.map((it, idx) => (
+                            <div key={idx} className="flex justify-between text-xs text-white/80">
+                              <span>{it.qty}x {it.layanan}</span>
+                              <span className="font-mono text-white/60">Rp {(it.subtotal || (it.qty * it.hargaSatuan) || 0).toLocaleString('id-ID')}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="border-t border-white/10 pt-2 flex justify-between items-center">
+                        <span>Total Pembayaran</span>
+                        <span className="text-white font-mono font-bold">
+                          Rp {(foundTx.total || 0).toLocaleString('id-ID')}
+                          <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${foundTx.statusPembayaran === 'DP' || foundTx.statusPembayaran === 'Belum Bayar' ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                            {foundTx.statusPembayaran || 'Lunas'}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <button
                   type="button"
