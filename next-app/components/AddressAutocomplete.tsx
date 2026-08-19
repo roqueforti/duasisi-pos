@@ -75,7 +75,7 @@ export default function AddressAutocomplete({
       try {
         // Photon API (OpenStreetMap Nominatim index, focused on Malang: -7.95, 112.63)
         const res = await fetch(
-          `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=-7.95&lon=112.63&limit=5&lang=id`
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=-7.95&lon=112.63&limit=5&lang=default`
         );
         const data = await res.json();
 
