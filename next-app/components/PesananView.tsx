@@ -16,6 +16,9 @@ import {
   Package,
   Tag,
   X,
+  MessageCircle,
+  Send,
+  Check
 } from 'lucide-react';
 import { Mesin, Transaksi, LayananBahanBaku } from '@/lib/types';
 import { runBackend } from '@/lib/api';
@@ -59,12 +62,14 @@ export default function PesananView() {
   const [submitting, setSubmitting] = useState(false);
   const [query, setQuery] = useState('');
   const [priority, setPriority] = useState<string>('Semua');
+  const [filterTab, setFilterTab] = useState<'Semua' | 'Diproses' | 'SiapDiambil' | 'BelumWA'>('Semua');
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
   const [selected, setSelected] = useState<Transaksi | null>(null);
   const [machineId, setMachineId] = useState('');
   const [staffName, setStaffName] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [waReminders, setWaReminders] = useState<Record<string, string>>({});
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -79,7 +84,8 @@ export default function PesananView() {
         runBackend<any[]>('getInventoryList').catch(() => []),
         runBackend<any[]>('getPipelineConfigData').catch(() => []),
       ]);
-      setOrders(Array.isArray(orderData) ? orderData : []);
+      const validOrders = Array.isArray(orderData) ? orderData : [];
+      setOrders(validOrders);
       setMachines(Array.isArray(machineData) ? machineData : []);
       setLayananList(Array.isArray(layData) ? layData : []);
       setInventoryList(Array.isArray(invData) ? invData : []);
@@ -91,6 +97,16 @@ export default function PesananView() {
       const activeStaff = Array.isArray(staffData) ? staffData.filter((s: any) => s.status !== 'Resign' && s.status !== 'Non-Aktif') : [];
       setStaff(activeStaff);
       if (activeStaff?.[0]?.nama) setStaffName((current) => current || activeStaff[0].nama);
+
+      // Load WA reminder state from localStorage
+      if (typeof window !== 'undefined') {
+        const storedMap: Record<string, string> = {};
+        validOrders.forEach(o => {
+          const val = localStorage.getItem('wa_reminder_' + o.noNota);
+          if (val) storedMap[o.noNota] = val;
+        });
+        setWaReminders(storedMap);
+      }
     } catch (loadError) {
       console.error(loadError);
       setError('Data pesanan belum dapat dimuat. Periksa koneksi backend dan sesi login.');
@@ -103,6 +119,45 @@ export default function PesananView() {
     const timer = window.setTimeout(() => void loadData(), 0);
     return () => window.clearTimeout(timer);
   }, [loadData]);
+
+  // Handle WhatsApp Reminder for ready-for-pickup orders
+  const handleSendSiapWA = (order: Transaksi, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    let rawPhone = String(order.noHp || '').replace(/[^0-9]/g, '');
+    if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
+    if (!rawPhone) {
+      alert('Nomor WhatsApp pelanggan tidak ditemukan pada nota ini.');
+      return;
+    }
+
+    const itemsSummary = (order.items || []).map(it => `${it.qty}x ${it.layanan}`).join(', ');
+    const sisaTagihan = Number(order.sisaTagihan) || 0;
+    const statusBayar = sisaTagihan > 0 ? `Belum Lunas (Sisa: Rp ${sisaTagihan.toLocaleString('id-ID')})` : 'Lunas';
+
+    const msg = [
+      `*NOTIFIKASI LAUNDRY SIAP DIAMBIL*`,
+      ``,
+      `Halo Kak *${order.namaPelanggan || 'Pelanggan'}*! 👋`,
+      `Cucian Anda di *Dua SiSi Laundry* sudah selesai diproses dengan bersih dan wangi, serta *SIAP DIAMBIL* di outlet kami.`,
+      ``,
+      `📋 *No. Nota* : ${order.noNota}`,
+      `🧺 *Layanan*  : ${itemsSummary || 'Drop Off'}`,
+      `💰 *Status*   : ${statusBayar}`,
+      ``,
+      `📍 *Lokasi Outlet*: Dua SiSi Laundry Express & Coin`,
+      `🕒 *Jam Buka*: 07.00 - 22.00 WIB`,
+      ``,
+      `Silakan datang ke outlet untuk pengambilan cucian. Terima kasih telah mencuci di Dua SiSi Laundry! 🙏✨`
+    ].join('\n');
+
+    const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' (' + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ')';
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('wa_reminder_' + order.noNota, nowStr);
+    }
+    setWaReminders(prev => ({ ...prev, [order.noNota]: nowStr }));
+
+    window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
 
   // Dynamically compute Kanban columns from Master Steps and all active orders
   const kanbanColumns = useMemo(() => {
@@ -163,6 +218,27 @@ export default function PesananView() {
     return null;
   }, [kanbanColumns]);
 
+  // Count summaries for quick tabs
+  const summaryCounts = useMemo(() => {
+    let siapCount = 0;
+    let belumWaCount = 0;
+    let diprosesCount = 0;
+
+    orders.forEach(o => {
+      const isSiap = o.status === 'Siap Diambil' || (o.pipeline && o.pipeline.some(p => p.namaStep === 'Siap Diambil' && p.status === 'Aktif'));
+      if (isSiap) {
+        siapCount++;
+        if (!waReminders[o.noNota]) {
+          belumWaCount++;
+        }
+      } else {
+        diprosesCount++;
+      }
+    });
+
+    return { siapCount, belumWaCount, diprosesCount, total: orders.length };
+  }, [orders, waReminders]);
+
   const filteredOrders = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     return orders.filter((order) => {
@@ -172,9 +248,17 @@ export default function PesananView() {
         || order.noNota.toLowerCase().includes(keyword)
         || order.namaPelanggan.toLowerCase().includes(keyword)
         || (order.noHp || '').includes(keyword);
-      return priorityMatch && searchMatch;
+
+      if (!priorityMatch || !searchMatch) return false;
+
+      const isSiap = order.status === 'Siap Diambil' || (order.pipeline && order.pipeline.some(p => p.namaStep === 'Siap Diambil' && p.status === 'Aktif'));
+      if (filterTab === 'Diproses') return !isSiap;
+      if (filterTab === 'SiapDiambil') return isSiap;
+      if (filterTab === 'BelumWA') return isSiap && !waReminders[order.noNota];
+
+      return true;
     });
-  }, [orders, priority, query]);
+  }, [orders, priority, query, filterTab, waReminders]);
 
   const targetStatus = selected ? getNextStatusForOrder(selected) : null;
   const isTargetWasher = targetStatus?.toLowerCase().includes('cuci');
@@ -235,9 +319,11 @@ export default function PesananView() {
       orderPriority.toLowerCase().includes('express') ? 'bg-amber-100 text-amber-800 border-amber-300' :
       'bg-teal-100 text-teal-800 border-teal-300'
     );
+    const isSiapDiambil = order.status === 'Siap Diambil' || next === 'Selesai';
+    const remindedTime = waReminders[order.noNota];
 
     return (
-      <article key={order.noNota} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <article key={order.noNota} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-xs font-extrabold text-slate-700">{order.noNota}</p>
@@ -249,9 +335,9 @@ export default function PesananView() {
         </div>
 
         <div className="mt-3 space-y-1.5 text-[11px] text-slate-500">
-          <div className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /><span>{order.estimasiSelesai || 'Estimasi belum diisi'}</span></div>
+          <div className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5 text-slate-400" /><span>{order.estimasiSelesai || order.estimasi || 'Estimasi -'}</span></div>
           {machine && <div className="flex items-center gap-1.5 font-semibold text-[#1E4648]"><WashingMachine className="h-3.5 w-3.5" /><span>Mesin {machine}</span></div>}
-          <p className="line-clamp-2">{order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')}</p>
+          <p className="line-clamp-2 text-slate-600">{order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')}</p>
           
           {/* Linked Multi-Bahan Material Indicator */}
           {(() => {
@@ -281,21 +367,60 @@ export default function PesananView() {
           })()}
         </div>
 
-        {next && (() => {
-          const NextIcon = getWorkflowIcon(next);
-          return (
+        {/* Khusus Tahap Siap Diambil: Menampilkan Reminder WhatsApp & Tombol Serahkan */}
+        {isSiapDiambil ? (
+          <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Di Outlet:</span>
+              {remindedTime ? (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full" title={`Terakhir dikirim: ${remindedTime}`}>
+                  <Check className="w-3 h-3 stroke-[3]" /> Sudah di-WA
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-full animate-pulse">
+                  <AlertCircle className="w-3 h-3" /> Belum di-WA
+                </span>
+              )}
+            </div>
+
+            {/* Tombol Kirim WA Reminder */}
+            <button
+              onClick={(e) => handleSendSiapWA(order, e)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white transition hover:bg-emerald-700 shadow-xs"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              <span>{remindedTime ? 'Kirim Ulang Notifikasi WA' : 'Kirim WA Siap Diambil'}</span>
+            </button>
+
+            {/* Tombol Serahkan / Selesai */}
             <button
               onClick={() => openProgress(order)}
-              className="mt-3 flex w-full items-center justify-between rounded-xl bg-[#1E4648] px-3 py-2 text-[11px] font-bold text-white transition hover:bg-[#163536] shadow-2xs"
+              className="flex w-full items-center justify-between rounded-xl bg-[#1E4648] px-3 py-2 text-[11px] font-bold text-white transition hover:bg-[#163536] shadow-xs"
             >
               <div className="flex items-center gap-1.5">
-                <NextIcon className="w-3.5 h-3.5 text-teal-200" />
-                <span>Lanjut ke {next}</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-teal-200" />
+                <span>Serahkan ke Pelanggan (Selesai)</span>
               </div>
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
-          );
-        })()}
+          </div>
+        ) : (
+          next && (() => {
+            const NextIcon = getWorkflowIcon(next);
+            return (
+              <button
+                onClick={() => openProgress(order)}
+                className="mt-3 flex w-full items-center justify-between rounded-xl bg-[#1E4648] px-3 py-2 text-[11px] font-bold text-white transition hover:bg-[#163536] shadow-2xs"
+              >
+                <div className="flex items-center gap-1.5">
+                  <NextIcon className="w-3.5 h-3.5 text-teal-200" />
+                  <span>Lanjut ke {next}</span>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            );
+          })()
+        )}
       </article>
     );
   };
@@ -306,13 +431,72 @@ export default function PesananView() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-sm font-extrabold text-slate-700">Manajemen Pesanan Drop-off</h2>
-            <p className="mt-0.5 text-[11px] text-slate-500">Pengerjaan fisik, staf, washer, dan dryer. Data keuangan tetap di Riwayat Transaksi.</p>
+            <p className="mt-0.5 text-[11px] text-slate-500">Pengerjaan fisik, staf, washer/dryer, status rak, dan reminder penjemputan WhatsApp.</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setView('kanban')} className={`rounded-lg border p-2 ${view === 'kanban' ? 'border-[#1E4648] bg-[#1E4648] text-white' : 'border-slate-200 text-slate-500'}`} title="Kanban"><Columns3 className="h-4 w-4" /></button>
             <button onClick={() => setView('list')} className={`rounded-lg border p-2 ${view === 'list' ? 'border-[#1E4648] bg-[#1E4648] text-white' : 'border-slate-200 text-slate-500'}`} title="List"><List className="h-4 w-4" /></button>
             <button onClick={loadData} disabled={loading} className="rounded-lg border border-slate-200 p-2 text-slate-500 disabled:opacity-50" title="Refresh"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /></button>
           </div>
+        </div>
+
+        {/* Quick Filter Tabs (Semua, Diproses, Siap Diambil, Belum di-WA) */}
+        <div className="mt-3 flex flex-wrap gap-1.5 border-b border-slate-100 pb-3">
+          <button
+            onClick={() => setFilterTab('Semua')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              filterTab === 'Semua'
+                ? 'bg-[#1E4648] text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <span>Semua Pesanan</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${filterTab === 'Semua' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+              {summaryCounts.total}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setFilterTab('Diproses')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              filterTab === 'Diproses'
+                ? 'bg-[#1E4648] text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <span>Sedang Diproses</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${filterTab === 'Diproses' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+              {summaryCounts.diprosesCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setFilterTab('SiapDiambil')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              filterTab === 'SiapDiambil'
+                ? 'bg-teal-700 text-white shadow-xs'
+                : 'bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100'
+            }`}
+          >
+            <span>Siap Diambil (Di Rak)</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${filterTab === 'SiapDiambil' ? 'bg-white/20 text-white' : 'bg-teal-200 text-teal-900'}`}>
+              {summaryCounts.siapCount}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setFilterTab('BelumWA')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              filterTab === 'BelumWA'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            <span>Belum di-WA</span>
+            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${filterTab === 'BelumWA' ? 'bg-white/20 text-white' : 'bg-amber-200 text-amber-900'}`}>
+              {summaryCounts.belumWaCount}
+            </span>
+          </button>
         </div>
 
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">

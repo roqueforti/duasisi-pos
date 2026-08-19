@@ -165,15 +165,29 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     let rawPhone = String(tx.noHp || '').replace(/[^0-9]/g, '');
     if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
     if (!rawPhone) {
-      await showAlert('Nomor HP pelanggan tidak tersedia.', 'warning');
+      await showAlert('Nomor HP / WhatsApp pelanggan tidak tersedia.', 'warning');
       return;
     }
 
-    const msg = `*NOTIFIKASI LAUNDRY SIAP DIAMBIL*\n\n` +
-      `Halo Sdr/i *${tx.namaPelanggan.toUpperCase()}*,\n` +
-      `Cucian Anda dengan No Nota *${tx.noNota}* sudah *SIAP DIAMBIL* di outlet Dua SiSi Laundry.\n\n` +
-      (tx.sisaTagihan ? `Sisa tagihan yang harus dilunasi: *Rp ${(tx?.sisaTagihan || 0).toLocaleString('id-ID')}*\n\n` : '') +
-      `Silakan datang ke outlet dengan membawa nota atau bukti pesan ini. Terima kasih!`;
+    const itemsSummary = (tx.items || []).map(it => `${it.qty}x ${it.layanan}`).join(', ');
+    const sisaTagihan = Number(tx.sisaTagihan) || 0;
+    const statusBayar = sisaTagihan > 0 ? `Belum Lunas (Sisa: Rp ${sisaTagihan.toLocaleString('id-ID')})` : 'Lunas';
+
+    const msg = [
+      `*NOTIFIKASI LAUNDRY SIAP DIAMBIL*`,
+      ``,
+      `Halo Kak *${tx.namaPelanggan || 'Pelanggan'}*! 👋`,
+      `Cucian Anda di *Dua SiSi Laundry* sudah selesai diproses dengan bersih dan wangi, serta *SIAP DIAMBIL* di outlet kami.`,
+      ``,
+      `📋 *No. Nota* : ${tx.noNota}`,
+      `🧺 *Layanan*  : ${itemsSummary || 'Drop Off'}`,
+      `💰 *Status*   : ${statusBayar}`,
+      ``,
+      `📍 *Lokasi Outlet*: Dua SiSi Laundry Express & Coin`,
+      `🕒 *Jam Buka*: 07.00 - 22.00 WIB`,
+      ``,
+      `Silakan datang ke outlet untuk pengambilan cucian. Terima kasih telah mencuci di Dua SiSi Laundry! 🙏✨`
+    ].join('\n');
 
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
