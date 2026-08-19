@@ -2,7 +2,7 @@
   "name": "Dua SiSi POS",
   "short_name": "DuaSiSi POS",
   "description": "Smart Laundry & Service POS with Pipeline Management",
-  "start_url": "/",
+  "start_url": "/terminal-pos-internal?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "fullscreen", "minimal-ui"],

@@ -1,221 +1,43 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import Sidebar from '@/components/Sidebar';
-import Navbar from '@/components/Navbar';
-import LoginModal from '@/components/LoginModal';
-import PosView from '@/components/PosView';
-import RiwayatView from '@/components/RiwayatView';
-import AbsensiView from '@/components/AbsensiView';
-import InventoryView from '@/components/InventoryView';
-import PegawaiView from '@/components/PegawaiView';
-import ProdukView from '@/components/ProdukView';
-import RekapView from '@/components/RekapView';
+import React, { useEffect, useState, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import ENotaView from '@/components/ENotaView';
-import PelangganView from '@/components/PelangganView';
-import DashboardView from '@/components/DashboardView';
-import PesananView from '@/components/PesananView';
-import MenuGeneratorView from '@/components/MenuGeneratorView';
-import KategoriView from '@/components/KategoriView';
-import ShiftView from '@/components/ShiftView';
-import LangkahView from '@/components/LangkahView';
-import PayrollView from '@/components/PayrollView';
-import KeamananView from '@/components/KeamananView';
-import { UserRole } from '@/lib/types';
-import { clearBackendSession, parseSessionToken, onSessionExpired, notifySessionExpired, isSessionIdleExpired, touchSessionActivity } from '@/lib/api';
-import { clearCache } from '@/lib/cache';
-import { useGlobalNotifications } from '@/lib/useGlobalNotifications';
-
-const VALID_TABS = [
-  'dashboard', 'transaksi', 'riwayat', 'pesanan', 'absensi',
-  'pelanggan', 'inventory', 'pegawai', 'payroll', 'produk',
-  'kategori', 'langkah', 'shift', 'menu', 'rekap', 'keamanan'
-];
-
-const MANAGER_ONLY_TABS = [
-  'pegawai', 'payroll', 'produk', 'kategori', 'langkah',
-  'shift', 'menu', 'rekap', 'keamanan'
-];
-
-function getValidInitialTab(savedTab: string | null, role: UserRole): string {
-  const fallback = role === 'MANAGER' ? 'dashboard' : 'transaksi';
-  if (!savedTab || !VALID_TABS.includes(savedTab)) return fallback;
-  if (role === 'MANAGER' && savedTab === 'transaksi') return 'dashboard';
-  if (role !== 'MANAGER' && MANAGER_ONLY_TABS.includes(savedTab)) return 'transaksi';
-  return savedTab;
-}
-
-function PosAppRoot() {
-  const [currentRole, setCurrentRole] = useState<UserRole>('');
-  const [currentTab, setCurrentTab] = useState<string>('transaksi');
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const [refreshKey, setRefreshKey] = useState<number>(0);
-  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
-
-  const handleTabChange = (tab: string) => {
-    setCurrentTab(tab);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('duasisi_last_active_tab', tab);
-      } catch (e) {}
-    }
-  };
-
-  const {
-    notifications,
-    unreadCount,
-    badgeCounts,
-    markAsRead,
-    markAllAsRead,
-    refreshNotifications
-  } = useGlobalNotifications(currentRole);
-
-  // Restore session & Setup 30-minute inactivity auto-expiration with interaction reset
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // Check existing session
-    const payload = parseSessionToken();
-    if (payload) {
-      if (!isSessionIdleExpired()) {
-        setCurrentRole(payload.role);
-        let savedTab: string | null = null;
-        try {
-          savedTab = localStorage.getItem('duasisi_last_active_tab');
-        } catch (e) {}
-        setCurrentTab(getValidInitialTab(savedTab, payload.role));
-        touchSessionActivity();
-      } else {
-        notifySessionExpired('Sesi sebelumnya telah kedaluwarsa karena tidak ada aktivitas. Silakan masukkan PIN untuk melanjutkan.');
-      }
-    }
-
-    // Subscribe to session expired events
-    const unsubscribe = onSessionExpired((message) => {
-      setCurrentRole('');
-      setSessionNotice(message);
-    });
-
-    // Global interaction listeners to reset 30-minute idle countdown
-    let lastTouch = 0;
-    const handleUserInteraction = () => {
-      const now = Date.now();
-      if (now - lastTouch > 5000) {
-        lastTouch = now;
-        touchSessionActivity();
-      }
-    };
-
-    const interactionEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
-    interactionEvents.forEach((ev) => window.addEventListener(ev, handleUserInteraction, { passive: true }));
-
-    // Heartbeat checker to automatically detect expiration when tab is idle for 30 minutes
-    const checkExpiration = () => {
-      const activePayload = parseSessionToken();
-      if (activePayload && isSessionIdleExpired()) {
-        notifySessionExpired('Sesi Anda telah kedaluwarsa karena tidak ada aktivitas selama 30 menit. Silakan masukkan PIN kembali.');
-      }
-    };
-
-    const interval = setInterval(checkExpiration, 15000);
-    return () => {
-      unsubscribe();
-      interactionEvents.forEach((ev) => window.removeEventListener(ev, handleUserInteraction));
-      clearInterval(interval);
-    };
-  }, []);
-
-  const handleLoginSuccess = (role: UserRole) => {
-    setCurrentRole(role);
-    setSessionNotice(null);
-    let savedTab: string | null = null;
-    try {
-      savedTab = localStorage.getItem('duasisi_last_active_tab');
-    } catch (e) {}
-    const initialTab = getValidInitialTab(savedTab, role);
-    handleTabChange(initialTab);
-  };
-
-  const handleLogout = () => {
-    clearBackendSession();
-    clearCache();
-    setCurrentRole('');
-    setSessionNotice(null);
-  };
-
-  const handleGlobalRefresh = () => {
-    clearCache();
-    setRefreshKey((prev) => prev + 1);
-  };
-
-  return (
-    <>
-      {!currentRole ? (
-        <LoginModal onSuccess={handleLoginSuccess} initialNotice={sessionNotice} />
-      ) : (
-        <div className="flex h-screen w-full overflow-hidden bg-slate-50 relative select-none">
-          {/* Sidebar Navigation */}
-          <Sidebar
-            currentTab={currentTab}
-            setCurrentTab={handleTabChange}
-            currentRole={currentRole}
-            isSidebarOpen={isSidebarOpen}
-            setIsSidebarOpen={setIsSidebarOpen}
-            onLogout={handleLogout}
-            badgeCounts={badgeCounts}
-          />
-
-          {/* Main Content Area */}
-          <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-            <Navbar
-              currentTab={currentTab}
-              currentRole={currentRole}
-              onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-              onLogout={handleLogout}
-              onRefresh={() => {
-                handleGlobalRefresh();
-                refreshNotifications();
-              }}
-              onNavigate={(tab) => handleTabChange(tab)}
-              notifications={notifications}
-              unreadCount={unreadCount}
-              onMarkAsRead={markAsRead}
-              onMarkAllAsRead={markAllAsRead}
-            />
-
-            <main key={refreshKey} className="flex-1 overflow-y-auto bg-slate-50">
-              {currentTab === 'dashboard' && <DashboardView currentRole={currentRole} />}
-              {currentTab === 'transaksi' && <PosView currentRole={currentRole} />}
-              {currentTab === 'riwayat' && <RiwayatView currentRole={currentRole} />}
-              {currentTab === 'pesanan' && <PesananView />}
-              {currentTab === 'absensi' && <AbsensiView currentRole={currentRole} />}
-              {currentTab === 'pelanggan' && <PelangganView currentRole={currentRole} />}
-              {currentTab === 'inventory' && <InventoryView currentRole={currentRole} />}
-              {currentTab === 'pegawai' && <PegawaiView currentRole={currentRole} />}
-              {currentTab === 'payroll' && <PayrollView currentRole={currentRole} />}
-              {currentTab === 'produk' && <ProdukView currentRole={currentRole} />}
-              {currentTab === 'kategori' && <KategoriView currentRole={currentRole} />}
-              {currentTab === 'langkah' && <LangkahView currentRole={currentRole} />}
-              {currentTab === 'shift' && <ShiftView currentRole={currentRole} />}
-
-              {currentTab === 'menu' && <MenuGeneratorView />}
-              {currentTab === 'rekap' && <RekapView />}
-              {currentTab === 'keamanan' && <KeamananView currentRole={currentRole} />}
-            </main>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
+import CustomerLandingPage from '@/components/CustomerLandingPage';
+import PosAppRoot from '@/components/PosAppRoot';
+import { parseSessionToken, isSessionIdleExpired } from '@/lib/api';
 
 function PageDispatcher() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const publicNotaParam = searchParams.get('nota');
   const publicNotaToken = searchParams.get('t');
+  const sourceParam = searchParams.get('source');
+  const [isPwaOrStaff, setIsPwaOrStaff] = useState<boolean | null>(null);
 
-  // If there's an E-Nota token or nota param, render ONLY ENotaView without touching login or POS app
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // 1. Check if opened via PWA standalone mode
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true ||
+      sourceParam === 'pwa';
+
+    // 2. Check if active staff session exists
+    const payload = parseSessionToken();
+    const hasValidSession = payload && !isSessionIdleExpired();
+
+    if (isStandalone) {
+      // PWA app directly opens POS terminal
+      router.replace('/terminal-pos-internal?source=pwa');
+      setIsPwaOrStaff(true);
+    } else {
+      setIsPwaOrStaff(false);
+    }
+  }, [sourceParam, router]);
+
+  // If there's an E-Nota token or nota query, render E-Nota immediately without login flash
   if (publicNotaParam || publicNotaToken) {
     return (
       <ENotaView
@@ -225,17 +47,25 @@ function PageDispatcher() {
     );
   }
 
-  return <PosAppRoot />;
+  // If standalone PWA redirecting
+  if (isPwaOrStaff === true) {
+    return <PosAppRoot />;
+  }
+
+  // Otherwise render Public Customer Landing Page
+  return <CustomerLandingPage />;
 }
 
 export default function HomePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1E4648] mb-3" />
-        <span className="text-xs font-semibold text-slate-500">Memuat Dua SiSi Laundry...</span>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#0C1E20] flex flex-col items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-400 mb-3" />
+          <span className="text-xs font-semibold text-teal-300">Memuat Dua SiSi Laundry...</span>
+        </div>
+      }
+    >
       <PageDispatcher />
     </Suspense>
   );
