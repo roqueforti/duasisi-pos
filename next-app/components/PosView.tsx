@@ -2462,27 +2462,67 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                   </div>
                 )}
 
-                {/* Customer Identity Inputs */}
+                {/* Guidance Banner: Masukkan No. WhatsApp Terlebih Dahulu */}
+                <div className="flex items-start gap-2.5 p-3 bg-gradient-to-r from-teal-50/90 via-emerald-50/80 to-teal-50/90 border border-teal-200/90 rounded-2xl text-xs text-teal-950 shadow-2xs">
+                  <div className="p-1.5 rounded-xl bg-[#1E4648] text-white shrink-0 mt-0.5 shadow-2xs">
+                    <Smartphone className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="text-[11px] leading-relaxed">
+                    <span className="font-extrabold text-[#1E4648]">Petunjuk Kasir:</span> Masukkan <strong>No. WhatsApp / HP</strong> terlebih dahulu. Sistem otomatis mendeteksi apakah pelanggan <strong>⭐ Member</strong>, <strong>👤 Pelanggan Lama</strong>, atau <strong>✨ Pelanggan Baru</strong>.
+                  </div>
+                </div>
+
+                {/* Customer Identity Inputs (Prioritas 1: No. WA, Prioritas 2: Nama) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Slot 1: No. WhatsApp / HP */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1.5">Nama Pelanggan *</label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block font-bold text-slate-700 text-xs">No. WhatsApp / HP *</label>
+                      {(() => {
+                        const digits = (customer.noHp || '').replace(/\D/g, '');
+                        if (digits.length === 0) {
+                          return <span className="text-[10px] text-slate-400 font-normal">Wajib diisi</span>;
+                        }
+                        if (digits.length < 8) {
+                          return <span className="text-[10px] text-amber-600 font-semibold">Min. 9 digit</span>;
+                        }
+                        const match = customerList.find(c => {
+                          const cHp = (c.noHp || '').replace(/\D/g, '');
+                          return cHp && (cHp === digits || cHp.endsWith(digits) || digits.endsWith(cHp));
+                        });
+                        if (match?.isMember || customer.isMember) {
+                          return <span className="text-[10px] text-amber-800 bg-amber-100 font-bold px-1.5 py-0.2 rounded-full">⭐ Member</span>;
+                        }
+                        if (match) {
+                          return <span className="text-[10px] text-teal-800 bg-teal-100 font-bold px-1.5 py-0.2 rounded-full">👤 Pelanggan Lama</span>;
+                        }
+                        return <span className="text-[10px] text-sky-800 bg-sky-100 font-bold px-1.5 py-0.2 rounded-full">✨ Pelanggan Baru</span>;
+                      })()}
+                    </div>
+                    <input
+                      type="tel"
+                      value={customer.noHp}
+                      disabled={customerMode === 'MEMBER' && !showQuickAddMember && !!customer.noHp}
+                      onChange={(e) => handleCustomerPhoneInput(e.target.value)}
+                      placeholder="Contoh: 08123456789"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648] focus:bg-white disabled:opacity-60 transition"
+                    />
+                  </div>
+
+                  {/* Slot 2: Nama Pelanggan */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block font-bold text-slate-700 text-xs">Nama Pelanggan *</label>
+                      {customer.nama && customer.nama !== 'Pelanggan Umum' && (
+                        <span className="text-[10px] text-slate-400 font-normal">Nama pemesan</span>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={customer.nama}
                       disabled={customerMode === 'MEMBER' && !showQuickAddMember && !!customer.noHp}
                       onChange={(e) => setCustomer({ ...customer, nama: e.target.value })}
                       placeholder="Nama lengkap pemesan"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648] focus:bg-white disabled:opacity-60 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1.5">No. WhatsApp / HP *</label>
-                    <input
-                      type="tel"
-                      value={customer.noHp}
-                      disabled={customerMode === 'MEMBER' && !showQuickAddMember && !!customer.noHp}
-                      onChange={(e) => handleCustomerPhoneInput(e.target.value)}
-                      placeholder="08123456789"
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648] focus:bg-white disabled:opacity-60 transition"
                     />
                   </div>
