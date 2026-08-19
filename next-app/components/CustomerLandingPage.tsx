@@ -100,15 +100,16 @@ const NAV_ITEMS: CardNavItem[] = [
 ];
 
 const OUTLET_GALLERY: DriftWallItem[] = [
-  { image: '/assets/bg-outlet.jpeg', title: 'Outlet Dua SiSi Laundry' },
-  { image: '/assets/bg-outlet.png', title: 'Mesin Washer & Dryer Koin' },
-  { image: 'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?w=600&auto=format&fit=crop&q=80', title: 'Station Cuci Modern' },
-  { image: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?w=600&auto=format&fit=crop&q=80', title: 'Hasil Cuci Bersih & Rapi' },
+  { image: '/assets/galeri/outlet-depan.png', title: 'Tampak Depan Dua SiSi Laundry' },
+  { image: '/assets/galeri/outlet-mesin-washer.jpeg', title: 'Mesin Cuci Washer Modern' },
+  { image: '/assets/galeri/outlet-ruang-tunggu.jpeg', title: 'Lounge Work From Laundry' },
+  { image: '/assets/galeri/outlet-mesin-koin.jpeg', title: 'Fasilitas Self Service Coin' },
+  { image: '/assets/galeri/outlet-suasana-area-cuci.jpeg', title: 'Area Cuci Bersih & Higienis' },
+  { image: '/assets/galeri/outlet-mesin-dryer.png', title: 'Mesin Dryer Pengering Cepat' },
+  { image: '/assets/galeri/outlet-suasana-modern.png', title: 'Suasana Interior Modern Dua SiSi' },
+  { image: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?w=600&auto=format&fit=crop&q=80', title: 'Hasil Pakaian Bersih & Rapi' },
   { image: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=600&auto=format&fit=crop&q=80', title: 'Setrika Uap & Packing Wangi' },
-  { image: 'https://images.unsplash.com/photo-1521656693074-0ef32e80a5d5?w=600&auto=format&fit=crop&q=80', title: 'Work From Laundry Lounge' },
-  { image: 'https://images.unsplash.com/photo-1489274495757-95c7c837b101?w=600&auto=format&fit=crop&q=80', title: 'Self Service Coin Washer' },
-  { image: 'https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?w=600&auto=format&fit=crop&q=80', title: 'Deterjen & Pelembut Premium' },
-  { image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&auto=format&fit=crop&q=80', title: 'Layanan Drop Off Kilat' }
+  { image: 'https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?w=600&auto=format&fit=crop&q=80', title: 'Deterjen & Softener Premium' }
 ];
 
 export default function CustomerLandingPage() {
