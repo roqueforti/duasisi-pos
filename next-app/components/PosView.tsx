@@ -2032,11 +2032,8 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         <Star className="w-4 h-4 fill-white text-white" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-extrabold text-xs text-slate-900">Poin Loyalitas Pelanggan</span>
-                          <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded-md text-[9px] font-black uppercase">
-                            {customer.memberStatus || 'Member'}
-                          </span>
+                        <div className="font-extrabold text-xs text-slate-900">
+                          Poin Pelanggan
                         </div>
                         <div className="text-[11px] text-slate-600 mt-0.5">
                           Saldo Saat Ini: <span className="font-bold text-slate-900 font-mono">{customer.poin || 0} Poin</span>
