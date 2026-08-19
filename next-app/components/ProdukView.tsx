@@ -1186,12 +1186,35 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                     </div>
                   )}
 
-                  <SatuanInput
-                    value={satuan}
-                    onChange={setSatuan}
-                    label="Satuan Penjualan"
-                    helperText="Contoh: paket, kg, pcs, botol, porsi, atau ketik kustom."
-                  />
+                  <div>
+                    <SatuanInput
+                      value={satuan}
+                      onChange={setSatuan}
+                      label="Satuan Penjualan"
+                      helperText={
+                        idInventory && inventoryList.find(i => i.id === idInventory)?.satuan
+                          ? `Tersinkronisasi otomatis dari unit stok inventory: ${inventoryList.find(i => i.id === idInventory)?.satuan}.`
+                          : "Contoh: paket, kg, pcs, botol, porsi, atau ketik kustom."
+                      }
+                    />
+                    {idInventory && inventoryList.find(i => i.id === idInventory)?.satuan && (
+                      <div className="mt-1 flex items-center justify-between text-[11px] bg-teal-50 border border-teal-200 text-teal-900 px-2.5 py-1 rounded-lg">
+                        <span>📦 Unit Stok Inventory: <strong>{inventoryList.find(i => i.id === idInventory)?.satuan}</strong></span>
+                        {satuan !== inventoryList.find(i => i.id === idInventory)?.satuan && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const invSat = inventoryList.find(i => i.id === idInventory)?.satuan;
+                              if (invSat) setSatuan(invSat);
+                            }}
+                            className="text-[10px] font-bold text-[#1E4648] hover:underline"
+                          >
+                            Samakan ke Satuan Inventory
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Kolom Kanan: Inventory & Harga */}
@@ -1200,7 +1223,20 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                     <div className="space-y-3">
                       <div>
                         <label className="block font-semibold text-slate-700 mb-1">Pautkan ke Inventory (Opsional)</label>
-                        <select value={idInventory} onChange={(e) => setIdInventory(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                        <select 
+                          value={idInventory} 
+                          onChange={(e) => {
+                            const newId = e.target.value;
+                            setIdInventory(newId);
+                            if (newId) {
+                              const inv = inventoryList.find(i => i.id === newId);
+                              if (inv && inv.satuan) {
+                                setSatuan(inv.satuan);
+                              }
+                            }
+                          }} 
+                          className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                        >
                           <option value="">-- Buat Otomatis di Inventory (Default) --</option>
                           {inventoryList.map(inv => (
                             <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
@@ -1223,7 +1259,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                             />
                             <span className="text-xs font-semibold text-orange-800">{inventoryList.find(i => i.id === idInventory)?.satuan || 'unit'}</span>
                           </div>
-                          <p className="text-[10px] text-orange-700 mt-1">Jumlah stok {inventoryList.find(i => i.id === idInventory)?.nama} yang akan dikurangi setiap kali 1 layanan ini dipesan.</p>
+                          <p className="text-[10px] text-orange-700 mt-1">Jumlah stok {inventoryList.find(i => i.id === idInventory)?.nama} yang akan dikurangi setiap kali 1 {satuan || 'layanan'} dipesan.</p>
                         </div>
                       )}
                     </div>
