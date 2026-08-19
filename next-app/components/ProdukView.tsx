@@ -796,10 +796,10 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                   : 'bg-emerald-50 border-emerald-300 text-emerald-800'
                               }`}
                             >
-                              <option value="none">⛔ Tidak Ada (Tanpa Stok)</option>
-                              <option value="auto">✨ + Buat Baru Otomatis</option>
+                              <option value="none">Tidak Ada (Tanpa Stok)</option>
+                              <option value="auto">+ Buat Baru Otomatis</option>
                               {inventoryList.map(inv => (
-                                <option key={inv.id} value={inv.id}>📦 {inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
+                                <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
                               ))}
                             </select>
                             
@@ -1268,7 +1268,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                     />
                     {idInventory && inventoryList.find(i => i.id === idInventory)?.satuan && (
                       <div className="mt-1 flex items-center justify-between text-[11px] bg-teal-50 border border-teal-200 text-teal-900 px-2.5 py-1 rounded-lg">
-                        <span>📦 Unit Stok Inventory: <strong>{inventoryList.find(i => i.id === idInventory)?.satuan}</strong></span>
+                        <span>Unit Stok Inventory: <strong>{inventoryList.find(i => i.id === idInventory)?.satuan}</strong></span>
                         {satuan !== inventoryList.find(i => i.id === idInventory)?.satuan && (
                           <button
                             type="button"
@@ -1293,7 +1293,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <label className="block font-bold text-slate-800 text-xs truncate">
-                            🧪 Resep Bahan Baku (BOM)
+                            Resep Bahan Baku (BOM)
                           </label>
                           <p className="text-[10px] text-slate-500 line-clamp-1">
                             Bahan otomatis terpotong saat pengerjaan Drop Off
@@ -1419,10 +1419,10 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                           }} 
                           className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#1E4648] text-xs font-semibold"
                         >
-                          <option value="none">⛔ Tidak Ada (Tanpa Pengurangan Stok)</option>
-                          <option value="auto">✨ + Buat Item Baru di Inventory Otomatis</option>
+                          <option value="none">Tidak Ada (Tanpa Pengurangan Stok)</option>
+                          <option value="auto">+ Buat Item Baru di Inventory Otomatis</option>
                           {inventoryList.map(inv => (
-                            <option key={inv.id} value={inv.id}>📦 {inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
+                            <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
                           ))}
                         </select>
                         <p className="text-[10px] text-slate-400 mt-1">
