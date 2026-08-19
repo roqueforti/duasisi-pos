@@ -23,25 +23,31 @@ import GradientWaves from '@/components/GradientWaves';
 interface ENotaViewProps {
   noNota: string;
   token?: string;
+  last4Phone?: string;
+  initialData?: Transaksi | null;
 }
 
-export default function ENotaView({ noNota, token }: ENotaViewProps) {
+export default function ENotaView({ noNota, token, last4Phone, initialData }: ENotaViewProps) {
   const { showAlert } = useDialog();
-  const [loading, setLoading] = useState<boolean>(true);
-  const [tx, setTx] = useState<Transaksi | null>(null);
+  const [loading, setLoading] = useState<boolean>(!initialData);
+  const [tx, setTx] = useState<Transaksi | null>(initialData || null);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [poinRate, setPoinRate] = useState<number>(10000);
   const [downloadingPng, setDownloadingPng] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [inputLast4, setInputLast4] = useState<string>(last4Phone || '');
+  const [verifyingManual, setVerifyingManual] = useState<boolean>(false);
 
-  const fetchNota = async () => {
+  const fetchNota = async (overrideLast4?: string) => {
     setLoading(true);
     setErrorMsg('');
     try {
+      const activeLast4 = overrideLast4 || inputLast4 || last4Phone || '';
       const res = await runBackend<{ success?: boolean; transaksi?: Transaksi; message?: string }>(
         'getTransaksiByNota',
         noNota || '',
-        token || ''
+        token || '',
+        activeLast4
       );
 
       if (res?.success && res.transaksi) {
@@ -62,10 +68,27 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
   };
 
   useEffect(() => {
+    if (initialData) {
+      setTx(initialData);
+      setLoading(false);
+      return;
+    }
     if (noNota || token) {
       fetchNota();
     }
-  }, [noNota, token]);
+  }, [noNota, token, initialData, last4Phone]);
+
+  const handleManualVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = inputLast4.replace(/\D/g, '');
+    if (clean.length !== 4) {
+      showAlert('Masukkan tepat 4 digit terakhir nomor WhatsApp.', 'warning');
+      return;
+    }
+    setVerifyingManual(true);
+    await fetchNota(clean);
+    setVerifyingManual(false);
+  };
 
   const handleDownloadPng = async () => {
     const el = document.getElementById('enota-print-area');
@@ -186,10 +209,35 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
           <p className="text-xs text-slate-500">Mengecek sertifikat keamanan di Cloud Dua SiSi Laundry</p>
         </div>
       ) : errorMsg || !tx ? (
-        <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-xl border border-rose-200 my-auto z-10">
-          <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
-          <h3 className="text-lg font-bold text-black mb-2">E-Nota Tidak Ditemukan</h3>
-          <p className="text-xs text-slate-600">{errorMsg || 'Nomor nota tidak terdaftar pada sistem server Dua SiSi Laundry.'}</p>
+        <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full text-center shadow-2xl border border-slate-200 my-auto z-10 animate-fade-in">
+          <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-center mx-auto mb-3 text-[#1E4648]">
+            <ShieldCheck className="w-7 h-7" />
+          </div>
+          <h3 className="text-base font-black text-slate-900 mb-1">Verifikasi Keamanan E-Nota</h3>
+          <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+            {errorMsg || 'Untuk keamanan data pribadi, masukkan 4 digit terakhir nomor WhatsApp yang terdaftar pada nota.'}
+          </p>
+
+          <form onSubmit={handleManualVerify} className="space-y-3">
+            <div>
+              <input
+                type="tel"
+                maxLength={4}
+                value={inputLast4}
+                onChange={(e) => setInputLast4(e.target.value.replace(/\D/g, ''))}
+                placeholder="Contoh: 3234"
+                className="w-full text-center font-mono font-black tracking-widest text-lg py-2.5 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl outline-none focus:border-[#1E4648] focus:bg-white transition"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={verifyingManual || inputLast4.replace(/\D/g, '').length !== 4}
+              className="w-full bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 px-4 rounded-xl text-xs transition shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+            >
+              {verifyingManual ? <RefreshCw className="w-4 h-4 animate-spin text-white" /> : <CheckCircle2 className="w-4 h-4" />}
+              <span>Buka E-Nota Resmi</span>
+            </button>
+          </form>
         </div>
       ) : (
         /* Split Layout: Thermal Receipt on Left, Control Panel on Right */

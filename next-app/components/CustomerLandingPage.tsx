@@ -198,7 +198,7 @@ export default function CustomerLandingPage() {
             ← Kembali ke Pencarian
           </button>
         </div>
-        <ENotaView noNota={viewFullNota} />
+        <ENotaView noNota={viewFullNota} initialData={foundTx} last4Phone={last4Phone} />
       </div>
     );
   }
