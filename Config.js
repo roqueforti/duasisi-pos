@@ -230,9 +230,9 @@ function getPriorityConfig() {
     } catch(e) {}
   }
   return [
-    { id: "p1", nama: "Reguler", durasiJam: 48, sla: 48, multiplier: 1.0, icon: "Clock", warna: "bg-teal-100 text-teal-800 border-teal-300", keterangan: "Pengerjaan standar 2 hari (48 Jam)", aktif: true },
-    { id: "p2", nama: "Express", durasiJam: 24, sla: 24, multiplier: 1.5, icon: "Flame", warna: "bg-amber-100 text-amber-800 border-amber-300", keterangan: "Pengerjaan cepat 24 Jam (+50% tarif)", aktif: true },
-    { id: "p3", nama: "Kilat", durasiJam: 6, sla: 6, multiplier: 2.0, icon: "Zap", warna: "bg-rose-100 text-rose-800 border-rose-300", keterangan: "Pengerjaan super kilat 6 Jam (2x lipat tarif)", aktif: true }
+    { id: "p1", nama: "Reguler", durasiJam: 48, sla: 48, icon: "Clock", warna: "bg-teal-100 text-teal-800 border-teal-300", keterangan: "Pengerjaan standar 2 hari (48 Jam)", aktif: true },
+    { id: "p2", nama: "Express", durasiJam: 24, sla: 24, icon: "Flame", warna: "bg-amber-100 text-amber-800 border-amber-300", keterangan: "Pengerjaan cepat 24 Jam", aktif: true },
+    { id: "p3", nama: "Kilat", durasiJam: 6, sla: 6, icon: "Zap", warna: "bg-rose-100 text-rose-800 border-rose-300", keterangan: "Pengerjaan super kilat 6 Jam", aktif: true }
   ];
 }
 

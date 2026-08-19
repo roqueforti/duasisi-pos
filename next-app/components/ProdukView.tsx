@@ -15,7 +15,6 @@ export interface DropOffPriorityItem {
   id: string;
   nama: string;
   durasiJam: number;
-  multiplier: number;
   warna?: string;
   icon?: string;
   keterangan?: string;
@@ -78,16 +77,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   // Drop Off Categories / Priorities State
   const [dropOffCategories, setDropOffCategories] = useState<DropOffPriorityItem[]>([
-    { id: 'p1', nama: 'Reguler', durasiJam: 48, multiplier: 1.0, icon: 'Clock', warna: 'bg-teal-100 text-teal-800 border-teal-300', keterangan: 'Pengerjaan standar 2 hari kerja (48 Jam)', aktif: true },
-    { id: 'p2', nama: 'Express', durasiJam: 24, multiplier: 1.5, icon: 'Flame', warna: 'bg-amber-100 text-amber-800 border-amber-300', keterangan: 'Pengerjaan cepat 24 Jam (+50% tarif)', aktif: true },
-    { id: 'p3', nama: 'Kilat', durasiJam: 6, multiplier: 2.0, icon: 'Zap', warna: 'bg-rose-100 text-rose-800 border-rose-300', keterangan: 'Pengerjaan super kilat 6 Jam (2x lipat tarif)', aktif: true }
+    { id: 'p1', nama: 'Reguler', durasiJam: 48, icon: 'Clock', warna: 'bg-teal-100 text-teal-800 border-teal-300', keterangan: 'Pengerjaan standar 2 hari kerja (48 Jam)', aktif: true },
+    { id: 'p2', nama: 'Express', durasiJam: 24, icon: 'Flame', warna: 'bg-amber-100 text-amber-800 border-amber-300', keterangan: 'Pengerjaan cepat 24 Jam', aktif: true },
+    { id: 'p3', nama: 'Kilat', durasiJam: 6, icon: 'Zap', warna: 'bg-rose-100 text-rose-800 border-rose-300', keterangan: 'Pengerjaan super kilat 6 Jam', aktif: true }
   ]);
   const [showDropOffModal, setShowDropOffModal] = useState(false);
   const [editingDropOffId, setEditingDropOffId] = useState<string | null>(null);
   const [dropOffForm, setDropOffForm] = useState<Omit<DropOffPriorityItem, 'id'>>({
     nama: '',
     durasiJam: 24,
-    multiplier: 1.0,
     icon: 'Clock',
     warna: 'bg-teal-100 text-teal-800 border-teal-300',
     keterangan: '',
@@ -214,7 +212,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
           id: d.id || `do-${Date.now()}-${Math.random()}`,
           nama: d.nama,
           durasiJam: Number(d.durasiJam || (d as any).sla || 24),
-          multiplier: Number(d.multiplier || 1.0),
           icon: d.icon || 'Clock',
           warna: d.warna || 'bg-teal-100 text-teal-800 border-teal-300',
           keterangan: d.keterangan || '',
@@ -231,7 +228,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     setDropOffForm({
       nama: '',
       durasiJam: 24,
-      multiplier: 1.0,
       icon: 'Clock',
       warna: 'bg-teal-100 text-teal-800 border-teal-300',
       keterangan: '',
@@ -245,7 +241,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     setDropOffForm({
       nama: item.nama,
       durasiJam: item.durasiJam || 24,
-      multiplier: item.multiplier || 1.0,
       icon: item.icon || 'Clock',
       warna: item.warna || 'bg-teal-100 text-teal-800 border-teal-300',
       keterangan: item.keterangan || '',
@@ -884,7 +879,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 <span>Manajemen Kategori & Prioritas Drop Off</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Atur pengkategorian prioritas pengerjaan (SLA waktu & multiplier tarif) yang otomatis muncul saat kasir memproses pesanan Drop Off.
+                Atur pengkategorian prioritas pengerjaan & SLA durasi waktu yang otomatis muncul saat kasir memproses pesanan Drop Off.
               </p>
             </div>
             {currentRole === 'MANAGER' && (
@@ -903,7 +898,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px] tracking-wider">
                   <th className="py-2.5 px-4">Kategori / Prioritas</th>
                   <th className="py-2.5 px-4">Estimasi SLA Pengerjaan</th>
-                  <th className="py-2.5 px-4">Multiplier Tarif</th>
                   <th className="py-2.5 px-4">Keterangan / SOP</th>
                   <th className="py-2.5 px-4">Status</th>
                   <th className="py-2.5 px-4 text-right">Aksi</th>
@@ -912,7 +906,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
               <tbody className="divide-y divide-slate-100">
                 {dropOffCategories.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                    <td colSpan={5} className="py-8 text-center text-slate-400">
                       Belum ada kategori / prioritas Drop Off. Klik tombol Tambah Kategori di atas.
                     </td>
                   </tr>
@@ -935,11 +929,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                           </span>
                           <span className="text-[10px] text-slate-400 ml-1.5">
                             ({(item.durasiJam / 24).toFixed(item.durasiJam % 24 === 0 ? 0 : 1)} Hari)
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-4">
-                          <span className={`font-mono font-bold text-xs ${item.multiplier > 1 ? 'text-amber-700 font-black' : 'text-slate-700'}`}>
-                            {item.multiplier}x {item.multiplier > 1 ? `(+${Math.round((item.multiplier - 1) * 100)}%)` : '(Standar)'}
                           </span>
                         </td>
                         <td className="py-2.5 px-4 text-slate-600 max-w-xs truncate">
@@ -1128,7 +1117,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                       ))}
                       {kategoriList.length === 0 && <option value="Self Service">Self Service</option>}
                     </select>
-                    <p className="text-[10px] text-slate-400 mt-1">Pengali harga (SLA) hanya berlaku untuk Layanan utama.</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Kategori master produk & layanan.</p>
                   </div>
 
                   <div>
@@ -1348,34 +1337,18 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Durasi Pengerjaan (SLA Jam) *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={dropOffForm.durasiJam}
-                    onChange={(e) => setDropOffForm(prev => ({ ...prev, durasiJam: Number(e.target.value) || 24 }))}
-                    placeholder="48"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-[#1E4648] font-mono font-bold"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">48 = 2 Hari, 24 = 1 Hari, 6 = 6 Jam</p>
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Multiplier Tarif (x Lipat) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.5"
-                    required
-                    value={dropOffForm.multiplier}
-                    onChange={(e) => setDropOffForm(prev => ({ ...prev, multiplier: Number(e.target.value) || 1.0 }))}
-                    placeholder="1.0"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-[#1E4648] font-mono font-bold"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">1.0 = normal, 1.5 = +50%</p>
-                </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Estimasi Durasi Pengerjaan (SLA Jam) *</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={dropOffForm.durasiJam}
+                  onChange={(e) => setDropOffForm(prev => ({ ...prev, durasiJam: Number(e.target.value) || 24 }))}
+                  placeholder="48"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-[#1E4648] font-mono font-bold"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Contoh: 48 = 2 Hari, 24 = 1 Hari, 6 = 6 Jam pengerjaan</p>
               </div>
 
               <div>
