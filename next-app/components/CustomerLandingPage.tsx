@@ -609,9 +609,9 @@ export default function CustomerLandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Card 1: Drop Off Service */}
-            <div className="rounded-2xl border border-[#143236] bg-[#061517] p-6 shadow-xl hover:border-teal-500/40 transition">
+            <div className="rounded-2xl border border-[#1a464c] bg-[#0b2124] p-6 shadow-2xl hover:border-teal-400/50 transition">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-[#0a272a] border border-teal-500/30 flex items-center justify-center text-teal-300">
+                <div className="w-10 h-10 rounded-xl bg-[#12363b] border border-teal-500/30 flex items-center justify-center text-teal-300">
                   <Shirt className="w-5 h-5" />
                 </div>
                 <div>
@@ -619,10 +619,10 @@ export default function CustomerLandingPage() {
                   <span className="text-[11px] text-teal-300 font-medium">Serahkan pakaian, kami selesaikan</span>
                 </div>
               </div>
-              <p className="text-xs text-white/70 leading-relaxed mb-4">
+              <p className="text-xs text-white/75 leading-relaxed mb-4">
                 Layanan lengkap cuci, pengeringan higienis, setrika uap rapi, dan packing harum. Tinggal drop pakaian Anda dan pantau statusnya lewat WhatsApp & E-Nota.
               </p>
-              <div className="space-y-1.5 text-xs text-white/60 border-t border-white/5 pt-3">
+              <div className="space-y-1.5 text-xs text-white/70 border-t border-white/10 pt-3">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
                   <span><strong>Kilat 4 Jam</strong> / <strong>Express 1 Hari</strong> / <strong>Reguler 2 Hari</strong></span>
@@ -633,15 +633,15 @@ export default function CustomerLandingPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Cuci Bedcover, Selimut, Boneka & Satuan</span>
+                  <span>Notifikasi live status pengerjaan via WhatsApp & E-Nota</span>
                 </div>
               </div>
             </div>
 
             {/* Card 2: Self Service Coin */}
-            <div className="rounded-2xl border border-[#143236] bg-[#061517] p-6 shadow-xl hover:border-teal-500/40 transition">
+            <div className="rounded-2xl border border-[#1a464c] bg-[#0b2124] p-6 shadow-2xl hover:border-teal-400/50 transition">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-[#0a272a] border border-teal-500/30 flex items-center justify-center text-teal-300">
+                <div className="w-10 h-10 rounded-xl bg-[#12363b] border border-teal-500/30 flex items-center justify-center text-teal-300">
                   <Coins className="w-5 h-5" />
                 </div>
                 <div>
@@ -649,10 +649,10 @@ export default function CustomerLandingPage() {
                   <span className="text-[11px] text-teal-300 font-medium">Cuci & Kering Cepat 60 Menit</span>
                 </div>
               </div>
-              <p className="text-xs text-white/70 leading-relaxed mb-4">
+              <p className="text-xs text-white/75 leading-relaxed mb-4">
                 Operasikan mesin washer dan dryer berkapasitas besar secara mandiri. Pakaian bersih maksimal, bebas kusut, dan 100% kering siap lipat.
               </p>
-              <div className="space-y-1.5 text-xs text-white/60 border-t border-white/5 pt-3">
+              <div className="space-y-1.5 text-xs text-white/70 border-t border-white/10 pt-3">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
                   <span><strong>1 Mesin 1 Pelanggan</strong> (Higienis & tidak dicampur)</span>
