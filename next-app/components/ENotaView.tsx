@@ -116,14 +116,14 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
       `*TOTAL BAYAR   : Rp ${total}*`,
       `Metode Bayar   : ${tx?.metodeBayar || 'Tunai'}`,
       `--------------------------------`,
-      `📶 *WiFi Outlet* : DuaSisiLaundry`,
-      `🔑 *Password*    : datanglagi`,
+      `*WiFi Outlet* : DuaSisiLaundry`,
+      `*Password*    : datanglagi`,
       `--------------------------------`,
       `*Lihat & Download E-Nota Resmi:*`,
       url,
       ``,
       `Kritik & Saran: +62 896-8202-0699`,
-      `Terima kasih telah mempercayakan cucian Anda di Dua SiSi Laundry! 🙏✨`
+      `Terima kasih telah mempercayakan cucian Anda di Dua SiSi Laundry!`
     ];
 
     const msg = lines.filter(Boolean).join('\n');

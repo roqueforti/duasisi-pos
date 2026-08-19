@@ -3180,14 +3180,16 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     }
 
                     msgLines.push(`--------------------------------`);
-                    msgLines.push(`⭐ *Poin Transaksi* : +${poinEarned} Poin`);
-                    msgLines.push(`⭐ *Total Saldo Poin*: ${saldoPoin} Poin`);
-                    msgLines.push(`_(Tukarkan poin Anda dengan potongan harga/layanan gratis/produk di kasir!)_`);
-                    msgLines.push(`--------------------------------`);
+                    if (completedOrderData.isMember && poinEarned > 0) {
+                      msgLines.push(`* *Poin Transaksi* : +${poinEarned} Poin`);
+                      msgLines.push(`* *Total Saldo Poin*: ${saldoPoin} Poin`);
+                      msgLines.push(`_(Tukarkan poin Anda dengan potongan harga/layanan gratis/produk di kasir!)_`);
+                      msgLines.push(`--------------------------------`);
+                    }
                     msgLines.push(`*Lihat E-Nota Resmi:*`);
                     msgLines.push(eNotaUrl);
                     msgLines.push(``);
-                    msgLines.push(`Terima kasih telah mempercayakan cucian Anda di Dua SiSi Laundry! 🙏✨`);
+                    msgLines.push(`Terima kasih telah mempercayakan cucian Anda di Dua SiSi Laundry!`);
 
                     const msg = msgLines.filter(Boolean).join('\n');
                     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
