@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import MoltenMetal from '@/components/MoltenMetal';
 import CardNav, { CardNavItem } from '@/components/CardNav';
+import FoldText from '@/components/FoldText';
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
 import ENotaView from '@/components/ENotaView';
@@ -268,12 +269,29 @@ export default function CustomerLandingPage() {
           </button>
         </div>
 
-        {/* Clean, Massive Typography */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white max-w-2xl leading-[1.1] mb-4 drop-shadow-md">
-          {activeTab === 'lacak'
-            ? 'Cucian Bersih. Cepat & Terpantau.'
-            : 'Poin Loyalitas & Keuntungan Member.'}
-        </h1>
+        {/* 3D Animated Unfolding Typography */}
+        <div className="mb-4 max-w-2xl text-center">
+          <FoldText
+            key={activeTab}
+            text={
+              activeTab === 'lacak'
+                ? 'Cucian Bersih. Cepat & Terpantau.'
+                : 'Poin Loyalitas & Keuntungan Member.'
+            }
+            splitBy="word"
+            hinge="top"
+            trigger="mount"
+            duration={0.7}
+            stagger={0.06}
+            ease="power3.out"
+            perspective={800}
+            creaseShading={0.55}
+            fontSize="clamp(2.2rem, 5.5vw, 3.75rem)"
+            fontWeight={800}
+            color="#ffffff"
+            className="drop-shadow-lg"
+          />
+        </div>
 
         <p className="text-xs sm:text-sm text-white/60 max-w-md mb-8 leading-relaxed font-normal">
           {activeTab === 'lacak'
