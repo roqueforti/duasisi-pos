@@ -110,6 +110,8 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
       isDropOff ? `*Layanan*      : Drop Off (${tx?.tingkatLayanan || 'Reguler'})` : `*Layanan*      : Self Service`,
       isDropOff && tx?.estimasi ? `*Estimasi Selesai*: ${tx.estimasi}` : '',
       ``,
+      Number(tx?.diskon || 0) > 0 ? `Subtotal       : Rp ${(Number(tx?.subtotal || tx?.total) || 0).toLocaleString('id-ID')}` : '',
+      Number(tx?.diskon || 0) > 0 ? `Diskon (${tx?.voucher && tx?.voucher !== 'None' ? tx?.voucher : (tx?.diskonKode || 'Promo')}) : -Rp ${(Number(tx?.diskon) || 0).toLocaleString('id-ID')}` : '',
       `*TOTAL BAYAR   : Rp ${total}*`,
       `Metode Bayar   : ${tx?.metodeBayar || 'Tunai'}`,
       `--------------------------------`,
@@ -287,7 +289,9 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
                     <span>Rp {(Number(tx.subtotal || tx.total) || 0).toLocaleString('id-ID')}</span>
                   </div>
                   <div className="flex justify-between font-bold">
-                    <span>Diskon Promo:</span>
+                    <span>
+                      Diskon ({tx.voucher && tx.voucher !== 'None' ? tx.voucher : (tx.diskonKode || 'Promo')}):
+                    </span>
                     <span>-Rp {(Number(tx.diskon) || 0).toLocaleString('id-ID')}</span>
                   </div>
                 </>

@@ -58,6 +58,8 @@ export interface Transaksi {
   tingkatLayanan?: KecepatanLayanan;
   subtotal?: number;
   diskon?: number;
+  diskonKode?: string;
+  voucher?: string;
   pajak?: number;
   total: number;
   nominalDP?: number;

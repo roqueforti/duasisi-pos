@@ -296,8 +296,9 @@ export function generateReceiptEscPos(tx: Transaksi, poinRate: number = 10000): 
   builder.dashedLine(32);
 
   if ((tx as any).diskon > 0) {
+    const vCode = (tx as any).voucher && (tx as any).voucher !== 'None' ? (tx as any).voucher : ((tx as any).diskonKode || 'Promo');
     builder.twoColumn('Subtotal:', `Rp ${(Number((tx as any).subtotal || tx.total)).toLocaleString('id-ID')}`, 32);
-    builder.twoColumn('Diskon:', `-Rp ${Number((tx as any).diskon).toLocaleString('id-ID')}`, 32);
+    builder.twoColumn(`Diskon (${vCode}):`, `-Rp ${Number((tx as any).diskon).toLocaleString('id-ID')}`, 32);
   }
   builder
     .bold(true)

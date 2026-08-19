@@ -350,6 +350,7 @@ function getTransaksiList(statusFilter) {
       estimasi: r[6],
       petugas: r[7] || "Kasir",
       tipe: r[8] || "SelfService",
+      voucher: (r[9] && String(r[9]).trim() !== "" && r[9] !== "None") ? String(r[9]).trim() : "",
       statusVoid: r[9] || "None",
       alasanVoid: r[10] || "",
       subtotal: Number(r[11]) || Number(r[4]) || 0,
