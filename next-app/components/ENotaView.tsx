@@ -340,16 +340,18 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
               )}
             </div>
 
-            {/* Loyalty Points Section */}
-            <div className="py-1.5 border-b border-dashed border-black text-[9.5px] space-y-0.5">
-              <div className="flex justify-between items-center font-bold">
-                <span>Poin Transaksi:</span>
-                <span>+{Math.floor((Number(tx.total) || 0) / (poinRate || 10000))} Poin</span>
+            {/* Loyalty Points Section (Only for Registered Member) */}
+            {Boolean(tx.isMember) && (
+              <div className="py-1.5 border-b border-dashed border-black text-[9.5px] space-y-0.5">
+                <div className="flex justify-between items-center font-bold">
+                  <span>Poin Transaksi:</span>
+                  <span>+{Math.floor((Number(tx.total) || 0) / (poinRate || 10000))} Poin</span>
+                </div>
+                <div className="text-[8.5px] font-sans italic">
+                  (Tukarkan poin Anda dengan potongan harga/layanan gratis/produk di kasir!)
+                </div>
               </div>
-              <div className="text-[8.5px] font-sans italic">
-                (Tukarkan poin Anda dengan potongan harga/layanan gratis/produk di kasir!)
-              </div>
-            </div>
+            )}
 
             {/* Wi-Fi Info Section */}
             <div className="py-1.5 border-b border-dashed border-black text-[9px] text-center space-y-0.5">

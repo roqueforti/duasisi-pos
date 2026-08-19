@@ -881,9 +881,10 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       const resTotal = Number(res.total) || grandTotal;
       const estimasi = hasDropOff ? calculateEstimasiSelesai(tingkatLayanan) : '';
       const currCust = customerList.find(c => (customer.noHp && c.noHp === customer.noHp) || (customer.nama && c.nama === customer.nama));
+      const isActualMember = Boolean((customer.isMember || customerMode === 'MEMBER') && (customer.isMember || currCust?.isMember));
       const saldoPoinLama = Number(customer.poin || currCust?.poin || 0);
-      const poinEarned = Math.floor(resTotal / (poinRate || 10000));
-      const saldoPoinBaru = saldoPoinLama + poinEarned;
+      const poinEarned = isActualMember ? Math.floor(resTotal / (poinRate || 10000)) : 0;
+      const saldoPoinBaru = isActualMember ? (saldoPoinLama + poinEarned) : 0;
 
       setCompletedOrderData({
         trxId: res.noNota,
@@ -891,14 +892,14 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         kasir,
         pelanggan: custName,
         noHp: customer.noHp,
-        isMember: Boolean(customer.isMember || customerMode === 'MEMBER'),
+        isMember: isActualMember,
         metodeBayar,
         subtotal: subtotalCart,
         diskon: diskonApplied.nilai || 0,
         diskonKode: diskonApplied.kode || '',
         poinEarned,
-        saldoPoinAwal: saldoPoinLama,
-        saldoPoinAkhir: saldoPoinBaru,
+        saldoPoinAwal: isActualMember ? saldoPoinLama : 0,
+        saldoPoinAkhir: isActualMember ? saldoPoinBaru : 0,
         total: resTotal,
         uangBayar: Number(bayar) || resTotal,
         kembalian: Math.max(0, (Number(bayar) || resTotal) - resTotal),
@@ -2023,9 +2024,9 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 <span className="font-bold">-Rp {(diskonApplied?.nilai || 0).toLocaleString('id-ID')}</span>
               </div>
             )}
-            {Math.floor(grandTotal / poinRate) > 0 && (
+            {customerMode === 'MEMBER' && customer.isMember && Math.floor(grandTotal / poinRate) > 0 && (
               <div className="flex justify-between text-[#FF9500]">
-                <span>Estimasi Poin :</span>
+                <span>Estimasi Poin (Member) :</span>
                 <span className="font-bold">+{Math.floor(grandTotal / poinRate)} Poin</span>
               </div>
             )}
@@ -2738,12 +2739,14 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         <span className="font-mono">-Rp {diskonApplied.nilai.toLocaleString('id-ID')}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-amber-800 font-bold pt-0.5">
-                      <span className="flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Perolehan Poin:
-                      </span>
-                      <span className="font-mono">+{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin</span>
-                    </div>
+                    {customerMode === 'MEMBER' && customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
+                      <div className="flex justify-between text-amber-800 font-bold pt-0.5">
+                        <span className="flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Perolehan Poin (Member):
+                        </span>
+                        <span className="font-mono">+{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2765,7 +2768,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       Diskon -Rp {diskonApplied.nilai.toLocaleString('id-ID')}
                     </span>
                   )}
-                  {Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
+                  {customerMode === 'MEMBER' && customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
                     <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-bold flex items-center gap-1">
                       <Sparkles className="w-3 h-3 text-amber-300" />
                       +{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin

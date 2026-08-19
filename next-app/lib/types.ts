@@ -53,6 +53,8 @@ export interface Transaksi {
   tanggal: string;
   namaPelanggan: string;
   noHp?: string;
+  isMember?: boolean;
+  poinEarned?: number;
   petugas: string;
   tipe?: 'SelfService' | 'FullService' | 'NonLayanan' | string;
   tingkatLayanan?: KecepatanLayanan;

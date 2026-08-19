@@ -309,7 +309,7 @@ export function generateReceiptEscPos(tx: Transaksi, poinRate: number = 10000): 
   }
   builder.bold(false);
 
-  if (Math.floor((tx.total || 0) / poinRate) > 0) {
+  if (Boolean(tx.isMember) && Math.floor((tx.total || 0) / poinRate) > 0) {
     builder.dashedLine(32);
     builder.twoColumn('Poin Transaksi:', `+${Math.floor((tx.total || 0) / poinRate)} Pts`, 32);
     builder.line('Tukarkan poin dg diskon di kasir');
