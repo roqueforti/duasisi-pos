@@ -1926,212 +1926,449 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         </div>
       )}
 
-      {/* 4. MODAL "Detail Transaksi & Pembayaran" (Split Layout: Kiri Summary, Kanan Numpad Kalkulator) */}
+      {/* 4. MODAL "Detail Transaksi & Pembayaran" (Split Layout: Kiri Detail Order & Customer, Kanan Kasir & Pembayaran) */}
       {showDetailTransaksiModal && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
-          <div className="bg-white rounded-xl w-full h-fit max-h-[95vh] max-w-5xl border border-slate-100 shadow-xl flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden my-auto">
+        <div className="fixed inset-0 z-[500] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-5xl border border-slate-200/90 shadow-2xl flex flex-col lg:flex-row overflow-hidden my-auto max-h-[94vh] animate-scale-in">
             
-            {/* LEFT PANEL: Transaction Summary & Details */}
-            <div className="flex-none lg:flex-1 flex flex-col overflow-visible lg:overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-200 min-w-0">
+            {/* LEFT PANEL: Transaction Summary & Customer Details */}
+            <div className="flex-1 flex flex-col overflow-y-auto border-b lg:border-b-0 lg:border-r border-slate-200 min-w-0 bg-white">
               {/* Header */}
-              <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0 bg-gradient-to-r from-slate-50 to-white">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-700">Detail Transaksi</h3>
-                  <p className="text-sm text-slate-500 mt-1">Lengkapi data order & customer</p>
+              <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#1E4648] text-white flex items-center justify-center shadow-xs shrink-0">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800 leading-tight">Detail Transaksi & Pelanggan</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Lengkapi identitas pemesan & instruksi pengerjaan</p>
+                  </div>
                 </div>
-                <button onClick={() => setShowDetailTransaksiModal(false)} className="p-2 rounded-lg hover:bg-slate-200 transition-colors">
-                  <X className="w-5 h-5 text-slate-400" />
+                <button 
+                  onClick={() => setShowDetailTransaksiModal(false)} 
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0"
+                >
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Scrollable Content */}
-              <div className="flex-none lg:flex-1 overflow-visible lg:overflow-y-auto p-5 space-y-5">
-                {/* Customer Type */}
+              {/* Form Content */}
+              <div className="p-5 space-y-4 text-xs font-semibold text-slate-700">
+                {/* Customer Type Segmented Toggle */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-3">Jenis Pelanggan *</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {(['UMUM', 'MEMBER'] as const).map((type) => (
-                      <button key={type} type="button" onClick={() => setCustomerMode(type)} className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${customerMode === type ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-lg transform scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-[#1E4648] hover:bg-slate-50'}`}>
-                        {type === 'UMUM' ? 'Pelanggan Biasa' : 'Member'}
-                      </button>
-                    ))}
+                  <label className="block font-bold text-slate-700 mb-2">Tipe Pelanggan *</label>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerMode('UMUM');
+                        setCustomerSource('BARU');
+                      }}
+                      className={`py-2.5 px-3 rounded-xl font-bold transition text-xs flex items-center justify-center gap-1.5 ${
+                        customerMode === 'UMUM'
+                          ? 'bg-[#1E4648] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      <span>Pelanggan Umum</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerMode('MEMBER');
+                        setCustomerSource('TERDAFTAR');
+                      }}
+                      className={`py-2.5 px-3 rounded-xl font-bold transition text-xs flex items-center justify-center gap-1.5 ${
+                        customerMode === 'MEMBER'
+                          ? 'bg-[#1E4648] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Member Terdaftar</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Customer Source */}
-                <div>
-                  <label className="block font-bold text-slate-700 mb-2">Data Pelanggan *</label>
-                  <select value={customerSource} onChange={(e) => setCustomerSource(e.target.value as 'BARU' | 'TERDAFTAR')} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-sm outline-none focus:border-[#1E4648]">
-                    <option value="BARU">Pelanggan Baru</option>
-                    <option value="TERDAFTAR">Pilih Pelanggan Terdaftar</option>
-                  </select>
+                {/* Registered Customer Search & Select */}
+                {customerMode === 'MEMBER' || customerSource === 'TERDAFTAR' ? (
+                  <div className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+                    <label className="block font-bold text-slate-700">Pilih Data Member Terdaftar *</label>
+                    <select
+                      value={customer.noHp}
+                      onChange={(e) => {
+                        const found = customerList.find((c) => c.noHp === e.target.value);
+                        if (found) {
+                          setCustomer({
+                            ...found,
+                            memberStatus: 'Member Regular',
+                          });
+                        }
+                      }}
+                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648]"
+                    >
+                      <option value="">-- Cari / Pilih Pelanggan Terdaftar --</option>
+                      {customerList.map((c) => (
+                        <option key={c.noHp} value={c.noHp}>
+                          {c.nama} ({c.noHp}) {c.alamat ? `· ${c.alamat}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+
+                {/* Customer Identity Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5">Nama Pelanggan *</label>
+                    <input
+                      type="text"
+                      value={customer.nama}
+                      disabled={customerSource === 'TERDAFTAR' && !!customer.noHp}
+                      onChange={(e) => setCustomer({ ...customer, nama: e.target.value })}
+                      placeholder="Nama lengkap pemesan"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648] focus:bg-white disabled:opacity-60 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5">No. WhatsApp / HP *</label>
+                    <input
+                      type="tel"
+                      value={customer.noHp}
+                      disabled={customerSource === 'TERDAFTAR' && !!customer.noHp}
+                      onChange={(e) => setCustomer({ ...customer, noHp: e.target.value })}
+                      placeholder="08123456789"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648] focus:bg-white disabled:opacity-60 transition"
+                    />
+                  </div>
                 </div>
 
-                {customerSource === 'TERDAFTAR' && (
-                  <select value={customer.noHp} onChange={(e) => { const found = customerList.find((c) => c.noHp === e.target.value); if (found) setCustomer({ ...found, memberStatus: customerMode === 'MEMBER' ? 'Member' : 'Regular' }); }} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-sm outline-none focus:border-[#1E4648]">
-                    <option value="">Pilih pelanggan...</option>
-                    {customerList.map((c) => <option key={c.noHp} value={c.noHp}>{c.nama} - {c.noHp}</option>)}
-                  </select>
+                {/* Staff Kasir & Service Type */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5">Staf Kasir / Pemroses *</label>
+                    <select
+                      value={namaKasirInput}
+                      onChange={(e) => setNamaKasirInput(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648] focus:bg-white transition"
+                    >
+                      {staffList.map((s) => (
+                        <option key={s.id || s.nama} value={s.nama}>
+                          {s.nama} {s.jabatan ? `(${s.jabatan})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1.5">Kategori Order / Alur</label>
+                    <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setTipeLayanan('')}
+                        className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition ${
+                          tipeLayanan === ''
+                            ? 'bg-[#1E4648] text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                        title="Produk Retail, Add-on, atau Minuman"
+                      >
+                        Retail / FnB
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTipeLayanan('SelfService')}
+                        className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition ${
+                          tipeLayanan === 'SelfService'
+                            ? 'bg-[#1E4648] text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                        title="Cuci / Kering Mandiri"
+                      >
+                        Self Service
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTipeLayanan('FullService')}
+                        className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition ${
+                          tipeLayanan === 'FullService'
+                            ? 'bg-[#1E4648] text-white shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                        title="Pengerjaan Lengkap SOP Outlet"
+                      >
+                        Drop Off
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Priority Option if Drop Off */}
+                {tipeLayanan === 'FullService' && (
+                  <div className="bg-teal-50/70 border border-teal-200/80 p-3 rounded-2xl space-y-2">
+                    <label className="block font-bold text-teal-900">Prioritas Pengerjaan Drop Off</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['Reguler', 'Express', 'Kilat'] as const).map((pri) => (
+                        <button
+                          key={pri}
+                          type="button"
+                          onClick={() => setTingkatLayanan(pri)}
+                          className={`py-2 rounded-xl font-bold text-xs border transition ${
+                            tingkatLayanan === pri
+                              ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
+                              : 'bg-white text-slate-700 border-teal-200/80 hover:bg-teal-100/40'
+                          }`}
+                        >
+                          {pri}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
-                {/* Staff Kasir */}
+                {/* Catatan Tambahan */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-2">Nama Staff Memproses *</label>
-                  <select value={namaKasirInput} onChange={(e) => setNamaKasirInput(e.target.value)} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-sm outline-none focus:border-[#1E4648]">
-                    {staffList.map((s) => (
-                      <option key={s.id || s.nama} value={s.nama}>
-                        {s.nama} {s.jabatan ? `(${s.jabatan})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block font-bold text-slate-700 mb-1.5">Catatan Khusus Pesanan</label>
+                  <textarea
+                    rows={2}
+                    value={catatanOrderInput}
+                    onChange={(e) => setCatatanOrderInput(e.target.value)}
+                    placeholder="Contoh: Pisahkan pakaian putih, jemput besok sore..."
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs outline-none focus:border-[#1E4648] focus:bg-white transition"
+                  />
                 </div>
 
-                {/* Customer Info */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-2">Nama Pelanggan *</label>
-                    <input type="text" value={customer.nama} disabled={customerSource === 'TERDAFTAR'} onChange={(e) => setCustomer({ ...customer, nama: e.target.value })} placeholder="Nama Pelanggan" className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-sm outline-none focus:border-[#1E4648] disabled:opacity-60" />
+                {/* Line Items Summary Box */}
+                <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 space-y-2">
+                  <div className="flex justify-between items-center pb-1.5 border-b border-slate-200/70 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <span>Item Pesanan ({cartArray.length})</span>
+                    <span>Subtotal</span>
                   </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-2">No. HP / WhatsApp *</label>
-                    <input type="tel" value={customer.noHp} disabled={customerSource === 'TERDAFTAR'} onChange={(e) => setCustomer({ ...customer, noHp: e.target.value })} placeholder="08..." className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-sm outline-none focus:border-[#1E4648] disabled:opacity-60" />
-                  </div>
-                </div>
-
-                {/* Tipe Layanan (Opsional) */}
-                <div>
-                  <label className="block font-bold text-slate-700 mb-2">Tipe Layanan (Opsional)</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => setTipeLayanan('')} className={`py-2.5 rounded-lg font-bold text-sm border ${tipeLayanan === '' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-white text-slate-700 border-slate-200'}`}>
-                      Bukan Layanan
-                    </button>
-                    <button type="button" onClick={() => setTipeLayanan('SelfService')} className={`py-2.5 rounded-lg font-bold text-sm border ${tipeLayanan === 'SelfService' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-white text-slate-700 border-slate-200'}`}>
-                      Self Service
-                    </button>
-                    <button type="button" onClick={() => setTipeLayanan('FullService')} className={`py-2.5 rounded-lg font-bold text-sm border ${tipeLayanan === 'FullService' ? 'bg-[#1E4648] text-white border-[#1E4648]' : 'bg-white text-slate-700 border-slate-200'}`}>
-                      Drop Off
-                    </button>
-                  </div>
-                </div>
-
-                {/* Catatan */}
-                <div>
-                  <label className="block font-bold text-slate-700 mb-2">Catatan Tambahan Order</label>
-                  <textarea rows={2} value={catatanOrderInput} onChange={(e) => setCatatanOrderInput(e.target.value)} placeholder="Misal: Jemput jam 5 sore" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg font-medium text-sm outline-none focus:border-[#1E4648]" />
-                </div>
-
-                {/* Item Summary */}
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                  <div className="font-bold text-slate-600 text-sm border-b border-slate-200 pb-2 mb-2">Ringkasan Item:</div>
-                  <div className="max-h-32 overflow-y-auto space-y-1.5">
+                  <div className="max-h-28 overflow-y-auto space-y-1.5 pr-1">
                     {cartArray.map((i, idx) => (
-                      <div key={idx} className="flex justify-between text-slate-700 text-sm">
-                        <span>{i.layanan} Ã—{i.qty}</span>
-                        <span className="font-bold">Rp {(i.qty * (i.hargaSatuan || 0)).toLocaleString('id-ID')}</span>
+                      <div key={idx} className="flex justify-between text-xs text-slate-700">
+                        <span className="font-semibold truncate pr-2">
+                          {i.layanan} <span className="text-slate-400 font-mono">×{i.qty}</span>
+                        </span>
+                        <span className="font-bold font-mono shrink-0">
+                          Rp {(i.qty * (i.hargaSatuan || 0)).toLocaleString('id-ID')}
+                        </span>
                       </div>
                     ))}
                   </div>
+                  {diskonApplied.nilai > 0 && (
+                    <div className="pt-1.5 border-t border-slate-200/70 flex justify-between text-xs text-emerald-700 font-bold">
+                      <span>Potongan Diskon ({diskonApplied.kode}):</span>
+                      <span className="font-mono">-Rp {diskonApplied.nilai.toLocaleString('id-ID')}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* RIGHT PANEL: Payment Calculator (Numpad) */}
-            <div className="w-full lg:w-[360px] xl:w-[420px] flex flex-col bg-slate-50 shrink-0">
+            {/* RIGHT PANEL: Payment Calculator & Numpad */}
+            <div className="w-full lg:w-[380px] xl:w-[420px] flex flex-col bg-slate-50 shrink-0">
               {/* Total Banner */}
-              <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-6 text-center shrink-0 shadow-lg">
-                <span className="text-xs text-slate-300 font-bold uppercase tracking-wider block mb-2">TOTAL TAGIHAN:</span>
-                <span className="text-4xl font-bold text-white drop-shadow-lg">Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>
+              <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white p-5 text-center shrink-0 shadow-md">
+                <span className="text-[10px] text-teal-200 font-extrabold uppercase tracking-widest block mb-1">
+                  TOTAL PEMBAYARAN
+                </span>
+                <span className="text-3xl sm:text-4xl font-black text-white font-mono drop-shadow-sm">
+                  Rp {(grandTotal || 0).toLocaleString('id-ID')}
+                </span>
+                <div className="mt-1 flex items-center justify-center gap-2 text-[10px] text-slate-400">
+                  <span>{cartArray.reduce((acc, c) => acc + c.qty, 0)} Pcs / Paket</span>
+                  {diskonApplied.nilai > 0 && (
+                    <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded font-semibold">
+                      Diskon Aktif
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {/* Payment Method Selection */}
-              <div className="p-5 border-b border-slate-200 bg-white">
-                <label className="block font-bold text-slate-700 mb-3 text-sm">Metode Pembayaran *</label>
-                <div className="grid grid-cols-2 gap-3">
+              {/* Payment Method Tabs */}
+              <div className="p-4 border-b border-slate-200 bg-white space-y-2">
+                <label className="block font-bold text-slate-700 text-xs">Metode Pembayaran *</label>
+                <div className="grid grid-cols-4 gap-2">
                   {[
-                    { id: 'Tunai', label: 'Tunai' },
-                    { id: 'QRIS', label: 'QRIS' },
-                    { id: 'Transfer', label: 'Transfer' },
-                    { id: 'Debit', label: 'Debit' },
-                  ].map((m) => (
-                    <button key={m.id} type="button" onClick={() => setMetodeBayar(m.id as any)} className={`py-3 px-4 rounded-lg text-sm font-bold border-2 transition-all ${metodeBayar === m.id ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-lg transform scale-105' : 'bg-white text-slate-700 border-slate-200 hover:border-[#1E4648] hover:bg-slate-50'}`}>
-                      {m.label}
-                    </button>
-                  ))}
+                    { id: 'Tunai', label: 'Tunai', icon: Receipt },
+                    { id: 'QRIS', label: 'QRIS', icon: QrCode },
+                    { id: 'Transfer', label: 'Transfer', icon: Send },
+                    { id: 'Debit', label: 'Debit', icon: CreditCard },
+                  ].map((m) => {
+                    const MethodIcon = m.icon;
+                    const isSelected = metodeBayar === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setMetodeBayar(m.id as any)}
+                        className={`py-2.5 px-1 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center justify-center gap-1 ${
+                          isSelected
+                            ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200/90 hover:border-[#1E4648] hover:bg-slate-50'
+                        }`}
+                      >
+                        <MethodIcon className="w-4 h-4" />
+                        <span className="text-[11px]">{m.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Tunai: Numpad Calculator */}
               {metodeBayar === 'Tunai' ? (
-                <div className="flex-1 flex flex-col p-4">
+                <div className="flex-1 flex flex-col p-4 overflow-y-auto">
                   {/* Display Input */}
-                  <div className="mb-4">
-                    <label className="block font-bold text-slate-600 mb-2 text-sm">Uang Diterima:</label>
-                    <input type="text" readOnly value={uangBayarInput ? `Rp ${Number(uangBayarInput).toLocaleString('id-ID')}` : 'Rp 0'} className="w-full px-4 py-4 bg-white border-2 border-slate-300 rounded-lg font-bold text-2xl text-[#1E4648] text-right" />
+                  <div className="mb-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="font-bold text-slate-600 text-xs">Uang Diterima:</label>
+                      {uangBayarInput && uangBayarInput !== '0' && (
+                        <button
+                          type="button"
+                          onClick={() => setUangBayarInput('0')}
+                          className="text-[10px] font-bold text-rose-500 hover:underline"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      readOnly
+                      value={uangBayarInput ? `Rp ${Number(uangBayarInput).toLocaleString('id-ID')}` : 'Rp 0'}
+                      className="w-full px-4 py-3 bg-white border-2 border-slate-300 rounded-xl font-black text-2xl text-[#1E4648] text-right font-mono shadow-2xs"
+                    />
                   </div>
 
-                  {/* Quick Buttons */}
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    <button type="button" onClick={() => setUangBayarInput((grandTotal || 0).toString())} className="py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-xs">
+                  {/* Quick Shortcut Buttons */}
+                  <div className="grid grid-cols-4 gap-1.5 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput((grandTotal || 0).toString())}
+                      className="py-2 bg-white border-2 border-slate-200/90 hover:bg-teal-50 hover:border-[#1E4648] text-[#1E4648] font-bold rounded-xl text-xs transition shadow-2xs"
+                    >
                       Uang Pas
                     </button>
-                    <button type="button" onClick={() => setUangBayarInput('50000')} className="py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput('20000')}
+                      className="py-2 bg-white border-2 border-slate-200/90 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition shadow-2xs"
+                    >
+                      20K
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput('50000')}
+                      className="py-2 bg-white border-2 border-slate-200/90 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition shadow-2xs"
+                    >
                       50K
                     </button>
-                    <button type="button" onClick={() => setUangBayarInput('100000')} className="py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput('100000')}
+                      className="py-2 bg-white border-2 border-slate-200/90 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition shadow-2xs"
+                    >
                       100K
                     </button>
                   </div>
 
                   {/* Numpad Grid */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="grid grid-cols-3 gap-2 mb-3">
                     {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((num) => (
-                      <button key={num} type="button" onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? num.toString() : prev + num))} className="py-6 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-3xl shadow-sm active:scale-95 transition">
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() =>
+                          setUangBayarInput((prev) => (prev === '0' || !prev ? num.toString() : prev + num))
+                        }
+                        className="py-3.5 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-xl shadow-2xs active:scale-95 transition font-mono"
+                      >
                         {num}
                       </button>
                     ))}
-                    <button type="button" onClick={() => setUangBayarInput('0')} className="py-6 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-3xl shadow-sm active:scale-95 transition">
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput('0')}
+                      className="py-3.5 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-xl shadow-2xs active:scale-95 transition"
+                    >
                       C
                     </button>
-                    <button type="button" onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '0'))} className="py-6 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-3xl shadow-sm active:scale-95 transition">
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '0'))}
+                      className="py-3.5 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-xl shadow-2xs active:scale-95 transition font-mono"
+                    >
                       0
                     </button>
-                    <button type="button" onClick={() => setUangBayarInput((prev) => prev.slice(0, -1) || '0')} className="py-6 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-2xl shadow-sm active:scale-95 transition">
-                      âŒ«
+                    <button
+                      type="button"
+                      onClick={() => setUangBayarInput((prev) => prev.slice(0, -1) || '0')}
+                      className="py-3.5 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-lg shadow-2xs active:scale-95 transition"
+                    >
+                      ⌫
                     </button>
                   </div>
 
-                  {/* Kembalian Display */}
+                  {/* Kembalian / Kekurangan Display */}
                   {Number(uangBayarInput) >= grandTotal && Number(uangBayarInput) > 0 ? (
-                    <div className="bg-emerald-50 border-2 border-emerald-300 rounded-lg p-4 text-center">
-                      <div className="text-xs font-bold text-emerald-700 mb-1">KEMBALIAN:</div>
-                      <div className="text-2xl font-bold text-emerald-600">Rp {(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}</div>
+                    <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-3 text-center shadow-2xs">
+                      <div className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">KEMBALIAN:</div>
+                      <div className="text-xl font-black text-emerald-700 font-mono">
+                        Rp {(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}
+                      </div>
                     </div>
                   ) : Number(uangBayarInput) > 0 ? (
-                    <div className="bg-rose-50 border-2 border-rose-300 rounded-lg p-4 text-center">
-                      <div className="text-xs font-bold text-rose-700 mb-1">UANG KURANG:</div>
-                      <div className="text-2xl font-bold text-rose-600">Rp {(grandTotal - Number(uangBayarInput)).toLocaleString('id-ID')}</div>
+                    <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-3 text-center shadow-2xs">
+                      <div className="text-[11px] font-bold text-rose-800 uppercase tracking-wider">UANG KURANG:</div>
+                      <div className="text-xl font-black text-rose-700 font-mono">
+                        Rp {(grandTotal - Number(uangBayarInput)).toLocaleString('id-ID')}
+                      </div>
                     </div>
                   ) : null}
                 </div>
               ) : (
-                /* Non-Tunai: tampilkan pesan singkat saja */
+                /* Non-Tunai Display */
                 <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
-                  <div className="w-16 h-16 rounded-full bg-[#B5C9C9]/20 flex items-center justify-center">
-                    <CreditCard className="w-8 h-8 text-[#1E4648]" />
+                  <div className="w-16 h-16 rounded-2xl bg-teal-50 border border-teal-200 text-[#1E4648] flex items-center justify-center shadow-2xs">
+                    {metodeBayar === 'QRIS' ? (
+                      <QrCode className="w-8 h-8" />
+                    ) : (
+                      <CreditCard className="w-8 h-8" />
+                    )}
                   </div>
-                  <div className="text-lg font-bold text-slate-700">Pembayaran {metodeBayar}</div>
-                  <div className="text-sm text-slate-500">Total: <span className="font-bold text-slate-700">Rp {grandTotal.toLocaleString('id-ID')}</span></div>
-                  <div className="text-xs text-slate-400 bg-slate-100 rounded-lg px-4 py-2 mt-2">
-                    Pastikan pembayaran sudah diterima sebelum konfirmasi
+                  <div>
+                    <h4 className="text-base font-bold text-slate-800">Pembayaran {metodeBayar}</h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Nominal: <span className="font-bold text-[#1E4648] font-mono">Rp {grandTotal.toLocaleString('id-ID')}</span>
+                    </p>
+                  </div>
+                  <div className="text-xs text-slate-500 bg-white border border-slate-200 rounded-xl p-3 mt-2 max-w-xs shadow-2xs">
+                    Pastikan dana telah masuk atau struk EDC berhasil keluar sebelum menekan tombol konfirmasi.
                   </div>
                 </div>
               )}
 
-              {/* Bottom Action */}
-              <div className="p-4 border-t border-slate-200 bg-white">
-                <button type="button" onClick={handleConfirmPaymentSafe} disabled={paymentSubmitting || (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal)} className={`w-full font-bold py-4 rounded-lg text-base flex items-center justify-center gap-2 shadow-md transition ${paymentSubmitting || (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal) ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#1E4648] hover:bg-[#163536] text-white'}`}>
-                  <span>{paymentSubmitting ? 'Menyimpan...' : 'Konfirmasi & Selesaikan Bayar'}</span>
-                  <CheckCircle2 className="w-5 h-5" />
+              {/* Bottom Submit Action */}
+              <div className="p-4 border-t border-slate-200 bg-white shrink-0">
+                <button
+                  type="button"
+                  onClick={handleConfirmPaymentSafe}
+                  disabled={
+                    paymentSubmitting ||
+                    (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal)
+                  }
+                  className={`w-full font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-md transition ${
+                    paymentSubmitting ||
+                    (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal)
+                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                      : 'bg-[#1E4648] hover:bg-[#163536] text-white shadow-teal-900/20'
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{paymentSubmitting ? 'Memproses Transaksi...' : 'Konfirmasi & Selesaikan Bayar'}</span>
                 </button>
               </div>
             </div>
