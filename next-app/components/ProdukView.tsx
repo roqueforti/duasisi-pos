@@ -1253,37 +1253,44 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 {/* Kolom Kanan: Inventory & Harga */}
                 <div className="space-y-3">
                   {tipe === 'FullService' ? (
-                    <div className="space-y-2.5 bg-slate-50 border border-slate-200 p-3 rounded-xl">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <label className="block font-bold text-slate-800 text-xs">🧪 Resep Bahan Baku Inventory (BOM)</label>
-                          <p className="text-[10px] text-slate-500">Bahan yang otomatis terpotong saat pengerjaan Drop Off.</p>
+                    <div className="space-y-3 bg-slate-50 border border-slate-200/90 p-3.5 rounded-xl">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <label className="block font-bold text-slate-800 text-xs truncate">
+                            🧪 Resep Bahan Baku (BOM)
+                          </label>
+                          <p className="text-[10px] text-slate-500 line-clamp-1">
+                            Bahan otomatis terpotong saat pengerjaan Drop Off
+                          </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => {
                             setBahanBakuList(prev => [...prev, { idInventory: '', qty: 1, tahap: 'Dicuci' }]);
                           }}
-                          className="px-2.5 py-1 text-[11px] font-bold bg-[#1E4648] text-white rounded-lg hover:bg-[#163436] transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                          className="px-2.5 py-1.5 text-xs font-bold bg-[#1E4648] text-white rounded-lg hover:bg-[#163436] transition inline-flex items-center gap-1 shadow-xs shrink-0 cursor-pointer whitespace-nowrap"
                         >
                           <Plus className="w-3.5 h-3.5" />
-                          Tambah Bahan
+                          <span>Tambah Bahan</span>
                         </button>
                       </div>
 
                       {bahanBakuList.length === 0 ? (
-                        <div className="bg-white border border-dashed border-slate-300 rounded-lg p-3 text-center text-xs text-slate-400">
-                          Belum ada bahan baku terpaut. Klik <strong>+ Tambah Bahan</strong> untuk memasukkan Deterjen, Softener, Plastik Kemasan, dll.
+                        <div className="bg-white border border-dashed border-slate-300 rounded-xl p-3.5 text-center text-xs">
+                          <p className="font-semibold text-slate-600 mb-0.5">Belum ada bahan baku terpaut</p>
+                          <p className="text-[10px] text-slate-400">
+                            Klik <strong className="text-slate-600">+ Tambah Bahan</strong> untuk memasukkan Deterjen, Softener, Plastik, dll.
+                          </p>
                         </div>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           {bahanBakuList.map((item, idx) => {
                             const selectedInv = inventoryList.find(i => i.id === item.idInventory);
                             return (
                               <div key={idx} className="bg-white border border-slate-200 p-2.5 rounded-xl space-y-2 shadow-2xs">
                                 <div className="flex gap-2 items-center">
                                   <div className="flex-1">
-                                    <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Item Inventory #{idx + 1}</label>
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Bahan Inventory #{idx + 1}</label>
                                     <select
                                       value={item.idInventory}
                                       onChange={(e) => {
@@ -1291,7 +1298,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                         newArr[idx].idInventory = e.target.value;
                                         setBahanBakuList(newArr);
                                       }}
-                                      className="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg outline-none focus:border-[#1E4648]"
+                                      className="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg outline-none focus:border-[#1E4648] bg-slate-50 font-semibold"
                                     >
                                       <option value="">-- Pilih Bahan Baku --</option>
                                       {inventoryList.map(inv => (
@@ -1304,16 +1311,16 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                     onClick={() => {
                                       setBahanBakuList(bahanBakuList.filter((_, i) => i !== idx));
                                     }}
-                                    className="mt-3.5 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition"
+                                    className="mt-3.5 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                                     title="Hapus Bahan"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                                <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-100">
                                   <div>
-                                    <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Takaran per 1 {satuan || 'layanan'}</label>
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Takaran / 1 {satuan || 'layanan'}</label>
                                     <div className="flex gap-1.5 items-center">
                                       <input
                                         type="number"
