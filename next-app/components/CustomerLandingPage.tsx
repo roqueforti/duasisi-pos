@@ -106,10 +106,7 @@ const OUTLET_GALLERY: DriftWallItem[] = [
   { image: '/assets/galeri/outlet-mesin-koin.jpeg', title: 'Fasilitas Self Service Coin' },
   { image: '/assets/galeri/outlet-suasana-area-cuci.jpeg', title: 'Area Cuci Bersih & Higienis' },
   { image: '/assets/galeri/outlet-mesin-dryer.png', title: 'Mesin Dryer Pengering Cepat' },
-  { image: '/assets/galeri/outlet-suasana-modern.png', title: 'Suasana Interior Modern Dua SiSi' },
-  { image: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?w=600&auto=format&fit=crop&q=80', title: 'Hasil Pakaian Bersih & Rapi' },
-  { image: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=600&auto=format&fit=crop&q=80', title: 'Setrika Uap & Packing Wangi' },
-  { image: 'https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?w=600&auto=format&fit=crop&q=80', title: 'Deterjen & Softener Premium' }
+  { image: '/assets/galeri/outlet-suasana-modern.png', title: 'Suasana Interior Modern Dua SiSi' }
 ];
 
 export default function CustomerLandingPage() {
@@ -765,19 +762,19 @@ export default function CustomerLandingPage() {
         </div>
 
         {/* 100% Full-Width Edge-to-Edge Container */}
-        <div className="w-full h-[460px] sm:h-[540px] overflow-hidden relative">
+        <div className="w-full h-[480px] sm:h-[560px] overflow-hidden relative">
           <DriftWall
             items={OUTLET_GALLERY}
-            columns={6}
-            tileWidth={240}
-            tileHeight={155}
-            gap={16}
+            columns={5}
+            tileWidth={280}
+            tileHeight={185}
+            gap={18}
             tilt={0}
             turn={0}
             roll={0}
             depth={0}
-            speed={20}
-            variance={0.15}
+            speed={18}
+            variance={0.2}
             parallax={0.2}
             pauseOnHover={false}
             overlayColor="transparent"

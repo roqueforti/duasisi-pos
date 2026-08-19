@@ -107,9 +107,13 @@ export default function DriftWall({
   }, []);
 
   const columnItems = useMemo(() => {
-    const cols: DriftWallItem[][] = Array.from({ length: columns }, () => []);
-    items.forEach((item, i) => cols[i % columns].push(item));
-    return cols.map((col) => (col.length ? col : items.slice(0, 1)));
+    if (!items || items.length === 0) return [];
+    // Distribute all uploaded photos across all columns with staggered offsets
+    // so no single column displays adjacent duplicate pictures
+    return Array.from({ length: columns }, (_, colIdx) => {
+      const offset = (colIdx * 2 + 1) % items.length;
+      return items.map((_, i) => items[(i + offset) % items.length]);
+    });
   }, [items, columns]);
 
   const columnMeta = useMemo(() => {
