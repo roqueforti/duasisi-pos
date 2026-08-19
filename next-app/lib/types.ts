@@ -2,6 +2,12 @@ export type UserRole = 'STAFF' | 'MANAGER' | '';
 
 export type KecepatanLayanan = 'Reguler' | 'Express' | 'Kilat';
 
+export interface LayananBahanBaku {
+  idInventory: string;
+  qty: number;
+  tahap?: string;
+}
+
 export interface LayananItem {
   layanan: string;
   hargaSatuan: number;
@@ -14,6 +20,7 @@ export interface LayananItem {
   kategoriIcon?: string;
   idInventory?: string | null;
   inventoryDeductionQty?: number;
+  bahanBakuList?: LayananBahanBaku[];
 }
 
 export interface CartItem {
@@ -27,6 +34,7 @@ export interface CartItem {
   kategoriDropOff?: string;
   idInventory?: string | null;
   inventoryDeductionQty?: number;
+  bahanBakuList?: LayananBahanBaku[];
 }
 
 export interface TransaksiItem {
@@ -37,6 +45,7 @@ export interface TransaksiItem {
   catatan?: string;
   idInventory?: string | null;
   inventoryDeductionQty?: number;
+  bahanBakuList?: LayananBahanBaku[];
 }
 
 export interface Transaksi {

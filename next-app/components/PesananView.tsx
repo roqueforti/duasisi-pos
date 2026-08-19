@@ -17,7 +17,7 @@ import {
   Tag,
   X,
 } from 'lucide-react';
-import { Mesin, Transaksi } from '@/lib/types';
+import { Mesin, Transaksi, LayananBahanBaku } from '@/lib/types';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { DropOffPriorityItem } from './ProdukView';
@@ -195,17 +195,23 @@ export default function PesananView() {
           {machine && <div className="flex items-center gap-1.5 font-semibold text-[#1E4648]"><WashingMachine className="h-3.5 w-3.5" /><span>Mesin {machine}</span></div>}
           <p className="line-clamp-2">{order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')}</p>
           
-          {/* Linked Washer Material Indicator */}
+          {/* Linked Multi-Bahan Material Indicator */}
           {(() => {
-            const mats = (order.items || []).map(it => {
+            const mats: string[] = [];
+            (order.items || []).forEach(it => {
               const lay = layananList.find(l => l.nama === it.layanan);
-              if (lay && lay.idInventory) {
-                const inv = inventoryList.find(i => i.id === lay.idInventory);
-                const deductionPerUnit = lay.inventoryDeductionQty !== undefined && lay.inventoryDeductionQty !== null ? Number(lay.inventoryDeductionQty) : 1;
-                return `${inv?.nama || lay.idInventory}: ${(Number(it.qty) || 1) * deductionPerUnit} ${inv?.satuan || 'unit'}`;
+              if (lay) {
+                const listBahan: LayananBahanBaku[] = Array.isArray(lay.bahanBakuList) && lay.bahanBakuList.length > 0
+                  ? lay.bahanBakuList
+                  : (lay.idInventory ? [{ idInventory: lay.idInventory, qty: lay.inventoryDeductionQty || 1, tahap: 'Dicuci' }] : []);
+                
+                listBahan.forEach(b => {
+                  const inv = inventoryList.find(i => i.id === b.idInventory);
+                  const deductionPerUnit = Number(b.qty) || 1;
+                  mats.push(`${inv?.nama || b.idInventory}: ${(Number(it.qty) || 1) * deductionPerUnit} ${inv?.satuan || 'unit'}`);
+                });
               }
-              return null;
-            }).filter(Boolean);
+            });
 
             if (mats.length === 0) return null;
             return (
@@ -325,45 +331,54 @@ export default function PesananView() {
                 </div>
               )}
 
-              {/* Pemakaian Bahan Baku Inventory saat Tahap Dicuci */}
-              {targetStatus === 'Dicuci' && (() => {
-                const washerMaterials = (selected.items || []).map(it => {
+              {/* Pemakaian Bahan Baku Inventory saat Tahap ini */}
+              {(() => {
+                const stageMaterials: any[] = [];
+                (selected.items || []).forEach(it => {
                   const lay = layananList.find(l => l.nama === it.layanan);
-                  if (lay && lay.idInventory) {
-                    const inv = inventoryList.find(i => i.id === lay.idInventory);
-                    const deductionPerUnit = lay.inventoryDeductionQty !== undefined && lay.inventoryDeductionQty !== null ? Number(lay.inventoryDeductionQty) : 1;
-                    const totalQty = (Number(it.qty) || 1) * deductionPerUnit;
-                    return {
-                      namaLayanan: it.layanan,
-                      orderQty: it.qty,
-                      namaBahan: inv?.nama || lay.idInventory,
-                      satuanBahan: inv?.satuan || 'unit',
-                      totalPemakaian: totalQty,
-                      sisaStok: inv?.stok
-                    };
+                  if (lay) {
+                    const listBahan: LayananBahanBaku[] = Array.isArray(lay.bahanBakuList) && lay.bahanBakuList.length > 0
+                      ? lay.bahanBakuList
+                      : (lay.idInventory ? [{ idInventory: lay.idInventory, qty: lay.inventoryDeductionQty || 1, tahap: 'Dicuci' }] : []);
+                    
+                    listBahan.forEach(b => {
+                      const stepTarget = b.tahap || 'Dicuci';
+                      if (stepTarget === targetStatus || (stepTarget === 'Dicuci' && targetStatus === 'Dicuci')) {
+                        const inv = inventoryList.find(i => i.id === b.idInventory);
+                        const deductionPerUnit = Number(b.qty) || 1;
+                        const totalQty = (Number(it.qty) || 1) * deductionPerUnit;
+                        stageMaterials.push({
+                          namaLayanan: it.layanan,
+                          orderQty: it.qty,
+                          namaBahan: inv?.nama || b.idInventory,
+                          satuanBahan: inv?.satuan || 'unit',
+                          totalPemakaian: totalQty,
+                          sisaStok: inv?.stok
+                        });
+                      }
+                    });
                   }
-                  return null;
-                }).filter(Boolean);
+                });
 
-                if (washerMaterials.length === 0) return null;
+                if (stageMaterials.length === 0) return null;
 
                 return (
                   <div className="bg-amber-50/80 border border-amber-200/90 p-3 rounded-xl space-y-1.5 text-xs">
                     <div className="font-bold text-amber-950 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <span>🧪</span>
-                        <span>Pemakaian Bahan Baku Washer:</span>
+                        <span>Pemakaian Bahan Baku ({targetStatus}):</span>
                       </span>
                       <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full">
                         Otomatis Potong Stok
                       </span>
                     </div>
                     <div className="space-y-1 pt-1">
-                      {washerMaterials.map((mat: any, idx: number) => (
+                      {stageMaterials.map((mat: any, idx: number) => (
                         <div key={idx} className="flex justify-between items-center bg-white p-2 rounded-lg border border-amber-200/80 text-[11px]">
                           <div>
                             <span className="font-bold text-slate-800">{mat.namaBahan}</span>
-                            <span className="text-slate-400 text-[10px] ml-1">({mat.orderQty}x porsi)</span>
+                            <span className="text-slate-400 text-[10px] ml-1">({mat.orderQty}x order)</span>
                           </div>
                           <div className="text-right font-mono">
                             <span className="font-black text-[#1E4648] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 text-xs">

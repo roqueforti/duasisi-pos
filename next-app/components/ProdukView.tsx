@@ -5,7 +5,7 @@ import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Downl
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
-import { UserRole } from '@/lib/types';
+import { UserRole, LayananBahanBaku } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import SatuanInput from '@/components/SatuanInput';
 import { getIconComponent, KategoriItem, PALETTE, ICON_OPTIONS } from '@/lib/categoryUtils';
@@ -32,6 +32,7 @@ interface LayananItemBackend {
   kategori?: string;
   kategoriDropOff?: string;
   idInventory?: string | null;
+  bahanBakuList?: LayananBahanBaku[];
   pipelineSteps?: any[];
   hargaModal?: number;
   inventoryDeductionQty?: number;
@@ -106,6 +107,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [kategoriDropOff, setKategoriDropOff] = useState<string>('Reguler');
   const [idInventory, setIdInventory] = useState<string>('');
   const [inventoryDeductionQty, setInventoryDeductionQty] = useState<string>('1');
+  const [bahanBakuList, setBahanBakuList] = useState<LayananBahanBaku[]>([]);
   const [kategori, setKategori] = useState<string>('Self Service');
   const [kategoriList, setKategoriList] = useState<KategoriItem[]>([]);
   
@@ -359,6 +361,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     setEditingId(null);
     setKode('');
     setNama(''); setHarga(''); setHargaModal(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service'); setKategoriDropOff('Reguler'); setIdInventory(''); setInventoryDeductionQty('1');
+    setBahanBakuList([]);
     setCustomPipelineSteps([]);
     setShowModal(true);
   };
@@ -384,6 +387,11 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         ? item.inventoryDeductionQty.toString()
         : '1'
     );
+    setBahanBakuList(
+      Array.isArray(item.bahanBakuList) && item.bahanBakuList.length > 0
+        ? item.bahanBakuList
+        : (item.idInventory ? [{ idInventory: item.idInventory, qty: item.inventoryDeductionQty || 1, tahap: 'Dicuci' }] : [])
+    );
     setCustomPipelineSteps(item.pipelineSteps ? (item.pipelineSteps as CustomPipelineStep[]) : []);
     setShowModal(true);
   };
@@ -391,6 +399,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const handleSave = async () => {
     if (!nama.trim() || !harga.trim()) { await showAlert('Nama dan harga wajib diisi!', 'warning'); return; }
     const payloadPipeline = customPipelineSteps.map((s, i) => ({ ...s, step: i + 1 }));
+    const filteredBahan = bahanBakuList.filter(b => b.idInventory && b.idInventory.trim());
     const payload = {
         kode: kode.trim(),
         nama: nama.trim(),
@@ -400,8 +409,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         tipe: tipe || '',
         kategori,
         kategoriDropOff: (tipe === 'FullService' || (kategori || '').toLowerCase().includes('drop')) ? kategoriDropOff : '',
-        idInventory: idInventory ? idInventory : undefined,
-        inventoryDeductionQty: idInventory ? (isNaN(parseFloat(inventoryDeductionQty)) ? 1 : parseFloat(inventoryDeductionQty)) : undefined,
+        idInventory: tipe === 'FullService' ? (filteredBahan[0]?.idInventory || undefined) : (idInventory ? idInventory : undefined),
+        inventoryDeductionQty: tipe === 'FullService' ? (filteredBahan[0]?.qty || undefined) : (idInventory ? (isNaN(parseFloat(inventoryDeductionQty)) ? 1 : parseFloat(inventoryDeductionQty)) : undefined),
+        bahanBakuList: tipe === 'FullService' ? (filteredBahan.length > 0 ? filteredBahan : undefined) : undefined,
         hargaModal: Number(hargaModal) || 0,
         pipelineSteps: tipe === 'FullService' ? customPipelineSteps : []
       };
@@ -806,7 +816,19 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         )}
                       </td>
                       <td className="py-1.5 px-3 whitespace-nowrap">
-                        {item.idInventory ? (
+                        {item.bahanBakuList && item.bahanBakuList.length > 0 ? (
+                          <div className="flex flex-col gap-1 max-w-[180px]">
+                            {item.bahanBakuList.map((b, bIdx) => {
+                              const inv = inventoryList.find(i => i.id === b.idInventory);
+                              return (
+                                <span key={bIdx} className="text-[9px] font-mono text-orange-900 bg-orange-50/90 px-1.5 py-0.5 rounded border border-orange-200 truncate" title={`${inv?.nama || b.idInventory}: ${b.qty} ${inv?.satuan || 'unit'} (${b.tahap || 'Dicuci'})`}>
+                                  <strong>{inv?.nama || b.idInventory}</strong>: {b.qty} {inv?.satuan || 'unit'}
+                                  <span className="text-orange-600/80 text-[8px] ml-1">({b.tahap || 'Dicuci'})</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : item.idInventory ? (
                           <div className="flex items-center gap-1">
                             <span className="font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100 text-[11px] font-mono">
                               {item.inventoryDeductionQty !== undefined && item.inventoryDeductionQty !== null ? item.inventoryDeductionQty : 1}
@@ -1219,59 +1241,157 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
                 {/* Kolom Kanan: Inventory & Harga */}
                 <div className="space-y-3">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block font-semibold text-slate-700 mb-1">
-                        {tipe === 'FullService' ? 'Pautkan Bahan Baku Inventory Tahap Washer / Cuci' : 'Pautkan ke Inventory (Opsional)'}
-                      </label>
-                      <select 
-                        value={idInventory} 
-                        onChange={(e) => {
-                          const newId = e.target.value;
-                          setIdInventory(newId);
-                          if (newId) {
-                            const inv = inventoryList.find(i => i.id === newId);
-                            if (inv && inv.satuan && tipe !== 'FullService') {
-                              setSatuan(inv.satuan);
-                            }
-                          }
-                        }} 
-                        className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
-                      >
-                        <option value="">{tipe === 'FullService' ? '-- Tidak Mengurangi Stok Inventory --' : '-- Buat Otomatis di Inventory (Default) --'}</option>
-                        {inventoryList.map(inv => (
-                          <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
-                        ))}
-                      </select>
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        {tipe === 'FullService' 
-                          ? 'Stok bahan baku ini (misal Deterjen/Pewangi) akan otomatis terpotong saat pengerjaan masuk ke tahap Dicuci (Washer).' 
-                          : 'Sistem akan membuat item inventory baru otomatis jika default.'}
-                      </p>
-                    </div>
-                    {idInventory !== '' && (
-                      <div className="bg-orange-50 border border-orange-100 p-3 rounded-md">
-                        <label className="block font-semibold text-orange-900 mb-1">
-                          {tipe === 'FullService' ? 'Pemakaian Bahan Baku per 1x Pengerjaan' : 'Potongan Stok per 1 Transaksi'}
-                        </label>
-                        <div className="flex gap-2 items-center">
-                          <input 
-                            type="number" 
-                            value={inventoryDeductionQty} 
-                            onChange={(e) => setInventoryDeductionQty(e.target.value)} 
-                            min="0" 
-                            step="0.1" 
-                            placeholder="0.1" 
-                            className="w-28 px-3 py-1.5 border border-orange-200 rounded-md outline-none focus:border-orange-500 font-bold text-orange-900 bg-white" 
-                          />
-                          <span className="text-xs font-semibold text-orange-800">{inventoryList.find(i => i.id === idInventory)?.satuan || 'unit'}</span>
+                  {tipe === 'FullService' ? (
+                    <div className="space-y-2.5 bg-slate-50 border border-slate-200 p-3 rounded-xl">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <label className="block font-bold text-slate-800 text-xs">🧪 Resep Bahan Baku Inventory (BOM)</label>
+                          <p className="text-[10px] text-slate-500">Bahan yang otomatis terpotong saat pengerjaan Drop Off.</p>
                         </div>
-                        <p className="text-[10px] text-orange-700 mt-1">
-                          Jumlah stok {inventoryList.find(i => i.id === idInventory)?.nama} yang akan dikurangi setiap kali 1 {satuan || 'layanan'} {tipe === 'FullService' ? 'dicuci di mesin washer' : 'dipesan'}.
-                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBahanBakuList(prev => [...prev, { idInventory: '', qty: 1, tahap: 'Dicuci' }]);
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold bg-[#1E4648] text-white rounded-lg hover:bg-[#163436] transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Tambah Bahan
+                        </button>
                       </div>
-                    )}
-                  </div>
+
+                      {bahanBakuList.length === 0 ? (
+                        <div className="bg-white border border-dashed border-slate-300 rounded-lg p-3 text-center text-xs text-slate-400">
+                          Belum ada bahan baku terpaut. Klik <strong>+ Tambah Bahan</strong> untuk memasukkan Deterjen, Softener, Plastik Kemasan, dll.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {bahanBakuList.map((item, idx) => {
+                            const selectedInv = inventoryList.find(i => i.id === item.idInventory);
+                            return (
+                              <div key={idx} className="bg-white border border-slate-200 p-2.5 rounded-xl space-y-2 shadow-2xs">
+                                <div className="flex gap-2 items-center">
+                                  <div className="flex-1">
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Item Inventory #{idx + 1}</label>
+                                    <select
+                                      value={item.idInventory}
+                                      onChange={(e) => {
+                                        const newArr = [...bahanBakuList];
+                                        newArr[idx].idInventory = e.target.value;
+                                        setBahanBakuList(newArr);
+                                      }}
+                                      className="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg outline-none focus:border-[#1E4648]"
+                                    >
+                                      <option value="">-- Pilih Bahan Baku --</option>
+                                      {inventoryList.map(inv => (
+                                        <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setBahanBakuList(bahanBakuList.filter((_, i) => i !== idx));
+                                    }}
+                                    className="mt-3.5 p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition"
+                                    title="Hapus Bahan"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Takaran per 1 {satuan || 'layanan'}</label>
+                                    <div className="flex gap-1.5 items-center">
+                                      <input
+                                        type="number"
+                                        value={item.qty}
+                                        onChange={(e) => {
+                                          const newArr = [...bahanBakuList];
+                                          newArr[idx].qty = parseFloat(e.target.value) || 0;
+                                          setBahanBakuList(newArr);
+                                        }}
+                                        min="0"
+                                        step="0.1"
+                                        placeholder="1"
+                                        className="w-full px-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:border-[#1E4648] font-bold text-slate-800"
+                                      />
+                                      <span className="text-[10px] font-semibold text-slate-500 shrink-0">
+                                        {selectedInv?.satuan || 'unit'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-0.5">Tahap Pengurangan</label>
+                                    <select
+                                      value={item.tahap || 'Dicuci'}
+                                      onChange={(e) => {
+                                        const newArr = [...bahanBakuList];
+                                        newArr[idx].tahap = e.target.value;
+                                        setBahanBakuList(newArr);
+                                      }}
+                                      className="w-full text-[11px] px-2 py-1 border border-slate-200 rounded-lg outline-none focus:border-[#1E4648] bg-slate-50 font-medium"
+                                    >
+                                      <option value="Dicuci">Tahap Dicuci (Washer)</option>
+                                      <option value="Dikeringkan">Tahap Dikeringkan (Dryer)</option>
+                                      <option value="Disetrika">Tahap Disetrika</option>
+                                      <option value="Dilipat">Tahap Dilipat (Packaging)</option>
+                                      <option value="Siap Diambil">Tahap Siap Diambil</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block font-semibold text-slate-700 mb-1">Pautkan ke Inventory (Opsional)</label>
+                        <select 
+                          value={idInventory} 
+                          onChange={(e) => {
+                            const newId = e.target.value;
+                            setIdInventory(newId);
+                            if (newId) {
+                              const inv = inventoryList.find(i => i.id === newId);
+                              if (inv && inv.satuan) {
+                                setSatuan(inv.satuan);
+                              }
+                            }
+                          }} 
+                          className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                        >
+                          <option value="">-- Buat Otomatis di Inventory (Default) --</option>
+                          {inventoryList.map(inv => (
+                            <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-slate-400 mt-1">Sistem akan membuat item inventory baru otomatis jika default.</p>
+                      </div>
+                      {idInventory !== '' && (
+                        <div className="bg-orange-50 border border-orange-100 p-3 rounded-md">
+                          <label className="block font-semibold text-orange-900 mb-1">Potongan Stok per 1 Transaksi</label>
+                          <div className="flex gap-2 items-center">
+                            <input 
+                              type="number" 
+                              value={inventoryDeductionQty} 
+                              onChange={(e) => setInventoryDeductionQty(e.target.value)} 
+                              min="0" 
+                              step="0.1" 
+                              placeholder="0.1" 
+                              className="w-28 px-3 py-1.5 border border-orange-200 rounded-md outline-none focus:border-orange-500 font-bold text-orange-900 bg-white" 
+                            />
+                            <span className="text-xs font-semibold text-orange-800">{inventoryList.find(i => i.id === idInventory)?.satuan || 'unit'}</span>
+                          </div>
+                          <p className="text-[10px] text-orange-700 mt-1">Jumlah stok {inventoryList.find(i => i.id === idInventory)?.nama} yang akan dikurangi setiap kali 1 {satuan || 'layanan'} dipesan.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-3 pt-1">
                     {currentRole === 'MANAGER' && (

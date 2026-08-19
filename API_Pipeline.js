@@ -276,34 +276,41 @@ function updateDropoffStatus(data) {
     }
     if (previousMachineId) selesaiMesin(previousMachineId);
 
-    // Potong stok inventory bahan baku (Deterjen/Pewangi/dll) saat masuk tahap pengerjaan Dicuci (Washer)
-    if (statusBaru === "Dicuci") {
-      try {
-        const shD = SS.getSheetByName(SHEET_DETAIL);
-        if (shD) {
-          const detailRows = shD.getDataRange().getValues();
-          const allLayanan = getLayananListAll();
-          let deductedLogs = [];
-          for (let i = 1; i < detailRows.length; i++) {
-            if (String(detailRows[i][0]) === noNota) {
-              const namaItem = detailRows[i][1];
-              const qtyItem = Number(detailRows[i][2]) || 1;
-              const lay = allLayanan.find(l => l.nama === namaItem);
-              if (lay && lay.idInventory) {
-                const deductionPerUnit = lay.inventoryDeductionQty !== undefined && lay.inventoryDeductionQty !== null ? Number(lay.inventoryDeductionQty) : 1;
-                const totalDeduction = qtyItem * deductionPerUnit;
-                updateStokInventory(lay.idInventory, -totalDeduction);
-                deductedLogs.push(lay.idInventory + " (-" + totalDeduction + ")");
-              }
+    // Potong stok inventory bahan baku (Deterjen/Pewangi/Plastik/dll) sesuai tahap pipeline
+    try {
+      const shD = SS.getSheetByName(SHEET_DETAIL);
+      if (shD) {
+        const detailRows = shD.getDataRange().getValues();
+        const allLayanan = getLayananListAll();
+        let deductedLogs = [];
+        for (let i = 1; i < detailRows.length; i++) {
+          if (String(detailRows[i][0]) === noNota) {
+            const namaItem = detailRows[i][1];
+            const qtyItem = Number(detailRows[i][2]) || 1;
+            const lay = allLayanan.find(l => l.nama === namaItem);
+            if (lay) {
+              const listBahan = Array.isArray(lay.bahanBakuList) && lay.bahanBakuList.length > 0
+                ? lay.bahanBakuList
+                : (lay.idInventory ? [{ idInventory: lay.idInventory, qty: lay.inventoryDeductionQty || 1, tahap: 'Dicuci' }] : []);
+              
+              listBahan.forEach(function(b) {
+                const stepTarget = b.tahap || 'Dicuci';
+                if (stepTarget === statusBaru || (stepTarget === 'Dicuci' && statusBaru === 'Dicuci')) {
+                  const deductionPerUnit = Number(b.qty) || 1;
+                  const totalDeduction = qtyItem * deductionPerUnit;
+                  updateStokInventory(b.idInventory, -totalDeduction);
+                  deductedLogs.push(b.idInventory + " (-" + totalDeduction + ")");
+                }
+              });
             }
           }
-          if (deductedLogs.length > 0) {
-            addAuditLog(data.userName || data.assignedStaff || "Staff", "Pemakaian Bahan Washer", noNota, "Potong stok inventory tahap Dicuci: " + deductedLogs.join(", "));
-          }
         }
-      } catch (errDeduct) {
-        Logger.log("Gagal potong stok washer: " + errDeduct);
+        if (deductedLogs.length > 0) {
+          addAuditLog(data.userName || data.assignedStaff || "Staff", "Pemakaian Bahan " + statusBaru, noNota, "Potong stok inventory tahap " + statusBaru + ": " + deductedLogs.join(", "));
+        }
       }
+    } catch (errDeduct) {
+      Logger.log("Gagal potong stok tahap " + statusBaru + ": " + errDeduct);
     }
 
     shT.getRange(txIndex + 1, 6).setValue(statusBaru);

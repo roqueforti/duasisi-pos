@@ -107,6 +107,30 @@ function getLayananListAll() {
       else katDropOff = "Reguler";
     }
 
+    let bahanBakuList = [];
+    let idInventorySingle = r[9] || null;
+    let deductionSingle = r[11] !== undefined && r[11] !== "" ? Number(r[11]) : 1;
+
+    if (r[9]) {
+      const rawInv = String(r[9]).trim();
+      if (rawInv.startsWith("[") && rawInv.endsWith("]")) {
+        try {
+          const parsed = JSON.parse(rawInv);
+          if (Array.isArray(parsed)) {
+            bahanBakuList = parsed;
+            if (bahanBakuList.length > 0) {
+              idInventorySingle = bahanBakuList[0].idInventory;
+              deductionSingle = Number(bahanBakuList[0].qty) || 1;
+            }
+          }
+        } catch (e) {
+          bahanBakuList = [{ idInventory: rawInv, qty: deductionSingle, tahap: 'Dicuci' }];
+        }
+      } else {
+        bahanBakuList = [{ idInventory: rawInv, qty: deductionSingle, tahap: 'Dicuci' }];
+      }
+    }
+
     return {
       id: r[0], 
       nama: r[1], 
@@ -117,9 +141,10 @@ function getLayananListAll() {
       tipe: r[6] === undefined || r[6] === null ? "" : r[6],
       kategori: katName,
       kategoriDropOff: katDropOff,
-      idInventory: r[9] || null,
+      idInventory: idInventorySingle,
+      bahanBakuList: bahanBakuList,
       hargaModal: Number(r[10]) || 0,
-      inventoryDeductionQty: r[11] !== undefined && r[11] !== "" ? Number(r[11]) : 1,
+      inventoryDeductionQty: deductionSingle,
       kategoriWarna: katMap[katKey] || (
         katKey.includes("drop") ? "bg-teal-100 text-teal-800 border-teal-300" :
         katKey.includes("add") ? "bg-amber-100 text-amber-800 border-amber-300" :
@@ -174,7 +199,9 @@ function tambahLayanan(data) {
   const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : "";
   let idInv = data.idInventory || "";
   
-  if (data.tipe === "" && !idInv) {
+  if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
+    idInv = JSON.stringify(data.bahanBakuList);
+  } else if (data.tipe === "" && !idInv) {
     const invRes = tambahInventory({ nama: data.nama, stok: 0, satuan: data.satuan, stokMinimum: 0 });
     if (invRes.success) {
       idInv = invRes.id;
@@ -212,7 +239,9 @@ function updateLayanan(id, data) {
       const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : (rows[i][7] || "");
       let idInv = data.idInventory !== undefined ? data.idInventory : (rows[i][9] || "");
       
-      if (data.tipe === "" && !idInv) {
+      if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
+        idInv = JSON.stringify(data.bahanBakuList);
+      } else if (data.tipe === "" && !idInv) {
         const invRes = tambahInventory({ nama: data.nama, stok: 0, satuan: data.satuan, stokMinimum: 0 });
         if (invRes.success) {
           idInv = invRes.id;
