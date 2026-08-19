@@ -24,7 +24,8 @@ import {
   Coffee,
   ExternalLink,
   Laptop,
-  ChevronDown
+  ChevronDown,
+  Check
 } from 'lucide-react';
 import MoltenMetal from '@/components/MoltenMetal';
 import CardNav, { CardNavItem } from '@/components/CardNav';
@@ -440,6 +441,34 @@ export default function CustomerLandingPage() {
               (foundTx.tipe as string) === 'Drop Off'
             );
 
+            // Dynamically construct active steps (from order pipeline if available, or fallback to ORDER_STEPS)
+            const activeSteps: Array<{ key: string; label: string }> = (() => {
+              if (Array.isArray(foundTx.pipeline) && foundTx.pipeline.length > 0) {
+                const pSteps = foundTx.pipeline
+                  .filter((p: any) => p.namaStep !== 'Pesanan Diterima')
+                  .map((p: any) => ({
+                    key: p.namaStep,
+                    label: p.namaStep
+                  }));
+                if (pSteps.length > 0) {
+                  return [{ key: 'Diterima', label: 'Diterima' }, ...pSteps];
+                }
+              }
+              return ORDER_STEPS;
+            })();
+
+            const currentStepIdx = (() => {
+              const curStatus = String(foundTx.status || '').toLowerCase();
+              const foundIdx = activeSteps.findIndex(s => s.key.toLowerCase() === curStatus);
+              if (foundIdx >= 0) return foundIdx;
+              if (curStatus.includes('cuci')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('cuci'));
+              if (curStatus.includes('kering')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('kering'));
+              if (curStatus.includes('lipat')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('lipat'));
+              if (curStatus.includes('setrika')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('setrika'));
+              if (curStatus.includes('siap') || curStatus.includes('ambil')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('siap') || s.key.toLowerCase().includes('ambil'));
+              return 0;
+            })();
+
             return (
               <div className="w-full max-w-lg rounded-2xl border border-[#153a3e] bg-[#061517] p-5 text-left mb-6 shadow-2xl animate-fade-in">
                 {/* Header info */}
@@ -457,52 +486,67 @@ export default function CustomerLandingPage() {
                 </div>
 
                 {isDropOffOrder ? (
-                  /* Live Progress Stepper (Khusus Drop Off) */
+                  /* Live Progress Horizontal Stepper (Menyamping) */
                   <div className="py-2 mb-4">
-                    <div className="text-xs font-semibold text-white/80 mb-3 flex items-center justify-between">
+                    <div className="text-xs font-semibold text-white/80 mb-4 flex items-center justify-between">
                       <span>Alur Proses Cuci</span>
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-[#0a272a] border border-teal-500/40 text-teal-300 font-bold">
-                        Status: {foundTx.status || 'Diterima'}
+                      <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-[#0a272a] border border-teal-500/40 text-teal-300 font-bold flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+                        <span>Status: {foundTx.status || 'Diterima'}</span>
                       </span>
                     </div>
 
-                    {/* Step indicator bar */}
-                    <div className="space-y-2">
-                      {ORDER_STEPS.map((step, idx) => {
-                        const isDone = idx < currentStepIdx;
-                        const isCurrent = idx === currentStepIdx;
+                    {/* Horizontal Steps Track */}
+                    <div className="relative flex items-start justify-between w-full px-2 pt-1 pb-2">
+                      {/* Background connecting line */}
+                      <div className="absolute left-6 right-6 top-[18px] h-0.5 bg-white/10 z-0" />
+                      {/* Active progress fill line */}
+                      <div
+                        className="absolute left-6 top-[18px] h-0.5 bg-teal-500 transition-all duration-500 z-0"
+                        style={{
+                          width: activeSteps.length > 1
+                            ? `${Math.min(100, Math.max(0, (Math.max(0, currentStepIdx) / (activeSteps.length - 1)) * 100))}%`
+                            : '0%'
+                        }}
+                      />
+
+                      {activeSteps.map((step, idx) => {
+                        const isDone = idx < currentStepIdx || foundTx.status === 'Selesai';
+                        const isCurrent = idx === currentStepIdx && foundTx.status !== 'Selesai';
+
                         return (
-                          <div
-                            key={step.key}
-                            className={`flex items-center gap-3 p-2 rounded-xl transition ${
-                              isCurrent
-                                ? 'bg-[#0e3135] border border-teal-400/40 text-white shadow-inner'
-                                : isDone
-                                ? 'text-white/80'
-                                : 'text-white/30'
-                            }`}
-                          >
-                            <div className="shrink-0">
+                          <div key={idx} className="relative z-10 flex flex-col items-center group flex-1">
+                            {/* Step Circle */}
+                            <div
+                              className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[10px] transition-all duration-300 ${
+                                isDone
+                                  ? 'bg-teal-500 text-slate-950 shadow-[0_0_12px_rgba(20,184,166,0.5)]'
+                                  : isCurrent
+                                  ? 'bg-[#061517] border-2 border-teal-400 text-teal-300 shadow-[0_0_15px_rgba(45,212,191,0.6)] scale-110'
+                                  : 'bg-[#0c2427] border border-white/20 text-white/40'
+                              }`}
+                            >
                               {isDone ? (
-                                <div className="w-5 h-5 rounded-full bg-teal-500 text-black flex items-center justify-center font-bold text-[10px]">
-                                  ✓
-                                </div>
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
                               ) : isCurrent ? (
-                                <div className="w-5 h-5 rounded-full bg-white text-slate-950 flex items-center justify-center font-bold text-[10px] animate-pulse">
-                                  ●
-                                </div>
+                                <span className="w-2 h-2 rounded-full bg-teal-300 animate-ping" />
                               ) : (
-                                <div className="w-5 h-5 rounded-full border border-white/20 flex items-center justify-center text-[10px]">
-                                  {idx + 1}
-                                </div>
+                                <span>{idx + 1}</span>
                               )}
                             </div>
-                            <div className="flex-1 text-xs font-medium">{step.label}</div>
-                            {isCurrent && (
-                              <span className="text-[10px] text-teal-300 font-mono font-semibold animate-pulse">
-                                Sedang Berlangsung
-                              </span>
-                            )}
+
+                            {/* Step Label */}
+                            <span
+                              className={`mt-2 text-[10px] text-center transition-colors px-0.5 leading-tight line-clamp-2 ${
+                                isCurrent
+                                  ? 'text-teal-300 font-extrabold'
+                                  : isDone
+                                  ? 'text-white/80 font-medium'
+                                  : 'text-white/30'
+                              }`}
+                            >
+                              {step.label}
+                            </span>
                           </div>
                         );
                       })}
