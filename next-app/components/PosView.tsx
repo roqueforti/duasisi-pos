@@ -48,6 +48,8 @@ import {
   Star,
   Delete,
   Copy,
+  Coins,
+  Smartphone
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir, AbsensiConfig, UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
@@ -182,7 +184,9 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const [handoverResult, setHandoverResult] = useState<{ eligible: boolean; message: string } | null>(null);
 
   const [kasAwalInput, setKasAwalInput] = useState('100000');
+  const [saldoMerchantAwalInput, setSaldoMerchantAwalInput] = useState('0');
   const [kasAkhirFisik, setKasAkhirFisik] = useState('');
+  const [saldoMerchantAkhirInput, setSaldoMerchantAkhirInput] = useState('');
   const [customItemForm, setCustomItemForm] = useState({
     layanan: '',
     hargaSatuan: '',
@@ -961,7 +965,12 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const handleOpenShift = async () => {
     const kasAwal = Number(kasAwalInput);
     if (!Number.isFinite(kasAwal) || kasAwal < 0) {
-      await showAlert('Kas awal harus berupa angka nol atau lebih.', 'warning');
+      await showAlert('Kas awal laci harus berupa angka nol atau lebih.', 'warning');
+      return;
+    }
+    const saldoMerchantAwal = Number(saldoMerchantAwalInput);
+    if (!Number.isFinite(saldoMerchantAwal) || saldoMerchantAwal < 0) {
+      await showAlert('Saldo awal aplikasi merchant harus berupa angka nol atau lebih.', 'warning');
       return;
     }
     const selectedStaff = staffList.find((staff) => staff.nama === namaKasirInput) || staffList[0];
@@ -972,6 +981,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         userId: selectedStaff?.id || '-',
         namaKasir: selectedStaff?.nama || namaKasirInput || 'Kasir',
         kasAwal,
+        saldoMerchantAwal,
       });
       if (!result?.success || !result.data) throw new Error(result?.message || 'Kas shift gagal dibuka.');
       setShiftAktif(result.data);
@@ -1118,7 +1128,12 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     if (!shiftAktif) return;
     const kasAkhir = Number(kasAkhirFisik);
     if (!Number.isFinite(kasAkhir) || kasAkhir < 0) {
-      await showAlert('Kas akhir fisik harus berupa angka nol atau lebih.', 'warning');
+      await showAlert('Kas akhir fisik laci harus berupa angka nol atau lebih.', 'warning');
+      return;
+    }
+    const saldoMerchantAkhir = Number(saldoMerchantAkhirInput);
+    if (!Number.isFinite(saldoMerchantAkhir) || saldoMerchantAkhir < 0) {
+      await showAlert('Saldo akhir di aplikasi merchant harus berupa angka nol atau lebih.', 'warning');
       return;
     }
     if (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible) {
@@ -1137,18 +1152,19 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         }
       }
 
-      // 2. Close shift with expense data
-      const result = await runBackend<{ success: boolean; message?: string; selisihKas?: number }>('closeKasShift', {
+      // 2. Close shift with merchant & expense data
+      const result = await runBackend<{ success: boolean; message?: string; selisihKas?: number; selisihMerchant?: number }>('closeKasShift', {
         shiftId: shiftAktif.idShift,
         mode: closeShiftMode,
         kasAkhir,
+        saldoMerchantAkhir,
         replacementEmployeeId: closeShiftMode === 'SERAH_TERIMA' ? replacementEmployeeId : '',
         handoverConfirmed: closeShiftMode === 'SERAH_TERIMA',
         userName: shiftAktif.namaKasir,
         // Expense data
         expenseDesc: shiftExpenseDesc.trim(),
         expenseAmount: Number(shiftExpenseAmount) || 0,
-        expenseCategory: shiftExpenseCategory,
+        expenseCategory: shiftExpenseCategory || 'Operasional',
         expensePhotos: photoUrls,
       });
 
@@ -1158,6 +1174,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       setShiftAktif(null);
       setShowTutupShiftModal(false);
       setKasAkhirFisik('');
+      setSaldoMerchantAkhirInput('');
       setReplacementEmployeeId('');
       setHandoverResult(null);
       setShiftExpenseDesc('');
@@ -1281,18 +1298,21 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               </div>
             ) : (
               <div className="space-y-4 animate-fade-in">
-                <div className="flex items-center gap-2 mb-6 cursor-pointer" onClick={() => setLockScreenStep(1)}>
+                <div className="flex items-center gap-2 mb-4 cursor-pointer" onClick={() => setLockScreenStep(1)}>
                   <button className="p-1.5 hover:bg-slate-100 rounded-lg transition"><ArrowRight className="w-4 h-4 text-slate-400 rotate-180" /></button>
-                  <h3 className="font-bold text-slate-700">Langkah 2: Hitung Kas Laci</h3>
+                  <h3 className="font-bold text-slate-700">Langkah 2: Cek Uang Kasir & Merchant</h3>
                 </div>
                 
-                <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-4 text-amber-800 text-xs font-medium leading-relaxed mb-4 flex gap-3 items-start">
-                  <AlertCircle className="w-5 h-5 shrink-0 text-amber-500" />
-                  <p>Harap hitung fisik uang kertas dan koin di laci Anda saat ini, lalu masukkan totalnya di bawah. Jumlah ini akan menjadi modal awal shift Anda.</p>
+                <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-3.5 text-amber-800 text-xs font-medium leading-relaxed mb-3 flex gap-2.5 items-start">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
+                  <p>Harap hitung fisik uang di laci kasir dan periksa saldo awal di aplikasi merchant (QRIS/EDC/E-Wallet) sebelum memulai shift.</p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Total Fisik Uang Laci (Rp)</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
+                    <span>1. Uang Fisik Kasir (Laci Kas)</span>
+                    <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded">Tunai</span>
+                  </label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">Rp</div>
                     <input
@@ -1300,7 +1320,24 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       value={kasAwalInput}
                       onChange={(e) => setKasAwalInput(e.target.value)}
                       placeholder="Contoh: 150000"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-bold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
+                    <span>2. Saldo Aplikasi Merchant</span>
+                    <span className="text-[10px] text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded">QRIS / EDC / E-Wallet</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">Rp</div>
+                    <input
+                      type="number"
+                      value={saldoMerchantAwalInput}
+                      onChange={(e) => setSaldoMerchantAwalInput(e.target.value)}
+                      placeholder="Contoh: 0 atau saldo awal merchant"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all"
                     />
                   </div>
                 </div>
@@ -1308,7 +1345,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                 <button
                   onClick={handleOpenShift}
                   disabled={shiftSubmitting}
-                  className="w-full mt-6 bg-[#FF9500] hover:bg-[#E58600] disabled:opacity-50 text-white rounded-xl text-sm font-bold py-3.5 shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
+                  className="w-full mt-4 bg-[#FF9500] hover:bg-[#E58600] disabled:opacity-50 text-white rounded-xl text-sm font-bold py-3.5 shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
                 >
                   {shiftSubmitting ? (
                     <RefreshCw className="w-5 h-5 animate-spin" />
@@ -3440,99 +3477,202 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       {/* Buka Shift Modal */}
       {showBukaShiftModal && (
         <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm border border-slate-100 shadow-lg">
-            <h3 className="text-sm font-bold text-slate-600 mb-3">Buka Shift Kasir Baru</h3>
-            <div className="space-y-3 mb-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-slate-100 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-800 mb-1">Buka Shift Kasir Baru</h3>
+            <p className="text-xs text-slate-500 mb-4">Cek dan masukkan modal fisik laci kas dan saldo aplikasi merchant sebelum mulai.</p>
+            
+            <div className="space-y-3.5 mb-5">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Kas Awal Laci (Rp)</label>
-                <input
-                  type="number"
-                  value={kasAwalInput}
-                  onChange={(e) => setKasAwalInput(e.target.value)}
-                  placeholder="100000"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#1E4648]"
-                />
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>1. Uang Fisik Kasir (Laci Kas)</span>
+                  <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded">Tunai</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">Rp</div>
+                  <input
+                    type="number"
+                    value={kasAwalInput}
+                    onChange={(e) => setKasAwalInput(e.target.value)}
+                    placeholder="100000"
+                    className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>2. Saldo Aplikasi Merchant</span>
+                  <span className="text-[10px] text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded">QRIS / EDC / E-Wallet</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">Rp</div>
+                  <input
+                    type="number"
+                    value={saldoMerchantAwalInput}
+                    onChange={(e) => setSaldoMerchantAwalInput(e.target.value)}
+                    placeholder="0"
+                    className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20"
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => setShowBukaShiftModal(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">Batal</button>
+
+            <div className="flex gap-2.5">
+              <button onClick={() => setShowBukaShiftModal(false)} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">Batal</button>
               <button
                 onClick={handleOpenShift}
                 disabled={shiftSubmitting}
-                className="flex-1 bg-[#1E4648] disabled:opacity-50 text-white rounded-lg text-xs font-bold py-2"
+                className="flex-1 bg-[#1E4648] hover:bg-[#163536] disabled:opacity-50 text-white rounded-xl text-xs font-bold py-2.5 shadow-md transition"
               >
-                {shiftSubmitting ? 'Membuka...' : 'Buka Shift Sekarang'}
+                {shiftSubmitting ? 'Membuka Shift...' : 'Buka Shift Sekarang'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Enhanced Tutup Shift Modal with Summary & Expense Upload */}
+      {/* Enhanced Tutup Shift Modal with Summary, Merchant Reconcile & Expense Items with Receipt Photos */}
       {showTutupShiftModal && shiftAktif && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-100 shadow-lg flex flex-col">
+        <div className="fixed inset-0 z-[500] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3">
+          <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden border border-slate-100 shadow-2xl flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
               <div>
-                <h3 className="text-lg font-bold text-slate-600">Tutup Shift & Rekap Kas Laci</h3>
-                <p className="text-sm text-slate-500">Shift dimulai {new Date(shiftAktif?.waktuBuka || Date.now()).toLocaleDateString('id-ID')} - {new Date(shiftAktif?.waktuBuka || Date.now()).toLocaleTimeString('id-ID')}</p>
+                <h3 className="text-lg font-bold text-slate-800">Tutup Shift & Rekap Kas Laci & Merchant</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Kasir: <strong className="text-slate-700">{shiftAktif.namaKasir}</strong> • Shift dibuka {new Date(shiftAktif?.waktuBuka || Date.now()).toLocaleDateString('id-ID')} ({new Date(shiftAktif?.waktuBuka || Date.now()).toLocaleTimeString('id-ID')})
+                </p>
               </div>
-              <button onClick={() => setShowTutupShiftModal(false)} className="p-2 rounded hover:bg-slate-200">
-                <X className="w-5 h-5 text-slate-400" />
+              <button onClick={() => setShowTutupShiftModal(false)} className="p-2 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
-                {/* LEFT COLUMN: Summary & Settings */}
-                <div className="space-y-6">
-                  {/* Rangkuman Shift */}
-                  <div className="bg-slate-50 rounded-lg p-4">
-                    <h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-[#1E4648]" />
-                      Rangkuman Pemasukan Shift
+                {/* LEFT COLUMN: Uang Laci & Saldo Merchant */}
+                <div className="space-y-5">
+                  {/* Card 1: Rekap Uang Kasir (Laci Kas) */}
+                  <div className="bg-teal-50/50 border border-teal-200/70 rounded-2xl p-4">
+                    <h4 className="font-bold text-teal-900 mb-3 text-sm flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <Coins className="w-4 h-4 text-teal-700" />
+                        1. Rekonsiliasi Uang Fisik Kasir (Laci)
+                      </span>
+                      <span className="text-[10px] bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full font-bold">Tunai</span>
                     </h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Kas Awal Shift:</span>
-                        <span className="font-bold text-slate-700">Rp {(shiftAktif?.kasAwal || 0).toLocaleString('id-ID')}</span>
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex justify-between text-slate-600">
+                        <span>Kas Awal Laci:</span>
+                        <span className="font-semibold text-slate-800">Rp {(shiftAktif?.kasAwal || 0).toLocaleString('id-ID')}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Total Omzet Tunai:</span>
-                        <span className="font-bold text-[#1E4648]">Rp {(shiftAktif?.totalOmzetTunai || 0).toLocaleString('id-ID')}</span>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Total Pemasukan Tunai:</span>
+                        <span className="font-semibold text-teal-700">+ Rp {(shiftAktif?.totalOmzetTunai || 0).toLocaleString('id-ID')}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Pemasukan Non-Tunai:</span>
-                        <span className="font-bold text-slate-600 text-xs">(Data dari sistem)</span>
+                      {Number(shiftExpenseAmount) > 0 && (
+                        <div className="flex justify-between text-rose-600">
+                          <span>Pengeluaran Belanja Kas:</span>
+                          <span className="font-semibold">- Rp {(Number(shiftExpenseAmount) || 0).toLocaleString('id-ID')}</span>
+                        </div>
+                      )}
+                      <hr className="border-teal-200/60 my-1" />
+                      <div className="flex justify-between text-xs font-bold text-teal-950">
+                        <span>Ekspektasi Uang Laci:</span>
+                        <span>Rp {((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0) - (Number(shiftExpenseAmount) || 0)).toLocaleString('id-ID')}</span>
                       </div>
-                      <hr className="border-slate-300" />
-                      <div className="flex justify-between text-base">
-                        <span className="font-bold text-slate-700">Total Omzet Shift:</span>
-                        <span className="font-bold text-[#1E4648]">Rp {(shiftAktif?.totalOmzetTunai || 0).toLocaleString('id-ID')}</span>
+                    </div>
+
+                    <div className="mt-3.5 pt-3 border-t border-teal-200/60">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Total Fisik Kas di Laci Saat Ini (Rp) *</label>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">Rp</div>
+                        <input
+                          type="number"
+                          value={kasAkhirFisik}
+                          onChange={(e) => setKasAkhirFisik(e.target.value)}
+                          placeholder="Hitung jumlah uang fisik di laci kasir"
+                          className="w-full pl-9 pr-3 py-2 bg-white border border-teal-300 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20"
+                        />
                       </div>
-                      <div className="flex justify-between">
-                        <span className="font-bold text-slate-700">Ekspektasi Kas Akhir:</span>
-                        <span className="font-bold text-slate-700">Rp {((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0)).toLocaleString('id-ID')}</span>
+                      {kasAkhirFisik && (
+                        <div className={`mt-2 p-2 rounded-lg text-xs font-bold flex items-center justify-between ${
+                          (Number(kasAkhirFisik) || 0) === ((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0) - (Number(shiftExpenseAmount) || 0)) 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          <span>Selisih Kas Laci:</span>
+                          <span>Rp {((Number(kasAkhirFisik) || 0) - ((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0) - (Number(shiftExpenseAmount) || 0))).toLocaleString('id-ID')}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card 2: Rekap Saldo di Aplikasi Merchant */}
+                  <div className="bg-indigo-50/50 border border-indigo-200/70 rounded-2xl p-4">
+                    <h4 className="font-bold text-indigo-900 mb-3 text-sm flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <Smartphone className="w-4 h-4 text-indigo-700" />
+                        2. Rekonsiliasi Saldo Aplikasi Merchant
+                      </span>
+                      <span className="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold">QRIS / EDC</span>
+                    </h4>
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex justify-between text-slate-600">
+                        <span>Saldo Awal Merchant:</span>
+                        <span className="font-semibold text-slate-800">Rp {(shiftAktif?.saldoMerchantAwal || 0).toLocaleString('id-ID')}</span>
                       </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Pemasukan Non-Tunai (QRIS/EDC):</span>
+                        <span className="font-semibold text-indigo-700">+ Rp {(shiftAktif?.totalOmzetMerchant || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      <hr className="border-indigo-200/60 my-1" />
+                      <div className="flex justify-between text-xs font-bold text-indigo-950">
+                        <span>Ekspektasi Saldo Merchant:</span>
+                        <span>Rp {((shiftAktif?.saldoMerchantAwal || 0) + (shiftAktif?.totalOmzetMerchant || 0)).toLocaleString('id-ID')}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-3.5 pt-3 border-t border-indigo-200/60">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Saldo di Aplikasi Merchant Saat Ini (Rp) *</label>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">Rp</div>
+                        <input
+                          type="number"
+                          value={saldoMerchantAkhirInput}
+                          onChange={(e) => setSaldoMerchantAkhirInput(e.target.value)}
+                          placeholder="Periksa saldo akhir di aplikasi merchant"
+                          className="w-full pl-9 pr-3 py-2 bg-white border border-indigo-300 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20"
+                        />
+                      </div>
+                      {saldoMerchantAkhirInput && (
+                        <div className={`mt-2 p-2 rounded-lg text-xs font-bold flex items-center justify-between ${
+                          (Number(saldoMerchantAkhirInput) || 0) === ((shiftAktif?.saldoMerchantAwal || 0) + (shiftAktif?.totalOmzetMerchant || 0)) 
+                            ? 'bg-emerald-100 text-emerald-800' 
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          <span>Selisih Merchant:</span>
+                          <span>Rp {((Number(saldoMerchantAkhirInput) || 0) - ((shiftAktif?.saldoMerchantAwal || 0) + (shiftAktif?.totalOmzetMerchant || 0))).toLocaleString('id-ID')}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Mode Penutupan */}
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Mode Penutupan</label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Mode Penutupan</label>
+                    <div className="grid grid-cols-2 gap-2.5">
                       <button
                         type="button"
                         onClick={() => { setCloseShiftMode('SERAH_TERIMA'); setHandoverResult(null); }}
-                        className={`rounded-lg border px-4 py-3 text-sm font-bold transition ${closeShiftMode === 'SERAH_TERIMA' ? 'bg-[#1E4648] border-[#1E4648] text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                        className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition ${closeShiftMode === 'SERAH_TERIMA' ? 'bg-[#1E4648] border-[#1E4648] text-white shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
                       >
                         Serah Terima Shift
                       </button>
                       <button
                         type="button"
                         onClick={() => { setCloseShiftMode('TUTUP_HARIAN'); setHandoverResult(null); }}
-                        className={`rounded-lg border px-4 py-3 text-sm font-bold transition ${closeShiftMode === 'TUTUP_HARIAN' ? 'bg-rose-600 border-rose-600 text-white' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                        className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition ${closeShiftMode === 'TUTUP_HARIAN' ? 'bg-rose-600 border-rose-600 text-white shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
                       >
                         Tutup Hari Ini
                       </button>
@@ -3541,13 +3681,13 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
                   {/* Conditional: Staff Pengganti */}
                   {closeShiftMode === 'SERAH_TERIMA' && (
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Staf Shift Pengganti</label>
-                      <div className="flex gap-3">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Pilih Staf Shift Pengganti</label>
+                      <div className="flex gap-2">
                         <select
                           value={replacementEmployeeId}
                           onChange={(event) => { setReplacementEmployeeId(event.target.value); setHandoverResult(null); }}
-                          className="flex-1 px-3 py-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:border-[#1E4648]"
+                          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 outline-none focus:border-[#1E4648]"
                         >
                           <option value="">Pilih staf pengganti...</option>
                           {staffList.filter((staff) => staff.id !== shiftAktif.idUser).map((staff) => (
@@ -3558,114 +3698,103 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           type="button"
                           onClick={handleCheckHandover}
                           disabled={shiftSubmitting || !replacementEmployeeId}
-                          className="px-4 py-2.5 rounded-lg bg-[#1E4648] text-white disabled:opacity-50 text-sm font-bold"
+                          className="px-3 py-2 rounded-lg bg-[#1E4648] hover:bg-[#163536] text-white disabled:opacity-50 text-xs font-bold transition"
                         >
                           Verifikasi
                         </button>
                       </div>
                       {handoverResult && (
-                        <p className={`mt-2 rounded-lg px-3 py-2 text-sm font-bold ${handoverResult.eligible ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
+                        <p className={`mt-2 rounded-lg px-2.5 py-1.5 text-xs font-bold ${handoverResult.eligible ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
                           {handoverResult.message}
                         </p>
                       )}
                     </div>
                   )}
-
-                  {/* Kas Fisik */}
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Total Fisik Kas di Laci (Rp)</label>
-                    <input
-                      type="number"
-                      value={kasAkhirFisik}
-                      onChange={(e) => setKasAkhirFisik(e.target.value)}
-                      placeholder="Hitung jumlah uang fisik di laci kas"
-                      className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm outline-none focus:border-[#1E4648]"
-                    />
-                    {kasAkhirFisik && (
-                      <div className={`mt-2 p-3 rounded-lg text-sm font-bold ${
-                        (Number(kasAkhirFisik) || 0) === ((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0)) 
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}>
-                        Selisih: Rp {((Number(kasAkhirFisik) || 0) - ((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0))).toLocaleString('id-ID')}
-                      </div>
-                    )}
-                  </div>
                 </div>
 
-                {/* RIGHT COLUMN: Expense & Upload */}
-                <div className="space-y-6">
-                  {/* Input Pengeluaran */}
-                  <div className="bg-slate-50 rounded-lg p-4">
-                    <h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2">
-                      <Receipt className="w-4 h-4 text-rose-600" />
-                      Pengeluaran Shift (Opsional)
+                {/* RIGHT COLUMN: Belanja Barang & Slot Foto Nota */}
+                <div className="space-y-5">
+                  {/* Card Belanja Barang */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3.5">
+                    <h4 className="font-bold text-slate-800 text-sm flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-rose-600" />
+                        Pencatatan Belanja Barang Operasional
+                      </span>
+                      <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-semibold">Pengeluaran</span>
                     </h4>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-600 mb-1">Deskripsi Pengeluaran</label>
-                        <input
-                          type="text"
-                          value={shiftExpenseDesc}
-                          onChange={(e) => setShiftExpenseDesc(e.target.value)}
-                          placeholder="Contoh: Beli deterjen, bayar listrik, dll"
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-[#1E4648]"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-600 mb-1">Jumlah Pengeluaran (Rp)</label>
+
+                    {/* Field 1: Daftar Beli Barang Apa Aja */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Beli Barang Apa Aja? (Rincian Belanja)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={shiftExpenseDesc}
+                        onChange={(e) => setShiftExpenseDesc(e.target.value)}
+                        placeholder="Contoh: Beli sabun cair 5L, plastik laundry 2 pack, lakban bening, bensin kurir antar jemput"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20"
+                      />
+                    </div>
+
+                    {/* Field 2: Berapa Uangnya */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Berapa Uangnya? (Total Biaya Belanja Rp)
+                      </label>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">Rp</div>
                         <input
                           type="number"
                           value={shiftExpenseAmount}
                           onChange={(e) => setShiftExpenseAmount(e.target.value)}
-                          placeholder="0"
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-[#1E4648]"
+                          placeholder="0 (kosongkan jika tidak ada belanja)"
+                          className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-600 mb-1">Kategori</label>
-                        <select
-                          value={shiftExpenseCategory}
-                          onChange={(e) => setShiftExpenseCategory(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-[#1E4648]"
-                        >
-                          <option value="">Pilih kategori...</option>
-                          <option value="Operasional">Operasional</option>
-                          <option value="Maintenance">Maintenance</option>
-                          <option value="Supplies">Supplies</option>
-                          <option value="Lainnya">Lainnya</option>
-                        </select>
-                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">Nominal ini otomatis memotong perhitungan kas akhir laci.</p>
                     </div>
-                  </div>
 
-                  {/* Upload Foto Bukti */}
-                  <div className="bg-slate-50 rounded-lg p-4">
-                    <h4 className="font-bold text-slate-700 mb-3 text-sm flex items-center gap-2">
-                      <Camera className="w-4 h-4 text-blue-600" />
-                      Upload Foto Bukti Pengeluaran
-                    </h4>
-                    <div className="space-y-3">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleExpensePhotoUpload}
-                        className="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-[#1E4648] file:text-white hover:file:bg-[#163536]"
-                      />
-                      <p className="text-xs text-slate-500">Upload foto nota, struk, atau bukti pengeluaran lainnya (JPG, PNG)</p>
+                    {/* Field 3: Slot Foto Bukti Nota Pembelian */}
+                    <div className="pt-2 border-t border-slate-200">
+                      <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                        <Camera className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Slot Foto Nota Pembelian (Bukti Struk)</span>
+                      </label>
                       
+                      <div className="mt-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          multiple
+                          onChange={handleExpensePhotoUpload}
+                          id="expense-receipt-upload"
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="expense-receipt-upload"
+                          className="w-full py-3 px-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#1E4648] bg-white flex flex-col items-center justify-center gap-1.5 cursor-pointer text-slate-600 hover:text-[#1E4648] transition group"
+                        >
+                          <Camera className="w-5 h-5 text-slate-400 group-hover:text-[#1E4648] transition" />
+                          <span className="text-xs font-bold">Ambil Foto / Upload Foto Nota</span>
+                          <span className="text-[10px] text-slate-400">Dapat mengunggah beberapa lembar foto nota sekaligus</span>
+                        </label>
+                      </div>
+
                       {expensePhotos.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-bold text-slate-600">{expensePhotos.length} foto siap upload:</p>
-                          <div className="grid grid-cols-2 gap-2">
+                        <div className="mt-3 space-y-1.5">
+                          <span className="text-[11px] font-bold text-slate-600 block">{expensePhotos.length} foto nota siap tersimpan:</span>
+                          <div className="grid grid-cols-3 gap-2">
                             {expensePhotos.map((photo, idx) => (
-                              <div key={idx} className="relative group">
-                                <img src={photo.preview} alt={`Bukti ${idx + 1}`} className="w-full h-20 object-cover rounded-lg border border-slate-200" />
+                              <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-200 shadow-xs">
+                                <img src={photo.preview} alt={`Nota ${idx + 1}`} className="w-full h-20 object-cover" />
                                 <button
                                   type="button"
                                   onClick={() => removeExpensePhoto(idx)}
-                                  className="absolute -top-1 -right-1 w-6 h-6 bg-rose-500 text-white rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition"
+                                  className="absolute top-1 right-1 w-5 h-5 bg-rose-600 text-white rounded-full text-xs font-bold flex items-center justify-center shadow-md hover:bg-rose-700 transition"
+                                  title="Hapus foto"
                                 >
                                   ×
                                 </button>
@@ -3681,27 +3810,27 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             </div>
 
             {/* Footer Actions */}
-            <div className="flex gap-3 p-6 border-t border-slate-100 bg-slate-50">
+            <div className="flex gap-3 p-5 border-t border-slate-100 bg-slate-50">
               <button 
                 onClick={() => setShowTutupShiftModal(false)} 
-                className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-bold transition"
+                className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition"
               >
                 Batal
               </button>
               <button
                 onClick={handleCloseShiftWithExpense}
-                disabled={shiftSubmitting || (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible)}
-                className="flex-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold py-2.5 flex items-center justify-center gap-2 transition"
+                disabled={shiftSubmitting || !kasAkhirFisik || !saldoMerchantAkhirInput || (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible)}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold py-2.5 flex items-center justify-center gap-2 shadow-md transition"
               >
                 {shiftSubmitting ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    Memproses...
+                    Menutup Kas Shift...
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    Tutup Shift & Simpan Data
+                    Tutup Shift & Simpan Rekonsiliasi
                   </>
                 )}
               </button>

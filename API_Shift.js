@@ -873,20 +873,40 @@ function hapusHariLibur(id) {
 // ============================================================
 // KAS SHIFT & SERAH TERIMA
 // ============================================================
+function calculateShiftNonCash_(openedAt) {
+  const sh = SS.getSheetByName(SHEET_TRANSAKSI);
+  if (!sh) return 0;
+  const rows = sh.getDataRange().getValues();
+  return rows.reduce(function(total, row, index) {
+    if (index === 0 || !row[1] || new Date(row[1]).getTime() < openedAt.getTime()) return total;
+    if (row[9] === "Approved" || row[5] === "Void" || row[5] === "Batal") return total;
+    if (row[13] === "Tunai") return total;
+    return total + (Number(row[15]) || Number(row[4]) || 0);
+  }, 0);
+}
+
 function getKasShiftAktif(outlet) {
   const sh = SS.getSheetByName(SHEET_KAS_SHIFT);
   if (!sh || sh.getLastRow() < 2) return null;
   const rows = sh.getDataRange().getValues();
   for (let i = rows.length - 1; i >= 1; i--) {
     if (rows[i][10] === "Aktif" && (!outlet || rows[i][1] === outlet)) {
+      const openedAt = new Date(rows[i][4]);
+      const omzetTunai = calculateShiftCash_(openedAt);
+      const omzetMerchant = calculateShiftNonCash_(openedAt);
+      const kasAwal = Number(rows[i][6]) || 0;
+      const saldoMerchantAwal = Number(rows[i][16]) || 0;
       return {
         idShift: rows[i][0],
         idOutlet: rows[i][1],
         namaKasir: rows[i][2],
         idUser: rows[i][3],
-        waktuBuka: new Date(rows[i][4]).toISOString(),
-        kasAwal: Number(rows[i][6]) || 0,
-        kasAkhirSistem: Number(rows[i][7]) || 0,
+        waktuBuka: openedAt.toISOString(),
+        kasAwal: kasAwal,
+        saldoMerchantAwal: saldoMerchantAwal,
+        totalOmzetTunai: omzetTunai,
+        totalOmzetMerchant: omzetMerchant,
+        kasAkhirSistem: kasAwal + omzetTunai,
         status: "Buka"
       };
     }
@@ -900,17 +920,41 @@ function openKasShift(data) {
   try {
     let sh = SS.getSheetByName(SHEET_KAS_SHIFT);
     if (!sh) {
-      ensureSheetSchema_(SHEET_KAS_SHIFT, ["ID Kas Shift", "Outlet", "Nama Penanggung Jawab", "ID Penanggung Jawab", "Waktu Buka", "Waktu Tutup", "Kas Awal", "Kas Akhir Sistem", "Kas Akhir Fisik", "Selisih", "Status", "Mode Tutup", "ID Pengganti", "Nama Pengganti", "Waktu Handover", "Catatan"]);
+      ensureSheetSchema_(SHEET_KAS_SHIFT, ["ID Kas Shift", "Outlet", "Nama Penanggung Jawab", "ID Penanggung Jawab", "Waktu Buka", "Waktu Tutup", "Kas Awal", "Kas Akhir Sistem", "Kas Akhir Fisik", "Selisih", "Status", "Mode Tutup", "ID Pengganti", "Nama Pengganti", "Waktu Handover", "Catatan", "Saldo Awal Merchant", "Saldo Akhir Merchant", "Total Belanja", "Foto Nota"]);
       sh = SS.getSheetByName(SHEET_KAS_SHIFT);
     }
     const outlet = data.idOutlet || data.outlet || "OUTLET-UTAMA";
     if (getKasShiftAktif(outlet)) return { success: false, message: "Masih ada kas shift aktif pada outlet ini." };
     const kasAwal = Number(data.kasAwal);
-    if (!isFinite(kasAwal) || kasAwal < 0) return { success: false, message: "Kas awal tidak valid." };
+    if (!isFinite(kasAwal) || kasAwal < 0) return { success: false, message: "Kas awal laci tidak valid." };
+    const saldoMerchantAwal = Number(data.saldoMerchantAwal || 0);
+    if (!isFinite(saldoMerchantAwal) || saldoMerchantAwal < 0) return { success: false, message: "Saldo awal merchant tidak valid." };
+    
     const id = generateId("KAS");
     const now = new Date();
-    sh.appendRow([id, outlet, data.namaKasir || data.userName || "Kasir", data.userId || "-", now, "", kasAwal, "", "", "", "Aktif", "", "", "", "", data.catatan || ""]);
-    addAuditLog(data.namaKasir || data.userName || "Kasir", "Buka Kas Shift", id, "Outlet: " + outlet + "; kas awal Rp " + kasAwal.toLocaleString('id-ID'));
+    sh.appendRow([
+      id, 
+      outlet, 
+      data.namaKasir || data.userName || "Kasir", 
+      data.userId || "-", 
+      now, 
+      "", 
+      kasAwal, 
+      "", 
+      "", 
+      "", 
+      "Aktif", 
+      "", 
+      "", 
+      "", 
+      "", 
+      data.catatan || "",
+      saldoMerchantAwal,
+      "",
+      0,
+      ""
+    ]);
+    addAuditLog(data.namaKasir || data.userName || "Kasir", "Buka Kas Shift", id, "Outlet: " + outlet + "; kas laci Rp " + kasAwal.toLocaleString('id-ID') + "; saldo merchant Rp " + saldoMerchantAwal.toLocaleString('id-ID'));
     return { success: true, data: getKasShiftAktif(outlet) };
   } finally {
     lock.releaseLock();

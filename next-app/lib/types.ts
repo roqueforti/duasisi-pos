@@ -99,12 +99,19 @@ export interface ShiftKasir {
   idUser: string;
   namaKasir: string;
   kasAwal: number;
+  saldoMerchantAwal?: number;
   kasAkhir?: number;
+  saldoMerchantAkhir?: number;
   totalOmzetTunai?: number;
+  totalOmzetMerchant?: number;
   selisihKas?: number;
+  selisihMerchant?: number;
   status: 'Buka' | 'Tutup';
   waktuBuka: string;
   waktuTutup?: string;
+  daftarBelanja?: string;
+  nominalBelanja?: number;
+  fotoNotaBelanja?: string[];
 }
 
 export interface PromoVoucher {

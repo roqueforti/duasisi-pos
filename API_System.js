@@ -380,49 +380,73 @@ function closeKasShift(data) {
 
     const kasFisik = Number(data.kasAkhir);
     if (!isFinite(kasFisik) || kasFisik < 0) return { success: false, message: "Kas akhir fisik tidak valid." };
-    const omzetTunai = calculateShiftCash_(new Date(rows[rowIndex][4]));
-    const kasSistem = (Number(rows[rowIndex][6]) || 0) + omzetTunai;
+    const saldoMerchantAkhir = Number(data.saldoMerchantAkhir !== undefined ? data.saldoMerchantAkhir : (data.merchantAkhir || 0));
+    const openedAt = new Date(rows[rowIndex][4]);
+    const omzetTunai = calculateShiftCash_(openedAt);
+    const omzetMerchant = calculateShiftNonCash_(openedAt);
+    const kasAwal = Number(rows[rowIndex][6]) || 0;
+    const saldoMerchantAwal = Number(rows[rowIndex][16]) || 0;
+    
+    // Expense data
+    const expenseAmount = Number(data.expenseAmount || data.nominalBelanja || 0);
+    const expenseDesc = String(data.expenseDesc || data.daftarBarang || "").trim();
+    
+    const kasSistem = kasAwal + omzetTunai - expenseAmount;
+    const merchantSistem = saldoMerchantAwal + omzetMerchant;
+    const selisihKas = kasFisik - kasSistem;
+    const selisihMerchant = saldoMerchantAkhir - merchantSistem;
     const now = new Date();
-
-    // Handle pengeluaran (expenses)
-    let expenseDetail = "";
-    if (data.expenses && Array.isArray(data.expenses) && data.expenses.length > 0) {
-      let totalPengeluaran = 0;
-      const expenseLines = data.expenses.map(exp => {
-        const amount = Number(exp.amount) || 0;
-        totalPengeluaran += amount;
-        return `[${exp.kategori || 'Lain-lain'}] ${exp.desc || 'Pengeluaran'}: Rp ${amount.toLocaleString('id-ID')}`;
-      });
-      expenseDetail = "PENGELUARAN:\n" + expenseLines.join("\n") + "\n\nTOTAL PENGELUARAN: Rp " + totalPengeluaran.toLocaleString('id-ID');
-    }
 
     // Handle expense photos
     let expensePhotos = "";
     if (data.expensePhotos && Array.isArray(data.expensePhotos) && data.expensePhotos.length > 0) {
-      const photoUrls = data.expensePhotos.map(photo => photo.fileUrl || photo).join(" | ");
+      const photoUrls = data.expensePhotos.map(photo => (typeof photo === 'object' && photo.fileUrl ? photo.fileUrl : String(photo))).join(" | ");
       expensePhotos = photoUrls;
     }
 
     sh.getRange(rowIndex + 1, 6).setValue(now);
-    sh.getRange(rowIndex + 1, 8, 1, 9).setValues([[kasSistem, kasFisik, kasFisik - kasSistem, "Ditutup", data.mode, replacement.replacementEmployeeId || "", replacement.replacementName || "", data.mode === "SERAH_TERIMA" ? now : "", (data.catatan || "") + (expenseDetail ? "\n\n" + expenseDetail : "")]]);
+    sh.getRange(rowIndex + 1, 8, 1, 9).setValues([[
+      kasSistem, 
+      kasFisik, 
+      selisihKas, 
+      "Ditutup", 
+      data.mode, 
+      replacement.replacementEmployeeId || "", 
+      replacement.replacementName || "", 
+      data.mode === "SERAH_TERIMA" ? now : "", 
+      (data.catatan || "") + (expenseDesc ? "\n\nBELANJA BARANG: " + expenseDesc + " (Rp " + expenseAmount.toLocaleString('id-ID') + ")" : "")
+    ]]);
     
-    // Store expense photos if column exists
-    if (sh.getLastColumn() >= 17) {
-      sh.getRange(rowIndex + 1, 17).setValue(expensePhotos);
+    // Store Extended columns: Saldo Awal Merchant (col 17), Saldo Akhir Merchant (col 18), Total Belanja (col 19), Foto Nota (col 20)
+    while (sh.getLastColumn() < 20) {
+      sh.insertColumnAfter(sh.getLastColumn());
     }
+    sh.getRange(rowIndex + 1, 17, 1, 4).setValues([[
+      saldoMerchantAwal,
+      saldoMerchantAkhir,
+      expenseAmount,
+      expensePhotos
+    ]]);
 
     addAuditLog(data.userName || rows[rowIndex][2] || "Kasir", "Tutup Kas Shift", data.shiftId, 
-      "Mode: " + data.mode + "; sistem Rp " + kasSistem.toLocaleString('id-ID') + "; fisik Rp " + kasFisik.toLocaleString('id-ID') + 
-      (expenseDetail ? "; pengeluaran tercatat" : "") + (expensePhotos ? "; foto dokumentasi tersimpan" : ""));
+      "Mode: " + data.mode + 
+      "; Kas Laci Sistem Rp " + kasSistem.toLocaleString('id-ID') + ", Fisik Rp " + kasFisik.toLocaleString('id-ID') + " (Selisih: Rp " + selisihKas.toLocaleString('id-ID') + ")" +
+      "; Merchant Sistem Rp " + merchantSistem.toLocaleString('id-ID') + ", Input Rp " + saldoMerchantAkhir.toLocaleString('id-ID') + " (Selisih: Rp " + selisihMerchant.toLocaleString('id-ID') + ")" +
+      (expenseDesc ? "; Belanja: " + expenseDesc + " (Rp " + expenseAmount.toLocaleString('id-ID') + ")" : "") + 
+      (expensePhotos ? "; Foto nota tersimpan" : ""));
     
     return { 
       success: true, 
       idShift: data.shiftId, 
       kasAkhirSistem: kasSistem, 
       kasAkhirFisik: kasFisik, 
-      selisihKas: kasFisik - kasSistem, 
+      selisihKas: selisihKas, 
+      merchantAkhirSistem: merchantSistem,
+      merchantAkhirInput: saldoMerchantAkhir,
+      selisihMerchant: selisihMerchant,
+      totalBelanja: expenseAmount,
       mode: data.mode,
-      expenseDetailSaved: !!expenseDetail,
+      expenseDetailSaved: !!expenseDesc,
       expensePhotosSaved: !!expensePhotos
     };
   } finally {
