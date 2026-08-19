@@ -96,6 +96,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   // Order Details Form State
   const [tipeLayanan, setTipeLayanan] = useState<'SelfService' | 'FullService' | ''>('');
   const [tingkatLayanan, setTingkatLayanan] = useState<string>('Reguler');
+  const [dropOffPriorities, setDropOffPriorities] = useState<Array<{ id: string; nama: string; durasiJam: number; aktif?: boolean; multiplier?: number }>>([
+    { id: 'p1', nama: 'Reguler', durasiJam: 48, aktif: true },
+    { id: 'p2', nama: 'Express', durasiJam: 24, aktif: true },
+    { id: 'p3', nama: 'Kilat', durasiJam: 6, aktif: true }
+  ]);
   const [catatanOrderInput, setCatatanOrderInput] = useState<string>('');
 
   // Payment Form State
@@ -241,10 +246,16 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       15 * 60 * 1000 // 15 menit TTL â€” pegawai sangat jarang berubah
     );
 
-    // 4. Poin Config
+    // 4. Poin Config & Priority Drop Off Config
     runBackend<{rate: number}>('getPoinConfig').then(res => {
       if (res && res.rate) setPoinRate(res.rate);
     }).catch(() => {});
+
+    runBackendCached<any[]>('getPriorityConfig', (data) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setDropOffPriorities(data);
+      }
+    }, 10 * 60 * 1000);
 
     // 5. Promo List
     runBackendCached<any[]>(
@@ -2159,19 +2170,26 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                         Otomatis Masuk Antrean SOP
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['Reguler', 'Express', 'Kilat'] as const).map((pri) => (
+                    <div className="flex flex-wrap gap-2">
+                      {dropOffPriorities.filter(p => p.aktif !== false).map((pri) => (
                         <button
-                          key={pri}
+                          key={pri.nama}
                           type="button"
-                          onClick={() => setTingkatLayanan(pri)}
-                          className={`py-2 rounded-xl font-bold text-xs border transition ${
-                            tingkatLayanan === pri
+                          onClick={() => setTingkatLayanan(pri.nama)}
+                          className={`py-2 px-3 rounded-xl font-bold text-xs border transition flex items-center gap-1.5 ${
+                            tingkatLayanan === pri.nama
                               ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
                               : 'bg-white text-slate-700 border-amber-200/90 hover:bg-amber-100/50'
                           }`}
                         >
-                          {pri}
+                          <span>{pri.nama}</span>
+                          {pri.durasiJam && (
+                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                              tingkatLayanan === pri.nama ? 'bg-teal-900/40 text-teal-200' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {pri.durasiJam} Jam
+                            </span>
+                          )}
                         </button>
                       ))}
                     </div>

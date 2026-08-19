@@ -1,15 +1,26 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
+import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown, Sparkles, Shirt, Clock, Flame, Star, Layers, Delete } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import SatuanInput from '@/components/SatuanInput';
-import { getIconComponent, KategoriItem } from '@/lib/categoryUtils';
+import { getIconComponent, KategoriItem, PALETTE, ICON_OPTIONS } from '@/lib/categoryUtils';
 import { getStepIconComponent } from '@/components/LangkahView';
+
+export interface DropOffPriorityItem {
+  id: string;
+  nama: string;
+  durasiJam: number;
+  multiplier: number;
+  warna?: string;
+  icon?: string;
+  keterangan?: string;
+  aktif?: boolean;
+}
 
 interface LayananItemBackend {
   id: string;
@@ -58,12 +69,30 @@ interface ProdukViewProps {
 
 export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const { showAlert, showConfirm, showPrompt } = useDialog();
-  const [activeSubTab, setActiveSubTab] = useState<'Produk' | 'Promo' | 'Loyalitas'>('Produk');
+  const [activeSubTab, setActiveSubTab] = useState<'Produk' | 'DropOff' | 'Promo' | 'Loyalitas'>('Produk');
   const [layananList, setLayananList] = useState<LayananItemBackend[]>([]);
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
   const [promoList, setPromoList] = useState<PromoVoucher[]>(defaultPromos);
   const [loading, setLoading] = useState(false);
   const [filterKategori, setFilterKategori] = useState<string>('Semua');
+
+  // Drop Off Categories / Priorities State
+  const [dropOffCategories, setDropOffCategories] = useState<DropOffPriorityItem[]>([
+    { id: 'p1', nama: 'Reguler', durasiJam: 48, multiplier: 1.0, icon: 'Clock', warna: 'bg-teal-100 text-teal-800 border-teal-300', keterangan: 'Pengerjaan standar 2 hari kerja (48 Jam)', aktif: true },
+    { id: 'p2', nama: 'Express', durasiJam: 24, multiplier: 1.5, icon: 'Flame', warna: 'bg-amber-100 text-amber-800 border-amber-300', keterangan: 'Pengerjaan cepat 24 Jam (+50% tarif)', aktif: true },
+    { id: 'p3', nama: 'Kilat', durasiJam: 6, multiplier: 2.0, icon: 'Zap', warna: 'bg-rose-100 text-rose-800 border-rose-300', keterangan: 'Pengerjaan super kilat 6 Jam (2x lipat tarif)', aktif: true }
+  ]);
+  const [showDropOffModal, setShowDropOffModal] = useState(false);
+  const [editingDropOffId, setEditingDropOffId] = useState<string | null>(null);
+  const [dropOffForm, setDropOffForm] = useState<Omit<DropOffPriorityItem, 'id'>>({
+    nama: '',
+    durasiJam: 24,
+    multiplier: 1.0,
+    icon: 'Clock',
+    warna: 'bg-teal-100 text-teal-800 border-teal-300',
+    keterangan: '',
+    aktif: true
+  });
 
   // Add / Edit Product Modal State
   const [showModal, setShowModal] = useState(false);
@@ -94,8 +123,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   // Loyalty Settings
   const [poinRate, setPoinRate] = useState('10000');
-
-  // Priority Settings (Removed)
 
   // Pending Inventory Linking
   const [pendingInventory, setPendingInventory] = useState<Record<string, string>>({});
@@ -178,7 +205,120 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       console.error('Gagal memuat konfigurasi poin:', err);
     }
   };
-  // Priority Config Logic (Removed)
+
+  const loadDropOffCategories = async () => {
+    try {
+      const data = await runBackend<DropOffPriorityItem[]>('getPriorityConfig');
+      if (Array.isArray(data) && data.length > 0) {
+        setDropOffCategories(data.map(d => ({
+          id: d.id || `do-${Date.now()}-${Math.random()}`,
+          nama: d.nama,
+          durasiJam: Number(d.durasiJam || (d as any).sla || 24),
+          multiplier: Number(d.multiplier || 1.0),
+          icon: d.icon || 'Clock',
+          warna: d.warna || 'bg-teal-100 text-teal-800 border-teal-300',
+          keterangan: d.keterangan || '',
+          aktif: d.aktif !== false
+        })));
+      }
+    } catch (err) {
+      console.error('Gagal memuat kategori drop off:', err);
+    }
+  };
+
+  const handleOpenAddDropOff = () => {
+    setEditingDropOffId(null);
+    setDropOffForm({
+      nama: '',
+      durasiJam: 24,
+      multiplier: 1.0,
+      icon: 'Clock',
+      warna: 'bg-teal-100 text-teal-800 border-teal-300',
+      keterangan: '',
+      aktif: true
+    });
+    setShowDropOffModal(true);
+  };
+
+  const handleOpenEditDropOff = (item: DropOffPriorityItem) => {
+    setEditingDropOffId(item.id);
+    setDropOffForm({
+      nama: item.nama,
+      durasiJam: item.durasiJam || 24,
+      multiplier: item.multiplier || 1.0,
+      icon: item.icon || 'Clock',
+      warna: item.warna || 'bg-teal-100 text-teal-800 border-teal-300',
+      keterangan: item.keterangan || '',
+      aktif: item.aktif !== false
+    });
+    setShowDropOffModal(true);
+  };
+
+  const handleSaveDropOffCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dropOffForm.nama.trim()) {
+      await showAlert('Nama kategori / prioritas Drop Off harus diisi!', 'warning');
+      return;
+    }
+    setLoading(true);
+    try {
+      let updated: DropOffPriorityItem[];
+      if (editingDropOffId) {
+        updated = dropOffCategories.map(item =>
+          item.id === editingDropOffId ? { ...item, ...dropOffForm } : item
+        );
+      } else {
+        const newItem: DropOffPriorityItem = {
+          id: `p-${Date.now()}`,
+          ...dropOffForm
+        };
+        updated = [...dropOffCategories, newItem];
+      }
+      setDropOffCategories(updated);
+      await runBackend('savePriorityConfig', updated);
+      clearCache('getPriorityConfig');
+      setShowDropOffModal(false);
+      setEditingDropOffId(null);
+      await showAlert('Kategori / Prioritas Drop Off berhasil disimpan!', 'success');
+    } catch (err: any) {
+      console.error(err);
+      await showAlert('Gagal menyimpan kategori drop off: ' + (err?.message || String(err)), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleAktifDropOff = async (id: string, currentAktif: boolean) => {
+    const updated = dropOffCategories.map(item =>
+      item.id === id ? { ...item, aktif: !currentAktif } : item
+    );
+    setDropOffCategories(updated);
+    try {
+      await runBackend('savePriorityConfig', updated);
+      clearCache('getPriorityConfig');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleHapusDropOffCategory = async (id: string) => {
+    const isConfirmed = await showConfirm('Hapus kategori / prioritas Drop Off ini?');
+    if (!isConfirmed) return;
+    const updated = dropOffCategories.filter(item => item.id !== id);
+    setDropOffCategories(updated);
+    setLoading(true);
+    try {
+      await runBackend('savePriorityConfig', updated);
+      clearCache('getPriorityConfig');
+      await showAlert('Kategori Drop Off berhasil dihapus.', 'success');
+    } catch (err: any) {
+      console.error(err);
+      await showAlert('Gagal menghapus kategori drop off.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadMasterPipelineSteps = async () => {
     try {
       const data = await runBackend<CustomPipelineStep[]>('getPipelineConfigData');
@@ -214,6 +354,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     loadPromo();
     loadPoinConfig();
     loadKategori();
+    loadDropOffCategories();
     loadMasterPipelineSteps();
   }, []);
 
@@ -419,6 +560,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
               <span>Master Layanan Laundry</span>
             </button>
             <button
+              onClick={() => setActiveSubTab('DropOff')}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
+                activeSubTab === 'DropOff' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
+              }`}
+            >
+              <Shirt className="w-3.5 h-3.5" />
+              <span>Kategori Drop Off</span>
+            </button>
+            <button
               onClick={() => setActiveSubTab('Promo')}
               className={`px-3.5 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
                 activeSubTab === 'Promo' ? 'bg-[#1E4648] text-white shadow-xs' : 'text-slate-600 hover:text-slate-700'
@@ -438,6 +588,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
             </button>
           </div>
         </div>
+
+        {activeSubTab === 'DropOff' && currentRole === 'MANAGER' && (
+          <button
+            onClick={handleOpenAddDropOff}
+            className="bg-[#1E4648] hover:bg-[#163536] text-white px-3.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5" /> Tambah Kategori Drop Off
+          </button>
+        )}
 
         {activeSubTab === 'Produk' && (
           <div className="flex items-center gap-2">
@@ -709,6 +868,137 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                       </td>
                     </tr>
                   ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeSubTab === 'DropOff' && (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+          <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <Shirt className="w-4 h-4 text-[#1E4648]" />
+                <span>Manajemen Kategori & Prioritas Drop Off</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Atur pengkategorian prioritas pengerjaan (SLA waktu & multiplier tarif) yang otomatis muncul saat kasir memproses pesanan Drop Off.
+              </p>
+            </div>
+            {currentRole === 'MANAGER' && (
+              <button
+                onClick={handleOpenAddDropOff}
+                className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-xs shrink-0"
+              >
+                <Plus className="w-4 h-4" /> Tambah Kategori
+              </button>
+            )}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px] tracking-wider">
+                  <th className="py-2.5 px-4">Kategori / Prioritas</th>
+                  <th className="py-2.5 px-4">Estimasi SLA Pengerjaan</th>
+                  <th className="py-2.5 px-4">Multiplier Tarif</th>
+                  <th className="py-2.5 px-4">Keterangan / SOP</th>
+                  <th className="py-2.5 px-4">Status</th>
+                  <th className="py-2.5 px-4 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {dropOffCategories.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                      Belum ada kategori / prioritas Drop Off. Klik tombol Tambah Kategori di atas.
+                    </td>
+                  </tr>
+                ) : (
+                  dropOffCategories.map((item) => {
+                    const CatIcon = getIconComponent(item.icon || 'Clock');
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-2.5 px-4">
+                          <div className="flex items-center gap-2.5">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${item.warna || 'bg-teal-100 text-teal-800 border-teal-300'}`}>
+                              <CatIcon className="w-3.5 h-3.5" />
+                              <span>{item.nama}</span>
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <span className="font-mono font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                            {item.durasiJam} Jam
+                          </span>
+                          <span className="text-[10px] text-slate-400 ml-1.5">
+                            ({(item.durasiJam / 24).toFixed(item.durasiJam % 24 === 0 ? 0 : 1)} Hari)
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <span className={`font-mono font-bold text-xs ${item.multiplier > 1 ? 'text-amber-700 font-black' : 'text-slate-700'}`}>
+                            {item.multiplier}x {item.multiplier > 1 ? `(+${Math.round((item.multiplier - 1) * 100)}%)` : '(Standar)'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-slate-600 max-w-xs truncate">
+                          {item.keterangan || '-'}
+                        </td>
+                        <td className="py-2.5 px-4">
+                          {currentRole === 'MANAGER' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAktifDropOff(item.id, item.aktif !== false)}
+                              title={item.aktif !== false ? 'Klik untuk Non-Aktifkan' : 'Klik untuk Aktifkan'}
+                              className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
+                            >
+                              <div
+                                className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 ease-in-out ${
+                                  item.aktif !== false ? 'bg-[#1E4648]' : 'bg-slate-300 group-hover:bg-slate-400'
+                                }`}
+                              >
+                                <div
+                                  className={`bg-white w-3 h-3 rounded-full shadow-xs transform transition-transform duration-200 ease-in-out ${
+                                    item.aktif !== false ? 'translate-x-3' : 'translate-x-0'
+                                  }`}
+                                />
+                              </div>
+                              <span className={`text-[10px] font-bold ${item.aktif !== false ? 'text-[#1E4648]' : 'text-slate-400'}`}>
+                                {item.aktif !== false ? 'Aktif' : 'Off'}
+                              </span>
+                            </button>
+                          ) : (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.aktif !== false ? 'bg-teal-100 text-[#1E4648]' : 'bg-slate-100 text-slate-500'}`}>
+                              {item.aktif !== false ? 'Aktif' : 'Non-Aktif'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-4 text-right space-x-1 whitespace-nowrap">
+                          {currentRole === 'MANAGER' ? (
+                            <>
+                              <button
+                                onClick={() => handleOpenEditDropOff(item)}
+                                title="Edit Kategori Drop Off"
+                                className="p-1 rounded text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleHapusDropOffCategory(item.id)}
+                                title="Hapus Kategori Drop Off"
+                                className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-slate-400 text-xs">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -1027,6 +1317,140 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       )}
 
 
+
+      {showDropOffModal && (
+        <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-md shadow-2xl border border-slate-200 animate-scale-in">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-teal-50 text-[#1E4648] flex items-center justify-center border border-teal-200">
+                  <Shirt className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-800">
+                  {editingDropOffId ? 'Edit Kategori Drop Off' : 'Tambah Kategori Drop Off'}
+                </h3>
+              </div>
+              <button onClick={() => setShowDropOffModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveDropOffCategory} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nama Kategori / Prioritas *</label>
+                <input
+                  type="text"
+                  required
+                  value={dropOffForm.nama}
+                  onChange={(e) => setDropOffForm(prev => ({ ...prev, nama: e.target.value }))}
+                  placeholder="Contoh: Reguler, Express, Kilat, Sameday"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-[#1E4648] font-bold text-slate-800"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Durasi Pengerjaan (SLA Jam) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={dropOffForm.durasiJam}
+                    onChange={(e) => setDropOffForm(prev => ({ ...prev, durasiJam: Number(e.target.value) || 24 }))}
+                    placeholder="48"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-[#1E4648] font-mono font-bold"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">48 = 2 Hari, 24 = 1 Hari, 6 = 6 Jam</p>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Multiplier Tarif (x Lipat) *</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.5"
+                    required
+                    value={dropOffForm.multiplier}
+                    onChange={(e) => setDropOffForm(prev => ({ ...prev, multiplier: Number(e.target.value) || 1.0 }))}
+                    placeholder="1.0"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-[#1E4648] font-mono font-bold"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">1.0 = normal, 1.5 = +50%</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">Pilih Warna Badge</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {PALETTE.map((p, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setDropOffForm(prev => ({ ...prev, warna: p.class }))}
+                      className={`px-2 py-1.5 rounded-lg text-[11px] font-bold border transition text-center truncate ${p.class} ${
+                        dropOffForm.warna === p.class ? 'ring-2 ring-[#1E4648] ring-offset-1 font-extrabold' : 'opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">Pilih Ikon</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {['Clock', 'Flame', 'Zap', 'Sparkles', 'Shirt', 'Star', 'Tag', 'Package'].map((ic) => {
+                    const IcComp = getIconComponent(ic);
+                    return (
+                      <button
+                        key={ic}
+                        type="button"
+                        onClick={() => setDropOffForm(prev => ({ ...prev, icon: ic }))}
+                        className={`p-2 border rounded-xl flex items-center justify-center gap-1.5 transition ${
+                          dropOffForm.icon === ic
+                            ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        <IcComp className="w-4 h-4" />
+                        <span className="text-[10px] font-semibold">{ic}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Keterangan / Catatan SOP</label>
+                <textarea
+                  rows={2}
+                  value={dropOffForm.keterangan}
+                  onChange={(e) => setDropOffForm(prev => ({ ...prev, keterangan: e.target.value }))}
+                  placeholder="Contoh: Estimasi selesai 2 hari kerja, pakaian disortir terpisah."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-[#1E4648] text-xs font-medium"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowDropOffModal(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-xl text-xs font-bold transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-[#1E4648] hover:bg-[#153233] text-white font-bold py-2 rounded-xl text-xs shadow-xs transition disabled:opacity-50"
+                >
+                  {loading ? 'Menyimpan...' : 'Simpan Kategori Drop Off'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {showPromoModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
