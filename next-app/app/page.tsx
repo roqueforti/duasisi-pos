@@ -49,8 +49,20 @@ export default function HomePage() {
   const [currentRole, setCurrentRole] = useState<UserRole>('');
   const [currentTab, setCurrentTab] = useState<string>('transaksi');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const [publicNotaParam, setPublicNotaParam] = useState<string | null>(null);
-  const [publicNotaToken, setPublicNotaToken] = useState<string | null>(null);
+  const [publicNotaParam, setPublicNotaParam] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('nota') || null;
+    }
+    return null;
+  });
+  const [publicNotaToken, setPublicNotaToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('t') || null;
+    }
+    return null;
+  });
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
 
@@ -134,8 +146,8 @@ export default function HomePage() {
       const nota = params.get('nota');
       const t = params.get('t');
       if (nota || t) {
-        setPublicNotaParam(nota || '');
-        setPublicNotaToken(t);
+        setPublicNotaParam(nota || null);
+        setPublicNotaToken(t || null);
       }
     }
   }, []);
@@ -163,10 +175,11 @@ export default function HomePage() {
     setRefreshKey((prev) => prev + 1);
   };
 
-  if (publicNotaParam) {
+  // If viewing public E-Nota (via ?t=... or ?nota=...), completely isolate and render ENotaView
+  if (publicNotaParam !== null || publicNotaToken !== null) {
     return (
       <ENotaView
-        noNota={publicNotaParam}
+        noNota={publicNotaParam || ''}
         token={publicNotaToken || undefined}
         onBackToApp={() => {
           setPublicNotaParam(null);
