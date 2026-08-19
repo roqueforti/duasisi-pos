@@ -159,8 +159,8 @@ export default function CustomerLandingPage() {
           setErrorMsg(res?.message || `Nomor "${phone}" belum terdaftar sebagai pelanggan di Dua SiSi Laundry.`);
         }
       }
-    } catch (err) {
-      setErrorMsg('Gagal memuat data. Silakan periksa koneksi internet Anda.');
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Gagal memuat data. Silakan periksa koneksi Anda.');
     } finally {
       setLoading(false);
     }
@@ -269,7 +269,7 @@ export default function CustomerLandingPage() {
         </div>
 
         {/* Clean, Massive Typography */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white max-w-2xl leading-[1.1] mb-4">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white max-w-2xl leading-[1.1] mb-4 drop-shadow-md">
           {activeTab === 'lacak'
             ? 'Cucian Bersih. Cepat & Terpantau.'
             : 'Poin Loyalitas & Keuntungan Member.'}

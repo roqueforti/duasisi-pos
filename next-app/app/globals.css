@@ -36,12 +36,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Heading teks default lebih soft */
-h1, h2, h3, h4, h5, h6 {
-  color: #374151;
-}
-
-/* Input placeholder lebih muted */
+/* Default input placeholder */
 input::placeholder, textarea::placeholder {
   color: #9CA3AF;
 }
