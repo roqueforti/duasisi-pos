@@ -3014,7 +3014,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                       <span className="font-mono font-bold">{completedOrderData.saldoPoinAkhir || 0} Poin</span>
                     </div>
                     <div className="text-[10px] text-amber-700 font-medium italic pt-0.5 border-t border-amber-200/50">
-                      Tukarkan poin dengan potongan belanja di kasir!
+                      Tukarkan poin dengan potongan harga/layanan gratis/produk di kasir!
                     </div>
                   </div>
 
@@ -3054,7 +3054,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     const isSelfService = completedOrderData.tipeLayanan === 'SelfService';
 
                     const items = (completedOrderData.items || [])
-                      .map((i: any) => `- ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
+                      .map((i: any) => `- ${i.layanan} (x${i.qty}) = Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
                       .join('\n');
                     const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?t=${completedOrderData.token || noNota}`;
 
@@ -3100,7 +3100,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     msgLines.push(`--------------------------------`);
                     msgLines.push(`⭐ *Poin Transaksi* : +${poinEarned} Poin`);
                     msgLines.push(`⭐ *Total Saldo Poin*: ${saldoPoin} Poin`);
-                    msgLines.push(`_(Tukarkan poin Anda dengan potongan harga/layanan gratis di kasir!)_`);
+                    msgLines.push(`_(Tukarkan poin Anda dengan potongan harga/layanan gratis/produk di kasir!)_`);
                     msgLines.push(`--------------------------------`);
                     msgLines.push(`*Lihat E-Nota Resmi:*`);
                     msgLines.push(eNotaUrl);
@@ -3289,7 +3289,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
 
                     <div className="text-center pt-2.5 text-[9px] text-slate-400 space-y-0.5">
                       <div className="font-bold text-slate-600">*** TERIMA KASIH ***</div>
-                      <div>Tukarkan poin Anda dengan diskon di kasir!</div>
+                      <div>Tukarkan poin Anda dengan diskon/layanan gratis/produk di kasir!</div>
                       <div className="text-[8px] font-mono break-all pt-1 text-slate-400">
                         E-Nota: duasisilaundry-pos.vercel.app/?t={completedOrderData.token || completedOrderData.trxId}
                       </div>
@@ -3388,7 +3388,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     lines.push(`Total: Rp ${total}`);
                     lines.push(`Status: Lunas (${completedOrderData.metodeBayar})`);
                     lines.push(`Poin Transaksi: +${poinEarned} Pts | Saldo Poin: ${saldoPoin} Pts`);
-                    lines.push(`(Tukarkan poin Anda di kasir)`);
+                    lines.push(`(Tukarkan poin Anda dengan potongan harga/layanan gratis/produk di kasir)`);
                     lines.push(`Terima kasih!`);
 
                     const text = lines.join('\n');
