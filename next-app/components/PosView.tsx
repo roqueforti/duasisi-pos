@@ -1025,10 +1025,18 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
   const calculateEstimasi = (tingkatNama: string): string => {
     const now = new Date();
     const target = new Date(now);
-    // Hardcode 48 hours for regular since SLA is removed
-    target.setHours(target.getHours() + 48);
+    const priConfig = dropOffPriorities.find(p => p.nama.toLowerCase() === (tingkatNama || '').toLowerCase());
+    let jam = priConfig?.durasiJam;
+    if (!jam) {
+      const nLower = (tingkatNama || '').toLowerCase();
+      if (nLower.includes('kilat')) jam = 6;
+      else if (nLower.includes('express') || nLower.includes('ekspres')) jam = 24;
+      else if (nLower.includes('sameday')) jam = 12;
+      else jam = 48;
+    }
+    target.setHours(target.getHours() + jam);
     
-    return target.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) 
+    return target.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) 
       + ' ' + target.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
   };
 
@@ -2239,6 +2247,17 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           )}
                         </button>
                       ))}
+                    </div>
+
+                    {/* Estimasi Maksimal Selesai */}
+                    <div className="pt-2 border-t border-amber-200/70 flex items-center justify-between flex-wrap gap-1.5 text-xs">
+                      <span className="text-amber-950 font-semibold flex items-center gap-1.5 text-[11px]">
+                        <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                        <span>Estimasi Maksimal Selesai:</span>
+                      </span>
+                      <span className="font-mono font-bold text-[#1E4648] bg-white px-2 py-0.5 rounded-lg border border-amber-300 shadow-2xs text-[11px]">
+                        {calculateEstimasi(tingkatLayanan)}
+                      </span>
                     </div>
                   </div>
                 )}
