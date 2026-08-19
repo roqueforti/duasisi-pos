@@ -312,44 +312,41 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
         </div>
       </div>
 
-      {/* 3. Visual Workflow Timeline Sequence Strip */}
+      {/* 3. Visual Modular Steps Template Strip */}
       {steps.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <Workflow className="w-4 h-4 text-[#1E4648]" />
-              <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Urutan Alur Pengerjaan (Workflow Sequence)</h2>
+              <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Katalog Template Langkah (Modular SOP)</h2>
             </div>
-            <span className="text-[11px] text-slate-400 font-semibold">Tersinkronisasi otomatis dengan nota tracking & pengerjaan kasir</span>
+            <span className="text-[11px] text-slate-400 font-semibold">Dapat dipilih dan dikombinasikan secara modular pada tiap produk</span>
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 no-scrollbar">
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-1 no-scrollbar flex-wrap sm:flex-nowrap">
             {steps.map((s, idx) => {
               const theme = getStepTheme(s.nama);
               const StepIcon = theme.icon;
+              const kodeLangkah = `LKG-${String(idx + 1).padStart(2, '0')}`;
+
               return (
-                <React.Fragment key={idx}>
-                  <div className="flex items-center gap-2 shrink-0 bg-slate-50 border border-slate-200/90 px-3.5 py-2 rounded-xl shadow-2xs">
-                    <span className="w-5 h-5 rounded-full bg-[#1E4648] text-white text-[10px] font-black flex items-center justify-center font-mono">
-                      {idx + 1}
+                <div key={idx} className="flex items-center gap-2 shrink-0 bg-slate-50 border border-slate-200/90 px-3 py-2 rounded-xl shadow-2xs">
+                  <span className="px-1.5 py-0.5 rounded-md bg-[#1E4648] text-white text-[9px] font-black font-mono tracking-wider">
+                    {kodeLangkah}
+                  </span>
+                  <StepIcon className="w-3.5 h-3.5 text-slate-600" />
+                  <span className="text-xs font-bold text-slate-800">{s.nama}</span>
+                  {s.needMesin && (
+                    <span className="px-1.5 py-0.5 bg-sky-100 text-sky-800 rounded text-[8px] font-black">
+                      MESIN
                     </span>
-                    <StepIcon className="w-3.5 h-3.5 text-slate-600" />
-                    <span className="text-xs font-bold text-slate-800">{s.nama}</span>
-                    {s.needMesin && (
-                      <span className="px-1.5 py-0.5 bg-sky-100 text-sky-800 rounded text-[9px] font-black">
-                        MESIN
-                      </span>
-                    )}
-                    {s.needStaff && (
-                      <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded text-[9px] font-black">
-                        STAFF
-                      </span>
-                    )}
-                  </div>
-                  {idx < steps.length - 1 && (
-                    <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
                   )}
-                </React.Fragment>
+                  {s.needStaff && (
+                    <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded text-[8px] font-black">
+                      STAFF
+                    </span>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -409,6 +406,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
               {steps.map((step, index) => {
                 const theme = getStepTheme(step.nama);
                 const StepIcon = theme.icon;
+                const kodeLangkah = `LKG-${String(index + 1).padStart(2, '0')}`;
 
                 return (
                   <div
@@ -416,11 +414,11 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
                     className={`rounded-2xl border-2 p-4 flex flex-col justify-between gap-3.5 transition-all duration-150 hover:shadow-md ${theme.bg}`}
                   >
                     <div>
-                      {/* Top Row: Step sequence badge & Reorder + Actions */}
+                      {/* Top Row: Kode Langkah badge & Actions */}
                       <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
                         <div className="flex items-center gap-1.5">
-                          <span className="px-2 py-0.5 rounded-lg bg-[#1E4648] text-white text-[10px] font-black font-mono shadow-2xs">
-                            LANGKAH #{index + 1}
+                          <span className="px-2 py-0.5 rounded-lg bg-[#1E4648] text-white text-[10px] font-black font-mono tracking-wider shadow-2xs">
+                            {kodeLangkah}
                           </span>
                           <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border shadow-2xs ${theme.badge}`}>
                             {theme.tag}
@@ -433,7 +431,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
                             onClick={() => handleMoveStep(index, 'up')}
                             disabled={index === 0}
                             className="p-1 text-slate-400 hover:text-slate-700 hover:bg-white rounded-lg transition disabled:opacity-30 disabled:hover:bg-transparent"
-                            title="Pindah ke Atas (Urutan Lebih Awal)"
+                            title="Pindah Posisi ke Atas"
                           >
                             <ArrowUp className="w-3.5 h-3.5" />
                           </button>
@@ -441,7 +439,7 @@ export default function LangkahView({ currentRole }: { currentRole?: UserRole })
                             onClick={() => handleMoveStep(index, 'down')}
                             disabled={index === steps.length - 1}
                             className="p-1 text-slate-400 hover:text-slate-700 hover:bg-white rounded-lg transition disabled:opacity-30 disabled:hover:bg-transparent"
-                            title="Pindah ke Bawah (Urutan Selanjutnya)"
+                            title="Pindah Posisi ke Bawah"
                           >
                             <ArrowDown className="w-3.5 h-3.5" />
                           </button>
