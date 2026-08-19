@@ -152,30 +152,30 @@ export default function ENotaView({ noNota, token }: ENotaViewProps) {
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center p-3 sm:p-6 text-black select-none overflow-y-auto bg-slate-950">
-      {/* Fullscreen Dynamic Gradient Waves Background */}
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-3 sm:p-6 text-black select-none overflow-y-auto bg-[#0C1E20]">
+      {/* Fullscreen Dynamic Gradient Waves Background (Dua SiSi Teal/Green Theme) */}
       <div className="fixed inset-0 pointer-events-auto z-0 overflow-hidden print:hidden">
         <GradientWaves
-          horizonColor="#5227FF"
-          waveColor="#FF9FFC"
-          crestColor="#FFFFFF"
-          speed={0.4}
-          amplitude={2.5}
+          horizonColor="#0E2829"
+          waveColor="#2E6F73"
+          crestColor="#AEE2DC"
+          speed={0.35}
+          amplitude={2.2}
           waveScale={0.6}
           waveRatio={0.9}
-          swell={35}
-          turbulence={20}
+          swell={32}
+          turbulence={18}
           tilt={1.11}
           zoom={1.0}
           height={5.5}
-          fogDepth={15}
+          fogDepth={16}
           detail="medium"
-          brightness={1.0}
+          brightness={1.05}
           opacity={1.0}
           mouseInteraction={true}
-          parallaxStrength={0.5}
+          parallaxStrength={0.45}
           grain={true}
-          grainIntensity={0.05}
+          grainIntensity={0.04}
         />
       </div>
 
