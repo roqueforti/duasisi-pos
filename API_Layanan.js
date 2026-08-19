@@ -201,11 +201,15 @@ function tambahLayanan(data) {
   
   if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
     idInv = JSON.stringify(data.bahanBakuList);
-  } else if (data.tipe === "" && !idInv) {
+  } else if (idInv === "auto") {
     const invRes = tambahInventory({ nama: data.nama, stok: 0, satuan: data.satuan, stokMinimum: 0 });
     if (invRes.success) {
       idInv = invRes.id;
+    } else {
+      idInv = "";
     }
+  } else if (idInv === "none" || idInv === "NONE" || idInv === "-") {
+    idInv = "";
   }
 
   if (sh.getMaxColumns() < 13) {
@@ -241,11 +245,15 @@ function updateLayanan(id, data) {
       
       if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
         idInv = JSON.stringify(data.bahanBakuList);
-      } else if (data.tipe === "" && !idInv) {
+      } else if (idInv === "auto") {
         const invRes = tambahInventory({ nama: data.nama, stok: 0, satuan: data.satuan, stokMinimum: 0 });
         if (invRes.success) {
           idInv = invRes.id;
+        } else {
+          idInv = "";
         }
+      } else if (idInv === "none" || idInv === "NONE" || idInv === "-") {
+        idInv = "";
       }
 
       if (sh.getMaxColumns() < 13) {
