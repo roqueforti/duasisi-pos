@@ -73,8 +73,7 @@ const NAV_ITEMS: CardNavItem[] = [
     textColor: '#ffffff',
     links: [
       { label: 'Drop Off Express & Kilat', href: 'https://wa.me/6289682020699?text=Halo%20Dua%20SiSi%20Laundry,%20mau%20order%20Drop%20Off' },
-      { label: 'Self Service Coin 60 Menit', href: 'https://wa.me/6289682020699?text=Halo%20Dua%20SiSi%20Laundry,%20tanya%20Self%20Service%20Coin' },
-      { label: 'Bedcover, Selimut & Satuan', href: 'https://wa.me/6289682020699?text=Halo%20Dua%20SiSi%20Laundry,%20tanya%20Cuci%20Bedcover' }
+      { label: 'Self Service Coin 60 Menit', href: 'https://wa.me/6289682020699?text=Halo%20Dua%20SiSi%20Laundry,%20tanya%20Self%20Service%20Coin' }
     ]
   },
   {
