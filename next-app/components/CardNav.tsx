@@ -193,9 +193,7 @@ export default function CardNav({
 
           <div className="logo-container">
             {logo && (
-              <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center p-1 shadow-md shrink-0">
-                <img src={logo} alt={logoAlt} className="logo filter brightness-0" />
-              </div>
+              <img src={logo} alt={logoAlt} className="logo h-6 w-auto" />
             )}
             <span className="font-bold text-sm tracking-tight text-white">{brandTitle}</span>
           </div>

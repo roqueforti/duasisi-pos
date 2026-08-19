@@ -17,11 +17,18 @@ import {
   FileText,
   KeyRound,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Shirt,
+  Coins,
+  Star,
+  Coffee,
+  ExternalLink,
+  Laptop
 } from 'lucide-react';
 import MoltenMetal from '@/components/MoltenMetal';
 import CardNav, { CardNavItem } from '@/components/CardNav';
 import FoldText from '@/components/FoldText';
+import DriftWall, { DriftWallItem } from '@/components/DriftWall';
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
 import ENotaView from '@/components/ENotaView';
@@ -76,8 +83,8 @@ const NAV_ITEMS: CardNavItem[] = [
     textColor: '#ffffff',
     links: [
       { label: 'Petunjuk Arah Google Maps', href: 'https://maps.google.com/?q=Dua+SiSi+Laundry+Malang' },
-      { label: 'Jam Buka: 07.00 - 22.00 WIB', href: 'https://maps.google.com/?q=Dua+SiSi+Laundry+Malang' },
-      { label: 'Free WiFi: DuaSisiLaundry', href: 'https://maps.google.com/?q=Dua+SiSi+Laundry+Malang' }
+      { label: 'Jam Buka: 07.00 - 23.00 WIB', href: 'https://maps.google.com/?q=Dua+SiSi+Laundry+Malang' },
+      { label: 'Free WiFi', href: 'https://maps.google.com/?q=Dua+SiSi+Laundry+Malang' }
     ]
   },
   {
@@ -89,6 +96,18 @@ const NAV_ITEMS: CardNavItem[] = [
       { label: 'Kritik & Saran Layanan', href: 'https://wa.me/6289682020699?text=Halo%20Dua%20SiSi%20Laundry,%20saya%20ingin%20memberikan%20saran' }
     ]
   }
+];
+
+const OUTLET_GALLERY: DriftWallItem[] = [
+  { image: '/assets/bg-outlet.jpeg', title: 'Outlet Dua SiSi Laundry' },
+  { image: '/assets/bg-outlet.png', title: 'Mesin Washer & Dryer Koin' },
+  { image: 'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?w=600&auto=format&fit=crop&q=80', title: 'Station Cuci Modern' },
+  { image: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?w=600&auto=format&fit=crop&q=80', title: 'Hasil Cuci Bersih & Rapi' },
+  { image: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=600&auto=format&fit=crop&q=80', title: 'Setrika Uap & Packing Wangi' },
+  { image: 'https://images.unsplash.com/photo-1521656693074-0ef32e80a5d5?w=600&auto=format&fit=crop&q=80', title: 'Work From Laundry Lounge' },
+  { image: 'https://images.unsplash.com/photo-1489274495757-95c7c837b101?w=600&auto=format&fit=crop&q=80', title: 'Self Service Coin Washer' },
+  { image: 'https://images.unsplash.com/photo-1604335399105-a0c585fd81a1?w=600&auto=format&fit=crop&q=80', title: 'Deterjen & Pelembut Premium' },
+  { image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&auto=format&fit=crop&q=80', title: 'Layanan Drop Off Kilat' }
 ];
 
 export default function CustomerLandingPage() {
@@ -213,10 +232,10 @@ export default function CustomerLandingPage() {
         />
       </div>
 
-      {/* 1. React Bits Interactive Animated CardNav */}
+      {/* 1. React Bits Interactive Animated CardNav (Logo tanpa frame lingkaran) */}
       <header className="relative z-30 w-full pt-4 sm:pt-6 px-4">
         <CardNav
-          logo="/assets/logo-full-black.svg"
+          logo="/assets/logo-emblem-white.svg"
           logoAlt="Dua SiSi"
           brandTitle="Dua SiSi Laundry"
           items={NAV_ITEMS}
@@ -230,7 +249,7 @@ export default function CustomerLandingPage() {
       </header>
 
       {/* 2. Hero Centerpiece with Tab Switcher */}
-      <main className="relative z-10 max-w-4xl mx-auto px-4 py-10 sm:py-16 flex flex-col items-center justify-center text-center my-auto w-full">
+      <main className="relative z-10 max-w-5xl mx-auto px-4 py-10 sm:py-16 flex flex-col items-center justify-center text-center my-auto w-full">
         {/* Tab Switcher Pills */}
         <div className="inline-flex items-center p-1 rounded-full border border-white/15 bg-white/[0.05] backdrop-blur-xl mb-6 shadow-xl">
           <button
@@ -389,7 +408,7 @@ export default function CustomerLandingPage() {
 
         {/* 4. RESULT CARD (Lacak Cucian Stepper / Poin Member) */}
         {foundTx && (
-          <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-white/[0.05] backdrop-blur-2xl p-5 text-left mb-6 shadow-2xl animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-white/[0.05] backdrop-blur-2xl p-5 text-left mb-8 shadow-2xl animate-fade-in">
             {/* Header info */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
               <div>
@@ -484,7 +503,7 @@ export default function CustomerLandingPage() {
         )}
 
         {foundPoin && (
-          <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-white/[0.05] backdrop-blur-2xl p-5 text-left mb-6 shadow-2xl animate-fade-in">
+          <div className="w-full max-w-lg rounded-2xl border border-white/15 bg-white/[0.05] backdrop-blur-2xl p-5 text-left mb-8 shadow-2xl animate-fade-in">
             {/* Member Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
               <div className="flex items-center gap-2.5">
@@ -556,28 +575,183 @@ export default function CustomerLandingPage() {
           </div>
         )}
 
-        {/* 5. Elegant Minimalist Info Badges */}
-        <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-white/50 pt-2">
-          <div className="px-3 py-1 rounded-full border border-white/5 bg-white/[0.02] backdrop-blur-sm flex items-center gap-1.5">
-            <Clock className="w-3 h-3 text-white/60" />
-            <span>07.00 - 22.00 WIB</span>
+        {/* 5. Minimalist Quick Badges & Slogan WFL */}
+        <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-white/60 pt-2 mb-12">
+          <div className="px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-sm flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-teal-300" />
+            <span>07.00 - 23.00 WIB</span>
           </div>
-          <div className="px-3 py-1 rounded-full border border-white/5 bg-white/[0.02] backdrop-blur-sm flex items-center gap-1.5">
-            <MapPin className="w-3 h-3 text-white/60" />
-            <span>Karangploso, Malang (Belakang UMM 3)</span>
+          <div className="px-3.5 py-1.5 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-sm flex items-center gap-1.5">
+            <Wifi className="w-3.5 h-3.5 text-teal-300" />
+            <span>Free WiFi</span>
           </div>
-          <div className="px-3 py-1 rounded-full border border-white/5 bg-white/[0.02] backdrop-blur-sm flex items-center gap-1.5">
-            <Wifi className="w-3 h-3 text-white/60" />
-            <span>Free WiFi: DuaSisiLaundry</span>
+          <div className="px-3.5 py-1.5 rounded-full border border-teal-500/30 bg-teal-950/60 backdrop-blur-sm flex items-center gap-1.5 text-teal-200">
+            <Laptop className="w-3.5 h-3.5 text-teal-300" />
+            <span className="font-semibold">Work From Laundry</span>
+          </div>
+        </div>
+
+        {/* 6. Penjelasan Layanan: Drop Off & Self Service */}
+        <div className="w-full text-left mb-16 space-y-4">
+          <div className="text-center mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Pilihan Layanan Kami</h2>
+            <p className="text-xs text-white/50 mt-1">Pilih layanan sesuai kebutuhan waktu & kenyamanan Anda</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Card 1: Drop Off Service */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 shadow-xl hover:border-teal-500/30 transition">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-300">
+                  <Shirt className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">Drop Off Service</h3>
+                  <span className="text-[11px] text-teal-300 font-medium">Serahkan pakaian, kami selesaikan</span>
+                </div>
+              </div>
+              <p className="text-xs text-white/70 leading-relaxed mb-4">
+                Layanan lengkap cuci, pengeringan higienis, setrika uap rapi, dan packing harum. Tinggal drop pakaian Anda dan pantau statusnya lewat WhatsApp & E-Nota.
+              </p>
+              <div className="space-y-1.5 text-xs text-white/60 border-t border-white/5 pt-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                  <span><strong>Kilat 4 Jam</strong> / <strong>Express 1 Hari</strong> / <strong>Reguler 2 Hari</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Deterjen & softener premium ramah serat kain</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Cuci Bedcover, Selimut, Boneka & Satuan</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Self Service Coin */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 shadow-xl hover:border-teal-500/30 transition">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-300">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">Self Service Coin Laundry</h3>
+                  <span className="text-[11px] text-teal-300 font-medium">Cuci & Kering Cepat 60 Menit</span>
+                </div>
+              </div>
+              <p className="text-xs text-white/70 leading-relaxed mb-4">
+                Operasikan mesin washer dan dryer berkapasitas besar secara mandiri. Pakaian bersih maksimal, bebas kusut, dan 100% kering siap lipat.
+              </p>
+              <div className="space-y-1.5 text-xs text-white/60 border-t border-white/5 pt-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                  <span><strong>1 Mesin 1 Pelanggan</strong> (Higienis & tidak dicampur)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Selesai cepat dalam 60 menit (Cuci 30m + Kering 30m)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Area <strong>Work From Laundry</strong> nyaman ber-AC & Free WiFi</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 7. React Bits DriftWall: 3D Gallery Foto Outlet */}
+        <div className="w-full text-left mb-16">
+          <div className="text-center mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Galeri Suasana Outlet</h2>
+            <p className="text-xs text-white/50 mt-1">Fasilitas modern, bersih, dan nyaman untuk mencuci maupun bekerja</p>
+          </div>
+
+          <div className="h-[360px] sm:h-[420px] rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-xl overflow-hidden shadow-2xl relative">
+            <DriftWall
+              items={OUTLET_GALLERY}
+              columns={4}
+              tileWidth={190}
+              tileHeight={125}
+              gap={16}
+              tilt={14}
+              turn={-12}
+              speed={36}
+              parallax={0.5}
+              pauseOnHover={true}
+              overlayColor="#040e10"
+              dim={0.7}
+              lift={48}
+            />
+          </div>
+        </div>
+
+        {/* 8. Google Maps Embed & Google Review Bintang 5 */}
+        <div className="w-full text-left mb-12">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl p-6 sm:p-8 shadow-2xl">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
+              <div>
+                {/* Google Review Bintang 5 Badge */}
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-200 text-xs font-semibold mb-2.5">
+                  <div className="flex text-amber-400">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
+                    ))}
+                  </div>
+                  <span>5.0 Bintang di Google Maps</span>
+                </div>
+
+                <h2 className="text-xl sm:text-2xl font-bold text-white">Dua SiSi Laundry Malang</h2>
+                <p className="text-xs text-white/70 mt-1 max-w-xl leading-relaxed">
+                  Jl. Pangestu Raya, Kasin, Ampeldento, Kec. Karang Ploso, Kabupaten Malang, Jawa Timur 65152 (Belakang Kampus UMM 3)
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <a
+                  href="https://maps.google.com/?q=Dua+SiSi+Laundry+Malang"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-white hover:bg-white/90 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-full transition flex items-center gap-1.5 shadow-lg"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Buka di Google Maps</span>
+                </a>
+                <a
+                  href="https://wa.me/6289682020699"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-full transition flex items-center gap-1.5 shadow-lg"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>WhatsApp CS</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Google Maps Official Iframe Embed */}
+            <div className="w-full rounded-2xl overflow-hidden border border-white/10 shadow-inner">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3951.766582136624!2d112.60813967476743!3d-7.919432992104073!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e78816025fe6e1f%3A0x2b4fdea8a4f0bbcb!2sDua%20Sisi%20Laundry!5e0!3m2!1sid!2sid!4v1787119397656!5m2!1sid!2sid"
+                width="100%"
+                height="320"
+                style={{ border: 0 }}
+                allowFullScreen={false}
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+                title="Lokasi Dua SiSi Laundry Google Maps"
+              />
+            </div>
           </div>
         </div>
       </main>
 
-      {/* 6. Minimalist Clean Footer */}
+      {/* 9. Minimalist Clean Footer */}
       <footer className="relative z-20 w-full pb-6 px-4 text-center text-xs text-white/40">
-        <div className="max-w-4xl mx-auto flex items-center justify-center border-t border-white/5 pt-4">
+        <div className="max-w-5xl mx-auto flex items-center justify-center border-t border-white/5 pt-4">
           <div>
-            © {new Date().getFullYear()} Dua SiSi Laundry. All rights reserved.
+            © {new Date().getFullYear()} Dua SiSi Laundry. All rights reserved. • Work From Laundry
           </div>
         </div>
       </footer>
