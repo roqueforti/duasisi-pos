@@ -30,7 +30,7 @@ const ALLOWED_API_ACTIONS = Object.freeze({
   getMesinList: true, tambahMesin: true, mulaiPakaiMesin: true, selesaiMesin: true, setMaintenanceMesin: true, hapusMesin: true,
   simpanTransaksi: true, pelunasanDP: true,
   getPromoList: true, tambahPromo: true, hapusPromo: true, validasiVoucher: true,
-  simpanPelangganJikaBaru: true, cariPelangganByHp: true, getDaftarPelanggan: true, updateDataPelanggan: true, getRiwayatPelangganByHp: true, importPelangganBatch: true, daftarMember: true,
+  simpanPelangganJikaBaru: true, cariPelangganByHp: true, getDaftarPelanggan: true, updateDataPelanggan: true, getRiwayatPelangganByHp: true, importPelangganBatch: true, daftarMember: true, tambahPelanggan: true,
   getPipelineSteps: true, updateDropoffStatus: true, getTransaksiList: true, getTransaksiByNota: true, getTransaksiByPipeline: true, importTransaksiBatch: true,
   getLaporanRange: true, getPegawaiList: true, tambahPegawai: true, updatePegawai: true, hapusPegawai: true, getRekapKinerjaPegawai: true,
   getPayrollSummary: true, savePayrollPayment: true,
