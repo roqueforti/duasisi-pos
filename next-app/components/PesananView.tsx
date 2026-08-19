@@ -20,10 +20,10 @@ import {
 import { Mesin, Transaksi } from '@/lib/types';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
+import { DropOffPriorityItem } from './ProdukView';
 
 const workflow = ['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika', 'Siap Diambil', 'Selesai'] as const;
 type DropoffStatus = (typeof workflow)[number];
-type Priority = 'Semua' | 'Kilat' | 'Express' | 'Reguler';
 
 function getWorkflowIcon(status: string) {
   const s = (status || '').toLowerCase();
@@ -55,10 +55,15 @@ export default function PesananView() {
   const [orders, setOrders] = useState<Transaksi[]>([]);
   const [machines, setMachines] = useState<Mesin[]>([]);
   const [staff, setStaff] = useState<StaffItem[]>([]);
+  const [dropOffPriorities, setDropOffPriorities] = useState<DropOffPriorityItem[]>([
+    { id: 'p1', nama: 'Reguler', durasiJam: 48, icon: 'Clock', warna: 'bg-teal-100 text-teal-800 border-teal-300', aktif: true },
+    { id: 'p2', nama: 'Express', durasiJam: 24, icon: 'Flame', warna: 'bg-amber-100 text-amber-800 border-amber-300', aktif: true },
+    { id: 'p3', nama: 'Kilat', durasiJam: 6, icon: 'Zap', warna: 'bg-rose-100 text-rose-800 border-rose-300', aktif: true }
+  ]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [query, setQuery] = useState('');
-  const [priority, setPriority] = useState<Priority>('Semua');
+  const [priority, setPriority] = useState<string>('Semua');
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
   const [selected, setSelected] = useState<Transaksi | null>(null);
   const [machineId, setMachineId] = useState('');
@@ -70,13 +75,17 @@ export default function PesananView() {
     setLoading(true);
     setError('');
     try {
-      const [orderData, machineData, staffData] = await Promise.all([
+      const [orderData, machineData, staffData, priorityData] = await Promise.all([
         runBackend<Transaksi[]>('getTransaksiByPipeline', 'Semua'),
         runBackend<Mesin[]>('getMesinList'),
         runBackend<StaffItem[]>('getPegawaiList'),
+        runBackend<DropOffPriorityItem[]>('getPriorityConfig').catch(() => null),
       ]);
       setOrders(Array.isArray(orderData) ? orderData : []);
       setMachines(Array.isArray(machineData) ? machineData : []);
+      if (Array.isArray(priorityData) && priorityData.length > 0) {
+        setDropOffPriorities(priorityData);
+      }
       
       const activeStaff = Array.isArray(staffData) ? staffData.filter((s: any) => s.status !== 'Resign' && s.status !== 'Non-Aktif') : [];
       setStaff(activeStaff);
@@ -98,7 +107,7 @@ export default function PesananView() {
     const keyword = query.trim().toLowerCase();
     return orders.filter((order) => {
       const orderPriority = order.tingkatLayanan || 'Reguler';
-      const priorityMatch = priority === 'Semua' || orderPriority === priority;
+      const priorityMatch = priority === 'Semua' || orderPriority.toLowerCase() === priority.toLowerCase();
       const searchMatch = !keyword
         || order.noNota.toLowerCase().includes(keyword)
         || order.namaPelanggan.toLowerCase().includes(keyword)
@@ -156,6 +165,13 @@ export default function PesananView() {
     const next = nextStatus(order.status);
     const machine = activeMachine(order);
     const orderPriority = order.tingkatLayanan || 'Reguler';
+    const priConfig = dropOffPriorities.find((p) => p.nama.toLowerCase() === orderPriority.toLowerCase());
+    const badgeWarna = priConfig?.warna || (
+      orderPriority.toLowerCase().includes('kilat') ? 'bg-rose-100 text-rose-700 border-rose-300' :
+      orderPriority.toLowerCase().includes('express') ? 'bg-amber-100 text-amber-800 border-amber-300' :
+      'bg-teal-100 text-teal-800 border-teal-300'
+    );
+
     return (
       <article key={order.noNota} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <div className="flex items-start justify-between gap-2">
@@ -163,9 +179,7 @@ export default function PesananView() {
             <p className="truncate text-xs font-extrabold text-slate-700">{order.noNota}</p>
             <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-500">{order.namaPelanggan}</p>
           </div>
-          <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${
-            orderPriority === 'Kilat' ? 'bg-rose-100 text-rose-700' : orderPriority === 'Express' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'
-          }`}>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold border ${badgeWarna}`}>
             {orderPriority}
           </span>
         </div>
@@ -216,8 +230,18 @@ export default function PesananView() {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari nota, pelanggan, atau no. HP..." className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs outline-none focus:border-[#1E4648]" />
           </div>
           <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
-            {(['Semua', 'Kilat', 'Express', 'Reguler'] as const).map((item) => (
-              <button key={item} onClick={() => setPriority(item)} className={`shrink-0 rounded-lg border px-3 py-2 text-[11px] font-bold ${priority === item ? 'border-[#1E4648] bg-[#1E4648] text-white' : 'border-slate-200 bg-white text-slate-600'}`}>{item}</button>
+            {['Semua', ...dropOffPriorities.filter(p => p.aktif !== false).map(p => p.nama)].map((item) => (
+              <button
+                key={item}
+                onClick={() => setPriority(item)}
+                className={`shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-bold transition ${
+                  priority.toLowerCase() === item.toLowerCase()
+                    ? 'border-[#1E4648] bg-[#1E4648] text-white shadow-xs'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {item}
+              </button>
             ))}
           </div>
         </div>
