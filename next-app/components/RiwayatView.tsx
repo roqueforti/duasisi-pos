@@ -173,20 +173,27 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     const sisaTagihan = Number(tx.sisaTagihan) || 0;
     const statusBayar = sisaTagihan > 0 ? `Belum Lunas (Sisa: Rp ${sisaTagihan.toLocaleString('id-ID')})` : 'Lunas';
 
+    const nowTimeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+    const nowDateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    const waktuSelesaiStr = `${nowDateStr}, ${nowTimeStr}`;
+
     const msg = [
       `*NOTIFIKASI LAUNDRY SIAP DIAMBIL*`,
+      `*Dua SiSi Laundry Express & Coin*`,
       ``,
-      `Halo Kak *${tx.namaPelanggan || 'Pelanggan'}*! 👋`,
-      `Cucian Anda di *Dua SiSi Laundry* sudah selesai diproses dengan bersih dan wangi, serta *SIAP DIAMBIL* di outlet kami.`,
+      `Halo Kak *${tx.namaPelanggan || 'Pelanggan'}*,`,
+      `Kabar baik! Cucian Anda telah selesai diproses dengan bersih, rapi, dan wangi, serta *SIAP DIAMBIL* di outlet kami.`,
       ``,
-      `📋 *No. Nota* : ${tx.noNota}`,
-      `🧺 *Layanan*  : ${itemsSummary || 'Drop Off'}`,
-      `💰 *Status*   : ${statusBayar}`,
+      `- No. Nota      : ${tx.noNota}`,
+      `- Layanan       : ${itemsSummary || 'Drop Off'}`,
+      ...(tx.tanggal ? [`- Waktu Masuk   : ${tx.tanggal}`] : []),
+      `- Waktu Selesai : ${waktuSelesaiStr}`,
+      `- Status Bayar  : ${statusBayar}`,
       ``,
-      `📍 *Lokasi Outlet*: Dua SiSi Laundry Express & Coin`,
-      `🕒 *Jam Buka*: 07.00 - 23.00 WIB`,
+      `*Lokasi Outlet* : Dua SiSi Laundry Express & Coin`,
+      `*Jam Buka*      : 07.00 - 23.00 WIB`,
       ``,
-      `Silakan datang ke outlet untuk pengambilan cucian. Terima kasih telah mencuci di Dua SiSi Laundry! 🙏✨`
+      `Silakan datang ke outlet untuk pengambilan cucian. Terima kasih telah mencuci di Dua SiSi Laundry!`
     ].join('\n');
 
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
