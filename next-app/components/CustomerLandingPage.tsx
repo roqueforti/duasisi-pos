@@ -452,9 +452,9 @@ export default function CustomerLandingPage() {
                     <span className="text-sm font-bold font-mono text-white">{foundTx.noNota}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-white/50 uppercase tracking-wider block">Layanan</span>
-                    <span className="text-xs font-semibold text-teal-300">
-                      {isDropOffOrder ? (foundTx.tingkatLayanan || 'Drop Off') : 'Self Service / Pembelian'}
+                    <span className="text-[10px] text-white/50 uppercase tracking-wider block">Kategori Layanan</span>
+                    <span className={`inline-block text-xs font-bold px-2.5 py-0.5 rounded-full mt-0.5 ${isDropOffOrder ? 'bg-[#0a272a] border border-teal-500/40 text-teal-300' : 'bg-[#0b291d] border border-emerald-500/40 text-emerald-300'}`}>
+                      {isDropOffOrder ? (foundTx.tingkatLayanan || 'Drop Off') : 'Self Service (Koin)'}
                     </span>
                   </div>
                 </div>
