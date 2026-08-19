@@ -333,70 +333,80 @@ export default function CustomerLandingPage() {
             </p>
           </div>
 
-          {/* 3. Minimalist 2-Factor Floating Search Bar - Fixed Unified Dimensions */}
-          <div className="w-full max-w-lg mb-5">
-            <form onSubmit={handleSearch} className="flex gap-2.5 items-center justify-center w-full">
+          {/* 3. Minimalist Unified Luxury Search Capsule */}
+          <div className="w-full max-w-xl mb-5">
+            <form onSubmit={handleSearch} className="w-full">
               {activeTab === 'lacak' ? (
-                <div className="flex flex-col sm:flex-row gap-2.5 items-center w-full">
-                  {/* Input 1: No. Nota */}
-                  <div className="w-full sm:flex-1 h-12 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl px-2 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
-                    <div className="pl-2 pr-2 text-white/40">
-                      <Search className="w-4 h-4" />
-                    </div>
+                /* Tab Lacak: 1 Unified Solid Luxury Capsule */
+                <div className="w-full rounded-2xl sm:rounded-full border border-[#1a464c] bg-[#07191b] shadow-2xl p-1.5 flex flex-col sm:flex-row items-center gap-1 transition focus-within:border-teal-400/60 focus-within:shadow-[0_0_25px_rgba(45,212,191,0.15)]">
+                  {/* Field 1: No. Nota */}
+                  <div className="w-full sm:flex-1 h-11 px-3 flex items-center">
+                    <Search className="w-4 h-4 text-teal-400 shrink-0 mr-2.5" />
                     <input
                       type="text"
                       value={searchNota}
                       onChange={(e) => setSearchNota(e.target.value)}
-                      placeholder="No. Nota (LDY-260819-0001)..."
-                      className="flex-1 bg-transparent border-none text-white text-xs sm:text-sm outline-hidden placeholder:text-white/40 font-mono uppercase"
+                      placeholder="Nomor Nota (LDY-260819-0001)..."
+                      className="w-full bg-transparent border-none text-white text-xs sm:text-sm outline-hidden placeholder:text-white/35 font-mono uppercase tracking-wide"
                     />
                   </div>
 
-                  {/* Input 2: 4 Digit Terakhir No. HP */}
-                  <div className="w-full sm:w-48 h-12 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl px-2 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
-                    <div className="pl-2 pr-1.5 text-white/40">
-                      <KeyRound className="w-3.5 h-3.5" />
-                    </div>
+                  {/* Vertical Divider (Desktop) */}
+                  <div className="hidden sm:block h-7 w-[1px] bg-white/10 shrink-0" />
+
+                  {/* Field 2: 4 Digit No. HP */}
+                  <div className="w-full sm:w-36 h-11 px-3 flex items-center border-t sm:border-t-0 border-white/5">
+                    <KeyRound className="w-3.5 h-3.5 text-teal-400 shrink-0 mr-2" />
                     <input
                       type="tel"
                       maxLength={4}
                       value={last4Phone}
                       onChange={(e) => setLast4Phone(e.target.value.replace(/\D/g, ''))}
-                      placeholder="4 digit HP..."
-                      className="flex-1 bg-transparent border-none text-white text-xs sm:text-sm outline-hidden placeholder:text-white/40 font-mono text-center"
+                      placeholder="4 Digit HP"
+                      className="w-full bg-transparent border-none text-white text-xs sm:text-sm outline-hidden placeholder:text-white/35 font-mono"
                     />
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs h-8 px-3.5 rounded-full transition flex items-center justify-center gap-1 shadow-lg cursor-pointer disabled:opacity-60 shrink-0 ml-1"
-                    >
-                      {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
-                    </button>
                   </div>
-                </div>
-              ) : (
-                /* Tab Poin: Input No. WhatsApp with matching height */
-                <div className="w-full h-12 rounded-full border border-white/15 bg-white/[0.06] backdrop-blur-2xl px-2 flex items-center shadow-2xl transition focus-within:border-white/40 focus-within:bg-white/[0.1]">
-                  <div className="pl-3 pr-2 text-white/40">
-                    <Phone className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="tel"
-                    value={phoneInput}
-                    onChange={(e) => setPhoneInput(e.target.value)}
-                    placeholder="Nomor WhatsApp (08123456789)..."
-                    className="flex-1 bg-transparent border-none text-white text-xs sm:text-sm outline-hidden placeholder:text-white/40 font-mono"
-                  />
+
+                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={loading}
-                    className="bg-white hover:bg-white/90 text-slate-950 font-semibold text-xs h-8 px-4 rounded-full transition flex items-center justify-center gap-1.5 shadow-lg cursor-pointer disabled:opacity-60 shrink-0"
+                    className="w-full sm:w-auto h-11 px-5 rounded-xl sm:rounded-full bg-white hover:bg-white/90 text-slate-950 font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-lg cursor-pointer disabled:opacity-60 shrink-0"
                   >
                     {loading ? (
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <>
-                        <span>Cek Poin</span>
+                        <span>Lacak</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                /* Tab Poin: 1 Unified Solid Luxury Capsule */
+                <div className="w-full rounded-2xl sm:rounded-full border border-[#1a464c] bg-[#07191b] shadow-2xl p-1.5 flex flex-col sm:flex-row items-center gap-1 transition focus-within:border-teal-400/60 focus-within:shadow-[0_0_25px_rgba(45,212,191,0.15)]">
+                  <div className="w-full sm:flex-1 h-11 px-3.5 flex items-center">
+                    <Phone className="w-4 h-4 text-teal-400 shrink-0 mr-2.5" />
+                    <input
+                      type="tel"
+                      value={phoneInput}
+                      onChange={(e) => setPhoneInput(e.target.value)}
+                      placeholder="Nomor WhatsApp Pelanggan (08123456789)..."
+                      className="w-full bg-transparent border-none text-white text-xs sm:text-sm outline-hidden placeholder:text-white/35 font-mono"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full sm:w-auto h-11 px-6 rounded-xl sm:rounded-full bg-white hover:bg-white/90 text-slate-950 font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-lg cursor-pointer disabled:opacity-60 shrink-0"
+                  >
+                    {loading ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <span>Cek Poin & Member</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </>
                     )}
@@ -406,19 +416,19 @@ export default function CustomerLandingPage() {
             </form>
 
             {/* Privacy Badge info under search */}
-            <div className="min-h-[20px] mt-2 flex items-center justify-center">
+            <div className="min-h-[20px] mt-2.5 flex items-center justify-center">
               {activeTab === 'lacak' ? (
-                <div className="flex items-center justify-center gap-1 text-[11px] text-white/40">
-                  <ShieldCheck className="w-3 h-3 text-teal-400" />
-                  <span>Privasi Terlindungi: Nota hanya dapat dibuka dengan kecocokan 4 digit nomor HP</span>
+                <div className="flex items-center justify-center gap-1.5 text-[11px] text-white/50">
+                  <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Proteksi 2-Faktor: Hanya pemilik nota & no. HP yang dapat melihat rincian</span>
                 </div>
               ) : (
-                <span className="text-[11px] text-white/40">Poin dapat langsung digunakan untuk potongan cuci di kasir</span>
+                <span className="text-[11px] text-white/50">Poin cashback langsung dapat ditukarkan di kasir outlet</span>
               )}
             </div>
 
             {errorMsg && (
-              <div className="mt-3 py-2 px-3.5 rounded-full border border-rose-500/30 bg-rose-950/60 backdrop-blur-md text-rose-200 text-xs flex items-center justify-center gap-1.5 animate-fade-in shadow-md">
+              <div className="mt-3 py-2 px-4 rounded-full border border-rose-500/40 bg-[#1c090c] text-rose-200 text-xs flex items-center justify-center gap-2 animate-fade-in shadow-xl">
                 <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
