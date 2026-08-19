@@ -400,8 +400,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         tipe: tipe || '',
         kategori,
         kategoriDropOff: (tipe === 'FullService' || (kategori || '').toLowerCase().includes('drop')) ? kategoriDropOff : '',
-        idInventory: tipe === '' ? idInventory : undefined,
-        inventoryDeductionQty: tipe === '' ? (isNaN(parseFloat(inventoryDeductionQty)) ? 1 : parseFloat(inventoryDeductionQty)) : undefined,
+        idInventory: idInventory ? idInventory : undefined,
+        inventoryDeductionQty: idInventory ? (isNaN(parseFloat(inventoryDeductionQty)) ? 1 : parseFloat(inventoryDeductionQty)) : undefined,
         hargaModal: Number(hargaModal) || 0,
         pipelineSteps: tipe === 'FullService' ? customPipelineSteps : []
       };
@@ -1219,51 +1219,59 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
                 {/* Kolom Kanan: Inventory & Harga */}
                 <div className="space-y-3">
-                  {tipe === '' && (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">Pautkan ke Inventory (Opsional)</label>
-                        <select 
-                          value={idInventory} 
-                          onChange={(e) => {
-                            const newId = e.target.value;
-                            setIdInventory(newId);
-                            if (newId) {
-                              const inv = inventoryList.find(i => i.id === newId);
-                              if (inv && inv.satuan) {
-                                setSatuan(inv.satuan);
-                              }
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        {tipe === 'FullService' ? 'Pautkan Bahan Baku Inventory Tahap Washer / Cuci' : 'Pautkan ke Inventory (Opsional)'}
+                      </label>
+                      <select 
+                        value={idInventory} 
+                        onChange={(e) => {
+                          const newId = e.target.value;
+                          setIdInventory(newId);
+                          if (newId) {
+                            const inv = inventoryList.find(i => i.id === newId);
+                            if (inv && inv.satuan && tipe !== 'FullService') {
+                              setSatuan(inv.satuan);
                             }
-                          }} 
-                          className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
-                        >
-                          <option value="">-- Buat Otomatis di Inventory (Default) --</option>
-                          {inventoryList.map(inv => (
-                            <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
-                          ))}
-                        </select>
-                        <p className="text-[10px] text-slate-400 mt-1">Sistem akan membuat item inventory baru otomatis jika default.</p>
-                      </div>
-                      {idInventory !== '' && (
-                        <div className="bg-orange-50 border border-orange-100 p-3 rounded-md">
-                          <label className="block font-semibold text-orange-900 mb-1">Potongan Stok per 1 Transaksi</label>
-                          <div className="flex gap-2 items-center">
-                            <input 
-                              type="number" 
-                              value={inventoryDeductionQty} 
-                              onChange={(e) => setInventoryDeductionQty(e.target.value)} 
-                              min="0" 
-                              step="0.1" 
-                              placeholder="0.1" 
-                              className="w-28 px-3 py-1.5 border border-orange-200 rounded-md outline-none focus:border-orange-500 font-bold text-orange-900 bg-white" 
-                            />
-                            <span className="text-xs font-semibold text-orange-800">{inventoryList.find(i => i.id === idInventory)?.satuan || 'unit'}</span>
-                          </div>
-                          <p className="text-[10px] text-orange-700 mt-1">Jumlah stok {inventoryList.find(i => i.id === idInventory)?.nama} yang akan dikurangi setiap kali 1 {satuan || 'layanan'} dipesan.</p>
-                        </div>
-                      )}
+                          }
+                        }} 
+                        className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                      >
+                        <option value="">{tipe === 'FullService' ? '-- Tidak Mengurangi Stok Inventory --' : '-- Buat Otomatis di Inventory (Default) --'}</option>
+                        {inventoryList.map(inv => (
+                          <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        {tipe === 'FullService' 
+                          ? 'Stok bahan baku ini (misal Deterjen/Pewangi) akan otomatis terpotong saat pengerjaan masuk ke tahap Dicuci (Washer).' 
+                          : 'Sistem akan membuat item inventory baru otomatis jika default.'}
+                      </p>
                     </div>
-                  )}
+                    {idInventory !== '' && (
+                      <div className="bg-orange-50 border border-orange-100 p-3 rounded-md">
+                        <label className="block font-semibold text-orange-900 mb-1">
+                          {tipe === 'FullService' ? 'Pemakaian Bahan Baku per 1x Pengerjaan' : 'Potongan Stok per 1 Transaksi'}
+                        </label>
+                        <div className="flex gap-2 items-center">
+                          <input 
+                            type="number" 
+                            value={inventoryDeductionQty} 
+                            onChange={(e) => setInventoryDeductionQty(e.target.value)} 
+                            min="0" 
+                            step="0.1" 
+                            placeholder="0.1" 
+                            className="w-28 px-3 py-1.5 border border-orange-200 rounded-md outline-none focus:border-orange-500 font-bold text-orange-900 bg-white" 
+                          />
+                          <span className="text-xs font-semibold text-orange-800">{inventoryList.find(i => i.id === idInventory)?.satuan || 'unit'}</span>
+                        </div>
+                        <p className="text-[10px] text-orange-700 mt-1">
+                          Jumlah stok {inventoryList.find(i => i.id === idInventory)?.nama} yang akan dikurangi setiap kali 1 {satuan || 'layanan'} {tipe === 'FullService' ? 'dicuci di mesin washer' : 'dipesan'}.
+                        </p>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="grid grid-cols-2 gap-3 pt-1">
                     {currentRole === 'MANAGER' && (

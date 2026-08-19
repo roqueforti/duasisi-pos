@@ -59,7 +59,9 @@ function simpanTransaksi(data) {
     if (duplicate) throw new Error("Nomor nota sudah digunakan.");
 
     items.forEach(function(item) {
-      if (item.idInventory) {
+      // Untuk Retail / FnB / Addon non-DropOff, potong langsung saat kasir checkout
+      // Untuk Drop Off FullService, stok bahan baku akan dipotong saat tahap Dicuci (Washer)
+      if (tipe !== "FullService" && item.idInventory) {
         const deductionMultiplier = item.inventoryDeductionQty !== undefined ? Number(item.inventoryDeductionQty) : 1;
         updateStokInventory(item.idInventory, -(Number(item.qty) * deductionMultiplier));
       }

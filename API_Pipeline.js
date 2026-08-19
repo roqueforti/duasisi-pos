@@ -276,6 +276,36 @@ function updateDropoffStatus(data) {
     }
     if (previousMachineId) selesaiMesin(previousMachineId);
 
+    // Potong stok inventory bahan baku (Deterjen/Pewangi/dll) saat masuk tahap pengerjaan Dicuci (Washer)
+    if (statusBaru === "Dicuci") {
+      try {
+        const shD = SS.getSheetByName(SHEET_DETAIL);
+        if (shD) {
+          const detailRows = shD.getDataRange().getValues();
+          const allLayanan = getLayananListAll();
+          let deductedLogs = [];
+          for (let i = 1; i < detailRows.length; i++) {
+            if (String(detailRows[i][0]) === noNota) {
+              const namaItem = detailRows[i][1];
+              const qtyItem = Number(detailRows[i][2]) || 1;
+              const lay = allLayanan.find(l => l.nama === namaItem);
+              if (lay && lay.idInventory) {
+                const deductionPerUnit = lay.inventoryDeductionQty !== undefined && lay.inventoryDeductionQty !== null ? Number(lay.inventoryDeductionQty) : 1;
+                const totalDeduction = qtyItem * deductionPerUnit;
+                updateStokInventory(lay.idInventory, -totalDeduction);
+                deductedLogs.push(lay.idInventory + " (-" + totalDeduction + ")");
+              }
+            }
+          }
+          if (deductedLogs.length > 0) {
+            addAuditLog(data.userName || data.assignedStaff || "Staff", "Pemakaian Bahan Washer", noNota, "Potong stok inventory tahap Dicuci: " + deductedLogs.join(", "));
+          }
+        }
+      } catch (errDeduct) {
+        Logger.log("Gagal potong stok washer: " + errDeduct);
+      }
+    }
+
     shT.getRange(txIndex + 1, 6).setValue(statusBaru);
     addAuditLog(data.userName || data.assignedStaff || "Staff", "Update Drop-off", noNota, txRows[txIndex][5] + " -> " + statusBaru + (machineId ? "; mesin " + machineId : ""));
     SpreadsheetApp.flush();

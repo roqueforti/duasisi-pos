@@ -55,6 +55,8 @@ export default function PesananView() {
   const [orders, setOrders] = useState<Transaksi[]>([]);
   const [machines, setMachines] = useState<Mesin[]>([]);
   const [staff, setStaff] = useState<StaffItem[]>([]);
+  const [layananList, setLayananList] = useState<any[]>([]);
+  const [inventoryList, setInventoryList] = useState<any[]>([]);
   const [dropOffPriorities, setDropOffPriorities] = useState<DropOffPriorityItem[]>([
     { id: 'p1', nama: 'Reguler', durasiJam: 48, icon: 'Clock', warna: 'bg-teal-100 text-teal-800 border-teal-300', aktif: true },
     { id: 'p2', nama: 'Express', durasiJam: 24, icon: 'Flame', warna: 'bg-amber-100 text-amber-800 border-amber-300', aktif: true },
@@ -75,14 +77,18 @@ export default function PesananView() {
     setLoading(true);
     setError('');
     try {
-      const [orderData, machineData, staffData, priorityData] = await Promise.all([
+      const [orderData, machineData, staffData, priorityData, layData, invData] = await Promise.all([
         runBackend<Transaksi[]>('getTransaksiByPipeline', 'Semua'),
         runBackend<Mesin[]>('getMesinList'),
         runBackend<StaffItem[]>('getPegawaiList'),
         runBackend<DropOffPriorityItem[]>('getPriorityConfig').catch(() => null),
+        runBackend<any[]>('getLayananListAll').catch(() => []),
+        runBackend<any[]>('getInventoryList').catch(() => []),
       ]);
       setOrders(Array.isArray(orderData) ? orderData : []);
       setMachines(Array.isArray(machineData) ? machineData : []);
+      setLayananList(Array.isArray(layData) ? layData : []);
+      setInventoryList(Array.isArray(invData) ? invData : []);
       if (Array.isArray(priorityData) && priorityData.length > 0) {
         setDropOffPriorities(priorityData);
       }
@@ -188,6 +194,27 @@ export default function PesananView() {
           <div className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /><span>{order.estimasiSelesai || 'Estimasi belum diisi'}</span></div>
           {machine && <div className="flex items-center gap-1.5 font-semibold text-[#1E4648]"><WashingMachine className="h-3.5 w-3.5" /><span>Mesin {machine}</span></div>}
           <p className="line-clamp-2">{order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')}</p>
+          
+          {/* Linked Washer Material Indicator */}
+          {(() => {
+            const mats = (order.items || []).map(it => {
+              const lay = layananList.find(l => l.nama === it.layanan);
+              if (lay && lay.idInventory) {
+                const inv = inventoryList.find(i => i.id === lay.idInventory);
+                const deductionPerUnit = lay.inventoryDeductionQty !== undefined && lay.inventoryDeductionQty !== null ? Number(lay.inventoryDeductionQty) : 1;
+                return `${inv?.nama || lay.idInventory}: ${(Number(it.qty) || 1) * deductionPerUnit} ${inv?.satuan || 'unit'}`;
+              }
+              return null;
+            }).filter(Boolean);
+
+            if (mats.length === 0) return null;
+            return (
+              <div className="pt-1 flex items-center gap-1 text-[10px] text-amber-800 font-semibold truncate">
+                <span className="shrink-0">🧪 Bahan:</span>
+                <span className="truncate bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">{mats.join(', ')}</span>
+              </div>
+            );
+          })()}
         </div>
 
         {next && (() => {
@@ -297,6 +324,63 @@ export default function PesananView() {
                   {availableMachines.length === 0 && <p className="mt-1 text-[11px] font-semibold text-rose-600">Tidak ada mesin kosong untuk tahap ini.</p>}
                 </div>
               )}
+
+              {/* Pemakaian Bahan Baku Inventory saat Tahap Dicuci */}
+              {targetStatus === 'Dicuci' && (() => {
+                const washerMaterials = (selected.items || []).map(it => {
+                  const lay = layananList.find(l => l.nama === it.layanan);
+                  if (lay && lay.idInventory) {
+                    const inv = inventoryList.find(i => i.id === lay.idInventory);
+                    const deductionPerUnit = lay.inventoryDeductionQty !== undefined && lay.inventoryDeductionQty !== null ? Number(lay.inventoryDeductionQty) : 1;
+                    const totalQty = (Number(it.qty) || 1) * deductionPerUnit;
+                    return {
+                      namaLayanan: it.layanan,
+                      orderQty: it.qty,
+                      namaBahan: inv?.nama || lay.idInventory,
+                      satuanBahan: inv?.satuan || 'unit',
+                      totalPemakaian: totalQty,
+                      sisaStok: inv?.stok
+                    };
+                  }
+                  return null;
+                }).filter(Boolean);
+
+                if (washerMaterials.length === 0) return null;
+
+                return (
+                  <div className="bg-amber-50/80 border border-amber-200/90 p-3 rounded-xl space-y-1.5 text-xs">
+                    <div className="font-bold text-amber-950 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span>🧪</span>
+                        <span>Pemakaian Bahan Baku Washer:</span>
+                      </span>
+                      <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full">
+                        Otomatis Potong Stok
+                      </span>
+                    </div>
+                    <div className="space-y-1 pt-1">
+                      {washerMaterials.map((mat: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center bg-white p-2 rounded-lg border border-amber-200/80 text-[11px]">
+                          <div>
+                            <span className="font-bold text-slate-800">{mat.namaBahan}</span>
+                            <span className="text-slate-400 text-[10px] ml-1">({mat.orderQty}x porsi)</span>
+                          </div>
+                          <div className="text-right font-mono">
+                            <span className="font-black text-[#1E4648] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 text-xs">
+                              {mat.totalPemakaian} {mat.satuanBahan}
+                            </span>
+                            {mat.sisaStok !== undefined && (
+                              <span className="text-[10px] text-slate-400 block mt-0.5">
+                                Sisa: {mat.sisaStok} {mat.satuanBahan}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div><label className="mb-1 block text-xs font-bold text-slate-700">Catatan Proses</label><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Opsional: kondisi cucian atau instruksi proses" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-[#1E4648]" /></div>
               {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-700">{error}</p>}
