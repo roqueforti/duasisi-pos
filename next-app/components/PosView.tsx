@@ -3180,27 +3180,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                   <span>Kirim Struk ke WhatsApp</span>
                 </button>
 
-                {/* 2. Cetak Struk Thermal */}
-                <button
-                  type="button"
-                  onClick={() => handlePrintReceipt('struk')}
-                  disabled={btPrinting}
-                  className="w-full bg-white hover:bg-teal-50 border border-teal-300 text-[#1E4648] font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-2xs transition cursor-pointer disabled:opacity-50"
-                >
-                  {btPrinting ? (
-                    <>
-                      <Bluetooth className="w-4 h-4 animate-pulse text-teal-600" />
-                      <span>Menghubungkan Printer...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Printer className="w-4 h-4 text-[#1E4648]" />
-                      <span>Cetak Struk Thermal (Bluetooth)</span>
-                    </>
-                  )}
-                </button>
-
-                {/* 3. Selesai (Tanpa Cetak) */}
+                {/* 2. Selesai (Transaksi Baru) */}
                 <button
                   type="button"
                   onClick={handleCompleteFlowAndReset}
