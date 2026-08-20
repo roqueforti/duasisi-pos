@@ -139,12 +139,38 @@ export interface Pelanggan {
 
 export interface AuditLog {
   idLog: string;
-  idUser: string;
+  idUser?: string;
   namaUser: string;
   jenisAktivitas: string;
   referensi?: string;
   detail?: string;
+  dataSebelum?: string;
+  dataSesudah?: string;
   waktu: string;
+}
+
+export interface RekapKasShiftItem {
+  idShift: string;
+  idOutlet?: string;
+  namaKasir: string;
+  idUser?: string;
+  waktuBuka: string;
+  waktuTutup?: string;
+  kasAwal: number;
+  kasAkhirSistem: number;
+  kasAkhirFisik: number;
+  selisihKas: number;
+  status: string;
+  modeTutup?: string;
+  idPengganti?: string;
+  namaPengganti?: string;
+  waktuHandover?: string;
+  catatan?: string;
+  rincianBelanja?: string;
+  saldoMerchantAwal?: number;
+  saldoMerchantAkhir?: number;
+  totalBelanja?: number;
+  fotoNota?: string[];
 }
 
 export interface Pegawai {

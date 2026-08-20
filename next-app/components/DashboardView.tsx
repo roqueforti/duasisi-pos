@@ -235,24 +235,24 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   };
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-5 max-w-7xl mx-auto text-slate-600">
+    <div className="p-2.5 sm:p-3.5 md:p-4 space-y-3 sm:space-y-4 max-w-7xl mx-auto text-slate-600">
       
       {/* PAGE HEADER: ADAPTIVE ROLE BADGE */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-lg border border-slate-200/80 shadow-2xs">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#1E4648] text-[#B5C9C9] flex items-center justify-center shadow-md">
-            <LayoutDashboard className="w-5 h-5" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-[#1E4648] text-[#B5C9C9] flex items-center justify-center shadow-xs shrink-0">
+            <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-lg font-bold text-slate-700 leading-tight">Dashboard Utama</h1>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+              <h1 className="text-sm sm:text-base font-bold text-slate-700 leading-tight">Dashboard Utama</h1>
+              <span className={`px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase ${
                 isManager ? 'bg-[#FF9500]/15 text-[#FF9500] border border-[#FF9500]/50' : 'bg-[#B5C9C9]/30 text-[#1E4648] border border-[#B5C9C9]'
               }`}>
                 {isManager ? 'Owner / Manager Mode' : 'Kasir / Staff Mode'}
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium">Monitoring operasional real-time & indikator bisnis dua SiSi Laundry</p>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium">Monitoring operasional real-time & indikator bisnis dua SiSi Laundry</p>
           </div>
         </div>
 
@@ -260,66 +260,66 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
           <button
             onClick={fetchDashboardData}
             disabled={loading}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition"
+            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
         </div>
       </div>
 
-      {/* SECTION 1 — RINGKASAN CEPAT (ALL ROLES) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* SECTION 1 — RINGKASAN CEPAT (ALL ROLES - 4 SEJAJAR SEJAK TABLET MD) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {/* Metric 1: Order Today */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold shrink-0">
-            <ShoppingCart className="w-5 h-5" />
+        <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/80 shadow-2xs flex items-center gap-2.5 sm:gap-3">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold shrink-0">
+            <ShoppingCart className="w-4 h-4" />
           </div>
-          <div>
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Order Hari Ini</div>
-            <div className="text-xl font-bold text-[#1E4648]">{totalOrderHariIni} Transaksi</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Order Hari Ini</div>
+            <div className="text-sm sm:text-base md:text-lg font-bold text-[#1E4648] truncate">{totalOrderHariIni} Transaksi</div>
           </div>
         </div>
 
         {/* Metric 2: Omzet Today */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold shrink-0">
-            <RupiahIcon className="w-5 h-5" />
+        <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/80 shadow-2xs flex items-center gap-2.5 sm:gap-3">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold shrink-0">
+            <RupiahIcon className="w-4 h-4" />
           </div>
-          <div>
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Omzet Hari Ini</div>
-            <div className="text-xl font-bold text-[#1E4648]">Rp {(omzetHariIni || 0).toLocaleString('id-ID')}</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Omzet Hari Ini</div>
+            <div className="text-sm sm:text-base md:text-lg font-bold text-[#1E4648] truncate">Rp {(omzetHariIni || 0).toLocaleString('id-ID')}</div>
           </div>
         </div>
 
         {/* Metric 3: Active In-Progress Orders */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-[#FF9500]/10 text-[#FF9500] flex items-center justify-center font-bold shrink-0">
-            <Clock className="w-5 h-5" />
+        <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/80 shadow-2xs flex items-center gap-2.5 sm:gap-3">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#FF9500]/10 text-[#FF9500] flex items-center justify-center font-bold shrink-0">
+            <Clock className="w-4 h-4" />
           </div>
-          <div>
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Order Aktif (Proses)</div>
-            <div className="text-xl font-bold text-[#1E4648]">{activeOrders.length} Order</div>
-            <div className="text-[10px] text-[#FF9500] font-bold">{readyPickupOrders.length} Siap Diambil</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Order Aktif</div>
+            <div className="text-sm sm:text-base md:text-lg font-bold text-[#1E4648] truncate">{activeOrders.length} Order</div>
+            <div className="text-[9px] sm:text-[10px] text-[#FF9500] font-bold truncate">{readyPickupOrders.length} Siap Diambil</div>
           </div>
         </div>
 
         {/* Metric 4: System Alerts Status */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold shrink-0 ${
+        <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/80 shadow-2xs flex items-center gap-2.5 sm:gap-3">
+          <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center font-bold shrink-0 ${
             lowStockItems.length > 0 || maintenanceMachines.length > 0 
               ? 'bg-rose-50 text-rose-600' 
               : 'bg-[#B5C9C9]/20 text-[#1E4648]'
           }`}>
             {lowStockItems.length > 0 || maintenanceMachines.length > 0 ? (
-              <AlertTriangle className="w-5 h-5" />
+              <AlertTriangle className="w-4 h-4" />
             ) : (
-              <CheckCircle2 className="w-5 h-5" />
+              <CheckCircle2 className="w-4 h-4" />
             )}
           </div>
-          <div>
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Status Alert Sistem</div>
-            <div className={`text-xl font-bold ${
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Alert Sistem</div>
+            <div className={`text-sm sm:text-base md:text-lg font-bold truncate ${
               lowStockItems.length > 0 || maintenanceMachines.length > 0 
                 ? 'text-rose-600' 
                 : 'text-[#1E4648]'
@@ -330,52 +330,52 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                 <span>Semua Optimal</span>
               )}
             </div>
-            <div className="text-[10px] text-slate-500 font-semibold">
+            <div className="text-[9px] sm:text-[10px] text-slate-500 font-semibold truncate">
               {lowStockItems.length} Stok • {maintenanceMachines.length} Mesin
             </div>
           </div>
         </div>
       </div>
 
-      {/* SECTION 2 — OPERASIONAL REAL-TIME (ALL ROLES) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* SECTION 2 — OPERASIONAL REAL-TIME (ALL ROLES - 2 COLS UNTUK MESIN, 1 COL ANTREAN DI TABLET) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
         
-        {/* Widget 1: Machine Status Progress (2 Columns on Desktop) */}
-        <div className="lg:col-span-2 bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
-                <Cpu className="w-4 h-4" />
+        {/* Widget 1: Machine Status Progress */}
+        <div className="md:col-span-2 bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
+                <Cpu className="w-3.5 h-3.5" />
               </div>
-              <h2 className="text-sm font-bold text-slate-700">Status & Progress Mesin Real-time</h2>
+              <h2 className="text-xs sm:text-sm font-bold text-slate-700">Status & Progress Mesin Real-time</h2>
             </div>
-            <span className="text-xs font-bold text-slate-500">
+            <span className="text-[11px] font-bold text-slate-500">
               {mesinList.filter(m => m.status === 'Digunakan').length} / {mesinList.length} Digunakan
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
             {mesinList.map((m) => {
               const isUsed = m.status === 'Digunakan';
               const isMaint = m.status === 'Maintenance';
               return (
                 <div 
                   key={m.id}
-                  className={`p-3.5 rounded-lg border transition ${
+                  className={`p-2.5 sm:p-3 rounded-lg border transition ${
                     isMaint ? 'bg-rose-50/70 border-rose-200' :
                     isUsed ? 'bg-[#B5C9C9]/20/70 border-[#B5C9C9]' : 'bg-slate-50 border-slate-200'
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex justify-between items-start mb-1.5">
+                    <div className="flex items-center gap-1.5">
                       {m.tipe === 'Washer' ? (
-                        <WashingMachine className="w-4 h-4 text-[#1E4648]" />
+                        <WashingMachine className="w-3.5 h-3.5 text-[#1E4648]" />
                       ) : (
-                        <Flame className="w-4 h-4 text-[#FF9500]" />
+                        <Flame className="w-3.5 h-3.5 text-[#FF9500]" />
                       )}
                       <span className="font-bold text-xs text-slate-700">{m.nama}</span>
                     </div>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
                       isMaint ? 'bg-rose-100 text-rose-800' :
                       isUsed ? 'bg-[#B5C9C9]/30 text-[#1E4648]' : 'bg-slate-200 text-slate-700'
                     }`}>
@@ -384,18 +384,18 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                   </div>
 
                   {isUsed ? (
-                    <div className="space-y-1.5 text-[11px]">
+                    <div className="space-y-1 text-[10px] sm:text-[11px]">
                       <div className="text-slate-600 truncate">Customer/Ket: {m.keterangan || 'Proses Cuci/Dry'}</div>
                       <div className="flex justify-between text-slate-500 font-semibold">
                         <span>Mulai: {m.mulaiPakai || '-'}</span>
                         <span className="text-[#1E4648] font-bold">Est: {m.estimasiSelesai || '-'}</span>
                       </div>
-                      <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                         <div className="bg-[#1E4648] h-full w-3/4 rounded-full animate-pulse" />
                       </div>
                     </div>
                   ) : (
-                    <div className="text-[11px] text-slate-400 font-medium py-1">
+                    <div className="text-[10px] sm:text-[11px] text-slate-400 font-medium py-0.5">
                       {isMaint ? 'Sedang perbaikan servis' : 'Mesin Siap Digunakan'}
                     </div>
                   )}
@@ -406,27 +406,27 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         </div>
 
         {/* Widget 2: Queue & Ready for Pickup List */}
-        <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4 flex flex-col justify-between">
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs space-y-3 flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-[#FF9500]/10 text-[#FF9500] flex items-center justify-center shrink-0">
-                <Clock className="w-4 h-4" />
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5 mb-2.5">
+              <div className="w-7 h-7 rounded-lg bg-[#FF9500]/10 text-[#FF9500] flex items-center justify-center shrink-0">
+                <Clock className="w-3.5 h-3.5" />
               </div>
-              <h2 className="text-sm font-bold text-slate-700">Antrian & Siap Di-pickup</h2>
+              <h2 className="text-xs sm:text-sm font-bold text-slate-700">Antrian & Siap Di-pickup</h2>
             </div>
 
-            <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
               {activeOrders.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 text-xs font-medium">Tidak ada antrian aktif</div>
+                <div className="py-6 text-center text-slate-400 text-xs font-medium">Tidak ada antrian aktif</div>
               ) : (
                 activeOrders.slice(0, 6).map((tx) => (
-                  <div key={tx.noNota} className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex justify-between items-center text-xs">
+                  <div key={tx.noNota} className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex justify-between items-center text-xs">
                     <div>
-                      <div className="font-mono font-bold text-[#1E4648]">{tx.noNota}</div>
+                      <div className="font-mono font-bold text-[#1E4648] text-[11px]">{tx.noNota}</div>
                       <div className="font-bold text-slate-600 text-[11px]">{tx.namaPelanggan}</div>
                       <div className="text-[10px] text-slate-500">Est: {tx.estimasi || '-'}</div>
                     </div>
-                    <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase ${
+                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase ${
                       tx.status === 'Siap Ambil' ? 'bg-[#FF9500]/15 text-[#FF9500] border border-[#FF9500]/50' : 'bg-slate-200 text-slate-700'
                     }`}>
                       {tx.status}
@@ -437,7 +437,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             </div>
           </div>
 
-          <div className="pt-2 text-[11px] text-slate-400 text-center font-medium border-t border-slate-100">
+          <div className="pt-2 text-[10px] text-slate-400 text-center font-medium border-t border-slate-100">
             Diurutkan berdasarkan estimasi selesai terdekat
           </div>
         </div>
@@ -445,30 +445,30 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
       {/* SECTION 3 — PENJUALAN & KEUANGAN (ROLES: MANAGER ONLY) */}
       {isManager ? (
-        <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
-                <BarChart3 className="w-4 h-4" />
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
+                <BarChart3 className="w-3.5 h-3.5" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-slate-700">Analisis Penjualan & Keuangan</h2>
-                <p className="text-[11px] text-slate-400 font-medium">Tren omzet, kategori layanan, & distribusi metode bayar</p>
+                <h2 className="text-xs sm:text-sm font-bold text-slate-700">Analisis Penjualan & Keuangan</h2>
+                <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">Tren omzet, kategori layanan, & distribusi metode bayar</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-400">Periode:</span>
-              <div className="flex bg-slate-100 p-1 rounded-lg gap-1 text-xs font-bold">
+              <span className="text-[10px] font-bold text-slate-400">Periode:</span>
+              <div className="flex bg-slate-100 p-0.5 rounded-lg gap-1 text-xs font-bold">
                 <button
                   onClick={() => setDateRange('7d')}
-                  className={`px-2.5 py-1 rounded-lg transition ${dateRange === '7d' ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600'}`}
+                  className={`px-2 py-1 rounded-md text-[11px] transition ${dateRange === '7d' ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600'}`}
                 >
                   7 Hari
                 </button>
                 <button
                   onClick={() => setDateRange('30d')}
-                  className={`px-2.5 py-1 rounded-lg transition ${dateRange === '30d' ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600'}`}
+                  className={`px-2 py-1 rounded-md text-[11px] transition ${dateRange === '30d' ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600'}`}
                 >
                   30 Hari
                 </button>
@@ -476,16 +476,16 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
             {/* Revenue Trend Visual Bar Chart Representation */}
-            <div className="md:col-span-2 space-y-3">
+            <div className="md:col-span-2 space-y-2">
               <div className="text-xs font-bold text-slate-700 flex justify-between items-center">
                 <span>Grafik Tren Omzet Harian (Rp)</span>
                 <span className="text-[#1E4648] font-bold">Total: Rp {(omzetHariIni || 0).toLocaleString('id-ID')}</span>
               </div>
               
-              <div className="bg-slate-900 text-white rounded-lg p-4 space-y-3 shadow-inner">
-                <div className="flex justify-between items-end h-32 pt-4 px-2 border-b border-slate-800 gap-2">
+              <div className="bg-slate-900 text-white rounded-xl p-3 space-y-2 shadow-inner">
+                <div className="flex justify-between items-end h-28 pt-2 px-1 border-b border-slate-800 gap-1.5">
                   {omzetHarian.length > 0 ? (
                     omzetHarian.slice(-7).map((d, idx) => (
                       <div key={idx} className="flex-1 flex flex-col items-center gap-1 group">
@@ -507,19 +507,19 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             </div>
 
             {/* Top Services & Payment Breakdown */}
-            <div className="space-y-3 text-xs">
+            <div className="space-y-2 text-xs">
               <div className="font-bold text-slate-700">Breakdown Layanan Terlaris</div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {layananTerlaris.length === 0 ? (
                   <div className="text-slate-400 text-center py-4">Belum ada data layanan</div>
                 ) : (
                   layananTerlaris.slice(0, 4).map((l, idx) => (
-                    <div key={idx} className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex justify-between items-center">
+                    <div key={idx} className="p-2 bg-slate-50 border border-slate-200 rounded-lg flex justify-between items-center text-xs">
                       <div>
-                        <div className="font-bold text-slate-600">{l.layanan}</div>
-                        <div className="text-[10px] text-slate-400">{l.qty} Transaksi</div>
+                        <div className="font-bold text-slate-600 text-[11px]">{l.layanan}</div>
+                        <div className="text-[9px] text-slate-400">{l.qty} Transaksi</div>
                       </div>
-                      <span className="font-bold text-[#1E4648]">Rp {(l?.omzet || 0).toLocaleString('id-ID')}</span>
+                      <span className="font-bold text-[#1E4648] text-xs">Rp {(l?.omzet || 0).toLocaleString('id-ID')}</span>
                     </div>
                   ))
                 )}
@@ -529,57 +529,57 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         </div>
       ) : (
         /* SAFE FRONTIER GUARD FOR KASIR / STAFF ROLE */
-        <div className="bg-slate-100 border-2 border-dashed border-slate-200 rounded-lg p-5 text-center text-slate-500 space-y-1">
-          <div className="flex justify-center text-slate-400 mb-1">
-            <Lock className="w-6 h-6" />
+        <div className="bg-slate-100/80 border border-dashed border-slate-200 rounded-xl p-3.5 text-center text-slate-500 space-y-1">
+          <div className="flex justify-center text-slate-400 mb-0.5">
+            <Lock className="w-5 h-5" />
           </div>
           <div className="font-bold text-xs text-slate-700">Section Penjualan & Laporan Keuangan Di-restrict</div>
-          <p className="text-[11px] text-slate-400">Section keuangan khusus untuk akun Manager / Owner.</p>
+          <p className="text-[10px] text-slate-400">Section keuangan khusus untuk akun Manager / Owner.</p>
         </div>
       )}
 
       {/* SECTION 4 — PELANGGAN INSIGHTS (ROLES: MANAGER ONLY) */}
       {isManager && (
-        <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4">
-          <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-            <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
-              <Users className="w-4 h-4" />
+        <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs space-y-3">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+            <div className="w-7 h-7 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
+              <Users className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-700">Insight Pelanggan & Repeat Order</h2>
-              <p className="text-[11px] text-slate-400 font-medium">Top pelanggan loyal & distribusi transaksi</p>
+              <h2 className="text-xs sm:text-sm font-bold text-slate-700">Insight Pelanggan & Repeat Order</h2>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">Top pelanggan loyal & distribusi transaksi</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
             {/* Top Customer Table */}
-            <div className="space-y-2">
-              <div className="font-bold text-slate-700">Pelanggan Teratas (Highest Spend)</div>
+            <div className="space-y-1.5">
+              <div className="font-bold text-slate-700 text-xs">Pelanggan Teratas (Highest Spend)</div>
               <div className="space-y-1.5">
                 {pelangganList.slice(0, 4).map((c) => (
-                  <div key={c.noHp} className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex justify-between items-center">
+                  <div key={c.noHp} className="p-2 bg-slate-50 border border-slate-200 rounded-lg flex justify-between items-center text-xs">
                     <div>
-                      <div className="font-bold text-slate-700">{c.nama}</div>
-                      <div className="text-[10px] text-slate-400">{c.noHp} • {c.totalOrder} Order</div>
+                      <div className="font-bold text-slate-700 text-[11px]">{c.nama}</div>
+                      <div className="text-[9px] text-slate-400">{c.noHp} • {c.totalOrder} Order</div>
                     </div>
-                    <span className="font-bold text-[#1E4648]">Rp {(c?.totalSpend || 0).toLocaleString('id-ID')}</span>
+                    <span className="font-bold text-[#1E4648] text-xs">Rp {(c?.totalSpend || 0).toLocaleString('id-ID')}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Repeat Order Ratio */}
-            <div className="p-4 bg-[#1E4648] text-white rounded-lg flex flex-col justify-between">
+            <div className="p-3.5 bg-[#1E4648] text-white rounded-xl flex flex-col justify-between">
               <div>
-                <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Rasio Member / Repeat Order</div>
-                <div className="text-2xl font-bold text-[#FF9500] mt-1">
+                <div className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">Rasio Member / Repeat Order</div>
+                <div className="text-xl sm:text-2xl font-bold text-[#FF9500] mt-0.5">
                   {pelangganList.length > 0 ? Math.round((pelangganList.filter(p => p.totalOrder > 1).length / pelangganList.length) * 100) : 0}%
                 </div>
-                <p className="text-[11px] text-slate-300 mt-1">
+                <p className="text-[10px] sm:text-[11px] text-slate-300 mt-1">
                   Pelanggan yang sudah pernah melakukan lebih dari 1 transaksi laundry.
                 </p>
               </div>
-              <div className="text-[10px] text-slate-500 pt-3 border-t border-slate-800">
+              <div className="text-[9px] text-slate-400 pt-2 border-t border-slate-700/80">
                 Terakumulasi otomatis di Sheet Pelanggan
               </div>
             </div>
@@ -588,52 +588,52 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       )}
 
       {/* SECTION 5 — INVENTORY & MESIN LEVEL (ALL ROLES, DIFFERENT PERMISSIONS) */}
-      <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
-              <Package className="w-4 h-4" />
+      <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
+              <Package className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-700">Level Stok Bahan Habis Pakai</h2>
-              <p className="text-[11px] text-slate-400 font-medium">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-700">Level Stok Bahan Habis Pakai</h2>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">
                 {isManager ? 'Owner / Manager Mode: Lihat & Input Restock' : 'Kasir Mode: Laporan View Only'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => setShowRestockAnalysisModal(true)}
-              className="px-3 py-1.5 bg-linear-to-r from-[#1E4648] to-[#2A5C5E] hover:from-[#163536] hover:to-[#1E4648] text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition"
+              className="px-2.5 py-1 bg-linear-to-r from-[#1E4648] to-[#2A5C5E] hover:from-[#163536] hover:to-[#1E4648] text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-xs transition"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
               <span>Rekomendasi Restock</span>
             </button>
             {!isManager && (
-              <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+              <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-slate-400" />
                 <span>View Only</span>
               </span>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3">
           {inventoryList.map((i) => {
             const isCritical = i.stok <= i.stokMinimum;
             const isLow = i.stok <= i.stokMinimum * 1.5;
             return (
               <div 
                 key={i.id}
-                className={`p-3.5 rounded-lg border text-xs space-y-2 ${
+                className={`p-2.5 sm:p-3 rounded-lg border text-xs space-y-1.5 ${
                   isCritical ? 'bg-rose-50/80 border-rose-300' :
                   isLow ? 'bg-[#FF9500]/10/80 border-[#FF9500]/50' : 'bg-slate-50 border-slate-200'
                 }`}
               >
                 <div className="flex justify-between items-start">
-                  <span className="font-bold text-slate-700">{i.nama}</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                  <span className="font-bold text-slate-700 text-xs truncate max-w-[130px]">{i.nama}</span>
+                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase shrink-0 ${
                     isCritical ? 'bg-rose-100 text-rose-800' :
                     isLow ? 'bg-[#FF9500]/15 text-[#FF9500]' : 'bg-[#B5C9C9]/30 text-[#1E4648]'
                   }`}>
@@ -643,8 +643,8 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
                 <div className="flex justify-between items-end">
                   <div>
-                    <span className="text-lg font-bold text-slate-700">{i.stok}</span>
-                    <span className="text-slate-500 font-semibold ml-1">{i.satuan}</span>
+                    <span className="text-base font-bold text-slate-700">{i.stok}</span>
+                    <span className="text-slate-500 font-semibold text-[11px] ml-1">{i.satuan}</span>
                   </div>
                   
                   {isManager && (
@@ -653,9 +653,9 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                         setSelectedRestockItem(i);
                         setRestockQty('10');
                       }}
-                      className="px-2 py-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold rounded-lg text-[10px] flex items-center gap-1 transition"
+                      className="px-2 py-0.5 bg-[#1E4648] hover:bg-[#163536] text-white font-bold rounded text-[10px] flex items-center gap-1 transition"
                     >
-                      <Plus className="w-3 h-3" />
+                      <Plus className="w-2.5 h-2.5" />
                       <span>Restock</span>
                     </button>
                   )}
@@ -667,37 +667,37 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       </div>
 
       {/* SECTION 6 — STAFF & SHIFT (ADAPTIVE PERMISSION) */}
-      <div className="bg-white rounded-lg border border-slate-200/80 p-5 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
-              <Layers className="w-4 h-4" />
+      <div className="bg-white rounded-xl border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center shrink-0">
+              <Layers className="w-3.5 h-3.5" />
             </div>
-            <h2 className="text-sm font-bold text-slate-700">Rekap Shift & Kinerja Staf</h2>
+            <h2 className="text-xs sm:text-sm font-bold text-slate-700">Rekap Shift & Kinerja Staf</h2>
           </div>
         </div>
 
         {isManager ? (
           /* MANAGER VIEW: ALL STAFF PERFORMANCE TABLE */
-          <div className="space-y-3 text-xs">
+          <div className="space-y-2 text-xs">
             <div className="text-slate-600 font-bold">Kinerja Seluruh Staf Kasir / Operator</div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
-                    <th className="py-2.5 px-3">Nama Staf</th>
-                    <th className="py-2.5 px-3">Jabatan</th>
-                    <th className="py-2.5 px-3 text-center">Total Order</th>
-                    <th className="py-2.5 px-3 text-right">Total Omzet</th>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[9px] sm:text-[10px]">
+                    <th className="py-2 px-3">Nama Staf</th>
+                    <th className="py-2 px-3">Jabatan</th>
+                    <th className="py-2 px-3 text-center">Total Order</th>
+                    <th className="py-2 px-3 text-right">Total Omzet</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-semibold">
                   {kinerjaStaff.map((p, idx) => (
                     <tr key={idx} className="hover:bg-slate-50">
-                      <td className="py-2.5 px-3 font-bold text-slate-700">{p.nama}</td>
-                      <td className="py-2.5 px-3 text-slate-500">{p.jabatan || 'Kasir/Operator'}</td>
-                      <td className="py-2.5 px-3 text-center">{p.totalTransaksi} Order</td>
-                      <td className="py-2.5 px-3 text-right font-bold text-[#1E4648]">Rp {(p?.totalOmzet || 0).toLocaleString('id-ID')}</td>
+                      <td className="py-2 px-3 font-bold text-slate-700">{p.nama}</td>
+                      <td className="py-2 px-3 text-slate-500">{p.jabatan || 'Kasir/Operator'}</td>
+                      <td className="py-2 px-3 text-center">{p.totalTransaksi} Order</td>
+                      <td className="py-2 px-3 text-right font-bold text-[#1E4648]">Rp {(p?.totalOmzet || 0).toLocaleString('id-ID')}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -706,16 +706,16 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
           </div>
         ) : (
           /* KASIR VIEW: PERSONAL SHIFT SUMMARY CARD */
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs">
             <div>
-              <div className="font-bold text-slate-700">
+              <div className="font-bold text-slate-700 text-xs">
                 {kasShiftInfo ? `Sesi Shift Aktif — Dibuka: ${kasShiftInfo.waktuBuka || '-'}` : 'Belum ada shift aktif'}
               </div>
               <div className="text-[11px] text-slate-500">
                 {kasShiftInfo ? `Modal Kas Awal: Rp ${(kasShiftInfo.kasAwal || 0).toLocaleString('id-ID')}` : 'Silakan buka shift dari layar POS Kasir.'}
               </div>
             </div>
-            <span className={`px-3 py-1.5 font-bold rounded-lg text-xs ${
+            <span className={`px-2.5 py-1 font-bold rounded-lg text-xs ${
               kasShiftInfo ? 'bg-[#B5C9C9]/30 text-[#1E4648]' : 'bg-slate-200 text-slate-500'
             }`}>
               {kasShiftInfo ? 'Shift Berlangsung Aktif' : 'Belum Buka Shift'}

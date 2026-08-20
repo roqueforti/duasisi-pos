@@ -49,7 +49,10 @@ import {
   Delete,
   Copy,
   Coins,
-  Smartphone
+  Smartphone,
+  Eye,
+  Loader2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir, AbsensiConfig, UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
@@ -67,6 +70,70 @@ import PrinterModal from '@/components/PrinterModal';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { validateAttendanceSecurity } from '@/lib/attendanceSecurity';
 import { useDialog } from '@/components/DialogProvider';
+
+export interface ExpensePhotoItem {
+  id: string;
+  name: string;
+  base64: string;
+  preview: string;
+  sizeKb: number;
+}
+
+/**
+ * Compresses an image File using an offscreen HTML5 Canvas.
+ * Max dimension 1280px, quality 0.75 (JPEG).
+ * Drastically reduces payload from ~10MB to ~150KB for fast, reliable upload to Drive.
+ */
+async function compressImageFile(file: File, maxWidth = 1280, maxHeight = 1280, quality = 0.75): Promise<{ base64: string; mimeType: string; preview: string; sizeKb: number }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Gagal membaca berkas foto'));
+    reader.onload = (e) => {
+      const src = e.target?.result as string;
+      if (!src) return reject(new Error('Format berkas tidak valid'));
+      
+      const img = new Image();
+      img.onerror = () => reject(new Error('Gagal memuat format gambar'));
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          const rawBase64 = src.split(',')[1] || '';
+          resolve({ base64: rawBase64, mimeType: file.type || 'image/jpeg', preview: src, sizeKb: Math.round(file.size / 1024) });
+          return;
+        }
+        
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const base64 = dataUrl.split(',')[1] || '';
+        const sizeKb = Math.round((base64.length * 3) / 4 / 1024);
+        resolve({ base64, mimeType: 'image/jpeg', preview: dataUrl, sizeKb });
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 interface CustomerState {
   nama: string;
@@ -136,7 +203,10 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     { nama: '', nominal: '' }
   ]);
   const [shiftExpenseCategory, setShiftExpenseCategory] = useState<string>('');
-  const [expensePhotos, setExpensePhotos] = useState<Array<{ file: File; preview: string }>>([]);
+  const [expensePhotos, setExpensePhotos] = useState<ExpensePhotoItem[]>([]);
+  const [isCompressingPhotos, setIsCompressingPhotos] = useState<boolean>(false);
+  const [shiftSubmitStatusText, setShiftSubmitStatusText] = useState<string>('');
+  const [previewModalPhoto, setPreviewModalPhoto] = useState<{ src: string; title: string } | null>(null);
 
   const totalShiftExpense = expenseItemList.reduce((sum, item) => sum + (Number(item.nominal) || 0), 0);
 
@@ -1074,80 +1144,66 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     }
   };
 
-  const handleCloseShift = async () => {
-    if (!shiftAktif) return;
-    const kasAkhir = Number(kasAkhirFisik);
-    if (!Number.isFinite(kasAkhir) || kasAkhir < 0) {
-      await showAlert('Kas akhir fisik harus berupa angka nol atau lebih.', 'warning');
-      return;
-    }
-    if (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible) {
-      await showAlert('Clock In staf pengganti harus diverifikasi sebelum serah terima.', 'warning');
-      return;
-    }
-    setShiftSubmitting(true);
-    try {
-      const result = await runBackend<{ success: boolean; message?: string; selisihKas?: number }>('closeKasShift', {
-        shiftId: shiftAktif.idShift,
-        mode: closeShiftMode,
-        kasAkhir,
-        replacementEmployeeId: closeShiftMode === 'SERAH_TERIMA' ? replacementEmployeeId : '',
-        handoverConfirmed: closeShiftMode === 'SERAH_TERIMA',
-        userName: shiftAktif.namaKasir,
-      });
-      if (!result?.success) throw new Error(result?.message || 'Kas shift gagal ditutup.');
-      setShiftAktif(null);
-      setShowTutupShiftModal(false);
-      setKasAkhirFisik('');
-      setReplacementEmployeeId('');
-      setHandoverResult(null);
-      setToastMsg(`Kas shift ditutup. Selisih kas Rp ${(result.selisihKas || 0).toLocaleString('id-ID')}.`);
-    } catch (error) {
-      console.error(error);
-      alert(error instanceof Error ? error.message : 'Kas shift gagal ditutup.');
-    } finally {
-      setShiftSubmitting(false);
-    }
-  };
-
-  // Enhanced Close Shift with Expense & Photo Upload
-  const handleExpensePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Enhanced Close Shift with Expense & Auto-Compressed Photo Upload
+  const handleExpensePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          setExpensePhotos(prev => [...prev, { file, preview: reader.result as string }]);
-        };
-        reader.readAsDataURL(file);
+    if (files.length === 0) return;
+
+    setIsCompressingPhotos(true);
+    try {
+      const newItems: ExpensePhotoItem[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type.startsWith('image/')) {
+          try {
+            const compressed = await compressImageFile(file);
+            newItems.push({
+              id: `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+              name: file.name || `nota_${Date.now()}_${i + 1}.jpg`,
+              base64: compressed.base64,
+              preview: compressed.preview,
+              sizeKb: compressed.sizeKb
+            });
+          } catch (err) {
+            console.error('Gagal mengompresi foto nota:', err);
+          }
+        }
       }
-    });
-    e.target.value = ''; // Reset input
+      if (newItems.length > 0) {
+        setExpensePhotos(prev => [...prev, ...newItems]);
+      }
+    } finally {
+      setIsCompressingPhotos(false);
+      e.target.value = ''; // Reset input
+    }
   };
 
   const removeExpensePhoto = (index: number) => {
     setExpensePhotos(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadPhotoToGoogleDrive = async (file: File): Promise<string | null> => {
+  const uploadPhotoToGoogleDrive = async (photo: ExpensePhotoItem, index: number, total: number): Promise<string | null> => {
     try {
-      // Convert file to base64
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.readAsDataURL(file);
-      });
+      setShiftSubmitStatusText(`Mengunggah foto nota (${index + 1}/${total}) ke Drive...`);
+      const fileName = `nota_${shiftAktif?.idShift || 'shift'}_${Date.now()}_${index + 1}.jpg`;
 
-      const result = await runBackend('uploadExpensePhoto', {
-        fileName: file.name,
-        fileData: base64,
-        mimeType: file.type,
-        shiftId: shiftAktif?.idShift || '',
-      });
+      const result = await runBackend<{ success: boolean; fileUrl?: string; message?: string }>(
+        'uploadExpensePhoto',
+        fileName,
+        photo.base64,
+        'image/jpeg',
+        shiftAktif?.idShift || ''
+      );
 
-      return result?.fileUrl || null;
+      if (result && result.fileUrl) {
+        return result.fileUrl;
+      }
+      if (result && !result.success) {
+        console.warn('Google Drive photo upload response:', result.message);
+      }
+      return null;
     } catch (error) {
-      console.error('Failed to upload photo:', error);
+      console.warn('Gagal upload foto ke Google Drive:', error);
       return null;
     }
   };
@@ -1170,15 +1226,23 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
     }
 
     setShiftSubmitting(true);
+    setShiftSubmitStatusText('Menyiapkan rekonsiliasi kas...');
     try {
-      // 1. Upload photos to Google Drive first
+      // 1. Upload photos to Google Drive
       const photoUrls: string[] = [];
+      let failedUploadCount = 0;
       if (expensePhotos.length > 0) {
-        for (const photo of expensePhotos) {
-          const url = await uploadPhotoToGoogleDrive(photo.file);
-          if (url) photoUrls.push(url);
+        for (let i = 0; i < expensePhotos.length; i++) {
+          const url = await uploadPhotoToGoogleDrive(expensePhotos[i], i, expensePhotos.length);
+          if (url) {
+            photoUrls.push(url);
+          } else {
+            failedUploadCount++;
+          }
         }
       }
+
+      setShiftSubmitStatusText('Menyimpan data rekonsiliasi kas & belanja...');
 
       // 2. Format items into clean itemized description & send
       const formattedExpenseDesc = expenseItemList
@@ -1214,12 +1278,23 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
       setShiftExpenseCategory('');
       setExpensePhotos([]);
       
-      setToastMsg(`Kas shift ditutup berhasil! Selisih kas Rp ${(result.selisihKas || 0).toLocaleString('id-ID')}.`);
+      let successMsg = `Kas shift berhasil ditutup! Selisih kas: Rp ${(result.selisihKas || 0).toLocaleString('id-ID')}.`;
+      if (expensePhotos.length > 0) {
+        if (photoUrls.length > 0) {
+          successMsg += ` (${photoUrls.length} bukti foto nota tersimpan di Google Drive)`;
+        } else if (failedUploadCount > 0) {
+          successMsg += ` (Catatan: Foto nota gagal diunggah ke Google Drive karena kebijakan folder/koneksi).`;
+        }
+      }
+      setToastMsg(successMsg);
+      await showAlert(successMsg, 'success');
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : 'Kas shift gagal ditutup.');
+      const errMsg = error instanceof Error ? error.message : 'Kas shift gagal ditutup.';
+      await showAlert(`Gagal menutup kas shift: ${errMsg}`, 'error');
     } finally {
       setShiftSubmitting(false);
+      setShiftSubmitStatusText('');
     }
   };
 
@@ -1525,7 +1600,7 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
           {catalogViewMode === 'grid' ? (
             // GRID VIEW
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 auto-rows-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3 auto-rows-auto">
               {layananLoading ? (
                 // SKELETON LOADING GRID
                 Array.from({ length: 10 }).map((_, idx) => (
@@ -1587,13 +1662,16 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     >
                       <div>
                         {/* Top Category Badge & Satuan */}
-                        <div className="flex items-center justify-between gap-1 w-full pb-1.5">
-                          <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border shadow-2xs ${badgeStyle}`}>
+                        <div className="flex items-center justify-between gap-1.5 w-full pb-1.5 min-w-0">
+                          <span 
+                            className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border shadow-2xs min-w-0 flex-1 ${badgeStyle}`}
+                            title={categoryName}
+                          >
                             <Icon className="w-2.5 h-2.5 shrink-0" />
                             <span className="truncate">{categoryName}</span>
                           </span>
                           {item.satuan && (
-                            <span className="text-[10px] font-bold text-slate-400">
+                            <span className="text-[10px] font-bold text-slate-400 shrink-0 whitespace-nowrap">
                               /{item.satuan}
                             </span>
                           )}
@@ -1716,8 +1794,11 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           <Icon className={`w-5 h-5 ${iconColor}`} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border shadow-2xs ${badgeStyle}`}>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span 
+                              className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border shadow-2xs shrink-0 max-w-[120px] truncate ${badgeStyle}`}
+                              title={categoryName}
+                            >
                               {categoryName}
                             </span>
                             <p className="font-bold text-xs sm:text-sm text-slate-900 leading-tight truncate">{item.layanan}</p>
@@ -3235,6 +3316,18 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                     msgLines.push(`Terima kasih telah mempercayakan cucian Anda di Dua SiSi Laundry!`);
 
                     const msg = msgLines.filter(Boolean).join('\n');
+                    
+                    // Log Activity to Audit Trail
+                    runBackend(
+                      'logClientActivity', 
+                      completedOrderData.kasir || 'Kasir', 
+                      'Kirim Struk WA', 
+                      noNota, 
+                      '-', 
+                      `No WhatsApp: ${phone}`, 
+                      `Kirim link e-nota digital WhatsApp untuk nota ${noNota} ke ${nama || 'Pelanggan'}`
+                    ).catch(() => {});
+
                     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                   }}
                   className="w-full bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition cursor-pointer"
@@ -3868,27 +3961,61 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
                           onChange={handleExpensePhotoUpload}
                           id="expense-receipt-upload"
                           className="hidden"
+                          disabled={shiftSubmitting || isCompressingPhotos}
                         />
                         <label
                           htmlFor="expense-receipt-upload"
-                          className="w-full py-3 px-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#1E4648] bg-white flex flex-col items-center justify-center gap-1.5 cursor-pointer text-slate-600 hover:text-[#1E4648] transition group"
+                          className={`w-full py-3 px-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#1E4648] bg-white flex flex-col items-center justify-center gap-1.5 cursor-pointer text-slate-600 hover:text-[#1E4648] transition group ${
+                            (shiftSubmitting || isCompressingPhotos) ? 'opacity-50 pointer-events-none' : ''
+                          }`}
                         >
                           <Camera className="w-5 h-5 text-slate-400 group-hover:text-[#1E4648] transition" />
                           <span className="text-xs font-bold">Ambil Foto / Upload Foto Nota</span>
-                          <span className="text-[10px] text-slate-400">Dapat mengunggah beberapa lembar foto nota sekaligus</span>
+                          <span className="text-[10px] text-slate-400">Otomatis dikompresi agar upload cepat & anti-gagal</span>
                         </label>
                       </div>
 
+                      {/* Compressing Indicator */}
+                      {isCompressingPhotos && (
+                        <div className="mt-2.5 p-2.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-blue-800 text-xs font-semibold animate-pulse">
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                          <span>Mengompresi foto bukti nota...</span>
+                        </div>
+                      )}
+
+                      {/* Uploaded Photo List */}
                       {expensePhotos.length > 0 && (
                         <div className="mt-3 space-y-1.5">
-                          <span className="text-[11px] font-bold text-slate-600 block">{expensePhotos.length} foto nota siap tersimpan:</span>
+                          <span className="text-[11px] font-bold text-slate-600 block flex items-center justify-between">
+                            <span>{expensePhotos.length} foto nota siap diunggah:</span>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              Total: ~{expensePhotos.reduce((sum, p) => sum + (p.sizeKb || 0), 0)} KB
+                            </span>
+                          </span>
                           <div className="grid grid-cols-3 gap-2">
                             {expensePhotos.map((photo, idx) => (
-                              <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-200 shadow-xs">
-                                <img src={photo.preview} alt={`Nota ${idx + 1}`} className="w-full h-20 object-cover" />
+                              <div key={photo.id || idx} className="relative group rounded-xl overflow-hidden border border-slate-200 shadow-xs bg-slate-100">
+                                <img 
+                                  src={photo.preview} 
+                                  alt={photo.name || `Nota ${idx + 1}`} 
+                                  className="w-full h-20 object-cover cursor-pointer hover:opacity-90 transition"
+                                  onClick={() => setPreviewModalPhoto({ src: photo.preview, title: photo.name || `Nota ${idx + 1}` })}
+                                />
+                                <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-2xs text-[9px] text-white font-medium px-1.5 py-0.5 truncate flex items-center justify-between">
+                                  <span>{photo.sizeKb} KB</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewModalPhoto({ src: photo.preview, title: photo.name || `Nota ${idx + 1}` })}
+                                    className="text-white hover:text-teal-300"
+                                    title="Lihat ukuran penuh"
+                                  >
+                                    <Eye className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => removeExpensePhoto(idx)}
+                                  disabled={shiftSubmitting}
                                   className="absolute top-1 right-1 w-5 h-5 bg-rose-600 text-white rounded-full text-xs font-bold flex items-center justify-center shadow-md hover:bg-rose-700 transition"
                                   title="Hapus foto"
                                 >
@@ -3909,24 +4036,25 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
             <div className="flex gap-3 p-5 border-t border-slate-100 bg-slate-50">
               <button 
                 onClick={() => setShowTutupShiftModal(false)} 
-                className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition"
+                disabled={shiftSubmitting}
+                className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition disabled:opacity-50"
               >
                 Batal
               </button>
               <button
                 onClick={handleCloseShiftWithExpense}
-                disabled={shiftSubmitting || !kasAkhirFisik || !saldoMerchantAkhirInput || (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible)}
+                disabled={shiftSubmitting || isCompressingPhotos || !kasAkhirFisik || !saldoMerchantAkhirInput || (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible)}
                 className="flex-1 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold py-2.5 flex items-center justify-center gap-2 shadow-md transition"
               >
                 {shiftSubmitting ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    Menutup Kas Shift...
+                    <span>{shiftSubmitStatusText || 'Menutup Kas Shift...'}</span>
                   </>
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    Tutup Shift & Simpan Rekonsiliasi
+                    <span>Tutup Shift & Simpan Rekonsiliasi</span>
                   </>
                 )}
               </button>
@@ -4081,6 +4209,41 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
           } as any}
           onPrintSuccess={() => setShowStrukModal(false)}
         />
+      )}
+
+      {/* Fullscreen Photo Preview Modal */}
+      {previewModalPhoto && (
+        <div className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between p-3.5 border-b border-slate-800 text-white">
+              <div className="flex items-center gap-2">
+                <Camera className="w-4 h-4 text-teal-400" />
+                <span className="text-xs font-bold truncate max-w-xs">{previewModalPhoto.title}</span>
+              </div>
+              <button 
+                onClick={() => setPreviewModalPhoto(null)} 
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-black/40">
+              <img 
+                src={previewModalPhoto.src} 
+                alt={previewModalPhoto.title} 
+                className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-lg"
+              />
+            </div>
+            <div className="p-3 border-t border-slate-800 flex justify-end bg-slate-950">
+              <button 
+                onClick={() => setPreviewModalPhoto(null)}
+                className="px-4 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-bold rounded-lg transition"
+              >
+                Tutup Preview
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

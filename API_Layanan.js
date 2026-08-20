@@ -235,6 +235,16 @@ function tambahLayanan(data) {
     data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : 1,
     data.kategoriDropOff || ""
   ]);
+
+  addAuditLog(
+    data.actor || "Manager", 
+    "Tambah Layanan", 
+    id, 
+    "-", 
+    `Nama: ${data.nama}, Harga: Rp ${Number(data.harga || 0).toLocaleString('id-ID')}, Satuan: ${data.satuan || 'kg'}, Kategori: ${data.kategori || 'Self Service'}`,
+    `Penambahan master produk ${data.nama}`
+  );
+
   return { success: true, id: id };
 }
 
@@ -264,6 +274,9 @@ function updateLayanan(id, data) {
         sh.insertColumnsAfter(sh.getMaxColumns(), 13 - sh.getMaxColumns());
       }
 
+      const dataSebelum = `Nama: ${rows[i][1]}, Harga: Rp ${Number(rows[i][2] || 0).toLocaleString('id-ID')}, Satuan: ${rows[i][3] || 'kg'}, Kategori: ${rows[i][8] || '-'}`;
+      const dataSesudah = `Nama: ${data.nama}, Harga: Rp ${Number(data.harga || 0).toLocaleString('id-ID')}, Satuan: ${data.satuan || 'kg'}, Kategori: ${data.kategori || rows[i][8] || '-'}`;
+
       sh.getRange(i + 1, 1, 1, 13).setValues([[
         newId, 
         data.nama, 
@@ -279,6 +292,16 @@ function updateLayanan(id, data) {
         data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : (rows[i][11] !== undefined && rows[i][11] !== "" ? Number(rows[i][11]) : 1),
         data.kategoriDropOff !== undefined ? data.kategoriDropOff : (rows[i][12] || "")
       ]]);
+
+      addAuditLog(
+        data.actor || "Manager", 
+        "Edit Layanan", 
+        newId, 
+        dataSebelum, 
+        dataSesudah, 
+        `Perubahan data layanan ${data.nama}`
+      );
+
       return { success: true, id: newId };
     }
   }
@@ -310,11 +333,16 @@ function toggleAktifLayanan(id, aktifBaru) {
   return false;
 }
 
-function hapusLayanan(id) {
+function hapusLayanan(id, actor) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] === id) { sh.deleteRow(i + 1); return true; }
+    if (rows[i][0] === id) {
+      const nama = rows[i][1];
+      sh.deleteRow(i + 1);
+      addAuditLog(actor || "Manager", "Hapus Layanan", id, `Nama: ${nama}, Harga: Rp ${rows[i][2]}`, "-", `Hapus master layanan ${nama}`);
+      return true;
+    }
   }
   return false;
 }
@@ -456,6 +484,15 @@ function tambahInventory(data) {
       idInventory: id
     });
   }
+
+  addAuditLog(
+    data.actor || "Manager", 
+    "Tambah Inventory", 
+    id, 
+    "-", 
+    `Nama: ${data.nama}, Stok Awal: ${data.stok} ${data.satuan}`, 
+    `Penambahan bahan inventory ${data.nama}`
+  );
   
   return { success: true, id: id };
 }
@@ -465,33 +502,62 @@ function updateInventoryItem(id, data) {
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
+      const dataSebelum = `Nama: ${rows[i][1]}, Stok: ${rows[i][2]} ${rows[i][3]}, Min: ${rows[i][4]}`;
+      const dataSesudah = `Nama: ${data.nama}, Stok: ${data.stok} ${data.satuan}, Min: ${data.stokMinimum}`;
+      
       sh.getRange(i + 1, 2, 1, 4).setValues([[data.nama, data.stok, data.satuan, data.stokMinimum]]);
       sh.getRange(i + 1, 6).setValue(new Date());
+
+      addAuditLog(
+        data.actor || "Manager", 
+        "Edit Inventory", 
+        id, 
+        dataSebelum, 
+        dataSesudah, 
+        `Update konfigurasi stok ${data.nama}`
+      );
+
       return { success: true };
     }
   }
   return { success: false, message: "Item tidak ditemukan" };
 }
 
-function updateStokInventory(id, perubahan) {
+function updateStokInventory(id, perubahan, actor) {
   const sh = SS.getSheetByName(SHEET_INVENTORY);
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
-      const stokBaru = Math.max(0, Number(rows[i][2]) + Number(perubahan));
+      const stokLama = Number(rows[i][2]) || 0;
+      const stokBaru = Math.max(0, stokLama + Number(perubahan));
       sh.getRange(i + 1, 3).setValue(stokBaru);
       sh.getRange(i + 1, 6).setValue(new Date());
+
+      addAuditLog(
+        actor || "Staff", 
+        Number(perubahan) >= 0 ? "Restock Stok" : "Pengurangan Stok", 
+        rows[i][1], 
+        `Stok: ${stokLama} ${rows[i][3]}`, 
+        `Stok: ${stokBaru} ${rows[i][3]}`, 
+        `Penyesuaian stok ${Number(perubahan) >= 0 ? '+' : ''}${perubahan} ${rows[i][3]}`
+      );
+
       return { success: true, stokBaru: stokBaru };
     }
   }
   return { success: false, message: "Inventory tidak ditemukan" };
 }
 
-function hapusInventory(id) {
+function hapusInventory(id, actor) {
   const sh = SS.getSheetByName(SHEET_INVENTORY);
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] === id) { sh.deleteRow(i + 1); return { success: true }; }
+    if (rows[i][0] === id) { 
+      const nama = rows[i][1];
+      sh.deleteRow(i + 1); 
+      addAuditLog(actor || "Manager", "Hapus Inventory", id, `Nama: ${nama}`, "-", `Hapus bahan inventory ${nama}`);
+      return { success: true }; 
+    }
   }
   return { success: false };
 }

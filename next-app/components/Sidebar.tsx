@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { useDialog } from '@/components/DialogProvider';
-
 import { BadgeCounts } from '@/lib/useGlobalNotifications';
 
 interface SidebarProps {
@@ -64,20 +63,6 @@ export default function Sidebar({
 }: SidebarProps) {
   const { showAlert } = useDialog();
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-
-  // Auto-collapse on tablet landscape (<=1280px)
-  React.useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth <= 1280) {
-        setIsCollapsed(true);
-      } else {
-        setIsCollapsed(false);
-      }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const handleNavClick = async (tabKey: string) => {
     if (tabKey === 'transaksi' && currentRole === 'MANAGER') {
@@ -132,97 +117,81 @@ export default function Sidebar({
     }
   ];
 
-  const navClass = (tabKey: string) => {
-    const isActive = currentTab === tabKey;
-    return `w-full text-left flex items-center ${isCollapsed ? 'justify-center px-2 py-2' : 'gap-2.5 px-3 py-2'} rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
-      isActive 
-        ? 'bg-[#1E4648] text-white font-bold shadow-xs' 
-        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-    }`;
-  };
-
-  const iconClass = (tabKey: string) => {
-    return currentTab === tabKey ? 'text-white' : 'text-slate-400 group-hover:text-slate-600';
-  };
-
   return (
     <>
       {/* Mobile & Tablet Backdrop (< 1024px) */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/40 z-[150] lg:hidden backdrop-blur-xs"
+          className="fixed inset-0 bg-slate-900/50 z-[150] lg:hidden backdrop-blur-xs transition-opacity duration-200"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
+      {/* Main Sidebar Aside */}
       <aside className={`bg-white text-slate-600 border-r border-slate-200/80 flex flex-col shrink-0 z-[200] fixed lg:static inset-y-0 left-0 transition-all duration-200 overflow-y-auto ${
         isCollapsed ? 'lg:w-[68px]' : 'lg:w-60'
-      } ${isSidebarOpen ? 'w-60 translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      } ${
+        isSidebarOpen ? 'w-64 sm:w-72 translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
+      }`}>
         
-        {/* Header Logo & Minimize */}
-        {isCollapsed ? (
-          <div className="flex flex-col items-center gap-3 py-4 px-2 border-b border-slate-100">
-            <img 
-              src="./assets/Asset 5.svg" 
-              alt="Dua SiSi" 
-              className="h-8 w-8 object-contain"
-            />
-            <button
-              onClick={() => setIsCollapsed(false)}
-              className="hidden lg:flex text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition"
-              title="Perluas Sidebar"
-            >
-              <PanelLeftOpen className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100">
+        {/* Header Logo & Minimize / Close */}
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 min-h-[56px]">
+          {/* Logo Brand */}
+          <div className="flex items-center gap-2.5">
             <img 
               src="./assets/Asset 5.svg" 
               alt="Dua SiSi Laundry Express & Coin" 
-              className="h-9 w-auto object-contain max-w-[140px]"
+              className={`object-contain transition-all ${
+                isCollapsed ? 'lg:h-7 lg:w-7' : 'h-8 w-auto max-w-[140px]'
+              }`}
             />
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setIsCollapsed(true)}
-                className="hidden lg:flex text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition"
-                title="Kecilkan Sidebar"
-              >
-                <PanelLeftClose className="w-4 h-4" />
-              </button>
-              <button 
-                className="lg:hidden text-slate-400 hover:text-slate-600 p-1.5"
-                onClick={() => setIsSidebarOpen(false)}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
           </div>
-        )}
+
+          <div className="flex items-center gap-1">
+            {/* Desktop Collapse / Expand Toggle Button */}
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hidden lg:flex text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition"
+              title={isCollapsed ? 'Perluas Sidebar' : 'Kecilkan Sidebar'}
+            >
+              {isCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
+
+            {/* Mobile / Tablet Drawer Close Button */}
+            <button 
+              className="lg:hidden text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100"
+              onClick={() => setIsSidebarOpen(false)}
+              title="Tutup Menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
 
         {/* User Role Badge */}
-        <div className={`px-3.5 py-3 border-b border-slate-100 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+        <div className={`px-3.5 py-3 border-b border-slate-100 flex items-center ${
+          isCollapsed ? 'lg:justify-center' : 'gap-3'
+        }`}>
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs ${
             currentRole === 'MANAGER' ? 'bg-[#FF9500]' : 'bg-[#1E4648]'
           }`}>
             {currentRole === 'MANAGER' ? 'M' : 'S'}
           </div>
-          {!isCollapsed && (
-            <div className="min-w-0">
-              <div className="text-xs font-bold text-slate-800 truncate">
-                {currentRole === 'MANAGER' ? 'Manager Outlet' : 'Kasir / Staff'}
-              </div>
-              <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-                {currentRole === 'MANAGER' ? 'Owner / Manager' : 'Staff On Duty'}
-              </div>
+          
+          {/* Text is always visible in Mobile/Tablet Drawer, and hidden on desktop ONLY if isCollapsed */}
+          <div className={`min-w-0 ${isCollapsed ? 'lg:hidden' : 'block'}`}>
+            <div className="text-xs font-bold text-slate-800 truncate">
+              {currentRole === 'MANAGER' ? 'Manager Outlet' : 'Kasir / Staff'}
             </div>
-          )}
+            <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+              {currentRole === 'MANAGER' ? 'Owner / Manager' : 'Staff On Duty'}
+            </div>
+          </div>
         </div>
 
         {/* Grouped Navigation Menu */}
         <nav className="flex-1 px-3 py-3 space-y-4">
           {navGroups.map((group, gIdx) => {
-            // Filter items visible to the current role
             const visibleItems = group.items.filter(item => {
               if (item.managerOnly && currentRole !== 'MANAGER') return false;
               if (item.staffOnly && currentRole === 'MANAGER') return false;
@@ -233,12 +202,15 @@ export default function Sidebar({
 
             return (
               <div key={gIdx} className="space-y-1">
-                {!isCollapsed ? (
-                  <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2.5 pb-1">
-                    {group.groupName}
-                  </div>
-                ) : (
-                  <div className="w-full border-t border-slate-100 my-2" />
+                {/* Section Header */}
+                <div className={`text-[10px] font-extrabold text-slate-400 uppercase tracking-wider px-2.5 pb-1 ${
+                  isCollapsed ? 'lg:hidden' : 'block'
+                }`}>
+                  {group.groupName}
+                </div>
+
+                {isCollapsed && (
+                  <div className="hidden lg:block w-full border-t border-slate-100 my-2" />
                 )}
 
                 {visibleItems.map(item => {
@@ -249,24 +221,42 @@ export default function Sidebar({
                   return (
                     <button
                       key={item.id}
-                      className={navClass(item.id)}
                       onClick={() => handleNavClick(item.id)}
                       title={item.label}
+                      className={`w-full text-left flex items-center rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
+                        isCollapsed 
+                          ? 'lg:justify-center lg:px-2 lg:py-2 gap-2.5 px-3 py-2.5' 
+                          : 'gap-2.5 px-3 py-2.5'
+                      } ${
+                        isActive 
+                          ? 'bg-[#1E4648] text-white font-bold shadow-xs' 
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
                     >
                       <div className="relative shrink-0">
-                        <IconComp className={`w-4 h-4 transition-colors ${iconClass(item.id)}`} />
+                        <IconComp className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
                         {isCollapsed && count > 0 && (
-                          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
+                          <span className="hidden lg:block absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
                         )}
                       </div>
-                      {!isCollapsed && <span className="truncate">{item.label}</span>}
-                      {!isCollapsed && count > 0 && (
-                        <span className="ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-2xs animate-pulse shrink-0">
+
+                      {/* Label Text */}
+                      <span className={`truncate ${isCollapsed ? 'lg:hidden' : 'block'}`}>
+                        {item.label}
+                      </span>
+
+                      {/* Notification Count Badge */}
+                      {count > 0 && (
+                        <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-2xs animate-pulse shrink-0 ${
+                          isCollapsed ? 'lg:hidden' : 'block'
+                        }`}>
                           {count > 99 ? '99+' : count}
                         </span>
                       )}
-                      {!isCollapsed && isActive && count === 0 && (
-                        <ChevronRight className="w-3.5 h-3.5 ml-auto text-teal-200" />
+
+                      {/* Active Indicator Chevron */}
+                      {isActive && count === 0 && (
+                        <ChevronRight className={`w-3.5 h-3.5 ml-auto text-teal-200 ${isCollapsed ? 'lg:hidden' : 'block'}`} />
                       )}
                     </button>
                   );
@@ -281,10 +271,12 @@ export default function Sidebar({
           <button 
             onClick={onLogout}
             title="Keluar Sesi"
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2 py-2' : 'gap-2.5 px-3 py-2'} rounded-xl text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors`}
+            className={`w-full flex items-center rounded-xl text-xs font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors ${
+              isCollapsed ? 'lg:justify-center lg:px-2 lg:py-2 gap-2.5 px-3 py-2.5' : 'gap-2.5 px-3 py-2.5'
+            }`}
           >
             <LogOut className="w-4 h-4 shrink-0 text-rose-500" />
-            {!isCollapsed && <span>Keluar Sesi</span>}
+            <span className={isCollapsed ? 'lg:hidden' : 'block'}>Keluar Sesi</span>
           </button>
         </div>
       </aside>

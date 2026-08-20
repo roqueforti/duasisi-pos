@@ -202,24 +202,93 @@ function pelunasanDP(noNota, nominal, metode) {
 // ============================================================
 const SHEET_AUDIT = "AuditLog";
 
-function addAuditLog(namaUser, jenisAktivitas, referensi, detail) {
+function ensureAuditSchema_(sh) {
+  const HEADERS = ["ID Log", "Waktu", "Pengguna", "Aktivitas", "Referensi", "Detail", "Data Sebelum", "Data Sesudah"];
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(HEADERS);
+    return;
+  }
+  if (sh.getLastColumn() < HEADERS.length) {
+    sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+  }
+}
+
+function formatLogValue_(val) {
+  if (val === undefined || val === null || val === "") return "-";
+  if (typeof val === "object") {
+    try { return JSON.stringify(val); } catch(e) { return String(val); }
+  }
+  return String(val);
+}
+
+function addAuditLog(namaUser, jenisAktivitas, referensi, arg4, arg5, arg6) {
   let sh = SS.getSheetByName(SHEET_AUDIT);
   if (!sh) {
     sh = SS.insertSheet(SHEET_AUDIT);
-    sh.appendRow(["ID Log", "Waktu", "Pengguna", "Aktivitas", "Referensi", "Detail"]);
   }
+  ensureAuditSchema_(sh);
   const idLog = generateId("LOG");
-  const waktu = fmtWib(new Date());
-  sh.appendRow([idLog, waktu, namaUser || "System", jenisAktivitas || "Activity", referensi || "-", detail || "-"]);
+  const now = new Date();
+  const waktu = fmtWib(now, "yyyy-MM-dd HH:mm:ss");
+
+  let detail = "-";
+  let dataSebelum = "-";
+  let dataSesudah = "-";
+
+  // Signature check:
+  // (namaUser, jenisAktivitas, referensi, dataSebelum, dataSesudah, detail)
+  // vs legacy (namaUser, jenisAktivitas, referensi, detail)
+  if (arg5 !== undefined) {
+    dataSebelum = formatLogValue_(arg4);
+    dataSesudah = formatLogValue_(arg5);
+    detail = arg6 ? String(arg6) : `${jenisAktivitas} pada ${referensi}`;
+  } else if (arg4 !== undefined) {
+    detail = formatLogValue_(arg4);
+  }
+
+  sh.appendRow([
+    idLog, 
+    waktu, 
+    namaUser || "System", 
+    jenisAktivitas || "Activity", 
+    referensi || "-", 
+    detail, 
+    dataSebelum, 
+    dataSesudah
+  ]);
 }
 
-function getAuditLogs() {
+function getAuditLogs(limit) {
   let sh = SS.getSheetByName(SHEET_AUDIT);
-  if (!sh) return [];
-  const data = sh.getDataRange().getValues(); data.shift();
-  return data.map(r => ({
-    idLog: r[0], waktu: r[1], namaUser: r[2], jenisAktivitas: r[3], referensi: r[4], detail: r[5]
-  })).reverse();
+  if (!sh || sh.getLastRow() < 2) return [];
+  ensureAuditSchema_(sh);
+  const data = sh.getDataRange().getValues(); 
+  data.shift(); // remove header
+  
+  const maxRows = Number(limit) || 500;
+  const sliced = data.slice(-maxRows);
+
+  return sliced.map(function(r) {
+    return {
+      idLog: r[0],
+      waktu: r[1] ? (r[1] instanceof Date ? fmtWib(r[1], "yyyy-MM-dd HH:mm:ss") : String(r[1])) : "-",
+      namaUser: r[2] || "System",
+      jenisAktivitas: r[3] || "-",
+      referensi: r[4] || "-",
+      detail: r[5] || "-",
+      dataSebelum: r[6] || "-",
+      dataSesudah: r[7] || "-"
+    };
+  }).reverse();
+}
+
+function logClientActivity(namaUser, jenisAktivitas, referensi, dataSebelum, dataSesudah, detail) {
+  try {
+    addAuditLog(namaUser, jenisAktivitas, referensi, dataSebelum, dataSesudah, detail);
+    return { success: true };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
 }
 
 function ajukanVoidTransaksi(noNota, alasan, petugas) {

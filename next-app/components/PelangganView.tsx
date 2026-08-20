@@ -393,9 +393,9 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
         </div>
 
         {/* Main Content: 2-Column Responsive Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 sm:gap-5">
           {/* Left Column (5 Cols): Data Profil & Keanggotaan */}
-          <div className="lg:col-span-5 space-y-4">
+          <div className="md:col-span-5 space-y-4">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
               <h3 className="font-extrabold text-sm text-slate-800 border-b border-slate-100 pb-2.5 flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-[#1E4648]" />
@@ -516,7 +516,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
           </div>
 
           {/* Right Column (7 Cols): Riwayat Transaksi Lengkap */}
-          <div className="lg:col-span-7 space-y-4">
+          <div className="md:col-span-7 space-y-4">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                 <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">

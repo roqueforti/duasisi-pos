@@ -111,7 +111,8 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
     action === 'verifikasiPin' ||
     action === 'recoverPin' ||
     action === 'getTransaksiByNota' ||
-    action === 'cekPoinPelanggan';
+    action === 'cekPoinPelanggan' ||
+    action === 'logClientActivity';
   const sessionToken = isPublicAction ? null : getBackendSession();
 
   // Untuk action yang membutuhkan autentikasi: periksa apakah inaktif selama 30 menit

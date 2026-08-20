@@ -5,7 +5,7 @@ import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
-import { Clock, Edit2, Trash2, Plus, Save, X, Settings2 } from 'lucide-react';
+import { Clock, Edit2, Trash2, Plus, Save, X, Settings2, RefreshCw } from 'lucide-react';
 
 interface MasterShift {
   id: string;
@@ -154,24 +154,24 @@ export default function ShiftView({ currentRole }: { currentRole?: UserRole }) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 p-4 lg:p-6 overflow-y-auto space-y-6">
+    <div className="flex flex-col h-full bg-slate-50 p-3 sm:p-4 md:p-5 overflow-y-auto space-y-4">
       
       {/* Header */}
       <div>
-        <h1 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-          <Clock className="w-6 h-6 text-[#1E4648]" />
+        <h1 className="text-lg sm:text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+          <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-[#1E4648]" />
           Manajemen Shift & Absensi
         </h1>
-        <p className="text-sm text-slate-500 mt-1">Kelola jam kerja staf dan konfigurasi batas keterlambatan absensi.</p>
+        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Kelola jam kerja staf dan konfigurasi batas keterlambatan absensi.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-5">
         
         {/* Settings Box */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
-            <h3 className="font-bold text-slate-700 flex items-center gap-2 pb-2 border-b border-slate-100">
-              <Settings2 className="w-5 h-5 text-indigo-500" />
+        <div className="md:col-span-1">
+          <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-4 sm:p-5 space-y-3.5">
+            <h3 className="font-bold text-slate-700 flex items-center gap-2 pb-2 border-b border-slate-100 text-sm">
+              <Settings2 className="w-4 h-4 text-indigo-500" />
               Pengaturan Absensi
             </h3>
             
@@ -183,38 +183,42 @@ export default function ShiftView({ currentRole }: { currentRole?: UserRole }) {
                 onChange={e => setConfig({...config, jamBuka: e.target.value})}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#1E4648]"
               />
-              <p className="text-[10px] text-slate-400 mt-1">Acuan jam buka toko untuk laporan harian.</p>
             </div>
             
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1">Toleransi Keterlambatan (Menit)</label>
               <input
                 type="number"
+                min="0"
                 value={config.toleransiTelatMenit}
                 onChange={e => setConfig({...config, toleransiTelatMenit: Number(e.target.value)})}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#1E4648]"
               />
-              <p className="text-[10px] text-slate-400 mt-1">Batas waktu sebelum sistem melabeli absensi staf dengan <strong>[TERLAMBAT]</strong>.</p>
+              <p className="text-[10px] text-slate-400 mt-1">Batas telat sebelum sistem memberi penanda terlambat.</p>
             </div>
 
             <button
               onClick={handleSaveConfig}
               disabled={loading}
-              className="w-full mt-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold py-2 rounded-lg text-sm transition disabled:opacity-50"
+              className="w-full bg-[#1E4648] hover:bg-[#163536] text-white py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm"
             >
-              Simpan Pengaturan
+              {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <span>Simpan Pengaturan</span>
             </button>
           </div>
         </div>
 
-        {/* Master Shift Box */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="font-bold text-slate-700">Daftar Master Shift</h3>
+        {/* Master Shift List */}
+        <div className="md:col-span-2">
+          <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between gap-2">
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm">Daftar Master Shift</h3>
+                <p className="text-xs text-slate-500">Konfigurasi jam kerja yang tersedia untuk kasir & operator.</p>
+              </div>
               <button
                 onClick={handleOpenAdd}
-                className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-[#1E4648]/20"
+                className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-[#1E4648]/20 shrink-0"
               >
                 <Plus className="w-4 h-4" /> Tambah Shift
               </button>

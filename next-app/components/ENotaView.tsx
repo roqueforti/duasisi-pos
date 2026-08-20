@@ -78,6 +78,20 @@ export default function ENotaView({ noNota, token, last4Phone, initialData }: EN
     }
   }, [noNota, token, initialData, last4Phone]);
 
+  useEffect(() => {
+    if (tx?.noNota) {
+      runBackend(
+        'logClientActivity', 
+        `Pelanggan: ${tx.namaPelanggan || 'Publik'}`, 
+        'Buka E-Nota Digital', 
+        tx.noNota, 
+        '-', 
+        `Status: ${tx.status} (Total: Rp ${(tx.total || 0).toLocaleString('id-ID')})`, 
+        `Pelanggan membuka struk resmi e-nota digital di browser untuk nota ${tx.noNota}`
+      ).catch(() => {});
+    }
+  }, [tx?.noNota]);
+
   const handleManualVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = inputLast4.replace(/\D/g, '');

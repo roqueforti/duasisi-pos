@@ -278,27 +278,41 @@ function listShiftExpensesFiles() {
  */
 function uploadExpensePhoto(fileName, fileData, mimeType, shiftId) {
   try {
-    if (!fileName || !fileData || !shiftId) {
-      return { success: false, message: 'Parameter fileName, fileData, dan shiftId wajib diisi' };
+    let name = fileName;
+    let data = fileData;
+    let mime = mimeType || 'image/jpeg';
+    let sId = shiftId;
+
+    // Handle single object parameter
+    if (typeof fileName === 'object' && fileName !== null) {
+      name = fileName.fileName || fileName.name;
+      data = fileName.fileData || fileName.data || fileName.base64;
+      mime = fileName.mimeType || fileName.type || 'image/jpeg';
+      sId = fileName.shiftId || fileName.idShift;
     }
+
+    if (!name || !data) {
+      return { success: false, message: 'Parameter fileName dan fileData wajib diisi' };
+    }
+    sId = sId || 'General';
 
     // Decode base64
     let decodedData;
     try {
-      if (typeof fileData === 'string' && fileData.indexOf(',') !== -1) {
+      if (typeof data === 'string' && data.indexOf(',') !== -1) {
         // Strip data:image/png;base64, prefix if present
-        const base64String = fileData.split(',')[1] || fileData;
+        const base64String = data.split(',')[1] || data;
         decodedData = Utilities.base64Decode(base64String);
       } else {
-        decodedData = Utilities.base64Decode(String(fileData));
+        decodedData = Utilities.base64Decode(String(data));
       }
     } catch (decodeErr) {
       return { success: false, message: 'Error decode base64: ' + decodeErr.message };
     }
 
     // Sanitize filename
-    const cleanFileName = String(fileName || 'expense_' + Date.now()).replace(/[^\w\s\-\.]/g, '_').substring(0, 100);
-    const extension = mimeType && mimeType.indexOf('png') !== -1 ? '.png' : mimeType && mimeType.indexOf('jpg') !== -1 ? '.jpg' : '.jpg';
+    const cleanFileName = String(name || 'expense_' + Date.now()).replace(/[^\w\s\-\.]/g, '_').substring(0, 100);
+    const extension = mime && mime.indexOf('png') !== -1 ? '.png' : '.jpg';
     const finalFileName = cleanFileName.indexOf('.') === -1 ? cleanFileName + extension : cleanFileName;
 
     // Get or create Shift Expenses folder
@@ -316,17 +330,23 @@ function uploadExpensePhoto(fileName, fileData, mimeType, shiftId) {
     targetFolder = expensesFolder;
 
     // Find or create shift-specific subfolder
-    const shiftFolders = expensesFolder.getFoldersByName(String(shiftId || 'Unknown'));
-    if (shiftFolders.hasNext()) {
-      targetFolder = shiftFolders.next();
-    } else {
-      targetFolder = expensesFolder.createFolder(String(shiftId || 'Unknown'));
+    if (sId) {
+      const shiftFolders = expensesFolder.getFoldersByName(String(sId));
+      if (shiftFolders.hasNext()) {
+        targetFolder = shiftFolders.next();
+      } else {
+        targetFolder = expensesFolder.createFolder(String(sId));
+      }
     }
 
     // Upload file
-    const blob = Utilities.newBlob(decodedData, mimeType || 'image/jpeg', finalFileName);
+    const blob = Utilities.newBlob(decodedData, mime || 'image/jpeg', finalFileName);
     const uploadedFile = targetFolder.createFile(blob);
-    uploadedFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW); // Optional: share publicly
+    try {
+      uploadedFile.setSharing(DriveApp.Access.ANYONE, DriveApp.Permission.VIEW); // Optional: share publicly
+    } catch (shareErr) {
+      // Safe fallback if domain policies restrict external sharing
+    }
 
     return {
       success: true,
@@ -336,7 +356,7 @@ function uploadExpensePhoto(fileName, fileData, mimeType, shiftId) {
       downloadUrl: uploadedFile.getDownloadUrl(),
       mimeType: uploadedFile.getMimeType(),
       createdTime: new Date().toISOString(),
-      shiftId: String(shiftId),
+      shiftId: String(sId),
       size: uploadedFile.getSize()
     };
   } catch (error) {
@@ -459,10 +479,22 @@ function getRekapKasShift() {
   if (!sh || sh.getLastRow() < 2) return [];
   const rows = sh.getDataRange().getValues(); rows.shift();
   return rows.map(function(r) {
+    const rawPhotos = String(r[19] || "").trim();
+    const photoUrls = rawPhotos ? rawPhotos.split(" | ").map(function(url) { return url.trim(); }).filter(Boolean) : [];
+    
+    // Parse catatan & belanja
+    const catatan = String(r[15] || "");
+    let rincianBelanja = "";
+    if (catatan.includes("BELANJA BARANG: ")) {
+      const parts = catatan.split("BELANJA BARANG: ");
+      rincianBelanja = parts[1] || "";
+    }
+
     return {
       idShift: r[0],
       idOutlet: r[1],
       namaKasir: r[2],
+      idUser: r[3] || "",
       waktuBuka: fmtWib(r[4]),
       waktuTutup: r[5] ? fmtWib(r[5]) : "",
       kasAwal: Number(r[6]) || 0,
@@ -470,7 +502,16 @@ function getRekapKasShift() {
       kasAkhirFisik: Number(r[8]) || 0,
       selisihKas: Number(r[9]) || 0,
       status: r[10],
-      modeTutup: r[11] || ""
+      modeTutup: r[11] || "",
+      idPengganti: r[12] || "",
+      namaPengganti: r[13] || "",
+      waktuHandover: r[14] ? fmtWib(r[14]) : "",
+      catatan: catatan,
+      rincianBelanja: rincianBelanja,
+      saldoMerchantAwal: Number(r[16]) || 0,
+      saldoMerchantAkhir: Number(r[17]) || 0,
+      totalBelanja: Number(r[18]) || 0,
+      fotoNota: photoUrls
     };
   }).reverse();
 }

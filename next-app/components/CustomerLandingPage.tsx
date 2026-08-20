@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   ArrowRight,
@@ -122,6 +122,28 @@ export default function CustomerLandingPage() {
   const [foundPoin, setFoundPoin] = useState<PelangganPoinData | null>(null);
   const [viewFullNota, setViewFullNota] = useState<string | null>(null);
 
+  // 1. Log Activity: Visit Landing Page (Throttled per session)
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const hasLogged = sessionStorage.getItem('duasisi_visited_landing');
+        if (!hasLogged) {
+          sessionStorage.setItem('duasisi_visited_landing', 'true');
+          const devType = window.innerWidth < 768 ? 'Smartphone (Mobile Web)' : 'Desktop / Tablet Web';
+          runBackend(
+            'logClientActivity', 
+            'Pengunjung Web', 
+            'Kunjungan Landing Page', 
+            'Beranda Publik', 
+            '-', 
+            devType, 
+            `Pengunjung mengakses landing page Dua SiSi Laundry via ${devType}`
+          ).catch(() => {});
+        }
+      }
+    } catch (e) {}
+  }, []);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -155,8 +177,28 @@ export default function CustomerLandingPage() {
 
         if (res?.success && res.transaksi) {
           setFoundTx(res.transaksi);
+          // Log Activity: Cek Status Cucian Berhasil
+          runBackend(
+            'logClientActivity', 
+            `Pelanggan: ${res.transaksi.namaPelanggan}`, 
+            'Cek Status Cucian', 
+            nota, 
+            '-', 
+            `Status: ${res.transaksi.status} (${res.transaksi.tipe || 'Drop Off'})`, 
+            `Pelanggan ${res.transaksi.namaPelanggan} mengecek progress cucian nota ${nota} via website publik`
+          ).catch(() => {});
         } else {
           setErrorMsg(res?.message || `Nota "${nota}" tidak cocok dengan 4 digit nomor HP yang dimasukkan.`);
+          // Log Activity: Cek Status Cucian Gagal
+          runBackend(
+            'logClientActivity', 
+            'Pengunjung Web', 
+            'Cek Status Cucian', 
+            nota, 
+            '-', 
+            `Verifikasi Gagal (4 Digit: ${clean4})`, 
+            `Pencarian status nota ${nota} tidak ditemukan / verifikasi 4 digit gagal`
+          ).catch(() => {});
         }
       } else {
         // Cek Poin by Phone
@@ -174,8 +216,28 @@ export default function CustomerLandingPage() {
 
         if (res?.success && res.pelanggan) {
           setFoundPoin(res.pelanggan);
+          // Log Activity: Cek Poin Member Berhasil
+          runBackend(
+            'logClientActivity', 
+            `Pelanggan: ${res.pelanggan.maskedNama || 'Pelanggan'}`, 
+            'Cek Poin Member', 
+            phone, 
+            '-', 
+            `Saldo: ${res.pelanggan.saldoPoin} Poin (${res.pelanggan.statusMember})`, 
+            `Pelanggan ${res.pelanggan.maskedNama || 'Pelanggan'} mengecek saldo poin loyalty reward di website publik`
+          ).catch(() => {});
         } else {
           setErrorMsg(res?.message || `Nomor "${phone}" belum terdaftar sebagai pelanggan di Dua SiSi Laundry.`);
+          // Log Activity: Cek Poin Belum Terdaftar
+          runBackend(
+            'logClientActivity', 
+            'Pengunjung Web', 
+            'Cek Poin Member', 
+            phone, 
+            '-', 
+            'Nomor Belum Terdaftar', 
+            `Pengecekan poin untuk nomor WhatsApp ${phone} belum terdaftar`
+          ).catch(() => {});
         }
       }
     } catch (err: any) {

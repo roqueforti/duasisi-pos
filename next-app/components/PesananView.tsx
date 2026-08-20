@@ -163,6 +163,17 @@ export default function PesananView() {
     }
     setWaReminders(prev => ({ ...prev, [order.noNota]: nowStr }));
 
+    // Log Activity to Audit Trail
+    runBackend(
+      'logClientActivity', 
+      order.petugas || 'Staff', 
+      'Kirim Reminder WA', 
+      order.noNota, 
+      '-', 
+      `No WhatsApp: ${rawPhone}, Status: ${order.status}`, 
+      `Kirim notifikasi pesan reminder cucian selesai ke ${order.namaPelanggan} (${order.noNota})`
+    ).catch(() => {});
+
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -561,7 +572,7 @@ export default function PesananView() {
       ) : filteredOrders.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-16 text-center text-xs text-slate-500"><CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" />Tidak ada pesanan aktif pada filter ini.</div>
       ) : view === 'list' ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">{filteredOrders.map(renderCard)}</div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">{filteredOrders.map(renderCard)}</div>
       ) : (
         <div className="flex snap-x gap-3 overflow-x-auto pb-3">
           {kanbanColumns.map((status) => {

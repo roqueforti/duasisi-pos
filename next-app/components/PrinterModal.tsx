@@ -161,6 +161,18 @@ export default function PrinterModal({
       setSuccessMsg(selectedPrintType === 'label'
         ? 'Label tag cucian berhasil dicetak!'
         : 'Struk transaksi berhasil dicetak!');
+      
+      // Log Activity to Audit Trail
+      runBackend(
+        'logClientActivity', 
+        activeTx.petugas || 'Kasir', 
+        selectedPrintType === 'label' ? 'Cetak Label' : 'Cetak Struk', 
+        activeTx.noNota, 
+        '-', 
+        `Mode: Thermal ESC/POS (${paperWidth})`, 
+        `Cetak ${selectedPrintType === 'label' ? 'label pakaian' : 'struk pembayaran'} nota ${activeTx.noNota} (${activeTx.namaPelanggan})`
+      ).catch(() => {});
+
       onPrintSuccess?.();
       setTimeout(onClose, 1200);
     } catch (err: any) {
@@ -175,6 +187,17 @@ export default function PrinterModal({
   };
 
   const handleBrowserPrint = () => {
+    if (activeTx) {
+      runBackend(
+        'logClientActivity', 
+        activeTx.petugas || 'Kasir', 
+        'Cetak Struk', 
+        activeTx.noNota, 
+        '-', 
+        `Mode: Browser Print (${paperWidth})`, 
+        `Cetak browser struk nota ${activeTx.noNota} (${activeTx.namaPelanggan})`
+      ).catch(() => {});
+    }
     window.print();
   };
 
@@ -207,6 +230,16 @@ export default function PrinterModal({
       `_Simpan pesan ini sebagai bukti pengambilan cucian._`,
       `_Terima kasih atas kepercayaan Anda di Dua SiSi Laundry!_`
     ].filter(Boolean).join('\n');
+
+    runBackend(
+      'logClientActivity', 
+      activeTx.petugas || 'Kasir', 
+      'Kirim Struk WA', 
+      activeTx.noNota, 
+      '-', 
+      `No WhatsApp: ${rawPhone || '-'}`, 
+      `Kirim struk digital WhatsApp untuk nota ${activeTx.noNota} ke ${activeTx.namaPelanggan}`
+    ).catch(() => {});
 
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };

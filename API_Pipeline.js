@@ -333,8 +333,17 @@ function updateDropoffStatus(data) {
       Logger.log("Gagal potong stok tahap " + statusBaru + ": " + errDeduct);
     }
 
+    const statusLama = String(txRows[txIndex][5] || "Diterima");
     shT.getRange(txIndex + 1, 6).setValue(statusBaru);
-    addAuditLog(data.userName || data.assignedStaff || "Staff", "Update Drop-off", noNota, txRows[txIndex][5] + " -> " + statusBaru + (machineId ? "; mesin " + machineId : ""));
+    
+    addAuditLog(
+      data.userName || data.assignedStaff || "Staff", 
+      "Update Pipeline", 
+      noNota, 
+      `Status: ${statusLama}`, 
+      `Status: ${statusBaru}${machineId ? ` (Mesin: ${machineId})` : ''}`, 
+      `Perubahan status pengerjaan cucian drop-off ${noNota}`
+    );
     SpreadsheetApp.flush();
     return { success: true, noNota: noNota, previousStatus: txRows[txIndex][5], status: statusBaru, machineId: machineId || "", message: "Status order diperbarui menjadi " + statusBaru + "." };
   } finally {

@@ -74,7 +74,9 @@ function simpanPelangganJikaBaru(nama, noHp, alamat, totalBelanja, catatan) {
   } else {
     // Insert new regular customer record (Status: UMUM, Poin: 0)
     // ["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member"]
-    shP.appendRow([cleanHp, nama ? nama.trim() : "Pelanggan Umum", alamat || "", now, 1, spend, now, catatan || "", 0, "UMUM"]);
+    const custName = nama ? nama.trim() : "Pelanggan Umum";
+    shP.appendRow([cleanHp, custName, alamat || "", now, 1, spend, now, catatan || "", 0, "UMUM"]);
+    addAuditLog("Kasir", "Tambah Pelanggan", cleanHp, "-", `Nama: ${custName}, HP: ${cleanHp}, Alamat: ${alamat || '-'}`, `Registrasi otomatis pelanggan baru dari transaksi`);
   }
 }
 
@@ -213,15 +215,34 @@ function daftarMember(data) {
 
   const now = new Date();
   if (foundRow > 0) {
+    const oldRow = pData[foundRow - 1];
+    const dataSebelum = `Status: ${oldRow[9] || 'UMUM'}, Nama: ${oldRow[1]}, Alamat: ${oldRow[2] || '-'}`;
+    const dataSesudah = `Status: MEMBER, Nama: ${nama || oldRow[1]}, Alamat: ${alamat || oldRow[2] || '-'}, TTL: ${tglLahir || '-'}`;
+    
     if (nama) shP.getRange(foundRow, 2).setValue(nama);
     if (alamat) shP.getRange(foundRow, 3).setValue(alamat);
     if (tglLahir) shP.getRange(foundRow, 11).setValue(tglLahir);
     if (data.catatan) shP.getRange(foundRow, 8).setValue(data.catatan.trim());
     shP.getRange(foundRow, 10).setValue("MEMBER");
-    addAuditLog("Kasir", "Daftar Member", hp, "Upgrade ke Member: " + (nama || pData[foundRow - 1][1]));
+    
+    addAuditLog(
+      data.petugas || "Kasir", 
+      "Upgrade Member", 
+      hp, 
+      dataSebelum, 
+      dataSesudah, 
+      `Upgrade status pelanggan ${nama || oldRow[1]} menjadi Member VIP`
+    );
   } else {
     shP.appendRow([hp, nama, alamat, now, 0, 0, now, data.catatan || "", 0, "MEMBER", tglLahir]);
-    addAuditLog("Kasir", "Daftar Member", hp, "Pendaftaran Member Baru: " + nama);
+    addAuditLog(
+      data.petugas || "Kasir", 
+      "Daftar Member Baru", 
+      hp, 
+      "-", 
+      `Status: MEMBER, Nama: ${nama}, HP: ${hp}, Alamat: ${alamat || '-'}, TTL: ${tglLahir || '-'}`, 
+      `Pendaftaran member baru ${nama}`
+    );
   }
 
   return { success: true, message: `Member ${nama} berhasil didaftarkan!` };
@@ -296,7 +317,11 @@ function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan, statusMember, 
     }
   }
 
-  addAuditLog("Manager", "Update Pelanggan", cleanNew, "Edit data pelanggan " + (nama || cleanNew));
+  const oldRow = rows[targetRowIdx - 1];
+  const dataSebelum = `Nama: ${oldRow[1]}, HP: ${oldRow[0]}, Alamat: ${oldRow[2] || '-'}, Member: ${oldRow[9] || 'UMUM'}`;
+  const dataSesudah = `Nama: ${nama || oldRow[1]}, HP: ${cleanNew}, Alamat: ${alamat || oldRow[2] || '-'}, Member: ${statusMember ? "MEMBER" : "UMUM"}`;
+  
+  addAuditLog("Manager", "Update Pelanggan", cleanNew, dataSebelum, dataSesudah, `Edit data pelanggan ${nama || oldRow[1]}`);
   return { success: true, message: "Data pelanggan berhasil diperbarui!" };
 }
 
@@ -353,7 +378,14 @@ function tambahPelanggan(data) {
     tglLahir
   ]);
 
-  addAuditLog(data.petugas || "Staff", "Tambah Pelanggan", cleanHp, "Pendaftaran manual: " + nama + (isMember ? " (Member)" : " (Umum)"));
+  addAuditLog(
+    data.petugas || "Staff", 
+    isMember ? "Daftar Member" : "Tambah Pelanggan", 
+    cleanHp, 
+    "-", 
+    `Status: ${isMember ? "MEMBER" : "UMUM"}, Nama: ${nama}, HP: ${cleanHp}, Alamat: ${alamat || '-'}, TTL: ${tglLahir || '-'}`, 
+    `Pendaftaran manual ${isMember ? "Member" : "Pelanggan"} ${nama}`
+  );
   return { 
     success: true, 
     message: (isMember ? "Member " : "Pelanggan ") + nama + " berhasil ditambahkan!",
