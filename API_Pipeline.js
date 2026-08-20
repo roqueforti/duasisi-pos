@@ -452,7 +452,10 @@ function getTransaksiByNota(noNota, token, last4Phone) {
 
   const all = getTransaksiList();
   const found = all.find(function(t) { return t.noNota === resolvedNota; });
-  if (!found) return { success: false, message: 'Nota ' + resolvedNota + ' tidak ditemukan di sistem.' };
+  if (!found) {
+    addAuditLog("Pengunjung Web", "Cek Status Cucian", resolvedNota, "-", "Nota Tidak Ditemukan", "Pencarian nota " + resolvedNota + " tidak ditemukan di sistem");
+    return { success: false, message: 'Nota ' + resolvedNota + ' tidak ditemukan di sistem.' };
+  }
 
   // Proteksi 2-Faktor untuk pencarian manual publik tanpa token kriptografi resmi
   if (!token) {
@@ -465,12 +468,23 @@ function getTransaksiByNota(noNota, token, last4Phone) {
     }
     var normPhone = normalizePhone(found.noHp || '');
     if (!normPhone || !normPhone.endsWith(clean4)) {
+      addAuditLog("Pengunjung Web", "Cek Status Cucian", resolvedNota, "-", "Verifikasi 4-Digit Gagal (" + clean4 + ")", "Pelacakan nota " + resolvedNota + " gagal (4 digit HP tidak cocok)");
       return {
         success: false,
         message: 'Verifikasi gagal: 4 digit nomor HP tidak cocok dengan pemilik nota ini.'
       };
     }
   }
+
+  // Direct backend audit log for public tracking
+  addAuditLog(
+    "Pelanggan: " + found.namaPelanggan, 
+    "Cek Status Cucian", 
+    resolvedNota, 
+    "-", 
+    "Status: " + found.status + " (" + (found.tipe || "Drop Off") + ")", 
+    "Pelanggan " + found.namaPelanggan + " mengecek status cucian nota " + resolvedNota + " di website publik"
+  );
 
   return { success: true, transaksi: found };
 }

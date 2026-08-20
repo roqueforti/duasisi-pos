@@ -513,6 +513,15 @@ function cekPoinPelanggan(phone) {
         }
       } catch (e) {}
 
+      addAuditLog(
+        "Pelanggan: " + nama, 
+        "Cek Poin Member", 
+        hp, 
+        "-", 
+        "Saldo: " + saldoPoin + " Poin (" + (isMember ? "MEMBER VIP" : "PELANGGAN REGULER") + ")", 
+        "Pelanggan " + nama + " mengecek saldo poin loyalty di web publik"
+      );
+
       return {
         success: true,
         pelanggan: {
@@ -528,6 +537,7 @@ function cekPoinPelanggan(phone) {
     }
   }
 
+  addAuditLog("Pengunjung Web", "Cek Poin Member", norm, "-", "Nomor Belum Terdaftar", "Pengecekan poin WhatsApp " + norm + " tidak ditemukan di sistem");
   return { success: false, message: "Nomor WhatsApp belum terdaftar sebagai pelanggan di Dua SiSi Laundry." };
 }
 

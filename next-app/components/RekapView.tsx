@@ -83,6 +83,9 @@ export default function RekapView() {
   const [selectedShiftDetail, setSelectedShiftDetail] = useState<RekapKasShiftItem | null>(null);
   const [previewModalPhoto, setPreviewModalPhoto] = useState<string | null>(null);
 
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [kasShiftLoading, setKasShiftLoading] = useState(false);
+
   const loadLaporan = async () => {
     setLoading(true);
     try {
@@ -101,17 +104,25 @@ export default function RekapView() {
   };
 
   const loadAuditLogs = async () => {
+    setAuditLoading(true);
     try {
       const logs = await runBackend<AuditLog[]>('getAuditLogs', 500);
       if (Array.isArray(logs)) setAuditLogs(logs);
-    } catch (e) {}
+    } catch (e) {
+    } finally {
+      setAuditLoading(false);
+    }
   };
 
   const loadKasShift = async () => {
+    setKasShiftLoading(true);
     try {
       const kasList = await runBackend<RekapKasShiftItem[]>('getRekapKasShift');
       if (Array.isArray(kasList)) setKasShiftList(kasList);
-    } catch (e) {}
+    } catch (e) {
+    } finally {
+      setKasShiftLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -119,6 +130,14 @@ export default function RekapView() {
     loadAuditLogs();
     loadKasShift();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'AuditTrail') {
+      loadAuditLogs();
+    } else if (activeTab === 'KasShift') {
+      loadKasShift();
+    }
+  }, [activeTab]);
 
   const handleApproveVoid = async (noNota: string, isApproved: boolean) => {
     const actionStr = isApproved ? 'menyetujui' : 'menolak';
@@ -518,15 +537,27 @@ export default function RekapView() {
                 <p className="text-xs text-slate-500">Mencatat seluruh mutasi data, pelaku, waktu presisi, serta komparasi data sebelum dan sesudahnya.</p>
               </div>
 
-              <div className="relative w-full sm:w-72">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={auditSearchTerm}
-                  onChange={(e) => setAuditSearchTerm(e.target.value)}
-                  placeholder="Cari aktivitas, user, referensi..."
-                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648] focus:bg-white transition"
-                />
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-72">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={auditSearchTerm}
+                    onChange={(e) => setAuditSearchTerm(e.target.value)}
+                    placeholder="Cari aktivitas, user, referensi..."
+                    className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648] focus:bg-white transition"
+                  />
+                </div>
+
+                <button
+                  onClick={loadAuditLogs}
+                  disabled={auditLoading}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-[#1E4648] hover:text-white text-slate-700 font-bold rounded-lg text-xs transition flex items-center gap-1.5 shrink-0 border border-slate-200"
+                  title="Muat Ulang Log Aktivitas"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${auditLoading ? 'animate-spin text-[#1E4648]' : ''}`} />
+                  <span className="hidden sm:inline">{auditLoading ? 'Memuat...' : 'Refresh'}</span>
+                </button>
               </div>
             </div>
 
