@@ -20,12 +20,17 @@ import {
   Lock,
   Unlock,
   ChevronRight,
-  Info
+  Info,
+  Send,
+  Copy,
+  Check,
+  Share2
 } from 'lucide-react';
 
 import { runBackend } from '@/lib/api';
 import { useDialog } from '@/components/DialogProvider';
 import { UserRole } from '@/lib/types';
+
 
 export interface ShiftKasir {
   idShift: string;
@@ -185,6 +190,76 @@ export default function ShiftSayaView({
   const [closingCatatan, setClosingCatatan] = useState<string>('');
   const [handoverVerified, setHandoverVerified] = useState<boolean>(false);
   const [handoverMessage, setHandoverMessage] = useState<string>('');
+
+  // WHATSAPP REPORT STATES
+  const [showWaReportModal, setShowWaReportModal] = useState<boolean>(false);
+  const [waReportText, setWaReportText] = useState<string>('');
+  const [copiedReport, setCopiedReport] = useState<boolean>(false);
+
+  // Helper format WhatsApp Shift Report Message
+  const formatShiftReportMsg = (data: {
+    idShift: string;
+    namaKasir: string;
+    namaPengganti?: string;
+    waktuBuka: string;
+    waktuTutup: string;
+    mode: 'SERAH_TERIMA' | 'TUTUP_HARIAN';
+    kasAwal: number;
+    omzetTunai: number;
+    omzetMerchant: number;
+    saldoMerchantAwal: number;
+    saldoMerchantAkhir: number;
+    totalBelanja: number;
+    expensesList?: ExpenseItem[];
+    kasAkhirFisik: number;
+    selisihKas: number;
+    selisihMerchant: number;
+    catatan?: string;
+  }) => {
+    const isHandover = data.mode === 'SERAH_TERIMA';
+    const selisihKasText = data.selisihKas === 0 ? 'Rp 0 (SESUAI ✅)' : data.selisihKas > 0 ? `+Rp ${data.selisihKas.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(data.selisihKas).toLocaleString('id-ID')} (KURANG ⚠️)`;
+    const selisihMerchText = data.selisihMerchant === 0 ? 'Rp 0 (SESUAI ✅)' : data.selisihMerchant > 0 ? `+Rp ${data.selisihMerchant.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(data.selisihMerchant).toLocaleString('id-ID')} (KURANG ⚠️)`;
+
+    const expenseLines = (data.expensesList && data.expensesList.length > 0)
+      ? data.expensesList.map((e, idx) => `  ${idx + 1}. ${e.nama}: Rp ${(e.nominal || 0).toLocaleString('id-ID')}`).join('\n')
+      : (data.totalBelanja > 0 ? `  • Total Pengeluaran: Rp ${data.totalBelanja.toLocaleString('id-ID')}` : '  - Tidak ada pengeluaran belanja');
+
+    return `📊 *LAPORAN PENUTUPAN KAS SHIFT*
+*DUA SISI LAUNDRY EXPRESS & COIN*
+══════════════════════
+📅 *Waktu*: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+🔖 *Shift ID*: #${data.idShift}
+🏢 *Outlet*: OUTLET UTAMA
+🔄 *Mode*: ${isHandover ? 'SERAH TERIMA SHIFT (HANDOVER)' : 'TUTUP HARIAN (CLOSING OUTLET)'}
+👤 *Kasir Bertugas*: ${data.namaKasir}
+${isHandover && data.namaPengganti ? `➡️ *Kasir Pengganti*: ${data.namaPengganti}\n` : ''}⏱️ *Jam Kerja*: ${data.waktuBuka} - ${data.waktuTutup}
+
+💵 *REKONSILIASI KAS LACI (TUNAI)*
+• Modal Awal Laci : Rp ${(data.kasAwal || 0).toLocaleString('id-ID')}
+• Pemasukan POS   : + Rp ${(data.omzetTunai || 0).toLocaleString('id-ID')}
+• Total Belanja   : - Rp ${(data.totalBelanja || 0).toLocaleString('id-ID')}
+──────────────────────
+• *Ekspektasi Kas*: Rp ${((data.kasAwal || 0) + (data.omzetTunai || 0) - (data.totalBelanja || 0)).toLocaleString('id-ID')}
+• *Fisik Kas Laci*: Rp ${(data.kasAkhirFisik || 0).toLocaleString('id-ID')}
+• *Selisih Fisik* : *${selisihKasText}*
+
+💳 *REKONSILIASI MERCHANT (QRIS/EDC)*
+• Saldo Awal      : Rp ${(data.saldoMerchantAwal || 0).toLocaleString('id-ID')}
+• Pemasukan QRIS  : + Rp ${(data.omzetMerchant || 0).toLocaleString('id-ID')}
+──────────────────────
+• *Ekspektasi Saldo*: Rp ${((data.saldoMerchantAwal || 0) + (data.omzetMerchant || 0)).toLocaleString('id-ID')}
+• *Saldo Akhir*   : Rp ${(data.saldoMerchantAkhir || 0).toLocaleString('id-ID')}
+• *Selisih Saldo* : *${selisihMerchText}*
+
+🛒 *RINCIAN PENGELUARAN BELANJA SHIFT*:
+${expenseLines}
+
+📝 *Catatan / Kondisi*:
+"${data.catatan || 'Operasional berjalan lancar.'}"
+══════════════════════
+_Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
+  };
+
 
   // 1. Fetch Main Shift Data & Inventory
   const loadShiftData = useCallback(async () => {
@@ -574,6 +649,31 @@ export default function ShiftSayaView({
       const res = await runBackend<any>('closeKasShift', payload);
       if (!res?.success) throw new Error(res?.message || 'Gagal menutup kas shift.');
 
+      const currentExpenses = [...expenseList];
+      const selKas = (res.selisihKas !== undefined) ? res.selisihKas : (kasFisik - ((shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran));
+      const selMerch = (res.selisihMerchant !== undefined) ? res.selisihMerchant : (saldoMerchantAkhir - ((shiftAktif.saldoMerchantAwal || 0) + (shiftAktif.totalOmzetMerchant || 0)));
+      const waktuTutupStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+
+      const msg = formatShiftReportMsg({
+        idShift: shiftAktif.idShift,
+        namaKasir: shiftAktif.namaKasir,
+        namaPengganti: payload.replacementName,
+        waktuBuka: new Date(shiftAktif.waktuBuka).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
+        waktuTutup: waktuTutupStr,
+        mode: closeMode,
+        kasAwal: shiftAktif.kasAwal || 0,
+        omzetTunai: shiftAktif.totalOmzetTunai || 0,
+        omzetMerchant: shiftAktif.totalOmzetMerchant || 0,
+        saldoMerchantAwal: shiftAktif.saldoMerchantAwal || 0,
+        saldoMerchantAkhir: saldoMerchantAkhir,
+        totalBelanja: totalPengeluaran,
+        expensesList: currentExpenses,
+        kasAkhirFisik: kasFisik,
+        selisihKas: selKas,
+        selisihMerchant: selMerch,
+        catatan: closingCatatan.trim()
+      });
+
       setShowClosingModal(false);
       setExpenseList([]);
       setKasAkhirFisikInput('');
@@ -581,17 +681,9 @@ export default function ShiftSayaView({
       setHandoverVerified(false);
       setReplacementStaffId('');
 
-      if (closeMode === 'SERAH_TERIMA') {
-        await showAlert(
-          `✅ Serah Terima Shift Selesai!\nShift #${shiftAktif.idShift} telah ditutup dan diserahkan kepada ${payload.replacementName}.\nSelisih Kas: Rp ${(res.selisihKas || 0).toLocaleString('id-ID')}`,
-          'success'
-        );
-      } else {
-        await showAlert(
-          `✅ Closing Outlet Harian Selesai!\nTotal Omzet Tunai: Rp ${(shiftAktif.totalOmzetTunai || 0).toLocaleString('id-ID')}\nTotal Pengeluaran: Rp ${totalPengeluaran.toLocaleString('id-ID')}\nKas Akhir Fisik: Rp ${kasFisik.toLocaleString('id-ID')}`,
-          'success'
-        );
-      }
+      // Open WhatsApp Report Modal directly
+      setWaReportText(msg);
+      setShowWaReportModal(true);
 
       loadShiftData();
     } catch (err: any) {
@@ -602,6 +694,35 @@ export default function ShiftSayaView({
       setStatusText('');
     }
   };
+
+  const handleShareHistoricalReport = (item: RekapShiftItem) => {
+    const isHandover = item.modeTutup === 'SERAH_TERIMA';
+    const selKas = item.selisihKas !== undefined ? item.selisihKas : 0;
+    const selisihKasText = selKas === 0 ? 'Rp 0 (SESUAI ✅)' : selKas > 0 ? `+Rp ${selKas.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(selKas).toLocaleString('id-ID')} (KURANG ⚠️)`;
+
+    const msg = `📊 *LAPORAN REKAP KAS SHIFT*
+*DUA SISI LAUNDRY EXPRESS & COIN*
+══════════════════════
+🔖 *Shift ID*: #${item.idShift}
+🏢 *Outlet*: ${item.idOutlet || 'OUTLET UTAMA'}
+🔄 *Mode*: ${isHandover ? 'SERAH TERIMA SHIFT (HANDOVER)' : 'TUTUP HARIAN (CLOSING OUTLET)'}
+👤 *Kasir Bertugas*: ${item.namaKasir}
+${isHandover && item.namaPengganti ? `➡️ *Kasir Pengganti*: ${item.namaPengganti}\n` : ''}⏱️ *Waktu*: ${item.waktuBuka} - ${item.waktuTutup || 'Ditutup'}
+
+💵 *REKONSILIASI KAS LACI (TUNAI)*
+• Modal Awal Laci : Rp ${(item.kasAwal || 0).toLocaleString('id-ID')}
+• Pemasukan POS   : + Rp ${(item.omzetTunai || 0).toLocaleString('id-ID')}
+• Pengeluaran     : - Rp ${(item.totalBelanja || 0).toLocaleString('id-ID')}
+• *Fisik Kas Laci*: Rp ${(item.kasAkhirFisik || 0).toLocaleString('id-ID')}
+• *Selisih Fisik* : *${selisihKasText}*
+
+${item.catatan ? `📝 *Catatan*: "${item.catatan}"\n` : ''}══════════════════════
+_Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
+
+    setWaReportText(msg);
+    setShowWaReportModal(true);
+  };
+
 
   // QUICK CLOCK IN FROM OPENING SHIFT
   const handleQuickClockIn = async () => {
@@ -1288,6 +1409,7 @@ export default function ShiftSayaView({
                         <th className="px-4 py-3 text-right">Fisik Laci</th>
                         <th className="px-4 py-3 text-right">Selisih</th>
                         <th className="px-4 py-3 text-center">Status / Mode</th>
+                        <th className="px-4 py-3 text-center">Laporan WA</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1330,6 +1452,17 @@ export default function ShiftSayaView({
                               {item.status === 'Aktif' ? 'Aktif' : (item.modeTutup || 'Ditutup')}
                             </span>
                           </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleShareHistoricalReport(item)}
+                              className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 mx-auto cursor-pointer shadow-2xs"
+                              title="Kirim Laporan Shift ini ke WhatsApp Grup"
+                            >
+                              <Send className="w-3 h-3 text-emerald-600" />
+                              <span>Kirim WA</span>
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1337,6 +1470,7 @@ export default function ShiftSayaView({
                 </div>
               </div>
             )}
+
           </div>
         )}
 
@@ -1897,6 +2031,83 @@ export default function ShiftSayaView({
       )}
 
       {/* ========================================================================= */}
+      {/* MODAL: WHATSAPP SHIFT REPORT / SHARE TO CHAT GROUP */}
+      {/* ========================================================================= */}
+      {showWaReportModal && (
+        <div className="fixed inset-0 z-[600] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl w-full max-w-xl max-h-[92vh] overflow-hidden border border-slate-100 shadow-2xl flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-emerald-800 via-teal-900 to-[#1E4648] text-white">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
+                  <Share2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-white text-base">Laporan Rekap Kas Shift</h3>
+                  <p className="text-xs text-teal-200/90 mt-0.5">Siap dikirimkan ke WhatsApp Grup Kasir / Owner</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowWaReportModal(false)} 
+                className="p-2 text-teal-200 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Message Preview */}
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-3 bg-slate-50 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Preview Format Pesan WhatsApp:</span>
+                <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">Auto-Generated</span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs font-mono text-[11px] sm:text-xs text-slate-800 whitespace-pre-wrap leading-relaxed max-h-[42vh] overflow-y-auto select-all">
+                {waReportText}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-4 sm:p-5 border-t border-slate-100 bg-white flex flex-col sm:flex-row gap-2.5">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    await navigator.clipboard.writeText(waReportText);
+                    setCopiedReport(true);
+                    setTimeout(() => setCopiedReport(false), 2500);
+                  }
+                }}
+                className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+              >
+                {copiedReport ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-600" />
+                    <span className="text-emerald-700">Teks Tersalin!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4 text-slate-600" />
+                    <span>Salin Teks Laporan</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  window.open(`https://wa.me/?text=${encodeURIComponent(waReportText)}`, '_blank');
+                }}
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20"
+              >
+                <Send className="w-4 h-4" />
+                <span>📲 Kirim Laporan ke WhatsApp Grup</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* PHOTO PREVIEW MODAL */}
       {/* ========================================================================= */}
       {previewPhoto && (
@@ -1904,7 +2115,7 @@ export default function ShiftSayaView({
           <div className="bg-slate-900 rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-800 shadow-2xl">
             <div className="flex items-center justify-between p-3 border-b border-slate-800 text-white">
               <span className="text-xs font-bold">Preview Foto Nota</span>
-              <button onClick={() => setPreviewPhoto(null)} className="p-1 rounded text-slate-400 hover:text-white">
+              <button onClick={() => setPreviewPhoto(null)} className="p-1 rounded text-slate-400 hover:text-white cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1918,3 +2129,4 @@ export default function ShiftSayaView({
     </div>
   );
 }
+
