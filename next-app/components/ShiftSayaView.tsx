@@ -47,6 +47,11 @@ export interface ExpenseItem {
   catatan?: string;
   waktu?: string;
   fotoUrl?: string;
+  tipePengeluaran?: 'STOK_TERDAFTAR' | 'STOK_BARU' | 'NON_STOK';
+  idInventory?: string;
+  namaBarangStok?: string;
+  qtyMasuk?: number;
+  satuan?: string;
 }
 
 export interface RekapShiftItem {
@@ -72,6 +77,14 @@ export interface RekapShiftItem {
   fotoNota?: string[];
 }
 
+export interface InventorySimpleItem {
+  id: string;
+  nama: string;
+  stok: number;
+  satuan: string;
+  stokMinimum: number;
+}
+
 interface ShiftSayaViewProps {
   currentRole: UserRole;
   initialSubTab?: 'shift_saya' | 'pengeluaran' | 'riwayat_shift';
@@ -88,6 +101,8 @@ const EXPENSE_CATEGORIES = [
   'Perlengkapan Kasir',
   'Operasional Lainnya'
 ];
+
+const SATUAN_OPTIONS = ['pcs', 'liter', 'kg', 'botol', 'roll', 'pack', 'sachet', 'lusin'];
 
 export default function ShiftSayaView({
   currentRole,
@@ -113,6 +128,7 @@ export default function ShiftSayaView({
   const [shiftAktif, setShiftAktif] = useState<ShiftKasir | null>(null);
   const [staffList, setStaffList] = useState<any[]>([]);
   const [rekapShiftList, setRekapShiftList] = useState<RekapShiftItem[]>([]);
+  const [inventoryList, setInventoryList] = useState<InventorySimpleItem[]>([]);
 
   // Attendance Check State
   const [todayClockIn, setTodayClockIn] = useState<boolean>(true);
@@ -134,8 +150,14 @@ export default function ShiftSayaView({
     displayDanLampu: true
   });
 
-  // EXPENSE STATES
+  // EXPENSE STATES & INVENTORY INTEGRATION
   const [expenseList, setExpenseList] = useState<ExpenseItem[]>([]);
+  const [expenseTipe, setExpenseTipe] = useState<'STOK_TERDAFTAR' | 'STOK_BARU' | 'NON_STOK'>('STOK_TERDAFTAR');
+  const [selectedInventoryId, setSelectedInventoryId] = useState<string>('');
+  const [qtyMasukInput, setQtyMasukInput] = useState<string>('');
+  const [satuanBaruInput, setSatuanBaruInput] = useState<string>('pcs');
+  const [stokMinBaruInput, setStokMinBaruInput] = useState<string>('5');
+  
   const [newExpenseForm, setNewExpenseForm] = useState<{
     nama: string;
     nominal: string;
@@ -162,7 +184,7 @@ export default function ShiftSayaView({
   const [handoverVerified, setHandoverVerified] = useState<boolean>(false);
   const [handoverMessage, setHandoverMessage] = useState<string>('');
 
-  // 1. Fetch Main Shift Data
+  // 1. Fetch Main Shift Data & Inventory
   const loadShiftData = useCallback(async () => {
     setLoading(true);
     try {
@@ -187,7 +209,16 @@ export default function ShiftSayaView({
         }
       }
 
-      // 3. Check today's clock in status
+      // 3. Fetch inventory list
+      const invRes = await runBackend<InventorySimpleItem[]>('getInventoryList').catch(() => []);
+      if (Array.isArray(invRes)) {
+        setInventoryList(invRes);
+        if (invRes.length > 0) {
+          setSelectedInventoryId(prev => prev || invRes[0].id);
+        }
+      }
+
+      // 4. Check today's clock in status
       const absensiRes = await runBackend<any[]>('getRekapAbsensi').catch(() => []);
       if (Array.isArray(absensiRes) && absensiRes.length > 0) {
         const todayStr = new Date().toLocaleDateString('id-ID');
@@ -195,7 +226,7 @@ export default function ShiftSayaView({
         setTodayClockIn(hasInToday);
       }
 
-      // 4. Fetch past shifts
+      // 5. Fetch past shifts
       const rekapRes = await runBackend<RekapShiftItem[]>('getRekapKasShift').catch(() => []);
       if (Array.isArray(rekapRes)) {
         setRekapShiftList(rekapRes.reverse());
@@ -206,6 +237,7 @@ export default function ShiftSayaView({
       setLoading(false);
     }
   }, [onShiftStateChange]);
+
 
   useEffect(() => {
     loadShiftData();
@@ -296,35 +328,160 @@ export default function ShiftSayaView({
     }
   };
 
-  // ADD EXPENSE HANDLER
+  // ADD EXPENSE HANDLER WITH INVENTORY AUTO-SYNC
   const handleAddExpense = async () => {
     const nominal = Number(newExpenseForm.nominal);
-    if (!newExpenseForm.nama.trim() || !Number.isFinite(nominal) || nominal <= 0) {
-      await showAlert('Masukkan nama pengeluaran/barang dan nominal yang valid!', 'warning');
+    if (!Number.isFinite(nominal) || nominal <= 0) {
+      await showAlert('Masukkan nominal total pengeluaran (Rp) yang valid!', 'warning');
       return;
     }
 
-    const item: ExpenseItem = {
-      id: 'EXP-' + Date.now(),
-      nama: newExpenseForm.nama.trim(),
-      nominal,
-      kategori: newExpenseForm.kategori,
-      catatan: newExpenseForm.catatan.trim(),
-      waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-      fotoUrl: newExpenseForm.fotoPreview || undefined
-    };
+    let finalNama = '';
+    let finalKategori = newExpenseForm.kategori;
+    let idInv: string | undefined = undefined;
+    let namaStok: string | undefined = undefined;
+    let qty: number | undefined = undefined;
+    let sat: string | undefined = undefined;
 
-    setExpenseList(prev => [item, ...prev]);
-    setNewExpenseForm({
-      nama: '',
-      nominal: '',
-      kategori: EXPENSE_CATEGORIES[0],
-      catatan: '',
-      fotoPreview: null
-    });
-    setShowAddExpenseModal(false);
-    await showAlert(`Pengeluaran "${item.nama}" (Rp ${nominal.toLocaleString('id-ID')}) berhasil dicatat untuk shift ini!`, 'success');
+    setSubmitting(true);
+    setStatusText('Menyimpan pengeluaran & update stok...');
+
+    try {
+      if (expenseTipe === 'STOK_TERDAFTAR') {
+        const invItem = inventoryList.find(i => i.id === selectedInventoryId);
+        if (!invItem) {
+          await showAlert('Pilih barang stok yang terdaftar!', 'warning');
+          setSubmitting(false);
+          return;
+        }
+
+        const qtyNum = Number(qtyMasukInput);
+        if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
+          await showAlert(`Masukkan jumlah/qty ${invItem.nama} yang dibeli (> 0)!`, 'warning');
+          setSubmitting(false);
+          return;
+        }
+
+        finalNama = `Beli ${invItem.nama} (+${qtyNum} ${invItem.satuan})`;
+        finalKategori = 'Deterjen & Chemical';
+        idInv = invItem.id;
+        namaStok = invItem.nama;
+        qty = qtyNum;
+        sat = invItem.satuan;
+
+        // Auto update inventory stock in backend
+        const updateRes = await runBackend<{ success: boolean; stokBaru?: number }>(
+          'updateStokInventory',
+          invItem.id,
+          qtyNum,
+          shiftAktif?.namaKasir || 'Kasir'
+        ).catch(() => null);
+
+        // Update local inventory list
+        setInventoryList(prev => prev.map(i => {
+          if (i.id === invItem.id) {
+            return { ...i, stok: (updateRes?.stokBaru !== undefined) ? updateRes.stokBaru : (i.stok + qtyNum) };
+          }
+          return i;
+        }));
+
+      } else if (expenseTipe === 'STOK_BARU') {
+        const namaBarang = newExpenseForm.nama.trim();
+        if (!namaBarang) {
+          await showAlert('Masukkan nama barang stok baru!', 'warning');
+          setSubmitting(false);
+          return;
+        }
+
+        const qtyNum = Number(qtyMasukInput);
+        if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
+          await showAlert('Masukkan jumlah/stok awal barang baru (> 0)!', 'warning');
+          setSubmitting(false);
+          return;
+        }
+
+        const minStokNum = Number(stokMinBaruInput) || 5;
+        finalNama = `Beli (Baru) ${namaBarang} (+${qtyNum} ${satuanBaruInput})`;
+        finalKategori = newExpenseForm.kategori;
+        namaStok = namaBarang;
+        qty = qtyNum;
+        sat = satuanBaruInput;
+
+        // Create new inventory item in backend
+        const createRes = await runBackend<{ success: boolean; id?: string }>(
+          'tambahInventory',
+          {
+            nama: namaBarang,
+            stok: qtyNum,
+            satuan: satuanBaruInput,
+            stokMinimum: minStokNum
+          }
+        ).catch(() => null);
+
+        idInv = createRes?.id || 'INV-' + Date.now();
+        setInventoryList(prev => [
+          ...prev,
+          {
+            id: idInv!,
+            nama: namaBarang,
+            stok: qtyNum,
+            satuan: satuanBaruInput,
+            stokMinimum: minStokNum
+          }
+        ]);
+
+      } else {
+        // NON_STOK
+        if (!newExpenseForm.nama.trim()) {
+          await showAlert('Masukkan nama keperluan / pengeluaran operasional!', 'warning');
+          setSubmitting(false);
+          return;
+        }
+        finalNama = newExpenseForm.nama.trim();
+      }
+
+      const item: ExpenseItem = {
+        id: 'EXP-' + Date.now(),
+        nama: finalNama,
+        nominal,
+        kategori: finalKategori,
+        catatan: newExpenseForm.catatan.trim(),
+        waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        fotoUrl: newExpenseForm.fotoPreview || undefined,
+        tipePengeluaran: expenseTipe,
+        idInventory: idInv,
+        namaBarangStok: namaStok,
+        qtyMasuk: qty,
+        satuan: sat
+      };
+
+      setExpenseList(prev => [item, ...prev]);
+      setNewExpenseForm({
+        nama: '',
+        nominal: '',
+        kategori: EXPENSE_CATEGORIES[0],
+        catatan: '',
+        fotoPreview: null
+      });
+      setQtyMasukInput('');
+      setShowAddExpenseModal(false);
+
+      if (expenseTipe === 'STOK_TERDAFTAR') {
+        await showAlert(`✅ Pengeluaran Rp ${nominal.toLocaleString('id-ID')} dicatat & Stok ${namaStok} otomatis bertambah +${qty} ${sat}!`, 'success');
+      } else if (expenseTipe === 'STOK_BARU') {
+        await showAlert(`✅ Pengeluaran Rp ${nominal.toLocaleString('id-ID')} dicatat & Barang baru "${namaStok}" (+${qty} ${sat}) berhasil ditambahkan ke Stok Inventory!`, 'success');
+      } else {
+        await showAlert(`✅ Pengeluaran "${item.nama}" (Rp ${nominal.toLocaleString('id-ID')}) berhasil dicatat!`, 'success');
+      }
+    } catch (err: any) {
+      console.error(err);
+      await showAlert('Terjadi kesalahan saat memproses pengeluaran.', 'error');
+    } finally {
+      setSubmitting(false);
+      setStatusText('');
+    }
   };
+
 
   const handleRemoveExpense = (idx: number) => {
     setExpenseList(prev => prev.filter((_, i) => i !== idx));
@@ -916,7 +1073,22 @@ export default function ShiftSayaView({
                             )}
                             <div className="min-w-0">
                               <div className="font-bold text-slate-800 truncate">{exp.nama}</div>
-                              <div className="text-[10px] text-slate-400 flex items-center gap-2">
+                              <div className="text-[10px] text-slate-400 flex flex-wrap items-center gap-1.5 mt-0.5">
+                                {exp.tipePengeluaran === 'STOK_TERDAFTAR' && (
+                                  <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold text-[9px] flex items-center gap-1">
+                                    <span>📦 Restock +{exp.qtyMasuk} {exp.satuan}</span>
+                                  </span>
+                                )}
+                                {exp.tipePengeluaran === 'STOK_BARU' && (
+                                  <span className="bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-bold text-[9px] flex items-center gap-1">
+                                    <span>✨ Stok Baru +{exp.qtyMasuk} {exp.satuan}</span>
+                                  </span>
+                                )}
+                                {exp.tipePengeluaran === 'NON_STOK' && (
+                                  <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold text-[9px]">
+                                    🏢 Beban Umum
+                                  </span>
+                                )}
                                 <span className="bg-slate-100 px-1.5 py-0.2 rounded font-semibold text-slate-600">{exp.kategori}</span>
                                 <span>{exp.waktu || '-'}</span>
                               </div>
@@ -930,7 +1102,7 @@ export default function ShiftSayaView({
                             <button
                               type="button"
                               onClick={() => handleRemoveExpense(idx)}
-                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                               title="Hapus"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -959,7 +1131,7 @@ export default function ShiftSayaView({
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-black text-slate-800">Daftar Pengeluaran & Belanja Shift Aktif</h2>
-                <p className="text-xs text-slate-500">Rincian biaya barang operasional yang dibeli kasir menggunakan uang laci.</p>
+                <p className="text-xs text-slate-500">Rincian biaya barang operasional & restock bahan yang dibeli kasir menggunakan uang laci.</p>
               </div>
               <button
                 type="button"
@@ -975,7 +1147,7 @@ export default function ShiftSayaView({
               <div className="py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
                 <Receipt className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                 <p className="text-sm font-bold text-slate-700">Belum ada pengeluaran belanja pada shift ini</p>
-                <p className="text-xs text-slate-400 mt-1">Setiap pengeluaran otomatis memotong ekspektasi kas akhir di laci.</p>
+                <p className="text-xs text-slate-400 mt-1">Setiap pengeluaran otomatis memotong ekspektasi kas akhir di laci dan menambah stok bahan (jika memilih barang stok).</p>
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
@@ -984,7 +1156,7 @@ export default function ShiftSayaView({
                     <tr>
                       <th className="px-4 py-3">Foto Nota</th>
                       <th className="px-4 py-3">Barang / Deskripsi</th>
-                      <th className="px-4 py-3">Kategori</th>
+                      <th className="px-4 py-3">Tipe / Kategori</th>
                       <th className="px-4 py-3">Waktu</th>
                       <th className="px-4 py-3 text-right">Nominal</th>
                       <th className="px-4 py-3 text-center">Aksi</th>
@@ -1010,9 +1182,26 @@ export default function ShiftSayaView({
                           {exp.catatan && <div className="text-[10px] text-slate-400 font-normal mt-0.5">{exp.catatan}</div>}
                         </td>
                         <td className="px-4 py-3">
-                          <span className="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded-full text-[10px]">
-                            {exp.kategori}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            {exp.tipePengeluaran === 'STOK_TERDAFTAR' && (
+                              <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold text-[9px] w-max">
+                                📦 Restock +{exp.qtyMasuk} {exp.satuan}
+                              </span>
+                            )}
+                            {exp.tipePengeluaran === 'STOK_BARU' && (
+                              <span className="bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-bold text-[9px] w-max">
+                                ✨ Stok Baru +{exp.qtyMasuk} {exp.satuan}
+                              </span>
+                            )}
+                            {exp.tipePengeluaran === 'NON_STOK' && (
+                              <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold text-[9px] w-max">
+                                🏢 Non-Stok
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              {exp.kategori}
+                            </span>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-slate-500">{exp.waktu || '-'}</td>
                         <td className="px-4 py-3 font-mono font-bold text-rose-600 text-right">
@@ -1022,7 +1211,7 @@ export default function ShiftSayaView({
                           <button
                             type="button"
                             onClick={() => handleRemoveExpense(idx)}
-                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
                             title="Hapus"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1133,11 +1322,11 @@ export default function ShiftSayaView({
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL: TAMBAH PENGELUARAN BELANJA */}
+      {/* MODAL: TAMBAH PENGELUARAN BELANJA (DENGAN SINKRONISASI STOK) */}
       {/* ========================================================================= */}
       {showAddExpenseModal && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md border border-slate-100 shadow-2xl overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-[500] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg border border-slate-100 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
             <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50">
               <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-rose-600" />
@@ -1148,50 +1337,254 @@ export default function ShiftSayaView({
               </button>
             </div>
 
-            <div className="p-5 space-y-3.5">
+            <div className="p-5 space-y-4 overflow-y-auto">
+              
+              {/* Segmented Tipe Pengeluaran */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Nama Barang / Keperluan *</label>
-                <input
-                  type="text"
-                  value={newExpenseForm.nama}
-                  onChange={(e) => setNewExpenseForm({ ...newExpenseForm, nama: e.target.value })}
-                  placeholder="Contoh: Sabun Cuci 5L / Plastik Jinjing"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648] focus:bg-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Nominal (Rp) *</label>
-                  <input
-                    type="number"
-                    value={newExpenseForm.nominal}
-                    onChange={(e) => setNewExpenseForm({ ...newExpenseForm, nominal: e.target.value })}
-                    placeholder="35000"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648] focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Kategori *</label>
-                  <select
-                    value={newExpenseForm.kategori}
-                    onChange={(e) => setNewExpenseForm({ ...newExpenseForm, kategori: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
+                  Pilih Jenis Belanja / Pengeluaran:
+                </label>
+                <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setExpenseTipe('STOK_TERDAFTAR')}
+                    className={`py-2 px-2 rounded-lg text-[11px] font-bold transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                      expenseTipe === 'STOK_TERDAFTAR'
+                        ? 'bg-[#1E4648] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
                   >
-                    {EXPENSE_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                    <span>📦 Stok Terdaftar</span>
+                    <span className={`text-[9px] ${expenseTipe === 'STOK_TERDAFTAR' ? 'text-teal-200' : 'text-slate-400'}`}>Restock Bahan</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setExpenseTipe('STOK_BARU')}
+                    className={`py-2 px-2 rounded-lg text-[11px] font-bold transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                      expenseTipe === 'STOK_BARU'
+                        ? 'bg-[#1E4648] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>✨ Stok Baru</span>
+                    <span className={`text-[9px] ${expenseTipe === 'STOK_BARU' ? 'text-teal-200' : 'text-slate-400'}`}>Bahan Baru</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setExpenseTipe('NON_STOK')}
+                    className={`py-2 px-2 rounded-lg text-[11px] font-bold transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                      expenseTipe === 'NON_STOK'
+                        ? 'bg-[#1E4648] text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>🏢 Non-Stok</span>
+                    <span className={`text-[9px] ${expenseTipe === 'NON_STOK' ? 'text-teal-200' : 'text-slate-400'}`}>Beban Umum</span>
+                  </button>
                 </div>
               </div>
 
+              {/* MODE 1: BARANG STOK TERDAFTAR */}
+              {expenseTipe === 'STOK_TERDAFTAR' && (
+                <div className="bg-teal-50/60 border border-teal-200 rounded-xl p-3.5 space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-teal-950 mb-1">Pilih Bahan/Barang yang Dibeli *</label>
+                    <select
+                      value={selectedInventoryId}
+                      onChange={(e) => setSelectedInventoryId(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-teal-300 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-[#1E4648]"
+                    >
+                      {inventoryList.map((inv) => (
+                        <option key={inv.id} value={inv.id}>
+                          {inv.nama} (Sisa: {inv.stok} {inv.satuan})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {(() => {
+                    const currentItem = inventoryList.find(i => i.id === selectedInventoryId);
+                    if (!currentItem) return null;
+                    return (
+                      <div className="flex items-center justify-between text-[11px] bg-white px-3 py-1.5 rounded-lg border border-teal-200">
+                        <span className="text-slate-500">Stok Saat Ini:</span>
+                        <span className="font-bold text-teal-800">
+                          {currentItem.stok} {currentItem.satuan} <span className="text-slate-400 font-normal">(Min: {currentItem.stokMinimum})</span>
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-teal-950 mb-1">
+                        Jumlah Tambahan Dibeli *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={qtyMasukInput}
+                          onChange={(e) => setQtyMasukInput(e.target.value)}
+                          placeholder="5"
+                          className="w-full px-3 py-2 bg-white border border-teal-300 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-teal-700 font-bold">
+                          {inventoryList.find(i => i.id === selectedInventoryId)?.satuan || 'pcs'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-teal-950 mb-1">Total Biaya (Rp) *</label>
+                      <input
+                        type="number"
+                        value={newExpenseForm.nominal}
+                        onChange={(e) => setNewExpenseForm({ ...newExpenseForm, nominal: e.target.value })}
+                        placeholder="75000"
+                        className="w-full px-3 py-2 bg-white border border-teal-300 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-teal-700 font-medium">
+                    ⚡ Saat disimpan, stok barang di atas otomatis bertambah dan uang laci berkurang.
+                  </p>
+                </div>
+              )}
+
+              {/* MODE 2: BARANG STOK BARU */}
+              {expenseTipe === 'STOK_BARU' && (
+                <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-3.5 space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-blue-950 mb-1">Nama Bahan/Barang Baru *</label>
+                    <input
+                      type="text"
+                      value={newExpenseForm.nama}
+                      onChange={(e) => setNewExpenseForm({ ...newExpenseForm, nama: e.target.value })}
+                      placeholder="Contoh: Pewangi Sakura 5L / Plastik Roll Jumbo"
+                      className="w-full px-3 py-2 bg-white border border-blue-300 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-blue-950 mb-1">Satuan *</label>
+                      <select
+                        value={satuanBaruInput}
+                        onChange={(e) => setSatuanBaruInput(e.target.value)}
+                        className="w-full px-2 py-2 bg-white border border-blue-300 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                      >
+                        {SATUAN_OPTIONS.map(sat => (
+                          <option key={sat} value={sat}>{sat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-blue-950 mb-1">Qty Dibeli *</label>
+                      <input
+                        type="number"
+                        value={qtyMasukInput}
+                        onChange={(e) => setQtyMasukInput(e.target.value)}
+                        placeholder="2"
+                        className="w-full px-2 py-2 bg-white border border-blue-300 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-blue-950 mb-1">Stok Min *</label>
+                      <input
+                        type="number"
+                        value={stokMinBaruInput}
+                        onChange={(e) => setStokMinBaruInput(e.target.value)}
+                        placeholder="1"
+                        className="w-full px-2 py-2 bg-white border border-blue-300 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-blue-950 mb-1">Kategori *</label>
+                      <select
+                        value={newExpenseForm.kategori}
+                        onChange={(e) => setNewExpenseForm({ ...newExpenseForm, kategori: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-blue-300 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                      >
+                        {EXPENSE_CATEGORIES.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-blue-950 mb-1">Total Biaya (Rp) *</label>
+                      <input
+                        type="number"
+                        value={newExpenseForm.nominal}
+                        onChange={(e) => setNewExpenseForm({ ...newExpenseForm, nominal: e.target.value })}
+                        placeholder="90000"
+                        className="w-full px-3 py-2 bg-white border border-blue-300 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-blue-700 font-medium">
+                    ✨ Barang ini akan otomatis didaftarkan sebagai item baru di modul Stok Inventory.
+                  </p>
+                </div>
+              )}
+
+              {/* MODE 3: BEBAN OPERASIONAL NON-STOK */}
+              {expenseTipe === 'NON_STOK' && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Nama Keperluan / Beban *</label>
+                    <input
+                      type="text"
+                      value={newExpenseForm.nama}
+                      onChange={(e) => setNewExpenseForm({ ...newExpenseForm, nama: e.target.value })}
+                      placeholder="Contoh: Token Listrik PLN / Galon Air Minum / Iuran Sampah"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Kategori Beban *</label>
+                      <select
+                        value={newExpenseForm.kategori}
+                        onChange={(e) => setNewExpenseForm({ ...newExpenseForm, kategori: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                      >
+                        {EXPENSE_CATEGORIES.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Nominal Biaya (Rp) *</label>
+                      <input
+                        type="number"
+                        value={newExpenseForm.nominal}
+                        onChange={(e) => setNewExpenseForm({ ...newExpenseForm, nominal: e.target.value })}
+                        placeholder="50000"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-[#1E4648]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Catatan Tambahan */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
                 <input
                   type="text"
                   value={newExpenseForm.catatan}
                   onChange={(e) => setNewExpenseForm({ ...newExpenseForm, catatan: e.target.value })}
-                  placeholder="Beli di Toko Plastik Berkah"
+                  placeholder="Contoh: Beli di Agen Berkah / Toko Jaya"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648] focus:bg-white"
                 />
               </div>
@@ -1241,6 +1634,7 @@ export default function ShiftSayaView({
               <button
                 type="button"
                 onClick={() => setShowAddExpenseModal(false)}
+                disabled={submitting}
                 className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold"
               >
                 Batal
@@ -1248,14 +1642,26 @@ export default function ShiftSayaView({
               <button
                 type="button"
                 onClick={handleAddExpense}
-                className="flex-1 py-2 bg-[#1E4648] hover:bg-[#153436] text-white rounded-xl text-xs font-bold shadow-xs"
+                disabled={submitting}
+                className="flex-1 py-2 bg-[#1E4648] hover:bg-[#153436] text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                Simpan Pengeluaran
+                {submitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>{statusText || 'Menyimpan...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Simpan Pengeluaran</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
+
 
       {/* ========================================================================= */}
       {/* MODAL: CLOSING SHIFT & SERAH TERIMA HANDOVER */}
