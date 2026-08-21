@@ -361,21 +361,21 @@ export default function PesananView() {
     })();
 
     return (
-      <article key={order.noNota} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:shadow-md">
+      <article key={order.noNota} className="glass-card card-hover-lift p-3.5 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-xs font-extrabold text-slate-700">{order.noNota}</p>
-            <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-500">{order.namaPelanggan}</p>
+            <p className="truncate text-xs font-black text-slate-800 font-mono tracking-tight">{order.noNota}</p>
+            <p className="mt-0.5 truncate text-[11px] font-bold text-slate-500">{order.namaPelanggan}</p>
           </div>
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold border ${badgeWarna}`}>
+          <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border shadow-2xs ${badgeWarna}`}>
             {orderPriority}
           </span>
         </div>
 
-        <div className="mt-3 space-y-1.5 text-[11px] text-slate-500">
-          <div className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5 text-slate-400" /><span>{order.estimasiSelesai || order.estimasi || 'Estimasi -'}</span></div>
-          {machine && <div className="flex items-center gap-1.5 font-semibold text-[#1E4648]"><WashingMachine className="h-3.5 w-3.5" /><span>Mesin {machine}</span></div>}
-          <p className="line-clamp-2 text-slate-600">{order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')}</p>
+        <div className="space-y-1.5 text-[11px] text-slate-500">
+          <div className="flex items-center gap-1.5 font-medium"><Clock3 className="h-3.5 w-3.5 text-slate-400" /><span>{order.estimasiSelesai || order.estimasi || 'Estimasi -'}</span></div>
+          {machine && <div className="flex items-center gap-1.5 font-bold text-teal-800"><WashingMachine className="h-3.5 w-3.5" /><span>Mesin {machine}</span></div>}
+          <p className="line-clamp-2 text-slate-600 font-medium">{order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')}</p>
           
           {/* Linked Multi-Bahan Material Indicator */}
           {(() => {
@@ -399,7 +399,7 @@ export default function PesananView() {
             return (
               <div className="pt-1 flex items-center gap-1 text-[10px] text-amber-800 font-semibold truncate">
                 <span className="shrink-0">🧪 Bahan:</span>
-                <span className="truncate bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">{mats.join(', ')}</span>
+                <span className="truncate bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">{mats.join(', ')}</span>
               </div>
             );
           })()}
@@ -407,17 +407,17 @@ export default function PesananView() {
 
         {/* Khusus Tahap Siap Diambil: Menampilkan Reminder WhatsApp & Tombol Serahkan */}
         {isSiapDiambil ? (
-          <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-2">
+          <div className="pt-2.5 border-t border-slate-100 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 {daysInOutlet > 0 ? `Di Rak ${daysInOutlet} Hari:` : 'Status Di Rak:'}
               </span>
               {isRemindedToday ? (
-                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full" title={`Terakhir dikirim: ${remindedTime}`}>
+                <span className="badge-glow-emerald flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full" title={`Terakhir dikirim: ${remindedTime}`}>
                   <Check className="w-3 h-3 stroke-[3]" /> Sudah di-WA Hari Ini
                 </span>
               ) : (
-                <span className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-full animate-pulse">
+                <span className="badge-glow-amber flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
                   <AlertCircle className="w-3 h-3" /> {remindedTime ? 'Butuh Re-chat Hari Ini' : 'Belum di-WA'}
                 </span>
               )}
@@ -426,7 +426,7 @@ export default function PesananView() {
             {/* Tombol Kirim WA Reminder */}
             <button
               onClick={(e) => handleSendSiapWA(order, e)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-[11px] font-bold text-white transition hover:bg-emerald-700 shadow-xs"
+              className="tactile-btn btn-glow-emerald flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-bold shadow-xs cursor-pointer"
             >
               <MessageCircle className="h-3.5 w-3.5" />
               <span>
@@ -439,7 +439,7 @@ export default function PesananView() {
             {/* Tombol Serahkan / Selesai */}
             <button
               onClick={() => openProgress(order)}
-              className="flex w-full items-center justify-between rounded-xl bg-[#1E4648] px-3 py-2 text-[11px] font-bold text-white transition hover:bg-[#163536] shadow-xs"
+              className="tactile-btn flex w-full items-center justify-between rounded-xl bg-[#1E4648] hover:bg-[#163536] px-3.5 py-2 text-[11px] font-bold text-white transition shadow-xs cursor-pointer"
             >
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teal-200" />
@@ -454,7 +454,7 @@ export default function PesananView() {
             return (
               <button
                 onClick={() => openProgress(order)}
-                className="mt-3 flex w-full items-center justify-between rounded-xl bg-[#1E4648] px-3 py-2 text-[11px] font-bold text-white transition hover:bg-[#163536] shadow-2xs"
+                className="tactile-btn mt-3 flex w-full items-center justify-between rounded-xl bg-[#1E4648] hover:bg-[#163536] px-3.5 py-2 text-[11px] font-bold text-white transition shadow-2xs cursor-pointer"
               >
                 <div className="flex items-center gap-1.5">
                   <NextIcon className="w-3.5 h-3.5 text-teal-200" />
@@ -470,92 +470,92 @@ export default function PesananView() {
   };
 
   return (
-    <div className="w-full space-y-3 p-3 sm:p-4">
-      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+    <div className="w-full space-y-4 p-3 sm:p-5">
+      <section className="glass-panel p-4 sm:p-5 rounded-2xl space-y-3.5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-sm font-extrabold text-slate-700">Manajemen Pesanan Drop-off</h2>
-            <p className="mt-0.5 text-[11px] text-slate-500">Pengerjaan fisik, staf, washer/dryer, status rak, dan reminder penjemputan WhatsApp.</p>
+            <h2 className="text-sm sm:text-base font-black text-slate-800 tracking-tight">Manajemen Pesanan Drop-off</h2>
+            <p className="mt-0.5 text-xs text-slate-500 font-medium">Pengerjaan fisik, staf, washer/dryer, status rak, dan reminder penjemputan WhatsApp.</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setView('kanban')} className={`rounded-lg border p-2 ${view === 'kanban' ? 'border-[#1E4648] bg-[#1E4648] text-white' : 'border-slate-200 text-slate-500'}`} title="Kanban"><Columns3 className="h-4 w-4" /></button>
-            <button onClick={() => setView('list')} className={`rounded-lg border p-2 ${view === 'list' ? 'border-[#1E4648] bg-[#1E4648] text-white' : 'border-slate-200 text-slate-500'}`} title="List"><List className="h-4 w-4" /></button>
-            <button onClick={loadData} disabled={loading} className="rounded-lg border border-slate-200 p-2 text-slate-500 disabled:opacity-50" title="Refresh"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /></button>
+            <button onClick={() => setView('kanban')} className={`tactile-btn rounded-xl border p-2 ${view === 'kanban' ? 'border-teal-700 bg-teal-800 text-white shadow-xs' : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'}`} title="Kanban"><Columns3 className="h-4 w-4" /></button>
+            <button onClick={() => setView('list')} className={`tactile-btn rounded-xl border p-2 ${view === 'list' ? 'border-teal-700 bg-teal-800 text-white shadow-xs' : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'}`} title="List"><List className="h-4 w-4" /></button>
+            <button onClick={loadData} disabled={loading} className="tactile-btn rounded-xl border border-slate-200 p-2 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50" title="Refresh"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /></button>
           </div>
         </div>
 
         {/* Quick Filter Tabs (Semua, Diproses, Siap Diambil, Belum di-WA) */}
-        <div className="mt-3 flex flex-wrap gap-1.5 border-b border-slate-100 pb-3">
+        <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-3">
           <button
             onClick={() => setFilterTab('Semua')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`tactile-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
               filterTab === 'Semua'
-                ? 'bg-[#1E4648] text-white shadow-xs'
+                ? 'bg-teal-800 text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             <span>Semua Pesanan</span>
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${filterTab === 'Semua' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${filterTab === 'Semua' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
               {summaryCounts.total}
             </span>
           </button>
 
           <button
             onClick={() => setFilterTab('Diproses')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`tactile-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
               filterTab === 'Diproses'
-                ? 'bg-[#1E4648] text-white shadow-xs'
+                ? 'bg-teal-800 text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             <span>Sedang Diproses</span>
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${filterTab === 'Diproses' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${filterTab === 'Diproses' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
               {summaryCounts.diprosesCount}
             </span>
           </button>
 
           <button
             onClick={() => setFilterTab('SiapDiambil')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`tactile-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
               filterTab === 'SiapDiambil'
-                ? 'bg-teal-700 text-white shadow-xs'
+                ? 'badge-glow-teal text-teal-950 font-black shadow-xs'
                 : 'bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100'
             }`}
           >
             <span>Siap Diambil (Di Rak)</span>
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${filterTab === 'SiapDiambil' ? 'bg-white/20 text-white' : 'bg-teal-200 text-teal-900'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${filterTab === 'SiapDiambil' ? 'bg-teal-800 text-white' : 'bg-teal-200 text-teal-900'}`}>
               {summaryCounts.siapCount}
             </span>
           </button>
 
           <button
             onClick={() => setFilterTab('BelumWA')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`tactile-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
               filterTab === 'BelumWA'
-                ? 'bg-amber-600 text-white shadow-xs'
+                ? 'badge-glow-amber text-amber-950 font-black shadow-xs'
                 : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
             }`}
           >
             <span>Belum di-WA</span>
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${filterTab === 'BelumWA' ? 'bg-white/20 text-white' : 'bg-amber-200 text-amber-900'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${filterTab === 'BelumWA' ? 'bg-amber-800 text-white' : 'bg-amber-200 text-amber-900'}`}>
               {summaryCounts.belumWaCount}
             </span>
           </button>
         </div>
 
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari nota, pelanggan, atau no. HP..." className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs outline-none focus:border-[#1E4648]" />
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari nota, pelanggan, atau no. HP..." className="input-glow w-full rounded-xl py-2 pl-10 pr-3 text-xs" />
           </div>
-          <div className="flex gap-1 overflow-x-auto pb-1 sm:pb-0">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
             {['Semua', ...dropOffPriorities.filter(p => p.aktif !== false).map(p => p.nama)].map((item) => (
               <button
                 key={item}
                 onClick={() => setPriority(item)}
-                className={`shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-bold transition ${
+                className={`tactile-btn shrink-0 rounded-xl border px-3.5 py-1.5 text-xs font-bold transition ${
                   priority.toLowerCase() === item.toLowerCase()
-                    ? 'border-[#1E4648] bg-[#1E4648] text-white shadow-xs'
+                    ? 'border-teal-700 bg-teal-800 text-white shadow-xs'
                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                 }`}
               >
@@ -566,16 +566,16 @@ export default function PesananView() {
         </div>
       </section>
 
-      {error && !selected && <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700"><AlertCircle className="h-4 w-4" />{error}</div>}
+      {error && !selected && <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-700"><AlertCircle className="h-4 w-4" />{error}</div>}
 
       {loading ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-40 animate-pulse rounded-xl border border-slate-200 bg-white" />)}</div>
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-44 animate-pulse rounded-2xl border border-slate-200 bg-white" />)}</div>
       ) : filteredOrders.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-16 text-center text-xs text-slate-500"><CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" />Tidak ada pesanan aktif pada filter ini.</div>
+        <div className="glass-panel rounded-2xl border border-dashed border-slate-300 p-16 text-center text-xs text-slate-500"><CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" />Tidak ada pesanan aktif pada filter ini.</div>
       ) : view === 'list' ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">{filteredOrders.map(renderCard)}</div>
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3">{filteredOrders.map(renderCard)}</div>
       ) : (
-        <div className="flex snap-x gap-3 overflow-x-auto pb-3">
+        <div className="flex snap-x gap-3.5 overflow-x-auto pb-4">
           {kanbanColumns.map((status) => {
             const statusOrders = filteredOrders.filter((order) => {
               if (order.status === status) return true;
@@ -584,15 +584,17 @@ export default function PesananView() {
             });
             const StatusIcon = getWorkflowIcon(status);
             return (
-              <section key={status} className="w-[86vw] max-w-[320px] shrink-0 snap-start rounded-2xl bg-slate-100/80 p-3 sm:w-[300px] border border-slate-200/80 shadow-2xs">
-                <div className="mb-2.5 flex items-center justify-between px-1">
-                  <div className="flex items-center gap-1.5">
-                    <StatusIcon className="w-4 h-4 text-[#1E4648]" />
-                    <h3 className="text-xs font-extrabold text-slate-700">{status}</h3>
+              <section key={status} className="glass-kanban-col w-[86vw] max-w-[320px] shrink-0 snap-start p-3.5 sm:w-[300px]">
+                <div className="mb-3 flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-teal-800 text-white flex items-center justify-center shadow-2xs">
+                      <StatusIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <h3 className="text-xs font-black text-slate-800">{status}</h3>
                   </div>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-slate-500 shadow-2xs">{statusOrders.length}</span>
+                  <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-black text-slate-600 border border-slate-200/80 shadow-2xs">{statusOrders.length}</span>
                 </div>
-                <div className="space-y-2.5">{statusOrders.length ? statusOrders.map(renderCard) : <div className="rounded-lg border border-dashed border-slate-300 bg-white/70 p-5 text-center text-[11px] text-slate-400">Antrean kosong</div>}</div>
+                <div className="space-y-3">{statusOrders.length ? statusOrders.map(renderCard) : <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 p-6 text-center text-xs font-medium text-slate-400">Antrean kosong</div>}</div>
               </section>
             );
           })}
@@ -600,15 +602,15 @@ export default function PesananView() {
       )}
 
       {selected && targetStatus && (
-        <div className="fixed inset-0 z-[600] flex items-center justify-center bg-slate-900/50 p-3 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-4 shadow-xl sm:p-5">
+        <div className="fixed inset-0 z-[600] flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-md">
+          <div className="glass-modal max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
-              <div><h3 className="text-sm font-extrabold text-slate-700">Lanjut ke {targetStatus}</h3><p className="mt-0.5 text-[11px] text-slate-500">{selected.noNota} · {selected.namaPelanggan}</p></div>
-              <button onClick={() => setSelected(null)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
+              <div><h3 className="text-sm font-black text-slate-800">Lanjut ke {targetStatus}</h3><p className="mt-0.5 text-xs text-slate-500 font-mono font-bold">{selected.noNota} · {selected.namaPelanggan}</p></div>
+              <button onClick={() => setSelected(null)} className="tactile-btn rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
             </div>
 
-            <div className="mt-4 space-y-3">
-              <div><label className="mb-1 block text-xs font-bold text-slate-700">Staf Memproses</label><select value={staffName} onChange={(event) => setStaffName(event.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-[#1E4648]">{staff.map((item) => <option key={item.id} value={item.nama}>{item.nama}{item.jabatan ? ` (${item.jabatan})` : ''}</option>)}</select></div>
+            <div className="mt-4 space-y-3.5">
+              <div><label className="mb-1 block text-xs font-bold text-slate-700">Staf Memproses</label><select value={staffName} onChange={(event) => setStaffName(event.target.value)} className="input-glow w-full rounded-xl px-3.5 py-2.5 text-xs outline-none">{staff.map((item) => <option key={item.id} value={item.nama}>{item.nama}{item.jabatan ? ` (${item.jabatan})` : ''}</option>)}</select></div>
 
               {requiresMachine && (
                 <div>

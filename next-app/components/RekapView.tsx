@@ -302,29 +302,29 @@ export default function RekapView() {
       </div>
 
       {activeTab === 'Laporan' && (
-        <div className="space-y-3 sm:space-y-4">
+        <div className="space-y-4">
           
-          <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 flex items-center justify-between gap-3 flex-wrap shadow-2xs">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="glass-panel p-4 sm:p-5 rounded-2xl flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#1E4648]" /> Rentang:
+                <Calendar className="w-4 h-4 text-teal-800" /> Rentang:
               </span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-[#1E4648]"
+                className="input-glow px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 outline-none"
               />
               <span className="text-xs font-bold text-slate-400">s/d</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-[#1E4648]"
+                className="input-glow px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 outline-none"
               />
               <button
                 onClick={loadLaporan}
-                className="px-3 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
+                className="tactile-btn btn-glow-emerald px-4 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 Terapkan
               </button>
@@ -332,40 +332,39 @@ export default function RekapView() {
 
             <button
               onClick={handleExportCSV}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+              className="tactile-btn px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" /> Ekspor CSV
             </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
-            <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-3.5 shadow-2xs">
-              <div className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 truncate">Total Omzet Penjualan</div>
-              <div className="text-base sm:text-lg font-bold text-[#1E4648] truncate">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            <div className="glass-stat-card card-hover-lift p-4 sm:p-5">
+              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">Total Omzet Penjualan</div>
+              <div className="text-lg sm:text-xl font-black text-teal-800 font-mono truncate">
                 Rp {(ringkasan?.totalOmzet || 0).toLocaleString('id-ID')}
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-3.5 shadow-2xs">
-              <div className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 truncate">Jumlah Transaksi</div>
-              <div className="text-base sm:text-lg font-bold text-slate-700 truncate">
-                {ringkasan.jumlahTransaksi} <span className="text-xs font-normal text-slate-400">nota</span>
+            <div className="glass-stat-card card-hover-lift p-4 sm:p-5">
+              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">Jumlah Transaksi</div>
+              <div className="text-lg sm:text-xl font-black text-slate-800 font-mono truncate">
+                {ringkasan.jumlahTransaksi} <span className="text-xs font-semibold text-slate-400">nota</span>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-3.5 shadow-2xs">
-              <div className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 truncate">Rata-rata Nilai Nota</div>
-              <div className="text-base sm:text-lg font-bold text-slate-700 truncate">
+            <div className="glass-stat-card card-hover-lift p-4 sm:p-5">
+              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">Rata-rata Nilai Nota</div>
+              <div className="text-lg sm:text-xl font-black text-slate-800 font-mono truncate">
                 Rp {(ringkasan?.rataRata || 0).toLocaleString('id-ID')}
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-3.5 shadow-2xs">
-              <div className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 truncate">Self vs Drop Off</div>
-              <div className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-1.5 mt-0.5">
-                <span className="text-[#1E4648]">{ringkasan.selfCount} Self</span>
-                <span className="text-slate-300">•</span>
-                <span className="text-[#FF9500]">{ringkasan.fullCount} Full</span>
+            <div className="glass-stat-card card-hover-lift p-4 sm:p-5">
+              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">Self vs Drop Off</div>
+              <div className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-2 mt-1">
+                <span className="badge-glow-teal px-2 py-0.5 rounded-full">{ringkasan.selfCount} Self</span>
+                <span className="badge-glow-amber px-2 py-0.5 rounded-full">{ringkasan.fullCount} Full</span>
               </div>
             </div>
           </div>
