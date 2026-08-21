@@ -98,38 +98,38 @@ export const DialogProvider = ({ children }: { children: ReactNode }) => {
       {children}
       
       {isOpen && (
-        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col transform animate-in zoom-in-95 duration-200">
-            <div className="p-6 flex flex-col items-center text-center space-y-4">
-              <div className="p-3 bg-slate-50 rounded-full">
+        <div className="fixed inset-0 z-[9999] bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="glass-modal rounded-3xl w-full max-w-sm overflow-hidden flex flex-col transform animate-pop-scale shadow-2xl border border-white/60">
+            <div className="p-6 flex flex-col items-center text-center space-y-3">
+              <div className="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-100 shadow-xs">
                 {getIcon()}
               </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-800">{getTitle()}</h3>
-                <p className="text-sm text-slate-500 mt-2">{options.message}</p>
+              <div className="w-full">
+                <h3 className="text-base font-black text-slate-900 tracking-tight">{getTitle()}</h3>
+                <p className="text-xs text-slate-600 mt-2 leading-relaxed font-medium">{options.message}</p>
                 {options.isPrompt && (
                   <input
                     type="text"
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    className="w-full mt-4 px-4 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#1E4648]"
+                    className="w-full mt-4 px-3.5 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:border-[#0f766e] focus:bg-white transition"
                     autoFocus
                   />
                 )}
               </div>
             </div>
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+            <div className="p-4 border-t border-slate-100/80 bg-slate-50/50 flex justify-end gap-2.5">
               {options.isConfirm || options.isPrompt ? (
                 <>
                   <button
                     onClick={() => handleClose(false)}
-                    className="flex-1 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-xl transition"
+                    className="flex-1 px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-slate-200/80 bg-slate-100 rounded-xl tactile-btn cursor-pointer transition border border-slate-200/60"
                   >
                     Batal
                   </button>
                   <button
                     onClick={() => handleClose(true)}
-                    className="flex-1 px-4 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-md shadow-indigo-600/20"
+                    className="flex-1 px-4 py-2.5 text-xs font-black btn-glow-emerald rounded-xl tactile-btn cursor-pointer transition"
                   >
                     {options.isPrompt ? 'Simpan' : 'Ya, Lanjutkan'}
                   </button>
@@ -137,7 +137,7 @@ export const DialogProvider = ({ children }: { children: ReactNode }) => {
               ) : (
                 <button
                   onClick={() => handleClose(true)}
-                  className="w-full px-4 py-2.5 text-sm font-bold text-white bg-[#1E4648] hover:bg-[#163536] rounded-xl transition shadow-md shadow-[#1E4648]/20"
+                  className="w-full px-4 py-2.5 text-xs font-black btn-glow-emerald rounded-xl tactile-btn cursor-pointer transition"
                 >
                   Tutup
                 </button>

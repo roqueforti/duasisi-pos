@@ -246,22 +246,22 @@ export default function Sidebar({
                       key={item.id}
                       onClick={() => handleNavClick(item.id, item.requiresShift)}
                       title={item.label}
-                      className={`w-full text-left flex items-center rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer ${
+                      className={`w-full text-left flex items-center rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer tactile-btn ${
                         isCollapsed 
                           ? 'lg:justify-center lg:px-2 lg:py-2 gap-2.5 px-3 py-2.5' 
                           : 'gap-2.5 px-3 py-2.5'
                       } ${
                         isActive 
-                          ? 'bg-[#1E4648] text-white font-bold shadow-xs' 
+                          ? 'bg-gradient-to-r from-[#042f2e] to-[#115e59] text-white font-extrabold shadow-md border border-teal-500/30' 
                           : isShiftNotice
-                          ? 'bg-teal-50/70 border border-teal-200 text-[#1E4648] font-bold'
+                          ? 'bg-teal-50/80 border border-teal-200 text-[#042f2e] font-extrabold shadow-xs'
                           : isLocked
                           ? 'text-slate-400 hover:bg-slate-50'
                           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
                       <div className="relative shrink-0">
-                        <IconComp className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : isShiftNotice ? 'text-[#1E4648]' : isLocked ? 'text-slate-300' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                        <IconComp className={`w-4 h-4 transition-colors ${isActive ? 'text-teal-300' : isShiftNotice ? 'text-teal-700' : isLocked ? 'text-slate-300' : 'text-slate-400 group-hover:text-slate-600'}`} />
                         {isCollapsed && count > 0 && (
                           <span className="hidden lg:block absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
                         )}
@@ -279,14 +279,14 @@ export default function Sidebar({
 
                       {/* Shift Saya Active / Action Badge */}
                       {isShiftNotice && !isCollapsed && (
-                        <span className="ml-auto px-1.5 py-0.2 rounded-full text-[9px] font-black bg-teal-600 text-white animate-pulse">
+                        <span className="ml-auto px-2 py-0.5 rounded-full text-[9px] font-black bg-teal-600 text-white shadow-xs animate-pulse">
                           Buka Shift
                         </span>
                       )}
 
                       {/* Notification Count Badge */}
                       {count > 0 && !isLocked && (
-                        <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-2xs animate-pulse shrink-0 ${
+                        <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-xs animate-pulse shrink-0 ${
                           isCollapsed ? 'lg:hidden' : 'block'
                         }`}>
                           {count > 99 ? '99+' : count}
@@ -295,7 +295,7 @@ export default function Sidebar({
 
                       {/* Active Indicator Chevron */}
                       {isActive && count === 0 && !isLocked && !isShiftNotice && (
-                        <ChevronRight className={`w-3.5 h-3.5 ml-auto text-teal-200 ${isCollapsed ? 'lg:hidden' : 'block'}`} />
+                        <ChevronRight className={`w-3.5 h-3.5 ml-auto text-teal-300 ${isCollapsed ? 'lg:hidden' : 'block'}`} />
                       )}
                     </button>
                   );

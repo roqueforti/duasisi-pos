@@ -267,62 +267,61 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
           </button>
         </div>
       </div>
-
       {/* SECTION 1 — RINGKASAN CEPAT (ALL ROLES - 4 SEJAJAR SEJAK TABLET MD) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5">
         {/* Metric 1: Order Today */}
-        <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/80 shadow-2xs flex items-center gap-2.5 sm:gap-3">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold shrink-0">
-            <ShoppingCart className="w-4 h-4" />
+        <div className="glass-card card-hover-lift p-3.5 sm:p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-800 to-teal-950 text-teal-300 flex items-center justify-center font-bold shrink-0 shadow-xs border border-teal-700/40">
+            <ShoppingCart className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Order Hari Ini</div>
-            <div className="text-sm sm:text-base md:text-lg font-bold text-[#1E4648] truncate">{totalOrderHariIni} Transaksi</div>
+            <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider truncate">Order Hari Ini</div>
+            <div className="text-base sm:text-lg font-black text-slate-900 truncate">{totalOrderHariIni} Transaksi</div>
           </div>
         </div>
 
         {/* Metric 2: Omzet Today */}
-        <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/80 shadow-2xs flex items-center gap-2.5 sm:gap-3">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#B5C9C9]/20 text-[#1E4648] flex items-center justify-center font-bold shrink-0">
-            <RupiahIcon className="w-4 h-4" />
+        <div className="glass-card card-hover-lift p-3.5 sm:p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-800 to-teal-950 text-teal-300 flex items-center justify-center font-bold shrink-0 shadow-xs border border-teal-700/40">
+            <RupiahIcon className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Omzet Hari Ini</div>
-            <div className="text-sm sm:text-base md:text-lg font-bold text-[#1E4648] truncate">Rp {(omzetHariIni || 0).toLocaleString('id-ID')}</div>
+            <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider truncate">Omzet Hari Ini</div>
+            <div className="text-base sm:text-lg font-black text-slate-900 truncate">Rp {(omzetHariIni || 0).toLocaleString('id-ID')}</div>
           </div>
         </div>
 
         {/* Metric 3: Active In-Progress Orders */}
-        <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/80 shadow-2xs flex items-center gap-2.5 sm:gap-3">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#FF9500]/10 text-[#FF9500] flex items-center justify-center font-bold shrink-0">
-            <Clock className="w-4 h-4" />
+        <div className="glass-card card-hover-lift p-3.5 sm:p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-amber-100 flex items-center justify-center font-bold shrink-0 shadow-xs border border-amber-400/40">
+            <Clock className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Order Aktif</div>
-            <div className="text-sm sm:text-base md:text-lg font-bold text-[#1E4648] truncate">{activeOrders.length} Order</div>
-            <div className="text-[9px] sm:text-[10px] text-[#FF9500] font-bold truncate">{readyPickupOrders.length} Siap Diambil</div>
+            <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider truncate">Order Aktif</div>
+            <div className="text-base sm:text-lg font-black text-slate-900 truncate">{activeOrders.length} Order</div>
+            <div className="text-[10px] text-amber-600 font-extrabold truncate">{readyPickupOrders.length} Siap Diambil</div>
           </div>
         </div>
 
         {/* Metric 4: System Alerts Status */}
-        <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200/80 shadow-2xs flex items-center gap-2.5 sm:gap-3">
-          <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center font-bold shrink-0 ${
+        <div className="glass-card card-hover-lift p-3.5 sm:p-4 flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold shrink-0 shadow-xs ${
             lowStockItems.length > 0 || maintenanceMachines.length > 0 
-              ? 'bg-rose-50 text-rose-600' 
-              : 'bg-[#B5C9C9]/20 text-[#1E4648]'
+              ? 'bg-gradient-to-br from-rose-500 to-rose-700 text-rose-100 border border-rose-400/40' 
+              : 'bg-gradient-to-br from-emerald-600 to-teal-900 text-emerald-100 border border-emerald-500/40'
           }`}>
             {lowStockItems.length > 0 || maintenanceMachines.length > 0 ? (
-              <AlertTriangle className="w-4 h-4" />
+              <AlertTriangle className="w-5 h-5 animate-pulse" />
             ) : (
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="w-5 h-5" />
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Alert Sistem</div>
-            <div className={`text-sm sm:text-base md:text-lg font-bold truncate ${
+            <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider truncate">Alert Sistem</div>
+            <div className={`text-base sm:text-lg font-black truncate ${
               lowStockItems.length > 0 || maintenanceMachines.length > 0 
                 ? 'text-rose-600' 
-                : 'text-[#1E4648]'
+                : 'text-emerald-700'
             }`}>
               {lowStockItems.length > 0 || maintenanceMachines.length > 0 ? (
                 <span>{lowStockItems.length + maintenanceMachines.length} Warning</span>

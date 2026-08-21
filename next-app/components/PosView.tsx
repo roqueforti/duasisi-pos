@@ -1665,10 +1665,10 @@ export default function PosView({
                           updateCart(item, 1);
                         }
                       }}
-                      className={`bg-white rounded-2xl border-2 p-3 flex flex-col justify-between gap-2.5 cursor-pointer select-none active:scale-98 transition-all duration-150 touch-pan-y ${
+                      className={`glass-card card-hover-lift rounded-2xl p-3.5 flex flex-col justify-between gap-2.5 cursor-pointer select-none tactile-btn touch-pan-y ${
                         qtyInCart > 0
-                          ? 'ring-2 ring-[#1E4648]/40 border-[#1E4648] bg-[#1E4648]/[0.02] shadow-md'
-                          : 'border-slate-200/90 shadow-2xs hover:border-[#1E4648] hover:shadow-md'
+                          ? 'ring-2 ring-teal-700/60 border-teal-700 bg-teal-50/30 shadow-md'
+                          : 'border-slate-200/90 shadow-xs hover:border-teal-600 hover:shadow-md'
                       }`}
                     >
                       <div>
@@ -1694,7 +1694,7 @@ export default function PosView({
                             <Icon className={`w-4 h-4 ${iconColor}`} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-xs text-slate-900 leading-snug line-clamp-2">
+                            <p className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-2">
                               {item.layanan}
                             </p>
                           </div>
@@ -1704,7 +1704,7 @@ export default function PosView({
                       <div>
                         {/* Harga - Prominent */}
                         <div className="pt-1">
-                          <div className="text-sm sm:text-base font-extrabold text-[#1E4648] leading-tight font-mono">
+                          <div className="text-sm sm:text-base font-black text-teal-950 leading-tight font-mono">
                             Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')}
                           </div>
                         </div>
@@ -1712,12 +1712,12 @@ export default function PosView({
                         {/* Qty Stepper - Bottom */}
                         <div className="flex items-center justify-between gap-1 pt-2" onClick={(e) => e.stopPropagation()}>
                           {qtyInCart > 0 ? (
-                            <div className="flex items-center bg-[#1E4648] text-white rounded-xl overflow-hidden flex-1 h-7 shadow-xs">
+                            <div className="flex items-center btn-glow-emerald rounded-xl overflow-hidden flex-1 h-7 shadow-xs">
                               <button
                                 onPointerDown={(e) => e.stopPropagation()}
                                 onPointerUp={(e) => e.stopPropagation()}
                                 onClick={(e) => { e.stopPropagation(); updateCart(item, -1); }}
-                                className="w-7 h-full flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
+                                className="w-7 h-full flex items-center justify-center hover:bg-white/20 transition font-bold text-xs cursor-pointer"
                               >
                                 <Minus className="w-3.5 h-3.5" />
                               </button>
@@ -1726,13 +1726,13 @@ export default function PosView({
                                 onPointerDown={(e) => e.stopPropagation()}
                                 onPointerUp={(e) => e.stopPropagation()}
                                 onClick={(e) => { e.stopPropagation(); updateCart(item, 1); }}
-                                className="w-7 h-full flex items-center justify-center hover:bg-white/20 transition font-bold text-xs"
+                                className="w-7 h-full flex items-center justify-center hover:bg-white/20 transition font-bold text-xs cursor-pointer"
                               >
                                 <Plus className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           ) : (
-                            <div className="w-full h-7 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center hover:bg-[#1E4648] hover:text-white hover:border-[#1E4648] text-slate-500 transition shadow-2xs font-bold text-xs gap-1">
+                            <div className="w-full h-7 rounded-xl bg-slate-50/80 border border-slate-200 flex items-center justify-center hover:bg-teal-900 hover:text-white hover:border-teal-900 text-slate-600 transition shadow-2xs font-bold text-xs gap-1 cursor-pointer">
                               <Plus className="w-3.5 h-3.5" />
                               <span className="text-[11px] font-bold">Tambah</span>
                             </div>

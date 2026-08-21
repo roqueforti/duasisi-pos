@@ -519,10 +519,8 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
             </div>
           </div>
 
-          {/* Right Column (7 Cols): Digital Member Card & Riwayat Transaksi */}
+          {/* Right Column (7 Cols): Digital Member Card */}
           <div className="md:col-span-7 space-y-4">
-            
-            {/* Digital Member Loyalty Stamp Card (7.5 KG & 4.5 KG) */}
             <DigitalMemberCard
               customer={selectedCust}
               canEdit={true}
@@ -544,62 +542,116 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                 }
               }}
             />
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
-                  <History className="w-4 h-4 text-[#1E4648]" />
-                  <span>Riwayat Transaksi Pelanggan ({historyList.length})</span>
-                </h3>
-              </div>
-
-              {loadingHistory ? (
-                <div className="py-16 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
-                  <RefreshCw className="w-6 h-6 animate-spin text-[#1E4648]" />
-                  <span className="text-xs font-semibold">Memuat riwayat transaksi pelanggan...</span>
-                </div>
-              ) : historyList.length === 0 ? (
-                <div className="py-16 text-center text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center justify-center gap-1.5">
-                  <ShoppingBag className="w-8 h-8 text-slate-300" />
-                  <span className="text-xs font-bold text-slate-600">Belum ada riwayat transaksi</span>
-                  <span className="text-[11px] text-slate-400">Transaksi baru atas nama pelanggan ini akan otomatis tercatat di sini.</span>
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  {historyList.map((tx, idx) => (
-                    <div key={idx} className="p-3.5 bg-slate-50 hover:bg-slate-100/90 rounded-xl border border-slate-200/80 transition flex items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-extrabold text-xs text-slate-900">{tx.noNota}</span>
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${tx.tipe === 'FullService' ? 'bg-[#B5C9C9]/30 text-[#1E4648]' : 'bg-slate-200 text-slate-700'}`}>
-                            {tx.tipe === 'FullService' ? 'Drop Off' : 'Self Service'}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 flex items-center gap-2">
-                          <span>{(tx as any).waktuTransaksi || tx.tanggal}</span>
-                          <span>•</span>
-                          <span>{(tx as any).status || 'Selesai'}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-sm font-black text-slate-900 block font-mono">
-                          Rp {((tx as any).totalBayar || tx.total || 0).toLocaleString('id-ID')}
-                        </span>
-                        <a
-                          href={`/enota?nota=${encodeURIComponent(tx.noNota)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[11px] font-bold text-[#1E4648] hover:underline"
-                        >
-                          Lihat E-Nota ↗
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* FULL-WIDTH BOTTOM SECTION: RIWAYAT TRANSAKSI PELANGGAN (TABEL LENGKAP)    */}
+        {/* ========================================================================= */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
+              <History className="w-4 h-4 text-[#1E4648]" />
+              <span>Riwayat Transaksi Pelanggan</span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-black bg-teal-50 text-teal-800 border border-teal-200">
+                {historyList.length} Transaksi
+              </span>
+            </h3>
+            <span className="text-[11px] text-slate-400 font-medium">
+              Semua riwayat pesanan cuci &amp; transaksi yang tercatat atas nama pelanggan ini
+            </span>
+          </div>
+
+          {loadingHistory ? (
+            <div className="py-16 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
+              <RefreshCw className="w-6 h-6 animate-spin text-[#1E4648]" />
+              <span className="text-xs font-semibold">Memuat riwayat transaksi pelanggan...</span>
+            </div>
+          ) : historyList.length === 0 ? (
+            <div className="py-16 text-center text-slate-400 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center justify-center gap-1.5">
+              <ShoppingBag className="w-8 h-8 text-slate-300" />
+              <span className="text-xs font-bold text-slate-600">Belum ada riwayat transaksi</span>
+              <span className="text-[11px] text-slate-400">Transaksi baru atas nama pelanggan ini akan otomatis tercatat di sini.</span>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 text-slate-500 font-extrabold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                    <th className="py-3 px-4">No. Nota</th>
+                    <th className="py-3 px-4">Tanggal &amp; Waktu</th>
+                    <th className="py-3 px-4">Tipe Layanan</th>
+                    <th className="py-3 px-4">Status Pengerjaan</th>
+                    <th className="py-3 px-4 text-right">Total Bayar</th>
+                    <th className="py-3 px-4 text-center">Aksi / E-Nota</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {historyList.map((tx, idx) => {
+                    const statusName = (tx as any).status || 'Selesai';
+                    const isCompleted = statusName.toLowerCase().includes('selesai') || statusName.toLowerCase().includes('diambil');
+                    const isProgress = statusName.toLowerCase().includes('proses') || statusName.toLowerCase().includes('cuci') || statusName.toLowerCase().includes('kering') || statusName.toLowerCase().includes('setrika');
+
+                    return (
+                      <tr key={idx} className="hover:bg-teal-50/30 transition-colors">
+                        {/* No. Nota */}
+                        <td className="py-3 px-4 font-mono font-black text-slate-900 text-xs">
+                          {tx.noNota}
+                        </td>
+
+                        {/* Tanggal & Waktu */}
+                        <td className="py-3 px-4 text-slate-600 font-medium whitespace-nowrap">
+                          {(tx as any).waktuTransaksi || tx.tanggal || '-'}
+                        </td>
+
+                        {/* Tipe Layanan */}
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-black ${
+                            tx.tipe === 'FullService' 
+                              ? 'bg-teal-50 text-teal-800 border border-teal-200' 
+                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}>
+                            {tx.tipe === 'FullService' ? '🧺 Drop Off' : '🪙 Self Service'}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-black ${
+                            isCompleted
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : isProgress
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200 animate-pulse'
+                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}>
+                            {statusName}
+                          </span>
+                        </td>
+
+                        {/* Total Bayar */}
+                        <td className="py-3 px-4 text-right font-mono font-black text-slate-900 text-sm whitespace-nowrap">
+                          Rp {((tx as any).totalBayar || tx.total || 0).toLocaleString('id-ID')}
+                        </td>
+
+                        {/* E-Nota Link Button */}
+                        <td className="py-3 px-4 text-center">
+                          <a
+                            href={`/enota?nota=${encodeURIComponent(tx.noNota)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition shadow-2xs"
+                          >
+                            <span>Lihat E-Nota</span>
+                            <span className="text-xs">↗</span>
+                          </a>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     );
