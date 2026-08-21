@@ -216,8 +216,9 @@ export default function PosAppRoot() {
 
             <main key={refreshKey} className="flex-1 overflow-y-auto bg-slate-50">
               {currentTab === 'dashboard' && <DashboardView currentRole={currentRole} />}
-              {currentTab === 'transaksi' && <PosView currentRole={currentRole} />}
+              {currentTab === 'transaksi' && <PosView currentRole={currentRole} onNavigateTab={handleTabChange} />}
               {currentTab === 'pesanan' && <PesananView />}
+
               {currentTab === 'mesin' && <MesinView currentRole={currentRole} />}
               {currentTab === 'riwayat' && <RiwayatView currentRole={currentRole} />}
               {currentTab === 'pelanggan' && <PelangganView currentRole={currentRole} />}

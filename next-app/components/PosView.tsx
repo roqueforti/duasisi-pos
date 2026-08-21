@@ -148,7 +148,14 @@ interface CustomerState {
 
 import { getLayananStyleConfig, getIconComponent, KategoriItem } from '@/lib/categoryUtils';
 
-export default function PosView({ currentRole }: { currentRole?: UserRole } = {}) {
+export default function PosView({ 
+  currentRole,
+  onNavigateTab
+}: { 
+  currentRole?: UserRole;
+  onNavigateTab?: (tab: string) => void;
+} = {}) {
+
   const { showAlert, showConfirm } = useDialog();
   const [layananList, setLayananList] = useState<LayananItem[]>([]);
   const [layananLoading, setLayananLoading] = useState<boolean>(true);
@@ -1519,21 +1526,25 @@ export default function PosView({ currentRole }: { currentRole?: UserRole } = {}
               </button>
             ) : shiftAktif ? (
               <button
-                onClick={() => setShowTutupShiftModal(true)}
-                className="bg-[#B5C9C9]/20 border border-[#B5C9C9] text-[#1E4648] hover:bg-[#B5C9C9]/30 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition"
+                type="button"
+                onClick={() => onNavigateTab ? onNavigateTab('shift_saya') : setShowTutupShiftModal(true)}
+                className="bg-[#B5C9C9]/20 border border-[#B5C9C9] text-[#1E4648] hover:bg-[#B5C9C9]/30 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                title="Buka Menu Shift Saya & Kas Laci"
               >
                 <Unlock className="w-4 h-4 text-[#1E4648]" />
                 <span className="hidden sm:inline">Shift (Rp {(shiftAktif?.kasAwal || 0).toLocaleString('id-ID')})</span>
               </button>
             ) : (
               <button
-                onClick={() => setShowBukaShiftModal(true)}
-                className="bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-1.5 transition"
+                type="button"
+                onClick={() => onNavigateTab ? onNavigateTab('shift_saya') : setShowBukaShiftModal(true)}
+                className="bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Lock className="w-4 h-4 text-rose-600" />
                 <span>Buka Shift</span>
               </button>
             )}
+
           </div>
         </div>
 

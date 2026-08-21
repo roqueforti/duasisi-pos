@@ -1941,7 +1941,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                         <span>+ Rp {(shiftAktif.totalOmzetTunai || 0).toLocaleString('id-ID')}</span>
                       </div>
                       <div className="flex justify-between text-rose-600 font-semibold">
-                        <span>• (-) Belanja Shift ({expenseList.length} item):</span>
+                        <span>• (-) Total Belanja Shift ({expenseList.length} item):</span>
                         <span>- Rp {totalPengeluaran.toLocaleString('id-ID')}</span>
                       </div>
                       <hr className="border-teal-100 my-1" />
@@ -1952,7 +1952,49 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                         </span>
                       </div>
                     </div>
+
+                    {/* Rincian Daftar Belanja yang Tercatat */}
+                    {expenseList.length > 0 ? (
+                      <div className="bg-rose-50/80 border border-rose-200 rounded-xl p-2.5 my-2 space-y-1.5 text-[11px]">
+                        <div className="text-[10px] font-bold text-rose-900 uppercase tracking-wider flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <Receipt className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Rincian Barang yang Dibeli:</span>
+                          </span>
+                          <span className="bg-rose-200/80 text-rose-900 px-1.5 py-0.2 rounded text-[9px] font-extrabold">{expenseList.length} Item</span>
+                        </div>
+                        <div className="divide-y divide-rose-100 max-h-28 overflow-y-auto pr-1">
+                          {expenseList.map((exp, idx) => (
+                            <div key={idx} className="py-1 flex items-center justify-between gap-2 text-slate-700">
+                              <div className="min-w-0 truncate">
+                                <span className="font-bold text-slate-900">{idx + 1}. {exp.nama}</span>
+                                {exp.qtyMasuk ? <span className="text-[10px] text-teal-800 font-semibold ml-1">(+{exp.qtyMasuk} {exp.satuan})</span> : null}
+                                <span className="text-[9px] text-slate-400 block sm:inline sm:ml-1">[{exp.kategori}]</span>
+                              </div>
+                              <span className="font-mono font-bold text-rose-600 shrink-0">
+                                - Rp {(exp.nominal || 0).toLocaleString('id-ID')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="my-2 p-2 bg-slate-100/80 rounded-xl border border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
+                        <span>Belum ada belanja barang pada shift ini.</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowClosingModal(false);
+                            setShowAddExpenseModal(true);
+                          }}
+                          className="text-[10px] text-teal-800 font-bold hover:underline cursor-pointer"
+                        >
+                          + Catat Belanja
+                        </button>
+                      </div>
+                    )}
                   </div>
+
 
                   {/* Input Manual Kasir */}
                   <div className="space-y-1.5 pt-1">
