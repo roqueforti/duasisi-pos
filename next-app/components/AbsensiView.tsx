@@ -698,7 +698,7 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                     <th className="py-3 px-4">Clock In</th>
                     <th className="py-3 px-4">Clock Out</th>
                     <th className="py-3 px-4">Durasi</th>
-                    <th className="py-3 px-4">Denda Keterlambatan</th>
+                    <th className="py-3 px-4">Status Kehadiran</th>
                     <th className="py-3 px-4">Catatan</th>
                   </tr>
                 </thead>
@@ -725,35 +725,37 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                     </tr>
                   ) : (
                     rekap.map(r => {
-                      const isLate = r.catatan?.includes('[TERLAMBAT');
+                      const isLate = r.catatan?.includes('[TERLAMBAT') || (r.menitTelat && r.menitTelat > 0);
                       return (
-                        <tr key={r.id} className={`hover:bg-slate-50/80 transition-colors ${isLate ? 'bg-rose-50/30' : ''}`}>
+                        <tr key={r.id} className={`hover:bg-slate-50/80 transition-colors ${isLate ? 'bg-amber-50/40' : ''}`}>
                           <td className="py-3 px-4 font-semibold text-slate-700">{r.tanggal}</td>
                           <td className="py-3 px-4 font-bold text-slate-900">{r.namaPegawai}</td>
                           <td className="py-3 px-4 text-slate-600">{r.shift}</td>
-                          <td className={`py-3 px-4 font-bold ${isLate ? 'text-rose-600' : 'text-[#1E4648]'}`}>
+                          <td className={`py-3 px-4 font-bold ${isLate ? 'text-amber-700' : 'text-[#1E4648]'}`}>
                             {r.clockIn}
                           </td>
                           <td className="py-3 px-4 text-amber-700 font-semibold">{r.clockOut || '-'}</td>
                           <td className="py-3 px-4 font-semibold text-slate-700">{r.durasi}</td>
                           <td className="py-3 px-4">
-                            {r.denda && r.denda > 0 ? (
-                              <span className="bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded text-[11px] border border-rose-200">
-                                - Rp {r.denda.toLocaleString('id-ID')}
+                            {isLate ? (
+                              <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-[11px] border border-amber-200 inline-flex items-center gap-1">
+                                <span>Terlambat</span>
+                                {r.menitTelat ? <span className="font-normal">({r.menitTelat} mnt)</span> : null}
                               </span>
-                            ) : isLate ? (
-                              <span className="text-amber-600 font-semibold text-[11px]">Telat ({r.menitTelat || 0} mnt)</span>
                             ) : (
-                              <span className="text-emerald-600 font-semibold text-[11px]">Tepat Waktu</span>
+                              <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded text-[11px] border border-emerald-200 inline-flex items-center gap-1">
+                                <span>Tepat Waktu</span>
+                              </span>
                             )}
                           </td>
-                          <td className={`py-3 px-4 ${isLate ? 'text-rose-600 font-medium' : 'text-slate-500'}`}>
+                          <td className={`py-3 px-4 ${isLate ? 'text-amber-800 font-medium' : 'text-slate-500'}`}>
                             {r.catatan}
                           </td>
                         </tr>
                       );
                     })
                   )}
+
                 </tbody>
               </table>
             </div>

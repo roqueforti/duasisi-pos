@@ -1553,7 +1553,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                     >
                       {inventoryList.map((inv) => (
                         <option key={inv.id} value={inv.id}>
-                          {inv.nama} (Sisa: {inv.stok} {inv.satuan})
+                          {inv.nama} (Sisa: {Number(inv.stok || 0).toLocaleString('id-ID', { maximumFractionDigits: 2 })} {inv.satuan})
                         </option>
                       ))}
                     </select>
@@ -1566,11 +1566,12 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                       <div className="flex items-center justify-between text-[11px] bg-white px-3 py-1.5 rounded-lg border border-teal-200">
                         <span className="text-slate-500">Stok Saat Ini:</span>
                         <span className="font-bold text-teal-800">
-                          {currentItem.stok} {currentItem.satuan} <span className="text-slate-400 font-normal">(Min: {currentItem.stokMinimum})</span>
+                          {Number(currentItem.stok || 0).toLocaleString('id-ID', { maximumFractionDigits: 2 })} {currentItem.satuan} <span className="text-slate-400 font-normal">(Min: {currentItem.stokMinimum})</span>
                         </span>
                       </div>
                     );
                   })()}
+
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -1910,80 +1911,163 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                 </div>
               )}
 
-              {/* Input Physical Counts */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Fisik Kas Laci */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-800">1. Total Uang Fisik Kas Laci *</span>
-                    <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-1.5 py-0.2 rounded">Tunai</span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 flex justify-between">
-                    <span>Ekspektasi Kas:</span>
-                    <span className="font-bold font-mono text-slate-700">
-                      Rp {((shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">Rp</div>
-                    <input
-                      type="number"
-                      value={kasAkhirFisikInput}
-                      onChange={(e) => setKasAkhirFisikInput(e.target.value)}
-                      placeholder="Hitung uang di laci"
-                      className="w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-800 outline-none focus:border-[#1E4648]"
-                    />
-                  </div>
-                  {kasAkhirFisikInput && (
-                    <div className={`p-1.5 rounded text-[11px] font-bold flex justify-between ${
-                      (Number(kasAkhirFisikInput) || 0) === ((shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran)
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      <span>Selisih Fisik:</span>
-                      <span>
-                        Rp {((Number(kasAkhirFisikInput) || 0) - ((shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran)).toLocaleString('id-ID')}
+              {/* Input Physical Counts & Reconciliation Breakdown */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* 1. Fisik Kas Laci (Tunai) */}
+                <div className="bg-teal-50/40 border border-teal-200 rounded-2xl p-4 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-center pb-2 border-b border-teal-100">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-800 text-xs">
+                        <Coins className="w-4 h-4 text-teal-700" />
+                        <span>1. Rekonsiliasi Kas Laci (Tunai)</span>
+                      </div>
+                      <span className="text-[10px] bg-teal-100 text-teal-800 font-extrabold px-2 py-0.2 rounded-full uppercase">
+                        Uang Fisik
                       </span>
                     </div>
-                  )}
+
+                    {/* Rincian Sistem */}
+                    <div className="bg-white/80 border border-teal-100 rounded-xl p-2.5 my-2.5 space-y-1 text-[11px]">
+                      <div className="text-[10px] font-bold text-teal-900 uppercase tracking-wider mb-1">
+                        📊 Data Tercatat di Sistem:
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>• Modal Awal Kas Laci:</span>
+                        <span className="font-semibold text-slate-900">Rp {(shiftAktif.kasAwal || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="flex justify-between text-teal-700 font-semibold">
+                        <span>• (+) Pemasukan POS (Tunai):</span>
+                        <span>+ Rp {(shiftAktif.totalOmzetTunai || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="flex justify-between text-rose-600 font-semibold">
+                        <span>• (-) Belanja Shift ({expenseList.length} item):</span>
+                        <span>- Rp {totalPengeluaran.toLocaleString('id-ID')}</span>
+                      </div>
+                      <hr className="border-teal-100 my-1" />
+                      <div className="flex justify-between items-center font-bold text-slate-900 pt-0.5">
+                        <span className="text-teal-950 font-black">Ekspektasi Uang di Laci:</span>
+                        <span className="text-xs font-mono font-black text-[#1E4648] bg-teal-100/60 px-1.5 py-0.5 rounded">
+                          Rp {((shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Input Manual Kasir */}
+                  <div className="space-y-1.5 pt-1">
+                    <label className="block text-xs font-bold text-teal-950">
+                      Hitung & Input Uang Fisik di Laci Sekarang *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-teal-700 text-xs">Rp</div>
+                      <input
+                        type="number"
+                        value={kasAkhirFisikInput}
+                        onChange={(e) => setKasAkhirFisikInput(e.target.value)}
+                        placeholder="Hitung lembaran & koin di laci"
+                        className="w-full pl-9 pr-3 py-2.5 bg-white border border-teal-300 rounded-xl text-sm font-black text-slate-800 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 shadow-2xs"
+                      />
+                    </div>
+
+                    {kasAkhirFisikInput !== '' && (() => {
+                      const expected = (shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran;
+                      const actual = Number(kasAkhirFisikInput) || 0;
+                      const diff = actual - expected;
+                      return (
+                        <div className={`p-2 rounded-xl text-xs font-bold flex items-center justify-between shadow-2xs ${
+                          diff === 0 
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                            : diff > 0 
+                            ? 'bg-blue-100 text-blue-900 border border-blue-300' 
+                            : 'bg-rose-100 text-rose-900 border border-rose-300'
+                        }`}>
+                          <span>Selisih Kas Fisik:</span>
+                          <span className="font-mono">
+                            {diff === 0 ? 'Rp 0 (SESUAI ✅)' : diff > 0 ? `+Rp ${diff.toLocaleString('id-ID')} (LEBIH 🔵)` : `-Rp ${Math.abs(diff).toLocaleString('id-ID')} (KURANG ⚠️)`}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
 
-                {/* Saldo Merchant */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-800">2. Saldo Akhir Aplikasi Merchant *</span>
-                    <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.2 rounded">QRIS</span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 flex justify-between">
-                    <span>Ekspektasi Saldo:</span>
-                    <span className="font-bold font-mono text-slate-700">
-                      Rp {((shiftAktif.saldoMerchantAwal || 0) + (shiftAktif.totalOmzetMerchant || 0)).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <div className="absolute left-2.5 top-1/2 -translate-y-1/2 font-bold text-slate-400">Rp</div>
-                    <input
-                      type="number"
-                      value={saldoMerchantAkhirInput}
-                      onChange={(e) => setSaldoMerchantAkhirInput(e.target.value)}
-                      placeholder="Cek saldo merchant"
-                      className="w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-800 outline-none focus:border-[#1E4648]"
-                    />
-                  </div>
-                  {saldoMerchantAkhirInput && (
-                    <div className={`p-1.5 rounded text-[11px] font-bold flex justify-between ${
-                      (Number(saldoMerchantAkhirInput) || 0) === ((shiftAktif.saldoMerchantAwal || 0) + (shiftAktif.totalOmzetMerchant || 0))
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      <span>Selisih Merchant:</span>
-                      <span>
-                        Rp {((Number(saldoMerchantAkhirInput) || 0) - ((shiftAktif.saldoMerchantAwal || 0) + (shiftAktif.totalOmzetMerchant || 0))).toLocaleString('id-ID')}
+                {/* 2. Saldo Aplikasi Merchant (QRIS / EDC) */}
+                <div className="bg-indigo-50/40 border border-indigo-200 rounded-2xl p-4 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-center pb-2 border-b border-indigo-100">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-800 text-xs">
+                        <Smartphone className="w-4 h-4 text-indigo-700" />
+                        <span>2. Rekonsiliasi Aplikasi Merchant</span>
+                      </div>
+                      <span className="text-[10px] bg-indigo-100 text-indigo-800 font-extrabold px-2 py-0.2 rounded-full uppercase">
+                        QRIS / EDC
                       </span>
                     </div>
-                  )}
+
+                    {/* Rincian Sistem */}
+                    <div className="bg-white/80 border border-indigo-100 rounded-xl p-2.5 my-2.5 space-y-1 text-[11px]">
+                      <div className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider mb-1">
+                        📊 Data Tercatat di Sistem:
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>• Saldo Awal Merchant:</span>
+                        <span className="font-semibold text-slate-900">Rp {(shiftAktif.saldoMerchantAwal || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      <div className="flex justify-between text-indigo-700 font-semibold">
+                        <span>• (+) Pemasukan QRIS / EDC:</span>
+                        <span>+ Rp {(shiftAktif.totalOmzetMerchant || 0).toLocaleString('id-ID')}</span>
+                      </div>
+                      <hr className="border-indigo-100 my-1" />
+                      <div className="flex justify-between items-center font-bold text-slate-900 pt-0.5">
+                        <span className="text-indigo-950 font-black">Ekspektasi Saldo Merchant:</span>
+                        <span className="text-xs font-mono font-black text-indigo-900 bg-indigo-100/60 px-1.5 py-0.5 rounded">
+                          Rp {((shiftAktif.saldoMerchantAwal || 0) + (shiftAktif.totalOmzetMerchant || 0)).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Input Manual Kasir */}
+                  <div className="space-y-1.5 pt-1">
+                    <label className="block text-xs font-bold text-indigo-950">
+                      Buka Aplikasi QRIS/EDC & Input Saldo Akhir *
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-indigo-700 text-xs">Rp</div>
+                      <input
+                        type="number"
+                        value={saldoMerchantAkhirInput}
+                        onChange={(e) => setSaldoMerchantAkhirInput(e.target.value)}
+                        placeholder="Lihat saldo terkini di aplikasi merchant"
+                        className="w-full pl-9 pr-3 py-2.5 bg-white border border-indigo-300 rounded-xl text-sm font-black text-slate-800 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 shadow-2xs"
+                      />
+                    </div>
+
+                    {saldoMerchantAkhirInput !== '' && (() => {
+                      const expected = (shiftAktif.saldoMerchantAwal || 0) + (shiftAktif.totalOmzetMerchant || 0);
+                      const actual = Number(saldoMerchantAkhirInput) || 0;
+                      const diff = actual - expected;
+                      return (
+                        <div className={`p-2 rounded-xl text-xs font-bold flex items-center justify-between shadow-2xs ${
+                          diff === 0 
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                            : diff > 0 
+                            ? 'bg-blue-100 text-blue-900 border border-blue-300' 
+                            : 'bg-rose-100 text-rose-900 border border-rose-300'
+                        }`}>
+                          <span>Selisih Saldo Merchant:</span>
+                          <span className="font-mono">
+                            {diff === 0 ? 'Rp 0 (SESUAI ✅)' : diff > 0 ? `+Rp ${diff.toLocaleString('id-ID')} (LEBIH 🔵)` : `-Rp ${Math.abs(diff).toLocaleString('id-ID')} (KURANG ⚠️)`}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
+
               </div>
+
 
               {/* Catatan Closing */}
               <div>
