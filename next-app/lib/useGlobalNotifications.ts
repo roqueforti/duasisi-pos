@@ -203,9 +203,15 @@ export function useGlobalNotifications(currentRole: UserRole) {
 
   useEffect(() => {
     fetchGlobalNotifications();
-    const interval = setInterval(fetchGlobalNotifications, 30000); // Check every 30s
+    const interval = setInterval(() => {
+      // Hanya jalankan polling jika tab browser sedang aktif/terbuka
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchGlobalNotifications();
+      }
+    }, 90000); // Polling setiap 90 detik agar tidak membebani limit Google Apps Script
     return () => clearInterval(interval);
   }, [fetchGlobalNotifications]);
+
 
   const unreadCount = notifications.filter(n => !readIds.includes(n.id)).length;
 

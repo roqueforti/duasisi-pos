@@ -57,7 +57,8 @@ export function cachedFetch<T>(
   action: string,
   fetcher: () => Promise<T>,
   onData: (data: T, fromCache: boolean) => void,
-  ttl = DEFAULT_TTL_MS
+  ttl = DEFAULT_TTL_MS,
+  onError?: (err: any) => void
 ): void {
   const cached = readCache<T>(action);
 
@@ -79,5 +80,12 @@ export function cachedFetch<T>(
     })
     .catch((err) => {
       console.warn(`[cache] Background fetch failed for ${action}:`, err);
+      if (onError) {
+        onError(err);
+      } else if (cached === null) {
+        // Fallback aman jika data awal gagal dimuat agar spinner loading UI tidak hang selamanya
+        onData([] as any, false);
+      }
     });
 }
+

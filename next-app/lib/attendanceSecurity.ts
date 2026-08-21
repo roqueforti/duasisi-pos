@@ -82,6 +82,7 @@ export async function getClientIpAddress(): Promise<string> {
 
 /**
  * Validasi keamanan presensi: IP Whitelist & GPS Geofencing Whitelist
+ * CATATAN: Sesuai arahan, aturan IP whitelist dinonaktifkan / dibypass.
  */
 export async function validateAttendanceSecurity(
   config?: AbsensiConfig | null
@@ -95,41 +96,10 @@ export async function validateAttendanceSecurity(
     return { valid: true };
   }
 
-  // 1. VALIDASI IP WHITELIST
-  if (config.aktifIpWhitelist && config.ipWhitelist && config.ipWhitelist.trim()) {
-    const allowedIps = config.ipWhitelist
-      .split(/[\n,;]/)
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
+  // 1. ATURAN IP WHITELIST: DINONAKTIFKAN / BYPASS
+  // Tidak memblokir dan tidak melakukan blocking network IP call
 
-    if (allowedIps.length > 0) {
-      const clientIp = await getClientIpAddress();
-      if (!clientIp) {
-        return {
-          valid: false,
-          message: 'Validasi IP gagal: Tidak dapat mendeteksi alamat IP perangkat tablet. Pastikan koneksi internet outlet aktif.',
-        };
-      }
-
-      const isAllowed = allowedIps.some((ipPattern) => {
-        if (ipPattern.endsWith('*')) {
-          const prefix = ipPattern.slice(0, -1);
-          return clientIp.startsWith(prefix);
-        }
-        return clientIp === ipPattern;
-      });
-
-      if (!isAllowed) {
-        return {
-          valid: false,
-          clientIp,
-          message: `Akses Presensi Ditolak: IP perangkat Anda (${clientIp}) tidak terdaftar dalam IP Whitelist outlet.`,
-        };
-      }
-    }
-  }
-
-  // 2. VALIDASI GPS GEOFENCING
+  // 2. VALIDASI GPS GEOFENCING (Hanya jika diaktifkan secara eksplisit)
   if (
     config.aktifGeofence &&
     config.outletLatitude !== undefined &&
@@ -170,3 +140,4 @@ export async function validateAttendanceSecurity(
 
   return { valid: true };
 }
+

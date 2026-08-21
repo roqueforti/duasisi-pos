@@ -77,14 +77,15 @@ export default function PesananView() {
     setError('');
     try {
       const [orderData, machineData, staffData, priorityData, layData, invData, pipeData] = await Promise.all([
-        runBackend<Transaksi[]>('getTransaksiByPipeline', 'Semua'),
-        runBackend<Mesin[]>('getMesinList'),
-        runBackend<StaffItem[]>('getPegawaiList'),
+        runBackend<Transaksi[]>('getTransaksiByPipeline', 'Semua').catch(() => []),
+        runBackend<Mesin[]>('getMesinList').catch(() => []),
+        runBackend<StaffItem[]>('getPegawaiList').catch(() => []),
         runBackend<DropOffPriorityItem[]>('getPriorityConfig').catch(() => null),
         runBackend<any[]>('getLayananListAll').catch(() => []),
         runBackend<any[]>('getInventoryList').catch(() => []),
         runBackend<any[]>('getPipelineConfigData').catch(() => []),
       ]);
+
       const validOrders = Array.isArray(orderData) ? orderData : [];
       setOrders(validOrders);
       setMachines(Array.isArray(machineData) ? machineData : []);

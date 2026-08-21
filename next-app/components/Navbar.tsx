@@ -38,23 +38,27 @@ interface NavbarProps {
 }
 
 const tabTitles: Record<string, string> = {
-  transaksi: 'Point of Sale (POS)',
+  transaksi: 'Point of Sale (POS Kasir)',
   riwayat: 'Riwayat Transaksi',
   pesanan: 'Manajemen Pesanan Drop-off',
-  mesin: 'Daftar & Status Mesin Operational',
+  mesin: 'Daftar & Status Mesin Operasional',
   absensi: 'Presensi & Cuti',
+  shift_saya: 'Shift Saya & Kas Laci',
+  pengeluaran: 'Pengeluaran & Belanja Shift',
+  riwayat_shift: 'Riwayat Shift & Rekonsiliasi',
   inventory: 'Stok Inventory Bahan',
   pegawai: 'Data Pegawai',
   payroll: 'Payroll & Penggajian',
   produk: 'Manajemen Layanan & Produk',
   kategori: 'Manajemen Kategori',
   langkah: 'Pipeline Langkah Pengerjaan',
-  shift: 'Kas Shift & Serah Terima',
+  shift: 'Master Shift & Config',
   rekap: 'Laporan Rekap & Analytics',
   menu: 'Menu Digital & Desain Poster',
   keamanan: 'Manajemen Keamanan & PIN',
-  dashboard: 'Dashboard Outlet'
+  dashboard: 'Dashboard Utama Outlet'
 };
+
 
 export default function Navbar({
   currentTab,

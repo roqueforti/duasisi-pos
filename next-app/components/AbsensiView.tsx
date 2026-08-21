@@ -204,17 +204,21 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
     keterangan: ''
   });
 
+  const [tabLoaded, setTabLoaded] = useState<{ jadwal: boolean; cuti: boolean; libur: boolean }>({
+    jadwal: false,
+    cuti: false,
+    libur: false,
+  });
+
   const loadInitialData = async () => {
     setLoading(true);
     try {
-      const [rekapRes, pegRes, shiftRes, configRes, jadwalRes, cutiRes, liburRes] = await Promise.all([
+      // 1. Muat hanya data esensial untuk Presensi (Rekap, Pegawai, MasterShift, Config)
+      const [rekapRes, pegRes, shiftRes, configRes] = await Promise.all([
         runBackend<AbsensiRecord[]>('getRekapAbsensi').catch(() => []),
         runBackend<PegawaiDetail[]>('getPegawaiList').catch(() => []),
         runBackend<MasterShift[]>('getMasterShiftList').catch(() => []),
         runBackend<AbsensiConfig>('getAbsensiConfig').catch(() => null),
-        runBackend<JadwalKerjaItem[]>('getJadwalKerjaList', selectedBulanJadwal).catch(() => []),
-        runBackend<CutiItem[]>('getCutiList', selectedBulanJadwal).catch(() => []),
-        runBackend<HariLiburItem[]>('getHariLiburList', String(now.getFullYear())).catch(() => [])
       ]);
 
       if (Array.isArray(rekapRes)) setRekap(rekapRes);
@@ -229,14 +233,42 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
       }
       if (Array.isArray(shiftRes) && shiftRes.length > 0) {
         setShiftList(shiftRes);
-        setShift(shiftRes[0].nama);
+        // Auto-select shift berdasarkan jam saat ini (WIB)
+        const curHour = new Date().getHours();
+        const soreShift = shiftRes.find(s => s.nama.toLowerCase().includes('sore') || s.nama.toLowerCase().includes('malam') || s.nama.includes('2'));
+        if (curHour >= 14 && soreShift) {
+          setShift(soreShift.nama);
+        } else {
+          setShift(shiftRes[0].nama);
+        }
       }
       if (configRes) setConfig(configRes);
-      if (Array.isArray(jadwalRes)) setJadwalList(jadwalRes);
-      if (Array.isArray(cutiRes)) setCutiList(cutiRes);
-      if (Array.isArray(liburRes)) setLiburList(liburRes);
     } catch (err) {
-      console.error(err);
+      console.error('Gagal memuat data awal absensi:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Lazy Load Data Khusus Tab Tertentu
+  const loadTabSpecificData = async (tab: 'jadwal' | 'cuti' | 'libur') => {
+    setLoading(true);
+    try {
+      if (tab === 'jadwal') {
+        const jadwalRes = await runBackend<JadwalKerjaItem[]>('getJadwalKerjaList', selectedBulanJadwal).catch(() => []);
+        if (Array.isArray(jadwalRes)) setJadwalList(jadwalRes);
+        setTabLoaded(prev => ({ ...prev, jadwal: true }));
+      } else if (tab === 'cuti') {
+        const cutiRes = await runBackend<CutiItem[]>('getCutiList', selectedBulanJadwal).catch(() => []);
+        if (Array.isArray(cutiRes)) setCutiList(cutiRes);
+        setTabLoaded(prev => ({ ...prev, cuti: true }));
+      } else if (tab === 'libur') {
+        const liburRes = await runBackend<HariLiburItem[]>('getHariLiburList', String(now.getFullYear())).catch(() => []);
+        if (Array.isArray(liburRes)) setLiburList(liburRes);
+        setTabLoaded(prev => ({ ...prev, libur: true }));
+      }
+    } catch (err) {
+      console.error(`Gagal memuat tab ${tab}:`, err);
     } finally {
       setLoading(false);
     }
@@ -244,7 +276,18 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
 
   useEffect(() => {
     loadInitialData();
-  }, [selectedBulanJadwal]);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'jadwal') {
+      loadTabSpecificData('jadwal');
+    } else if (activeTab === 'cuti') {
+      loadTabSpecificData('cuti');
+    } else if (activeTab === 'libur') {
+      loadTabSpecificData('libur');
+    }
+  }, [activeTab, selectedBulanJadwal]);
+
 
   // Presensi Actions
   const handleClockIn = async () => {

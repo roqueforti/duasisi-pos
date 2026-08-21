@@ -128,11 +128,26 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
   const payload: Record<string, any> = { action, args };
   if (!isPublicAction && sessionToken) payload.sessionToken = sessionToken;
 
-  const response = await fetch(GAS_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  let response: Response;
+  try {
+    response = await fetch(GAS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Koneksi ke server timeout (lebih dari 15 detik). Silakan periksa jaringan internet.`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
   if (!response.ok) throw new Error(`HTTP error ${response.status}`);
   const data = await response.json() as any;
 
@@ -167,3 +182,4 @@ export function runBackendCached<T = any>(
     ttlMs,
   );
 }
+

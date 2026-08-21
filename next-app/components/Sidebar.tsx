@@ -37,6 +37,7 @@ interface SidebarProps {
   setIsSidebarOpen: (open: boolean) => void;
   onLogout: () => void;
   badgeCounts?: BadgeCounts;
+  isShiftActive?: boolean;
 }
 
 interface NavItem {
@@ -45,6 +46,8 @@ interface NavItem {
   icon: any;
   managerOnly?: boolean;
   staffOnly?: boolean;
+  requiresShift?: boolean;
+  isShiftCta?: boolean;
 }
 
 interface NavGroup {
@@ -59,12 +62,13 @@ export default function Sidebar({
   isSidebarOpen,
   setIsSidebarOpen,
   onLogout,
-  badgeCounts
+  badgeCounts,
+  isShiftActive = false
 }: SidebarProps) {
   const { showAlert } = useDialog();
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
-  const handleNavClick = async (tabKey: string) => {
+  const handleNavClick = async (tabKey: string, requiresShift?: boolean) => {
     if (tabKey === 'transaksi' && currentRole === 'MANAGER') {
       await showAlert('Fitur POS Kasir hanya untuk Staff/Kasir', 'warning');
       return;
@@ -73,6 +77,15 @@ export default function Sidebar({
       await showAlert('Akses Ditolak — Khusus Manager/Owner', 'error');
       return;
     }
+
+    // Cek apakah menu memerlukan kas shift aktif
+    if (requiresShift && !isShiftActive && currentRole !== 'MANAGER') {
+      await showAlert('🔒 Menu ini terkunci. Harap Buka Shift terlebih dahulu di menu "Shift Saya" untuk memulai operasional kasir.', 'warning');
+      setCurrentTab('shift_saya');
+      setIsSidebarOpen(false);
+      return;
+    }
+
     setCurrentTab(tabKey);
     setIsSidebarOpen(false);
   };
@@ -82,11 +95,19 @@ export default function Sidebar({
       groupName: 'Operasional Kasir',
       items: [
         { id: 'dashboard', label: 'Dashboard Utama', icon: LayoutDashboard },
-        { id: 'transaksi', label: 'POS Kasir', icon: ShoppingCart, staffOnly: true },
-        { id: 'pesanan', label: 'Pesanan Drop-off', icon: ClipboardList },
-        { id: 'mesin', label: 'Daftar & Status Mesin', icon: WashingMachine },
+        { id: 'transaksi', label: 'POS Kasir', icon: ShoppingCart, staffOnly: true, requiresShift: true },
+        { id: 'pesanan', label: 'Pesanan Drop-off', icon: ClipboardList, requiresShift: true },
+        { id: 'mesin', label: 'Daftar & Status Mesin', icon: WashingMachine, requiresShift: true },
         { id: 'riwayat', label: 'Riwayat Transaksi', icon: History },
         { id: 'pelanggan', label: 'Data Pelanggan', icon: Users }
+      ]
+    },
+    {
+      groupName: 'Shift & Kas',
+      items: [
+        { id: 'shift_saya', label: 'Shift Saya', icon: Clock, isShiftCta: true },
+        { id: 'pengeluaran', label: 'Pengeluaran', icon: Coins, requiresShift: true },
+        { id: 'riwayat_shift', label: 'Riwayat Shift', icon: History }
       ]
     },
     {
@@ -102,9 +123,9 @@ export default function Sidebar({
     {
       groupName: 'Kepegawaian & Gaji',
       items: [
-        { id: 'absensi', label: 'Presensi & Cuti', icon: Clock },
-        { id: 'shift', label: 'Kas Shift & Serah Terima', icon: Coins, managerOnly: true },
-        { id: 'pegawai', label: 'Data Pegawai', icon: UserCheck, managerOnly: true },
+        { id: 'absensi', label: 'Presensi & Cuti', icon: UserCheck },
+        { id: 'shift', label: 'Master Shift & Config', icon: Coins, managerOnly: true },
+        { id: 'pegawai', label: 'Data Pegawai', icon: Users, managerOnly: true },
         { id: 'payroll', label: 'Payroll & Gaji', icon: RupiahIcon, managerOnly: true }
       ]
     },
@@ -184,7 +205,7 @@ export default function Sidebar({
               {currentRole === 'MANAGER' ? 'Manager Outlet' : 'Kasir / Staff'}
             </div>
             <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-              {currentRole === 'MANAGER' ? 'Owner / Manager' : 'Staff On Duty'}
+              {currentRole === 'MANAGER' ? 'Owner / Manager' : (isShiftActive ? '🟢 Shift Aktif' : '⚪ Belum Buka Shift')}
             </div>
           </div>
         </div>
@@ -217,36 +238,54 @@ export default function Sidebar({
                   const IconComp = item.icon;
                   const isActive = currentTab === item.id;
                   const count = badgeCounts ? (badgeCounts as any)[item.id] || 0 : 0;
+                  const isLocked = item.requiresShift && !isShiftActive && currentRole !== 'MANAGER';
+                  const isShiftNotice = item.isShiftCta && !isShiftActive && currentRole !== 'MANAGER';
 
                   return (
                     <button
                       key={item.id}
-                      onClick={() => handleNavClick(item.id)}
+                      onClick={() => handleNavClick(item.id, item.requiresShift)}
                       title={item.label}
-                      className={`w-full text-left flex items-center rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
+                      className={`w-full text-left flex items-center rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer ${
                         isCollapsed 
                           ? 'lg:justify-center lg:px-2 lg:py-2 gap-2.5 px-3 py-2.5' 
                           : 'gap-2.5 px-3 py-2.5'
                       } ${
                         isActive 
                           ? 'bg-[#1E4648] text-white font-bold shadow-xs' 
+                          : isShiftNotice
+                          ? 'bg-teal-50/70 border border-teal-200 text-[#1E4648] font-bold'
+                          : isLocked
+                          ? 'text-slate-400 hover:bg-slate-50'
                           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
                       <div className="relative shrink-0">
-                        <IconComp className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                        <IconComp className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : isShiftNotice ? 'text-[#1E4648]' : isLocked ? 'text-slate-300' : 'text-slate-400 group-hover:text-slate-600'}`} />
                         {isCollapsed && count > 0 && (
                           <span className="hidden lg:block absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
                         )}
                       </div>
 
                       {/* Label Text */}
-                      <span className={`truncate ${isCollapsed ? 'lg:hidden' : 'block'}`}>
+                      <span className={`truncate ${isCollapsed ? 'lg:hidden' : 'block'} ${isLocked ? 'text-slate-400' : ''}`}>
                         {item.label}
                       </span>
 
+                      {/* Locked Badge */}
+                      {isLocked && !isCollapsed && (
+                        <span className="ml-auto text-[11px] text-slate-400">🔒</span>
+                      )}
+
+                      {/* Shift Saya Active / Action Badge */}
+                      {isShiftNotice && !isCollapsed && (
+                        <span className="ml-auto px-1.5 py-0.2 rounded-full text-[9px] font-black bg-teal-600 text-white animate-pulse">
+                          Buka Shift
+                        </span>
+                      )}
+
                       {/* Notification Count Badge */}
-                      {count > 0 && (
+                      {count > 0 && !isLocked && (
                         <span className={`ml-auto px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-2xs animate-pulse shrink-0 ${
                           isCollapsed ? 'lg:hidden' : 'block'
                         }`}>
@@ -255,7 +294,7 @@ export default function Sidebar({
                       )}
 
                       {/* Active Indicator Chevron */}
-                      {isActive && count === 0 && (
+                      {isActive && count === 0 && !isLocked && !isShiftNotice && (
                         <ChevronRight className={`w-3.5 h-3.5 ml-auto text-teal-200 ${isCollapsed ? 'lg:hidden' : 'block'}`} />
                       )}
                     </button>
@@ -265,6 +304,7 @@ export default function Sidebar({
             );
           })}
         </nav>
+
 
         {/* Logout Button */}
         <div className="px-3 py-3 border-t border-slate-100">

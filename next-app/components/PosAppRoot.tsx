@@ -17,6 +17,7 @@ import PesananView from '@/components/PesananView';
 import MenuGeneratorView from '@/components/MenuGeneratorView';
 import KategoriView from '@/components/KategoriView';
 import ShiftView from '@/components/ShiftView';
+import ShiftSayaView from '@/components/ShiftSayaView';
 import LangkahView from '@/components/LangkahView';
 import PayrollView from '@/components/PayrollView';
 import KeamananView from '@/components/KeamananView';
@@ -28,13 +29,15 @@ import {
   onSessionExpired,
   notifySessionExpired,
   isSessionIdleExpired,
-  touchSessionActivity
+  touchSessionActivity,
+  runBackend
 } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { useGlobalNotifications } from '@/lib/useGlobalNotifications';
 
 const VALID_TABS = [
   'dashboard', 'transaksi', 'riwayat', 'pesanan', 'mesin', 'absensi',
+  'shift_saya', 'pengeluaran', 'riwayat_shift',
   'pelanggan', 'inventory', 'pegawai', 'payroll', 'produk',
   'kategori', 'langkah', 'shift', 'menu', 'rekap', 'keamanan'
 ];
@@ -45,19 +48,29 @@ const MANAGER_ONLY_TABS = [
 ];
 
 function getValidInitialTab(savedTab: string | null, role: UserRole): string {
-  const fallback = role === 'MANAGER' ? 'dashboard' : 'transaksi';
+  const fallback = role === 'MANAGER' ? 'dashboard' : 'dashboard';
   if (!savedTab || !VALID_TABS.includes(savedTab)) return fallback;
   if (role === 'MANAGER' && savedTab === 'transaksi') return 'dashboard';
-  if (role !== 'MANAGER' && MANAGER_ONLY_TABS.includes(savedTab)) return 'transaksi';
+  if (role !== 'MANAGER' && MANAGER_ONLY_TABS.includes(savedTab)) return 'dashboard';
   return savedTab;
 }
 
 export default function PosAppRoot() {
   const [currentRole, setCurrentRole] = useState<UserRole>('');
-  const [currentTab, setCurrentTab] = useState<string>('transaksi');
+  const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+  const [isShiftActive, setIsShiftActive] = useState<boolean>(false);
+
+  const checkShiftStatus = async () => {
+    try {
+      const activeShift = await runBackend<any>('getKasShiftAktif', 'OUTLET-UTAMA').catch(() => null);
+      setIsShiftActive(!!(activeShift && activeShift.idShift));
+    } catch {
+      setIsShiftActive(false);
+    }
+  };
 
   const handleTabChange = (tab: string) => {
     setCurrentTab(tab);
@@ -76,6 +89,13 @@ export default function PosAppRoot() {
     markAllAsRead,
     refreshNotifications
   } = useGlobalNotifications(currentRole);
+
+  // Check shift status on role change & mount
+  useEffect(() => {
+    if (currentRole) {
+      checkShiftStatus();
+    }
+  }, [currentRole, refreshKey]);
 
   // Restore session & Setup 30-minute inactivity auto-expiration with interaction reset
   useEffect(() => {
@@ -135,6 +155,7 @@ export default function PosAppRoot() {
   const handleLoginSuccess = (role: UserRole) => {
     setCurrentRole(role);
     setSessionNotice(null);
+    checkShiftStatus();
     let savedTab: string | null = null;
     try {
       savedTab = localStorage.getItem('duasisi_last_active_tab');
@@ -148,11 +169,13 @@ export default function PosAppRoot() {
     clearCache();
     setCurrentRole('');
     setSessionNotice(null);
+    setIsShiftActive(false);
   };
 
   const handleGlobalRefresh = () => {
     clearCache();
     setRefreshKey((prev) => prev + 1);
+    checkShiftStatus();
   };
 
   return (
@@ -170,6 +193,7 @@ export default function PosAppRoot() {
             setIsSidebarOpen={setIsSidebarOpen}
             onLogout={handleLogout}
             badgeCounts={badgeCounts}
+            isShiftActive={isShiftActive}
           />
 
           {/* Main Content Area */}
@@ -193,12 +217,39 @@ export default function PosAppRoot() {
             <main key={refreshKey} className="flex-1 overflow-y-auto bg-slate-50">
               {currentTab === 'dashboard' && <DashboardView currentRole={currentRole} />}
               {currentTab === 'transaksi' && <PosView currentRole={currentRole} />}
-              {currentTab === 'riwayat' && <RiwayatView currentRole={currentRole} />}
               {currentTab === 'pesanan' && <PesananView />}
               {currentTab === 'mesin' && <MesinView currentRole={currentRole} />}
-              {currentTab === 'absensi' && <AbsensiView currentRole={currentRole} />}
+              {currentTab === 'riwayat' && <RiwayatView currentRole={currentRole} />}
               {currentTab === 'pelanggan' && <PelangganView currentRole={currentRole} />}
+              
+              {currentTab === 'shift_saya' && (
+                <ShiftSayaView 
+                  currentRole={currentRole} 
+                  initialSubTab="shift_saya" 
+                  onNavigateTab={handleTabChange}
+                  onShiftStateChange={(active) => setIsShiftActive(active)}
+                />
+              )}
+              {currentTab === 'pengeluaran' && (
+                <ShiftSayaView 
+                  currentRole={currentRole} 
+                  initialSubTab="pengeluaran" 
+                  onNavigateTab={handleTabChange}
+                  onShiftStateChange={(active) => setIsShiftActive(active)}
+                />
+              )}
+              {currentTab === 'riwayat_shift' && (
+                <ShiftSayaView 
+                  currentRole={currentRole} 
+                  initialSubTab="riwayat_shift" 
+                  onNavigateTab={handleTabChange}
+                  onShiftStateChange={(active) => setIsShiftActive(active)}
+                />
+              )}
+
               {currentTab === 'inventory' && <InventoryView currentRole={currentRole} />}
+              {currentTab === 'absensi' && <AbsensiView currentRole={currentRole} />}
+              
               {currentTab === 'pegawai' && <PegawaiView currentRole={currentRole} />}
               {currentTab === 'payroll' && <PayrollView currentRole={currentRole} />}
               {currentTab === 'produk' && <ProdukView currentRole={currentRole} />}
@@ -216,3 +267,4 @@ export default function PosAppRoot() {
     </>
   );
 }
+
