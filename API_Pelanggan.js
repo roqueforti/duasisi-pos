@@ -176,10 +176,13 @@ function getDaftarPelanggan() {
       isMember: isMember,
       statusMember: isMember ? "MEMBER" : "UMUM",
       statusKategori: statusKategori,
-      tglLahir: tglLahir
+      tglLahir: tglLahir,
+      stamps75: Number(r[11]) || 0,
+      stamps45: Number(r[12]) || 0
     };
   });
 }
+
 
 function daftarMember(data) {
   const hp = normalizePhone(data.noHp || data.hp);
@@ -540,4 +543,46 @@ function cekPoinPelanggan(phone) {
   addAuditLog("Pengunjung Web", "Cek Poin Member", norm, "-", "Nomor Belum Terdaftar", "Pengecekan poin WhatsApp " + norm + " tidak ditemukan di sistem");
   return { success: false, message: "Nomor WhatsApp belum terdaftar sebagai pelanggan di Dua SiSi Laundry." };
 }
+
+function updateStempelPelanggan(hp, tipe, newCount) {
+  const norm = normalizePhone(hp);
+  if (!norm) return { success: false, message: "Nomor HP tidak valid." };
+
+  let shP = SS.getSheetByName(SHEET_PELANGGAN);
+  if (!shP) return { success: false, message: "Sheet Pelanggan tidak ditemukan." };
+
+  if (shP.getMaxColumns() < 13) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 13 - shP.getMaxColumns());
+    shP.getRange(1, 12).setValue("Stempel 7.5KG");
+    shP.getRange(1, 13).setValue("Stempel 4.5KG");
+  }
+
+  const pData = shP.getDataRange().getValues();
+  let foundRow = -1;
+  for (let i = 1; i < pData.length; i++) {
+    if (normalizePhone(pData[i][0]) === norm) {
+      foundRow = i + 1;
+      break;
+    }
+  }
+
+  if (foundRow <= 0) return { success: false, message: "Pelanggan tidak ditemukan." };
+
+  const targetCol = String(tipe) === "45" ? 13 : 12;
+  const count = Math.max(0, Math.min(10, Number(newCount) || 0));
+  shP.getRange(foundRow, targetCol).setValue(count);
+
+  const nama = pData[foundRow - 1][1] || "Pelanggan";
+  addAuditLog(
+    "Kasir", 
+    "Update Stempel Member", 
+    norm, 
+    `Stempel ${tipe === '45' ? '4.5KG' : '7.5KG'} Sebelumnya: ${pData[foundRow - 1][targetCol - 1] || 0}`, 
+    `Stempel Sekarang: ${count}/10`, 
+    `Update stempel digital kartu member ${tipe === '45' ? '4.5KG' : '7.5KG'} pelanggan ${nama}`
+  );
+
+  return { success: true, message: `Stempel ${tipe === '45' ? '4.5KG' : '7.5KG'} berhasil diupdate menjadi ${count}/10.` };
+}
+
 

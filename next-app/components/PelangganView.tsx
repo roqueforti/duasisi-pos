@@ -26,10 +26,11 @@ import {
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { maskPhone } from '@/lib/utils';
-import { UserRole } from '@/lib/types';
+import { UserRole, Transaksi } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
+import DigitalMemberCard from '@/components/DigitalMemberCard';
 
 export interface PelangganItem {
   noHp: string;
@@ -47,9 +48,11 @@ export interface PelangganItem {
   isMember?: boolean;
   statusMember?: string;
   statusKategori?: 'Member' | 'Pelanggan Lama' | 'Pelanggan Baru';
+  stamps75?: number;
+  stamps45?: number;
+  rewardClaimed75?: number;
+  rewardClaimed45?: number;
 }
-
-import { Transaksi } from '@/lib/types';
 
 export default function PelangganView({ currentRole }: { currentRole?: UserRole } = {}) {
   const { showAlert } = useDialog();
@@ -59,6 +62,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [search, setSearch] = useState<string>('');
   const [filterKategori, setFilterKategori] = useState<'Semua' | 'Member' | 'Lama' | 'Baru'>('Semua');
   const [sortBy, setSortBy] = useState<'terakhir' | 'order' | 'spend'>('terakhir');
+
 
   // Add Customer Modal State
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -515,8 +519,32 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
             </div>
           </div>
 
-          {/* Right Column (7 Cols): Riwayat Transaksi Lengkap */}
+          {/* Right Column (7 Cols): Digital Member Card & Riwayat Transaksi */}
           <div className="md:col-span-7 space-y-4">
+            
+            {/* Digital Member Loyalty Stamp Card (7.5 KG & 4.5 KG) */}
+            <DigitalMemberCard
+              customer={selectedCust}
+              canEdit={true}
+              onUpdateStamps={async (type, newCount) => {
+                const key = type === '75' ? 'stamps75' : 'stamps45';
+                setSelectedCust(prev => prev ? { ...prev, [key]: newCount } : null);
+                setPelangganList(prevList => 
+                  prevList.map(item => 
+                    item.noHp === selectedCust.noHp 
+                      ? { ...item, [key]: newCount }
+                      : item
+                  )
+                );
+                try {
+                  await runBackend('updateStempelPelanggan', selectedCust.noHp, type, newCount);
+                  clearCache('getDaftarPelanggan');
+                } catch (err) {
+                  console.error('Failed to sync stamps to backend:', err);
+                }
+              }}
+            />
+
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                 <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
