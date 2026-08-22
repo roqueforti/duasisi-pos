@@ -2414,17 +2414,17 @@ export default function PosView({
                 </div>
               </div>
 
-              {/* Form Content */}
-              <div className="p-5 space-y-4 text-xs font-semibold text-slate-700">
+              {/* Form Content - Spacious & Senior Friendly */}
+              <div className="p-6 sm:p-8 space-y-6 text-sm font-semibold text-slate-700">
                 {/* Customer Type Segmented Toggle */}
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block font-bold text-slate-700">Tipe Pelanggan *</label>
-                    <span className="text-[10px] font-semibold text-slate-400">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block font-black text-slate-800 text-sm">Tipe Pelanggan *</label>
+                    <span className="text-xs font-bold text-slate-500">
                       {customerMode === 'MEMBER' ? '⭐ Mode Loyalitas & Member' : '👤 Mode Pelanggan Umum'}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-2xl">
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
                     <button
                       type="button"
                       onClick={() => {
@@ -2432,13 +2432,13 @@ export default function PosView({
                         setCustomerSource('BARU');
                         setShowQuickAddMember(false);
                       }}
-                      className={`py-2.5 px-3 rounded-xl font-bold transition text-xs flex items-center justify-center gap-1.5 ${
+                      className={`py-3.5 px-4 rounded-xl font-black transition text-sm flex items-center justify-center gap-2 cursor-pointer ${
                         customerMode === 'UMUM'
                           ? 'bg-[#1E4648] text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                       }`}
                     >
-                      <User className="w-3.5 h-3.5" />
+                      <User className="w-4 h-4" />
                       <span>Pelanggan Umum</span>
                     </button>
                     <button
@@ -2447,13 +2447,13 @@ export default function PosView({
                         setCustomerMode('MEMBER');
                         setCustomerSource('TERDAFTAR');
                       }}
-                      className={`py-2.5 px-3 rounded-xl font-bold transition text-xs flex items-center justify-center gap-1.5 ${
+                      className={`py-3.5 px-4 rounded-xl font-black transition text-sm flex items-center justify-center gap-2 cursor-pointer ${
                         customerMode === 'MEMBER'
                           ? 'bg-[#1E4648] text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                       }`}
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <Sparkles className="w-4 h-4 text-amber-300" />
                       <span>Member Terdaftar</span>
                     </button>
                   </div>
@@ -2461,9 +2461,9 @@ export default function PosView({
 
                 {/* Registered Member Search, Select & Quick Add */}
                 {customerMode === 'MEMBER' && (
-                  <div className="space-y-2 bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200/80">
+                  <div className="space-y-3 bg-amber-50/70 p-4 sm:p-5 rounded-2xl border-2 border-amber-300">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <label className="block font-black text-amber-950 text-xs">Pilih Data Member Terdaftar *</label>
+                      <label className="block font-black text-amber-950 text-sm">Pilih Data Member Terdaftar *</label>
                       <button
                         type="button"
                         onClick={() => {
@@ -2477,7 +2477,7 @@ export default function PosView({
                             });
                           }
                         }}
-                        className={`tactile-btn px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                        className={`tactile-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
                           showQuickAddMember
                             ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
                             : 'bg-teal-800 hover:bg-teal-900 text-white border border-teal-700 hover:shadow-md'
@@ -2485,12 +2485,12 @@ export default function PosView({
                       >
                         {showQuickAddMember ? (
                           <>
-                            <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <X className="w-4 h-4 stroke-[2.5]" />
                             <span>Tutup Form</span>
                           </>
                         ) : (
                           <>
-                            <UserPlus className="w-3.5 h-3.5 text-teal-200" />
+                            <UserPlus className="w-4 h-4 text-teal-200" />
                             <span>+ Daftar Member Baru</span>
                           </>
                         )}
@@ -2511,7 +2511,7 @@ export default function PosView({
                             });
                           }
                         }}
-                        className="w-full px-3 py-2.5 bg-white border border-amber-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648]"
+                        className="w-full px-4 py-3.5 bg-white border-2 border-amber-300 rounded-xl font-bold text-sm text-slate-800 outline-none focus:border-[#1E4648]"
                       >
                         <option value="">-- Cari / Pilih Member Terdaftar --</option>
                         {customerList.filter((c) => c.isMember).length === 0 ? (
@@ -2526,36 +2526,36 @@ export default function PosView({
                       </select>
                     ) : (
                       /* Quick Inline Member Registration Form */
-                      <div className="bg-white p-3 rounded-xl border border-amber-300 space-y-2.5">
-                        <div className="text-xs font-bold text-amber-900 flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <div className="bg-white p-4 rounded-xl border border-amber-300 space-y-3">
+                        <div className="text-sm font-black text-amber-900 flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-amber-600" />
                           <span>Daftarkan Member Baru Langsung di Kasir</span>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           <input
                             type="text"
                             placeholder="Nama Lengkap Member *"
                             value={newMemberForm.nama}
                             onChange={(e) => setNewMemberForm({ ...newMemberForm, nama: e.target.value })}
-                            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648]"
+                            className="px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white"
                           />
                           <input
                             type="tel"
                             placeholder="No. WhatsApp / HP *"
                             value={newMemberForm.noHp}
                             onChange={(e) => setNewMemberForm({ ...newMemberForm, noHp: e.target.value })}
-                            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648]"
+                            className="px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white"
                           />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           <div>
-                            <label className="block text-[10px] font-bold text-slate-600 mb-0.5">Tanggal Lahir (TTL) *</label>
+                            <label className="block text-xs font-bold text-slate-600 mb-1">Tanggal Lahir (TTL) *</label>
                             <input
                               type="date"
                               required
                               value={newMemberForm.tglLahir}
                               onChange={(e) => setNewMemberForm({ ...newMemberForm, tglLahir: e.target.value })}
-                              className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#1E4648]"
+                              className="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white"
                             />
                           </div>
                           <div>
@@ -2573,15 +2573,15 @@ export default function PosView({
                             type="button"
                             disabled={savingMember}
                             onClick={() => handleDaftarMemberQuick()}
-                            className="flex-1 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-lg font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer"
+                            className="flex-1 py-3 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <CheckCircle2 className="w-4 h-4" />
                             <span>{savingMember ? 'Mendaftarkan...' : 'Simpan & Aktifkan Member'}</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => setShowQuickAddMember(false)}
-                            className="px-3 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs cursor-pointer"
+                            className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-sm cursor-pointer"
                           >
                             Batal
                           </button>
@@ -2593,23 +2593,23 @@ export default function PosView({
 
                 {/* Member Points Card & Loyalty Projection (ONLY FOR VERIFIED MEMBERS) */}
                 {customerMode === 'MEMBER' && customer.isMember && (
-                  <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-300/90 rounded-2xl p-3 flex items-center justify-between shadow-2xs">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-[#FF9500] text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
-                        <Star className="w-4 h-4 fill-white text-white" />
+                  <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/10 border-2 border-amber-300 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-[#FF9500] text-white flex items-center justify-center font-black text-base shadow-xs shrink-0">
+                        <Star className="w-5 h-5 fill-white text-white" />
                       </div>
                       <div>
-                        <div className="font-extrabold text-xs text-slate-900">
+                        <div className="font-black text-sm text-slate-900">
                           Poin Loyalitas Pelanggan (Member)
                         </div>
-                        <div className="text-[11px] text-slate-600 mt-0.5">
-                          Saldo Saat Ini: <span className="font-bold text-slate-900 font-mono">{customer.poin || 0} Poin</span>
+                        <div className="text-xs text-slate-600 mt-0.5">
+                          Saldo Saat Ini: <span className="font-black text-slate-900 font-mono text-sm">{customer.poin || 0} Poin</span>
                         </div>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="text-[9px] font-bold text-amber-800 uppercase block">Dapat dari Order Ini</span>
-                      <span className="text-xs font-black text-emerald-700 font-mono bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 inline-block">
+                      <span className="text-[10px] font-extrabold text-amber-800 uppercase block tracking-wider">Dapat dari Order Ini</span>
+                      <span className="text-sm font-black text-emerald-700 font-mono bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-300 inline-block mt-0.5">
                         +{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin
                       </span>
                     </div>
@@ -2617,40 +2617,40 @@ export default function PosView({
                 )}
 
                 {/* Guidance Banner: Masukkan No. WhatsApp Terlebih Dahulu */}
-                <div className="flex items-start gap-2.5 p-3 bg-gradient-to-r from-teal-50/90 via-emerald-50/80 to-teal-50/90 border border-teal-200/90 rounded-2xl text-xs text-teal-950 shadow-2xs">
-                  <div className="p-1.5 rounded-xl bg-[#1E4648] text-white shrink-0 mt-0.5 shadow-2xs">
-                    <Smartphone className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-teal-50/90 via-emerald-50/80 to-teal-50/90 border border-teal-200 rounded-2xl text-xs sm:text-sm text-teal-950 shadow-2xs">
+                  <div className="p-2 rounded-xl bg-[#1E4648] text-white shrink-0 shadow-2xs">
+                    <Smartphone className="w-4.5 h-4.5" />
                   </div>
-                  <div className="text-[11px] leading-relaxed">
-                    <span className="font-extrabold text-[#1E4648]">Petunjuk Kasir:</span> Masukkan <strong>No. WhatsApp / HP</strong> terlebih dahulu. Sistem otomatis mendeteksi apakah pelanggan <strong>⭐ Member</strong>, <strong>👤 Pelanggan Lama</strong>, atau <strong>✨ Pelanggan Baru</strong>.
+                  <div className="leading-relaxed font-medium">
+                    <span className="font-black text-[#1E4648]">Petunjuk Kasir:</span> Masukkan <strong>No. WhatsApp / HP</strong> terlebih dahulu. Sistem otomatis mendeteksi apakah pelanggan <strong>⭐ Member</strong>, <strong>👤 Pelanggan Lama</strong>, atau <strong>✨ Pelanggan Baru</strong>.
                   </div>
                 </div>
 
                 {/* Customer Identity Inputs (Prioritas 1: No. WA, Prioritas 2: Nama) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Slot 1: No. WhatsApp / HP */}
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block font-bold text-slate-700 text-xs">No. WhatsApp / HP *</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block font-black text-slate-800 text-sm">No. WhatsApp / HP *</label>
                       {(() => {
                         const digits = (customer.noHp || '').replace(/\D/g, '');
                         if (digits.length === 0) {
-                          return <span className="text-[10px] text-slate-400 font-normal">Wajib diisi</span>;
+                          return <span className="text-xs text-slate-400 font-normal">Wajib diisi</span>;
                         }
                         if (digits.length < 8) {
-                          return <span className="text-[10px] text-amber-600 font-semibold">Min. 9 digit</span>;
+                          return <span className="text-xs text-amber-600 font-bold">Min. 9 digit</span>;
                         }
                         const match = customerList.find(c => {
                           const cHp = (c.noHp || '').replace(/\D/g, '');
                           return cHp && (cHp === digits || cHp.endsWith(digits) || digits.endsWith(cHp));
                         });
                         if (match?.isMember || customer.isMember) {
-                          return <span className="text-[10px] text-amber-800 bg-amber-100 font-bold px-1.5 py-0.2 rounded-full">⭐ Member</span>;
+                          return <span className="text-xs text-amber-900 bg-amber-100 font-black px-2 py-0.5 rounded-full border border-amber-300">⭐ Member</span>;
                         }
                         if (match) {
-                          return <span className="text-[10px] text-teal-800 bg-teal-100 font-bold px-1.5 py-0.2 rounded-full">👤 Pelanggan Lama</span>;
+                          return <span className="text-xs text-teal-900 bg-teal-100 font-black px-2 py-0.5 rounded-full border border-teal-300">👤 Pelanggan Lama</span>;
                         }
-                        return <span className="text-[10px] text-sky-800 bg-sky-100 font-bold px-1.5 py-0.2 rounded-full">✨ Pelanggan Baru</span>;
+                        return <span className="text-xs text-sky-900 bg-sky-100 font-black px-2 py-0.5 rounded-full border border-sky-300">✨ Pelanggan Baru</span>;
                       })()}
                     </div>
                     <input
@@ -2659,16 +2659,16 @@ export default function PosView({
                       disabled={customerMode === 'MEMBER' && !showQuickAddMember && !!customer.noHp}
                       onChange={(e) => handleCustomerPhoneInput(e.target.value)}
                       placeholder="Contoh: 08123456789"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648] focus:bg-white disabled:opacity-60 transition"
+                      className="w-full px-4 py-3.5 sm:py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-base text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white disabled:opacity-60 transition shadow-2xs"
                     />
                   </div>
 
                   {/* Slot 2: Nama Pelanggan */}
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block font-bold text-slate-700 text-xs">Nama Pelanggan *</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block font-black text-slate-800 text-sm">Nama Pelanggan *</label>
                       {customer.nama && customer.nama !== 'Pelanggan Umum' && (
-                        <span className="text-[10px] text-slate-400 font-normal">Nama pemesan</span>
+                        <span className="text-xs text-slate-400 font-normal">Nama pemesan</span>
                       )}
                     </div>
                     <input
@@ -2677,7 +2677,7 @@ export default function PosView({
                       disabled={customerMode === 'MEMBER' && !showQuickAddMember && !!customer.noHp}
                       onChange={(e) => setCustomer({ ...customer, nama: e.target.value })}
                       placeholder="Nama lengkap pemesan"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648] focus:bg-white disabled:opacity-60 transition"
+                      className="w-full px-4 py-3.5 sm:py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-base text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white disabled:opacity-60 transition shadow-2xs"
                     />
                   </div>
                 </div>
@@ -2695,12 +2695,12 @@ export default function PosView({
                   if (detected) {
                     if (detected.isMember) {
                       return (
-                        <div className="bg-amber-500/10 border border-amber-300/80 rounded-xl p-2.5 flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">⭐</span>
+                        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 flex items-center justify-between text-sm shadow-xs">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">⭐</span>
                             <div>
-                              <div className="font-bold text-amber-950">Terdaftar Sebagai Member: {detected.nama}</div>
-                              <div className="text-[10px] text-amber-700">Saldo: {detected.poin || 0} Poin · {detected.totalOrder || 0}x Transaksi</div>
+                              <div className="font-black text-amber-950 text-sm sm:text-base">Terdaftar Sebagai Member: {detected.nama}</div>
+                              <div className="text-xs text-amber-800 font-semibold mt-0.5">Saldo: {detected.poin || 0} Poin · {detected.totalOrder || 0}x Transaksi</div>
                             </div>
                           </div>
                           <button
@@ -2710,7 +2710,7 @@ export default function PosView({
                               setCustomerSource('TERDAFTAR');
                               setCustomer({ ...detected, isMember: true, poin: Number(detected.poin || 0) });
                             }}
-                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-[11px] transition shadow-2xs"
+                            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs sm:text-sm transition shadow-xs cursor-pointer"
                           >
                             Gunakan Data Member
                           </button>
@@ -2718,15 +2718,15 @@ export default function PosView({
                       );
                     } else {
                       return (
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between text-xs flex-wrap gap-2">
-                          <div className="flex items-center gap-2 text-slate-700">
-                            <span className="text-base">👤</span>
+                        <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 flex items-center justify-between text-sm flex-wrap gap-2 shadow-xs">
+                          <div className="flex items-center gap-3 text-slate-700">
+                            <span className="text-2xl">👤</span>
                             <div>
-                              <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                              <div className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
                                 <span>Pelanggan Umum: {detected.nama}</span>
-                                <span className="text-[10px] bg-slate-200 text-slate-700 font-semibold px-2 py-0.2 rounded-full">Bukan Member</span>
+                                <span className="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-0.5 rounded-full">Bukan Member</span>
                               </div>
-                              <div className="text-[10px] text-slate-500">Pernah order {detected.totalOrder || 1}x sebelumnya · Belum terdaftar member</div>
+                              <div className="text-xs text-slate-500 font-medium mt-0.5">Pernah order {detected.totalOrder || 1}x sebelumnya · Belum terdaftar member</div>
                             </div>
                           </div>
                           <button
@@ -2736,9 +2736,9 @@ export default function PosView({
                               setShowQuickAddMember(true);
                               setNewMemberForm({ nama: detected.nama || customer.nama, noHp: detected.noHp || customer.noHp, alamat: detected.alamat || '', tglLahir: (detected as any)?.tglLahir || '' });
                             }}
-                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-[11px] transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs sm:text-sm transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                           >
-                            <Sparkles className="w-3 h-3 text-white" />
+                            <Sparkles className="w-4 h-4 text-white" />
                             <span>+ Daftarkan Member</span>
                           </button>
                         </div>
@@ -2746,12 +2746,12 @@ export default function PosView({
                     }
                   } else {
                     return (
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between text-xs flex-wrap gap-2">
-                        <div className="flex items-center gap-2 text-slate-600">
-                          <span className="text-base">✨</span>
+                      <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 flex items-center justify-between text-sm flex-wrap gap-2 shadow-xs">
+                        <div className="flex items-center gap-3 text-slate-600">
+                          <span className="text-2xl">✨</span>
                           <div>
-                            <div className="font-bold text-slate-800">Pelanggan Baru (Belum Terdaftar)</div>
-                            <div className="text-[10px] text-slate-400">Nomor ini belum pernah order sebelumnya.</div>
+                            <div className="font-black text-slate-800 text-sm sm:text-base">Pelanggan Baru (Belum Terdaftar)</div>
+                            <div className="text-xs text-slate-500 mt-0.5">Nomor ini belum pernah order sebelumnya.</div>
                           </div>
                         </div>
                         <button
@@ -2761,9 +2761,9 @@ export default function PosView({
                             setShowQuickAddMember(true);
                             setNewMemberForm({ nama: customer.nama, noHp: customer.noHp, alamat: '', tglLahir: '' });
                           }}
-                          className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-[11px] transition shadow-2xs flex items-center gap-1"
+                          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs sm:text-sm transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                         >
-                          <Sparkles className="w-3 h-3 text-white" />
+                          <Sparkles className="w-4 h-4 text-white" />
                           <span>+ Daftarkan Jadi Member</span>
                         </button>
                       </div>
@@ -2772,13 +2772,13 @@ export default function PosView({
                 })()}
 
                 {/* Staff Kasir & Service Type */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1.5">Staf Kasir / Pemroses *</label>
+                    <label className="block font-black text-slate-800 mb-2 text-sm">Staf Kasir / Pemroses *</label>
                     <select
                       value={namaKasirInput}
                       onChange={(e) => setNamaKasirInput(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none focus:border-[#1E4648] focus:bg-white transition"
+                      className="w-full px-4 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-2xl font-bold text-sm text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white transition shadow-2xs"
                     >
                       {staffList.map((s) => (
                         <option key={s.id || s.nama} value={s.nama}>
@@ -2789,25 +2789,25 @@ export default function PosView({
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1.5">Komposisi Transaksi (Terdeteksi Otomatis)</label>
-                    <div className="flex flex-wrap items-center gap-1.5 py-0.5">
+                    <label className="block font-black text-slate-800 mb-2 text-sm">Komposisi Transaksi (Terdeteksi Otomatis)</label>
+                    <div className="flex flex-wrap items-center gap-2 py-0.5">
                       {cartArray.some((i) => i.tipe === 'FullService') && (
-                        <span className="px-2.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-900 font-bold text-[11px] flex items-center gap-1 shadow-2xs">
+                        <span className="px-3.5 py-2.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/30 text-amber-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs">
                           🧺 Drop Off
                         </span>
                       )}
                       {cartArray.some((i) => i.tipe === 'SelfService') && (
-                        <span className="px-2.5 py-1.5 rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-900 font-bold text-[11px] flex items-center gap-1 shadow-2xs">
+                        <span className="px-3.5 py-2.5 rounded-2xl bg-sky-500/15 border-2 border-sky-500/30 text-sky-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs">
                           ⚡ Self Service
                         </span>
                       )}
                       {cartArray.some((i) => !i.tipe || (i.tipe !== 'FullService' && i.tipe !== 'SelfService')) && (
-                        <span className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-900 font-bold text-[11px] flex items-center gap-1 shadow-2xs">
+                        <span className="px-3.5 py-2.5 rounded-2xl bg-emerald-500/15 border-2 border-emerald-500/30 text-emerald-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs">
                           🛒 Retail / FnB
                         </span>
                       )}
                       {cartArray.length === 0 && (
-                        <span className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-500 font-bold text-[11px]">
+                        <span className="px-3.5 py-2 rounded-2xl bg-slate-100 text-slate-500 font-bold text-xs">
                           Belum ada item
                         </span>
                       )}
@@ -2844,31 +2844,31 @@ export default function PosView({
                       );
 
                   return (
-                    <div className="bg-amber-50/70 border border-amber-200/90 p-3.5 rounded-2xl space-y-2">
+                    <div className="bg-amber-50/80 border-2 border-amber-300 p-4 sm:p-5 rounded-2xl space-y-3 shadow-2xs">
                       <div className="flex items-center justify-between">
-                        <label className="block font-bold text-amber-950 text-xs">
+                        <label className="block font-black text-amber-950 text-sm">
                           Prioritas Pengerjaan Cucian Drop Off:
                         </label>
-                        <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full">
+                        <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
                           {finalPriorities.length === 1 ? 'Sesuai Layanan Terpilih' : 'Otomatis Masuk Antrean SOP'}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2.5">
                         {finalPriorities.map((pri) => (
                           <button
                             key={pri.nama}
                             type="button"
                             onClick={() => setTingkatLayanan(pri.nama)}
-                            className={`py-2 px-3 rounded-xl font-bold text-xs border transition flex items-center gap-1.5 ${
+                            className={`py-2.5 px-4 rounded-xl font-black text-sm border-2 transition flex items-center gap-2 cursor-pointer ${
                               tingkatLayanan.toLowerCase() === pri.nama.toLowerCase()
                                 ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
-                                : 'bg-white text-slate-700 border-amber-200/90 hover:bg-amber-100/50'
+                                : 'bg-white text-slate-700 border-amber-200 hover:bg-amber-100/60'
                             }`}
                           >
                             <span>{pri.nama}</span>
                             {pri.durasiJam ? (
-                              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
-                                tingkatLayanan.toLowerCase() === pri.nama.toLowerCase() ? 'bg-teal-900/40 text-teal-200' : 'bg-slate-100 text-slate-500'
+                              <span className={`text-xs font-mono px-2 py-0.5 rounded-md ${
+                                tingkatLayanan.toLowerCase() === pri.nama.toLowerCase() ? 'bg-teal-900/40 text-teal-200' : 'bg-slate-100 text-slate-600'
                               }`}>
                                 {pri.durasiJam} Jam
                               </span>
@@ -2878,12 +2878,12 @@ export default function PosView({
                       </div>
 
                       {/* Estimasi Maksimal Selesai */}
-                      <div className="pt-2 border-t border-amber-200/70 flex items-center justify-between flex-wrap gap-1.5 text-xs">
-                        <span className="text-amber-950 font-semibold flex items-center gap-1.5 text-[11px]">
-                          <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                      <div className="pt-2.5 border-t border-amber-200 flex items-center justify-between flex-wrap gap-2 text-sm">
+                        <span className="text-amber-950 font-bold flex items-center gap-1.5 text-xs sm:text-sm">
+                          <Clock className="w-4 h-4 text-amber-700 shrink-0" />
                           <span>Estimasi Maksimal Selesai:</span>
                         </span>
-                        <span className="font-mono font-bold text-[#1E4648] bg-white px-2 py-0.5 rounded-lg border border-amber-300 shadow-2xs text-[11px]">
+                        <span className="font-mono font-black text-[#1E4648] bg-white px-3 py-1 rounded-xl border-2 border-amber-300 shadow-2xs text-xs sm:text-sm">
                           {calculateEstimasi(tingkatLayanan)}
                         </span>
                       </div>
@@ -2893,29 +2893,29 @@ export default function PosView({
 
                 {/* Catatan Tambahan */}
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">Catatan Khusus Pesanan</label>
+                  <label className="block font-black text-slate-800 mb-2 text-sm">Catatan Khusus Pesanan</label>
                   <textarea
                     rows={2}
                     value={catatanOrderInput}
                     onChange={(e) => setCatatanOrderInput(e.target.value)}
                     placeholder="Contoh: Pisahkan pakaian putih, jemput besok sore..."
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs outline-none focus:border-[#1E4648] focus:bg-white transition"
+                    className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-2xl font-medium text-sm text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white transition shadow-2xs min-h-[85px]"
                   />
                 </div>
 
                 {/* Line Items & Financial Breakdown Summary Box */}
-                <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 space-y-2.5">
-                  <div className="flex justify-between items-center pb-1.5 border-b border-slate-200/70 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-200 text-xs font-black text-slate-500 uppercase tracking-wider">
                     <span>Item Pesanan ({cartArray.length})</span>
                     <span>Subtotal</span>
                   </div>
-                  <div className="max-h-24 overflow-y-auto space-y-1.5 pr-1">
+                  <div className="max-h-32 overflow-y-auto space-y-2 pr-1">
                     {cartArray.map((i, idx) => (
-                      <div key={idx} className="flex justify-between text-xs text-slate-700">
-                        <span className="font-semibold truncate pr-2">
+                      <div key={idx} className="flex justify-between text-sm text-slate-800">
+                        <span className="font-bold truncate pr-2">
                           {i.layanan} <span className="text-slate-400 font-mono">×{i.qty}</span>
                         </span>
-                        <span className="font-bold font-mono shrink-0">
+                        <span className="font-black font-mono shrink-0">
                           Rp {(i.qty * (i.hargaSatuan || 0)).toLocaleString('id-ID')}
                         </span>
                       </div>
@@ -2923,25 +2923,25 @@ export default function PosView({
                   </div>
 
                   {/* Financial Breakdown */}
-                  <div className="pt-2 border-t border-slate-200 space-y-1 text-xs">
-                    <div className="flex justify-between text-slate-600 font-semibold">
+                  <div className="pt-2.5 border-t border-slate-200 space-y-1.5 text-sm">
+                    <div className="flex justify-between text-slate-600 font-bold">
                       <span>Subtotal Item:</span>
-                      <span className="font-mono">Rp {(subtotalCart || 0).toLocaleString('id-ID')}</span>
+                      <span className="font-mono font-black text-slate-800">Rp {(subtotalCart || 0).toLocaleString('id-ID')}</span>
                     </div>
                     {diskonApplied.nilai > 0 && (
-                      <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50/80 px-2 py-1 rounded-lg border border-emerald-200/60">
-                        <span className="flex items-center gap-1">
-                          <Tag className="w-3.5 h-3.5" /> Diskon ({diskonApplied.kode}):
+                      <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                        <span className="flex items-center gap-1.5">
+                          <Tag className="w-4 h-4" /> Diskon ({diskonApplied.kode}):
                         </span>
-                        <span className="font-mono">-Rp {diskonApplied.nilai.toLocaleString('id-ID')}</span>
+                        <span className="font-mono font-black">-Rp {diskonApplied.nilai.toLocaleString('id-ID')}</span>
                       </div>
                     )}
                     {customerMode === 'MEMBER' && customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
                       <div className="flex justify-between text-amber-800 font-bold pt-0.5">
-                        <span className="flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Perolehan Poin (Member):
+                        <span className="flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-amber-500" /> Perolehan Poin (Member):
                         </span>
-                        <span className="font-mono">+{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin</span>
+                        <span className="font-mono font-black">+{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin</span>
                       </div>
                     )}
                   </div>
