@@ -17,6 +17,7 @@ import { toPng } from 'html-to-image';
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
 import { maskPhone } from '@/lib/utils';
+import { generateWhatsAppReceiptFromTx } from '@/lib/whatsappUtils';
 import { useDialog } from '@/components/DialogProvider';
 import GradientWaves from '@/components/GradientWaves';
 
@@ -131,39 +132,8 @@ export default function ENotaView({ noNota, token, last4Phone, initialData }: EN
   };
 
   const handleShareWhatsApp = () => {
-    const url = typeof window !== 'undefined' ? window.location.href : '';
-    const custName = tx?.namaPelanggan || 'Pelanggan';
-    const total = (Number(tx?.total) || 0).toLocaleString('id-ID');
-    const isDropOff = tx?.tipe === 'FullService';
-
-    const lines = [
-      `*DUA SISI LAUNDRY - E-NOTA RESMI*`,
-      `_Express & Self Service Laundry_`,
-      `--------------------------------`,
-      `Halo *${custName}*! Berikut rincian bukti transaksi resmi Anda:`,
-      ``,
-      `*No. Nota*     : ${tx?.noNota || ''}`,
-      `*Tanggal*      : ${tx?.tanggal || ''}`,
-      `*Kasir/Staff*  : ${tx?.petugas || 'Kasir'}`,
-      isDropOff ? `*Layanan*      : Drop Off (${tx?.tingkatLayanan || 'Reguler'})` : `*Layanan*      : Self Service`,
-      isDropOff && tx?.estimasi ? `*Estimasi Selesai*: ${tx.estimasi}` : '',
-      ``,
-      Number(tx?.diskon || 0) > 0 ? `Subtotal       : Rp ${(Number(tx?.subtotal || tx?.total) || 0).toLocaleString('id-ID')}` : '',
-      Number(tx?.diskon || 0) > 0 ? `Diskon (${tx?.voucher && tx?.voucher !== 'None' ? tx?.voucher : (tx?.diskonKode || 'Promo')}) : -Rp ${(Number(tx?.diskon) || 0).toLocaleString('id-ID')}` : '',
-      `*TOTAL BAYAR   : Rp ${total}*`,
-      `Metode Bayar   : ${tx?.metodeBayar || 'Tunai'}`,
-      `--------------------------------`,
-      `*WiFi Outlet* : DuaSisiLaundry`,
-      `*Password*    : datanglagi`,
-      `--------------------------------`,
-      `*Lihat & Download E-Nota Resmi:*`,
-      url,
-      ``,
-      `Kritik & Saran: +62 896-8202-0699`,
-      `Terima kasih telah mempercayakan cucian Anda di Dua SiSi Laundry!`
-    ];
-
-    const msg = lines.filter(Boolean).join('\n');
+    if (!tx) return;
+    const msg = generateWhatsAppReceiptFromTx(tx, { token });
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 

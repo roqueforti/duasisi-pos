@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { formatWaPhone } from '@/lib/utils';
+import { generateWhatsAppReceiptFromTx } from '@/lib/whatsappUtils';
 import {
   isBluetoothSupported,
   getActiveDeviceInfo,
@@ -204,32 +205,7 @@ export default function PrinterModal({
   const handleWhatsAppShare = () => {
     if (!activeTx) return;
     const rawPhone = formatWaPhone(activeTx.noHp);
-
-    const itemsText = (activeTx.items || [])
-      .map((item: any) => `• ${item.layanan || item.nama} (x${item.qty}) = Rp ${(Number(item.subtotal || item.qty * item.hargaSatuan) || 0).toLocaleString('id-ID')}`)
-      .join('\n');
-
-    const msg = [
-      `*DUA SISI LAUNDRY EXPRESS & COIN*`,
-      `Jl. Pandanwangi, Malang`,
-      `--------------------------------`,
-      `*BUKTI PEMBAYARAN / STRUK RESMI*`,
-      `No. Nota : *${activeTx.noNota}*`,
-      `Tanggal  : ${activeTx.tanggal}`,
-      `Pelanggan: *${activeTx.namaPelanggan}*`,
-      `Kasir    : ${activeTx.petugas || 'Kasir'}`,
-      `--------------------------------`,
-      `*Rincian Layanan:*`,
-      itemsText || `• Layanan Laundry: Rp ${(activeTx.total || 0).toLocaleString('id-ID')}`,
-      `--------------------------------`,
-      `*TOTAL TAGIHAN : Rp ${(activeTx.total || 0).toLocaleString('id-ID')}*`,
-      `Metode Bayar  : ${activeTx.metodeBayar || 'Tunai'}`,
-      `Status Bayar  : *${activeTx.statusPembayaran || 'Lunas'}*`,
-      (activeTx.sisaTagihan || 0) > 0 ? `Sisa Tagihan  : Rp ${(activeTx.sisaTagihan || 0).toLocaleString('id-ID')}` : '',
-      `--------------------------------`,
-      `_Simpan pesan ini sebagai bukti pengambilan cucian._`,
-      `_Terima kasih atas kepercayaan Anda di Dua SiSi Laundry!_`
-    ].filter(Boolean).join('\n');
+    const msg = generateWhatsAppReceiptFromTx(activeTx);
 
     runBackend(
       'logClientActivity', 

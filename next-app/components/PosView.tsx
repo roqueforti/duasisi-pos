@@ -58,6 +58,7 @@ import { LayananItem, CartItem, ShiftKasir, AbsensiConfig, UserRole } from '@/li
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { formatWaPhone } from '@/lib/utils';
+import { generateWhatsAppReceiptMessage } from '@/lib/whatsappUtils';
 import {
   isBluetoothSupported,
   getActiveDeviceInfo,
@@ -3308,76 +3309,36 @@ export default function PosView({
                   type="button"
                   onClick={() => {
                     const phone = formatWaPhone(completedOrderData.noHp);
-                    const nama = completedOrderData.pelanggan || 'Pelanggan';
                     const noNota = completedOrderData.trxId || '';
                     const tanggal = `${completedOrderData.tanggal || ''}, ${completedOrderData.waktu || ''}`;
-                    const total = (Number(completedOrderData?.total) || 0).toLocaleString('id-ID');
-                    const subtotal = (Number(completedOrderData?.subtotal) || Number(completedOrderData?.total) || 0).toLocaleString('id-ID');
-                    const diskonNilai = Number(completedOrderData?.diskon) || 0;
-                    const diskonKode = completedOrderData?.diskonKode || '';
-                    const poinEarned = Number(completedOrderData?.poinEarned) || 0;
-                    const saldoPoin = Number(completedOrderData?.saldoPoinAkhir) || 0;
+                    const nama = completedOrderData.pelanggan || 'Pelanggan';
 
-                    const isDropOff = completedOrderData.tipeLayanan === 'FullService';
-                    const isSelfService = completedOrderData.tipeLayanan === 'SelfService';
-
-                    const items = (completedOrderData.items || [])
-                      .map((i: any) => `- ${i.layanan} (x${i.qty}) = Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`)
-                      .join('\n');
-                    const eNotaUrl = `https://duasisilaundry-pos.vercel.app/?t=${completedOrderData.token || noNota}`;
-
-                    const msgLines = [
-                      `*DUA SISI LAUNDRY*`,
-                      `_Express & Self Service Laundry_`,
-                      `--------------------------------`,
-                      `Halo *${nama}*! Berikut rincian bukti transaksi Anda:`,
-                      ``,
-                      `*No. Nota*     : ${noNota}`,
-                      `*Tanggal*      : ${tanggal}`,
-                      `*Kasir/Staff*  : ${completedOrderData.kasir || 'Kasir'}`,
-                    ];
-
-                    if (isDropOff) {
-                      msgLines.push(`*Layanan*      : Drop Off (Full Service)`);
-                      msgLines.push(`*Kecepatan*    : ${completedOrderData.tingkatLayanan || 'Reguler'}`);
-                      if (completedOrderData.estimasiSelesai) {
-                        msgLines.push(`*Estimasi Selesai*: ${completedOrderData.estimasiSelesai}`);
-                      }
-                    } else if (isSelfService) {
-                      msgLines.push(`*Layanan*      : Self Service (Cuci / Kering Mandiri)`);
-                    } else {
-                      msgLines.push(`*Kategori*     : Penjualan Produk / Retail`);
-                    }
-
-                    msgLines.push(``);
-                    msgLines.push(`*Detail Layanan:*`);
-                    msgLines.push(items);
-                    msgLines.push(`--------------------------------`);
-
-                    if (diskonNilai > 0) {
-                      msgLines.push(`Subtotal       : Rp ${subtotal}`);
-                      msgLines.push(`Diskon (${diskonKode || 'Promo'}): -Rp ${diskonNilai.toLocaleString('id-ID')}`);
-                    }
-
-                    msgLines.push(`*TOTAL BAYAR   : Rp ${total}*`);
-                    msgLines.push(`Metode Bayar   : ${completedOrderData.metodeBayar || 'Tunai'}`);
-                    if (completedOrderData.metodeBayar === 'Tunai' && (completedOrderData.kembalian || 0) > 0) {
-                      msgLines.push(`Kembalian      : Rp ${(completedOrderData.kembalian || 0).toLocaleString('id-ID')}`);
-                    }
-
-                    msgLines.push(`--------------------------------`);
-                    if (completedOrderData.isMember && poinEarned > 0) {
-                      msgLines.push(`* *Poin Transaksi* : +${poinEarned} Poin`);
-                      msgLines.push(`* *Total Saldo Poin*: ${saldoPoin} Poin`);
-                      msgLines.push(`_(Tukarkan poin Anda dengan potongan harga/layanan gratis/produk di kasir!)_`);
-                      msgLines.push(`--------------------------------`);
-                    }
-                    msgLines.push(`*Lihat E-Nota Resmi:*`);
-                    msgLines.push(eNotaUrl);
-                    msgLines.push(``);
-                    msgLines.push(`Terima kasih telah mempercayakan cucian Anda di Dua SiSi Laundry!`);
-
-                    const msg = msgLines.filter(Boolean).join('\n');
+                    const msg = generateWhatsAppReceiptMessage({
+                      noNota: noNota,
+                      namaPelanggan: nama,
+                      noHp: phone,
+                      tanggal: tanggal,
+                      kasir: completedOrderData.kasir || 'Kasir',
+                      tipeLayanan: completedOrderData.tipeLayanan,
+                      tingkatLayanan: completedOrderData.tingkatLayanan,
+                      estimasiSelesai: completedOrderData.estimasiSelesai,
+                      items: (completedOrderData.items || []).map((i: any) => ({
+                        layanan: i.layanan,
+                        qty: i.qty,
+                        hargaSatuan: i.hargaSatuan,
+                        subtotal: Number(i.hargaSatuan || 0) * Number(i.qty || 1)
+                      })),
+                      subtotal: Number(completedOrderData?.subtotal) || Number(completedOrderData?.total) || 0,
+                      diskonNilai: Number(completedOrderData?.diskon) || 0,
+                      diskonKode: completedOrderData?.diskonKode || '',
+                      total: Number(completedOrderData?.total) || 0,
+                      metodeBayar: completedOrderData.metodeBayar || 'Tunai',
+                      kembalian: Number(completedOrderData.kembalian) || 0,
+                      isMember: Boolean(completedOrderData.isMember),
+                      poinEarned: Number(completedOrderData.poinEarned) || 0,
+                      saldoPoin: Number(completedOrderData.saldoPoinAkhir) || 0,
+                      token: completedOrderData.token
+                    });
                     
                     // Log Activity to Audit Trail
                     runBackend(

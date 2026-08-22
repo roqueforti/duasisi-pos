@@ -6,6 +6,7 @@ import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { maskPhone, eNotaUrl as buildENotaUrl, formatWaPhone } from '@/lib/utils';
+import { generateWhatsAppReceiptFromTx } from '@/lib/whatsappUtils';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import PrinterModal from '@/components/PrinterModal';
 import { UserRole } from '@/lib/types';
@@ -200,34 +201,18 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
 
   const handleWhatsAppStruk = (tx: Transaksi) => {
     const rawPhone = formatWaPhone(tx.noHp);
+    const msg = generateWhatsAppReceiptFromTx(tx);
 
-    const eNotaUrl = buildENotaUrl(tx.noNota);
-    const itemsStr = (tx.items || []).map((i: any) =>
-      `- ${i.layanan} (x${i.qty}) - Rp ${(Number(i.hargaSatuan) || 0).toLocaleString('id-ID')}`
-    ).join('\n');
-
-    const msg = [
-      `Halo ${tx.namaPelanggan || 'Pelanggan'}! Struk dari Dua SiSi Laundry`,
-      ``,
-      `No Nota     : ${tx.noNota}`,
-      `Tanggal     : ${tx.tanggal}`,
-      `Tipe        : ${tx.tipe === 'FullService' ? 'Drop Off' : tx.tipe === 'SelfService' ? 'Self Service' : 'Non-Layanan'}`,
-      `Status      : ${tx.status}`,
-      ``,
-      `Detail Layanan:`,
-      itemsStr,
-      ``,
-      `TOTAL       : Rp ${(tx?.total || 0).toLocaleString('id-ID')}`,
-      `Metode Bayar: ${tx.metodeBayar || 'Tunai'}`,
-      ...(tx.sisaTagihan && tx.sisaTagihan > 0
-        ? [`Sisa Tagihan: Rp ${(tx.sisaTagihan || 0).toLocaleString('id-ID')}`]
-        : []),
-      ``,
-      `Lihat E-Nota Resmi:`,
-      eNotaUrl,
-      ``,
-      `Terima kasih telah mencuci di Dua SiSi Laundry!`,
-    ].join('\n');
+    // Log Activity to Audit Trail
+    runBackend(
+      'logClientActivity',
+      tx.petugas || 'Kasir',
+      'Kirim Struk WA',
+      tx.noNota,
+      '-',
+      `No WhatsApp: ${rawPhone || '-'}`,
+      `Kirim struk WhatsApp untuk nota ${tx.noNota} ke ${tx.namaPelanggan || 'Pelanggan'}`
+    ).catch(() => {});
 
     const waUrl = rawPhone
       ? `https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`
