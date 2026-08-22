@@ -130,6 +130,7 @@ export function generateWhatsAppReceiptMessage(params: WhatsAppReceiptParams): s
   msgLines.push(`*Lihat E-Nota Resmi:*`);
   msgLines.push(eNotaUrl);
   msgLines.push(``);
+  msgLines.push(`*Jam Buka*: 07.00 - 23.00 WIB (Setiap Hari)`);
   msgLines.push(`Terima kasih telah mempercayakan cucian Anda di Dua SiSi Laundry!`);
 
   return msgLines.filter(Boolean).join('\n');

@@ -1424,10 +1424,9 @@ export default function PosView({
                       onChange={(e) => setClockInShift(e.target.value)}
                       className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all appearance-none"
                     >
-                      <option value="Pagi">Pagi (08:00 - 16:00)</option>
-                      <option value="Siang">Siang (12:00 - 20:00)</option>
-                      <option value="Sore">Sore (15:00 - 22:00)</option>
-                      <option value="Full Day">Full Day</option>
+                      <option value="Pagi">Shift 1 Pagi (07:00 - 15:00)</option>
+                      <option value="Sore">Shift 2 Sore / Malam (15:00 - 23:00)</option>
+                      <option value="Full Day">Shift Full Day (07:00 - 23:00)</option>
                     </select>
                   </div>
                 </div>

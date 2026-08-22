@@ -532,7 +532,7 @@ export default function MenuGeneratorView() {
                 <div className={`mt-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold ${theme.footerBg}`}>
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>Jam Operasional: <strong>07.00 - 21.00 WIB (Buka Tiap Hari)</strong></span>
+                    <span>Jam Operasional: <strong>07.00 - 23.00 WIB (Buka Tiap Hari)</strong></span>
                   </div>
 
                   <div className="flex items-center gap-2">

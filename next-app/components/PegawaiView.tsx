@@ -949,9 +949,9 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
                         onChange={e => setFormData({ ...formData, shiftUtama: e.target.value })}
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#1E4648]"
                       >
-                        <option value="Pagi">Shift Pagi (07.00 - 15.00)</option>
-                        <option value="Siang">Shift Siang (13.00 - 21.00)</option>
-                        <option value="Malam">Shift Malam / Full</option>
+                        <option value="Pagi">Shift 1 Pagi (07.00 - 15.00)</option>
+                        <option value="Siang">Shift 2 Sore/Malam (15.00 - 23.00)</option>
+                        <option value="Malam">Shift Full Day (07.00 - 23.00)</option>
                         <option value="Fleksibel">Fleksibel / Rolling</option>
                       </select>
                     </div>
