@@ -98,6 +98,17 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [loading, setLoading] = useState(false);
   const [filterKategori, setFilterKategori] = useState<string>('Semua');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortField, setSortField] = useState<'kategori' | 'nama' | 'kode' | 'harga' | 'tipe'>('kategori');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleHeaderSort = (field: 'kategori' | 'nama' | 'kode' | 'harga' | 'tipe') => {
+    if (sortField === field) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   // Drop Off Categories / Priorities State
   const [dropOffCategories, setDropOffCategories] = useState<DropOffPriorityItem[]>([
@@ -553,7 +564,22 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   };
 
   const handleExportProduk = () => {
-    const rows = layananList.map(l => [l.nama, l.kategori || 'Self Service', l.harga, l.tipe || 'Bukan Layanan', l.aktif === 'Y' ? 'Aktif' : 'Non-Aktif']);
+    const categoryOrderMap = new Map<string, number>();
+    kategoriList.forEach((k, idx) => {
+      categoryOrderMap.set((k.nama || '').toLowerCase().trim(), idx);
+    });
+    const sorted = [...layananList].sort((a, b) => {
+      const katA = (a.kategori || 'Self Service').toLowerCase().trim();
+      const katB = (b.kategori || 'Self Service').toLowerCase().trim();
+      if (katA !== katB) {
+        const orderA = categoryOrderMap.has(katA) ? categoryOrderMap.get(katA)! : 999;
+        const orderB = categoryOrderMap.has(katB) ? categoryOrderMap.get(katB)! : 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return katA.localeCompare(katB, 'id');
+      }
+      return (a.nama || '').localeCompare(b.nama || '', 'id');
+    });
+    const rows = sorted.map(l => [l.nama, l.kategori || 'Self Service', l.harga, l.tipe || 'Bukan Layanan', l.aktif === 'Y' ? 'Aktif' : 'Non-Aktif']);
     downloadCSV('export_produk.csv', toCSV(['Nama Layanan', 'Kategori', 'Harga', 'Tipe', 'Status'], rows));
   };
 
@@ -606,21 +632,73 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
-  const uniqueKategoriList = ['Semua', ...Array.from(new Set(layananList.map(item => item.kategori || 'Self Service')))];
-  const filteredLayananList = layananList.filter(item => {
-    const matchKategori = filterKategori === 'Semua' || (item.kategori || 'Self Service') === filterKategori;
-    if (!matchKategori) return false;
-
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase().trim();
-    const matchNama = (item.nama || '').toLowerCase().includes(q);
-    const matchKode = (item.id || '').toLowerCase().includes(q);
-    const matchTipe = (item.tipe || '').toLowerCase().includes(q);
-    const matchKat = (item.kategori || '').toLowerCase().includes(q);
-    const matchDropOff = (item.kategoriDropOff || '').toLowerCase().includes(q);
-    const matchSatuan = (item.satuan || '').toLowerCase().includes(q);
-    return matchNama || matchKode || matchTipe || matchKat || matchDropOff || matchSatuan;
+  // Map category name to index from master kategoriList
+  const categoryOrderMap = new Map<string, number>();
+  kategoriList.forEach((k, idx) => {
+    categoryOrderMap.set((k.nama || '').toLowerCase().trim(), idx);
   });
+
+  const uniqueKategoriList = [
+    'Semua',
+    ...Array.from(new Set(layananList.map(item => item.kategori || 'Self Service'))).sort((a, b) => {
+      const katA = a.toLowerCase().trim();
+      const katB = b.toLowerCase().trim();
+      const orderA = categoryOrderMap.has(katA) ? categoryOrderMap.get(katA)! : 999;
+      const orderB = categoryOrderMap.has(katB) ? categoryOrderMap.get(katB)! : 999;
+      if (orderA !== orderB) return orderA - orderB;
+      return katA.localeCompare(katB, 'id');
+    })
+  ];
+
+  const filteredLayananList = layananList
+    .filter(item => {
+      const matchKategori = filterKategori === 'Semua' || (item.kategori || 'Self Service') === filterKategori;
+      if (!matchKategori) return false;
+
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase().trim();
+      const matchNama = (item.nama || '').toLowerCase().includes(q);
+      const matchKode = (item.id || '').toLowerCase().includes(q);
+      const matchTipe = (item.tipe || '').toLowerCase().includes(q);
+      const matchKat = (item.kategori || '').toLowerCase().includes(q);
+      const matchDropOff = (item.kategoriDropOff || '').toLowerCase().includes(q);
+      const matchSatuan = (item.satuan || '').toLowerCase().includes(q);
+      return matchNama || matchKode || matchTipe || matchKat || matchDropOff || matchSatuan;
+    })
+    .sort((a, b) => {
+      const dir = sortDirection === 'asc' ? 1 : -1;
+
+      if (sortField === 'kategori') {
+        const katA = (a.kategori || 'Self Service').toLowerCase().trim();
+        const katB = (b.kategori || 'Self Service').toLowerCase().trim();
+        if (katA !== katB) {
+          const orderA = categoryOrderMap.has(katA) ? categoryOrderMap.get(katA)! : 999;
+          const orderB = categoryOrderMap.has(katB) ? categoryOrderMap.get(katB)! : 999;
+          if (orderA !== orderB) return (orderA - orderB) * dir;
+          return katA.localeCompare(katB, 'id') * dir;
+        }
+        // Sub-sort by name
+        return (a.nama || '').localeCompare(b.nama || '', 'id');
+      }
+
+      if (sortField === 'nama') {
+        return (a.nama || '').localeCompare(b.nama || '', 'id') * dir;
+      }
+
+      if (sortField === 'kode') {
+        return (a.id || '').localeCompare(b.id || '', 'id') * dir;
+      }
+
+      if (sortField === 'harga') {
+        return ((a.harga || 0) - (b.harga || 0)) * dir;
+      }
+
+      if (sortField === 'tipe') {
+        return (a.tipe || '').localeCompare(b.tipe || '', 'id') * dir;
+      }
+
+      return 0;
+    });
 
   return (
     <div className="p-3 md:p-4 space-y-4 w-full">
@@ -768,15 +846,72 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider">
-                  <th className="py-2.5 px-3">Kode</th>
-                  <th className="py-2.5 px-3">Nama Produk / Layanan</th>
-                  <th className="py-2.5 px-3">Kategori</th>
-                  <th className="py-2.5 px-3">Tipe</th>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider select-none">
+                  <th 
+                    onClick={() => handleHeaderSort('kode')}
+                    className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
+                    title="Klik untuk mengurutkan berdasarkan Kode"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Kode</span>
+                      {sortField === 'kode' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleHeaderSort('nama')}
+                    className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
+                    title="Klik untuk mengurutkan berdasarkan Nama Layanan"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Nama Produk / Layanan</span>
+                      {sortField === 'nama' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleHeaderSort('kategori')}
+                    className={`py-2.5 px-3 cursor-pointer transition ${sortField === 'kategori' ? 'bg-teal-50/70 text-[#1E4648]' : 'hover:text-[#1E4648] hover:bg-slate-100/80'}`}
+                    title="Klik untuk mengurutkan berdasarkan Kategori (Bawaan)"
+                  >
+                    <div className="flex items-center gap-1 font-extrabold text-[#1E4648]">
+                      <span>Kategori</span>
+                      {sortField === 'kategori' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />
+                      ) : (
+                        <ArrowUp className="w-3 h-3 opacity-30" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleHeaderSort('tipe')}
+                    className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
+                    title="Klik untuk mengurutkan berdasarkan Tipe"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Tipe</span>
+                      {sortField === 'tipe' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-2.5 px-3">Inventory</th>
                   <th className="py-2.5 px-3">Potongan Stok</th>
                   {currentRole === 'MANAGER' && <th className="py-2.5 px-3">Modal & Profit</th>}
-                  <th className="py-2.5 px-3">Tarif Jual</th>
+                  <th 
+                    onClick={() => handleHeaderSort('harga')}
+                    className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
+                    title="Klik untuk mengurutkan berdasarkan Tarif Jual"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Tarif Jual</span>
+                      {sortField === 'harga' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-2.5 px-3">Status</th>
                   <th className="py-2.5 px-3 text-right">Aksi</th>
                 </tr>
