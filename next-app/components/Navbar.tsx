@@ -16,10 +16,13 @@ import {
   Clock, 
   X,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  SlidersHorizontal
 } from 'lucide-react';
 import { UserRole } from '@/lib/types';
 import PrinterModal from '@/components/PrinterModal';
+import DisplaySettingsModal from '@/components/DisplaySettingsModal';
+import { useDisplaySettings } from '@/components/DisplaySettingsContext';
 import { getActiveDeviceInfo } from '@/lib/bluetoothPrinter';
 import { useDialog } from '@/components/DialogProvider';
 import { GlobalNotificationItem } from '@/lib/useGlobalNotifications';
@@ -73,6 +76,7 @@ export default function Navbar({
   onMarkAllAsRead,
 }: NavbarProps) {
   const { showAlert } = useDialog();
+  const { settings, isModalOpen, setIsModalOpen, openSettingsModal, closeSettingsModal } = useDisplaySettings();
   const [clockStr, setClockStr] = useState<string>('');
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -172,6 +176,19 @@ export default function Navbar({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Display & Font Scale Setting Button */}
+          <button
+            onClick={openSettingsModal}
+            className="flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80 px-2.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0 tactile-btn cursor-pointer"
+            title="Pengaturan Ukuran Tampilan, Skala & Jenis Huruf (Font)"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-teal-700" />
+            <span className="hidden md:inline">Ukuran & Font</span>
+            <span className="px-1.5 py-0.2 rounded-md bg-teal-100/90 text-teal-800 text-[10px] font-black">
+              {settings.zoomScale}%
+            </span>
+          </button>
+
           {/* Bluetooth Thermal Printer Status & Config Button */}
           <button
             onClick={() => setIsPrinterModalOpen(true)}
@@ -365,6 +382,12 @@ export default function Navbar({
       <PrinterModal
         isOpen={isPrinterModalOpen}
         onClose={() => setIsPrinterModalOpen(false)}
+      />
+
+      {/* Display & Font Settings Modal */}
+      <DisplaySettingsModal
+        isOpen={isModalOpen}
+        onClose={closeSettingsModal}
       />
     </>
   );

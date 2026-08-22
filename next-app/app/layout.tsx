@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { DialogProvider } from "@/components/DialogProvider";
+import { DisplaySettingsProvider } from "@/components/DisplaySettingsContext";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -37,9 +38,36 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="DuaSiSi POS" />
         <link rel="apple-touch-icon" href="/assets/icon-512.svg" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700;800&family=Nunito:wght@300;400;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=Quicksand:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              try {
+                var saved = localStorage.getItem('duasisi_display_settings');
+                if (saved) {
+                  var p = JSON.parse(saved);
+                  if (p.zoomScale) {
+                    var z = p.zoomScale / 100;
+                    document.documentElement.style.setProperty('--ui-scale', z.toString());
+                    document.documentElement.style.setProperty('--ui-scale-percent', p.zoomScale + '%');
+                  }
+                  if (p.fontFamily) {
+                    document.documentElement.style.setProperty('--font-sans', "'" + p.fontFamily + "', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif");
+                  }
+                  if (p.density) {
+                    document.documentElement.setAttribute('data-density', p.density);
+                  }
+                  if (p.fontWeightMode) {
+                    document.documentElement.setAttribute('data-font-weight', p.fontWeightMode);
+                  }
+                }
+              } catch (e) {}
+
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js', { scope: '/' })
@@ -57,7 +85,9 @@ export default function RootLayout({
       </head>
       <body className={`${plusJakartaSans.variable} font-sans bg-[#F8FAFC] text-slate-700 antialiased min-h-screen overflow-y-auto`}>
         <DialogProvider>
-          {children}
+          <DisplaySettingsProvider>
+            {children}
+          </DisplaySettingsProvider>
         </DialogProvider>
       </body>
     </html>

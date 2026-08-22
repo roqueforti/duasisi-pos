@@ -23,10 +23,12 @@ import {
   Sparkles,
   Coins,
   UserCheck,
-  WashingMachine
+  WashingMachine,
+  SlidersHorizontal
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { useDialog } from '@/components/DialogProvider';
+import { useDisplaySettings } from '@/components/DisplaySettingsContext';
 import { BadgeCounts } from '@/lib/useGlobalNotifications';
 
 interface SidebarProps {
@@ -66,9 +68,16 @@ export default function Sidebar({
   isShiftActive = false
 }: SidebarProps) {
   const { showAlert } = useDialog();
+  const { openSettingsModal } = useDisplaySettings();
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
   const handleNavClick = async (tabKey: string, requiresShift?: boolean) => {
+    if (tabKey === 'tampilan') {
+      openSettingsModal();
+      setIsSidebarOpen(false);
+      return;
+    }
+
     if (tabKey === 'transaksi' && currentRole === 'MANAGER') {
       await showAlert('Fitur POS Kasir hanya untuk Staff/Kasir', 'warning');
       return;
@@ -133,7 +142,8 @@ export default function Sidebar({
       groupName: 'Laporan & Pengaturan',
       items: [
         { id: 'rekap', label: 'Laporan Rekap', icon: BarChart3, managerOnly: true },
-        { id: 'keamanan', label: 'Keamanan & PIN', icon: ShieldCheck, managerOnly: true }
+        { id: 'keamanan', label: 'Keamanan & PIN', icon: ShieldCheck, managerOnly: true },
+        { id: 'tampilan', label: 'Tampilan & Ukuran', icon: SlidersHorizontal }
       ]
     }
   ];

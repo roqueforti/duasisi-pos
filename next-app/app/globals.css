@@ -36,6 +36,39 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dynamic UI Font Weight Modifiers */
+[data-font-weight="medium"] {
+  font-weight: 500;
+}
+[data-font-weight="semibold"] {
+  font-weight: 600;
+}
+[data-font-weight="semibold"] h1,
+[data-font-weight="semibold"] h2,
+[data-font-weight="semibold"] h3,
+[data-font-weight="semibold"] h4,
+[data-font-weight="semibold"] strong,
+[data-font-weight="semibold"] b {
+  font-weight: 800;
+}
+
+/* Dynamic UI Layout Density Modifiers */
+[data-density="compact"] .tactile-btn,
+[data-density="compact"] button,
+[data-density="compact"] input,
+[data-density="compact"] select {
+  padding-top: max(2px, calc(0.85 * 0.5rem));
+  padding-bottom: max(2px, calc(0.85 * 0.5rem));
+}
+
+[data-density="comfortable"] .tactile-btn,
+[data-density="comfortable"] button,
+[data-density="comfortable"] input,
+[data-density="comfortable"] select {
+  padding-top: calc(1.15 * 0.5rem);
+  padding-bottom: calc(1.15 * 0.5rem);
+}
+
 /* Default input placeholder */
 input::placeholder, textarea::placeholder {
   color: #9CA3AF;
