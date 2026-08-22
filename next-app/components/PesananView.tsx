@@ -380,9 +380,20 @@ export default function PesananView() {
     }
   };
 
+  const getMachineDisplayName = useCallback((rawMachineId: string) => {
+    if (!rawMachineId) return '';
+    const cleanId = String(rawMachineId).trim();
+    const found = machines.find(
+      (m) => String(m.id).toLowerCase() === cleanId.toLowerCase() || String(m.nama).toLowerCase() === cleanId.toLowerCase()
+    );
+    if (found?.nama) return found.nama;
+    return cleanId;
+  }, [machines]);
+
   const renderCard = (order: Transaksi) => {
     const next = getNextStatusForOrder(order);
-    const machine = activeMachine(order);
+    const rawMachine = activeMachine(order);
+    const machineName = getMachineDisplayName(rawMachine);
     const orderPriority = order.tingkatLayanan || 'Reguler';
     const priConfig = dropOffPriorities.find((p) => p.nama.toLowerCase() === orderPriority.toLowerCase());
     const badgeWarna = priConfig?.warna || (
@@ -520,10 +531,10 @@ export default function PesananView() {
             <span className="font-bold text-slate-700">{order.estimasiSelesai || order.estimasi || '-'}</span>
           </div>
 
-          {machine && (
+          {machineName && (
             <div className="flex items-center gap-1.5 font-bold text-teal-800 bg-teal-50/80 px-2 py-1 rounded-md border border-teal-200">
               <WashingMachine className="h-3.5 w-3.5 text-teal-700 shrink-0" />
-              <span className="truncate">Mesin: {machine}</span>
+              <span className="truncate">Mesin: {machineName}</span>
             </div>
           )}
 
@@ -797,7 +808,11 @@ export default function PesananView() {
                   <label className="mb-1 block text-xs font-bold text-slate-700">{isTargetWasher ? 'Washer' : 'Dryer'} *</label>
                   <select value={machineId} onChange={(event) => setMachineId(event.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-[#1E4648]">
                     <option value="">Pilih mesin kosong...</option>
-                    {availableMachines.map((machine) => <option key={machine.id} value={machine.id}>{machine.id} · {machine.nama}</option>)}
+                    {availableMachines.map((machine) => (
+                      <option key={machine.id} value={machine.id}>
+                        {machine.nama} ({machine.tipe})
+                      </option>
+                    ))}
                   </select>
                   {availableMachines.length === 0 && <p className="mt-1 text-[11px] font-semibold text-rose-600">Tidak ada mesin kosong untuk tahap ini.</p>}
                 </div>
