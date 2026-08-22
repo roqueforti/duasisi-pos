@@ -2010,20 +2010,22 @@ export default function PosView({
         />
       )}
 
-      {/* STEP 2: RIGHT KERANJANG ORDER PANEL (Selalu Terbuka di Desktop/Tablet) */}
-      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[260px] lg:w-[280px] xl:w-[300px] md:z-auto border border-slate-200/80 rounded-lg shrink-0 overflow-hidden shadow-2xs transition-all duration-200 ${
+      {/* STEP 2:       {/* STEP 2: RIGHT KERANJANG ORDER PANEL (Selalu Terbuka di Desktop/Tablet, Auto-Fit No-Scroll) */}
+      <div className={`fixed inset-0 z-[300] bg-white flex flex-col w-full md:static md:w-[280px] lg:w-[310px] xl:w-[340px] md:z-auto border border-slate-200/90 rounded-2xl shrink-0 overflow-hidden shadow-xs transition-all duration-200 h-full max-h-full justify-between ${
         showMobileCart ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 md:translate-y-0 md:opacity-100 hidden md:flex'
       }`}>
         {/* Header Order & Customer Button */}
-        <div className="p-3 border-b border-slate-100 bg-white flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <ShoppingCart className="w-4 h-4 text-[#1E4648]" />
-            <h2 className="text-sm font-bold text-slate-600">Order</h2>
+        <div className="p-3 border-b border-slate-100 bg-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center">
+              <ShoppingCart className="w-4 h-4 text-[#1E4648]" />
+            </div>
+            <h2 className="text-sm font-black text-slate-800">Keranjang Order</h2>
           </div>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setShowMobileCart(false)}
-              className="md:hidden p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+              className="md:hidden p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
               title="Tutup Keranjang"
             >
               <X className="w-5 h-5" />
@@ -2032,92 +2034,66 @@ export default function PosView({
         </div>
 
         {/* Customer Information Badge */}
-        <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Pelanggan:</span>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-sm text-slate-600">{customer.nama || 'Pelanggan Umum'}</span>
-              {customer.noHp && <span className="text-xs text-slate-500">({customer.noHp})</span>}
+        <div className="px-3.5 py-2.5 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between shrink-0">
+          <div className="flex-1 min-w-0">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Pelanggan:</span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-black text-xs text-slate-800 truncate">{customer.nama || 'Pelanggan Umum'}</span>
+              {customer.noHp && <span className="text-[11px] text-slate-500 font-mono font-bold">({customer.noHp})</span>}
               {customer.poin !== undefined && (
-                <span className="inline-flex items-center gap-1 text-xs font-bold bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/30 px-2 py-0.5 rounded">
-                  â­ {customer.poin} Poin
+                <span className="inline-flex items-center gap-1 text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-300 px-2 py-0.2 rounded-full">
+                  ⭐ {customer.poin} Poin
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Cart Items List - Simple Text Format */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1 bg-slate-50/40">
+        {/* Cart Items List - Auto-Scrollable Container */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-1.5 bg-slate-50/40">
           {cartArray.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 py-12">
-              <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                <ShoppingCart className="w-7 h-7 text-slate-400" />
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 py-6">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-2">
+                <ShoppingCart className="w-6 h-6 text-slate-400" />
               </div>
-              <div className="text-sm font-bold text-slate-600">Keranjang Kosong</div>
-              <div className="text-xs text-slate-400 mt-1">Pilih produk di katalog sebelah kiri</div>
+              <div className="text-xs font-bold text-slate-600">Keranjang Kosong</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Pilih produk di katalog sebelah kiri</div>
             </div>
           ) : (
             cartArray.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between px-3 py-2.5 bg-white border border-slate-200/60 rounded-lg hover:shadow-sm transition group">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold text-slate-600 leading-tight truncate">{item.layanan}</div>
-                  <div className="text-xs text-slate-500 font-semibold">
+              <div key={idx} className="flex items-center justify-between p-2.5 bg-white border border-slate-200/80 rounded-xl shadow-2xs hover:shadow-xs transition group">
+                <div className="flex-1 min-w-0 pr-1">
+                  <div className="text-xs font-bold text-slate-800 leading-tight truncate">{item.layanan}</div>
+                  <div className="text-[11px] text-slate-500 font-semibold font-mono mt-0.5">
                     Rp {(item.hargaSatuan || 0).toLocaleString('id-ID')} × {item.qty}
                   </div>
                 </div>
-                <button
-                  onClick={() => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, -item.qty)}
-                  className="text-slate-300 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition ml-2 shrink-0 opacity-0 group-hover:opacity-100"
-                  title="Hapus Item"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-xs font-black text-slate-900 font-mono">
+                    Rp {((item.hargaSatuan || 0) * (item.qty || 1)).toLocaleString('id-ID')}
+                  </span>
+                  <button
+                    onClick={() => updateCart({ layanan: item.layanan, hargaSatuan: item.hargaSatuan, tipe: 'SelfService' }, -item.qty)}
+                    className="text-slate-300 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition opacity-80 group-hover:opacity-100"
+                    title="Hapus Item"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             ))
           )}
         </div>
 
-        {/* Recommendation Trigger Banner (Dynamic) */}
-        {rekomendasiKasir.length > 0 && (
-          <div className="px-4 pt-3 pb-1 bg-white border-t border-slate-100">
-            <button
-              onClick={() => setShowRekomendasiModal(true)}
-              className="w-full flex items-center justify-between p-2.5 sm:p-3 bg-gradient-to-r from-amber-50/80 via-orange-50/30 to-teal-50/40 border border-amber-200/90 hover:border-amber-400 rounded-2xl transition-all duration-150 group text-left shadow-2xs hover:shadow-xs"
-            >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-[#FF9500] text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-bold text-slate-900 leading-tight">Rekomendasi Kasir</span>
-                    <span className="px-2 py-0.5 bg-[#FF9500] text-white text-[9px] font-black rounded-full whitespace-nowrap shadow-2xs">
-                      {rekomendasiKasir.length} Saran
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-500 truncate mt-0.5 font-medium">
-                    {rekomendasiKasir[0]?.judul || 'Ada promo & diskon untuk transaksi ini'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-0.5 text-xs font-bold text-[#1E4648] group-hover:translate-x-0.5 transition shrink-0 ml-2 pl-2 border-l border-amber-200/60">
-                <span>Lihat</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </div>
-            </button>
-          </div>
-        )}
-
         {/* Voucher & Promo Input Box */}
-        <div className="px-4 py-3 bg-white border-t border-slate-100 space-y-2">
+        <div className="px-3 py-2 bg-white border-t border-slate-100 shrink-0 space-y-1">
           {diskonApplied.nilai > 0 ? (
-            <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
-              <div className="flex items-center gap-2 min-w-0">
-                <Tag className="w-4 h-4 text-emerald-600 shrink-0" />
-                <div className="truncate">
-                  <span className="font-bold text-emerald-900 uppercase font-mono">{diskonApplied.kode}</span>
-                  <span className="text-emerald-700 ml-1.5 font-semibold">
+            <div className="flex items-center justify-between p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Tag className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <div className="truncate text-[11px]">
+                  <span className="font-black text-emerald-900 uppercase font-mono">{diskonApplied.kode}</span>
+                  <span className="text-emerald-700 ml-1 font-semibold">
                     (-Rp {diskonApplied.nilai.toLocaleString('id-ID')})
                   </span>
                 </div>
@@ -2128,75 +2104,90 @@ export default function PosView({
                   setVoucherInput('');
                   setVoucherMsg(null);
                 }}
-                className="p-1 text-emerald-600 hover:text-rose-600 hover:bg-emerald-100/60 rounded-lg transition shrink-0"
+                className="p-1 text-emerald-600 hover:text-rose-600 hover:bg-emerald-100 rounded-lg transition shrink-0"
                 title="Hapus Voucher"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <div className="relative flex-1 min-w-0">
-                <Tag className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Tag className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={voucherInput}
                   onChange={(e) => setVoucherInput(e.target.value)}
                   placeholder="Kode voucher / promo..."
-                  className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white transition"
+                  className="w-full pl-7 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white transition"
                 />
               </div>
               <button
                 onClick={handleApplyVoucher}
-                className="bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-bold px-4 py-2 rounded-xl transition shrink-0 shadow-2xs"
+                className="bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-black px-3 py-1.5 rounded-xl transition shrink-0 shadow-2xs"
               >
                 Pasang
               </button>
             </div>
           )}
           {voucherMsg && (
-            <div className={`text-[11px] font-bold px-1 ${voucherMsg.type === 'success' ? 'text-emerald-600' : 'text-rose-500'}`}>
+            <div className={`text-[10px] font-bold px-1 ${voucherMsg.type === 'success' ? 'text-emerald-600' : 'text-rose-500'}`}>
               {voucherMsg.text}
             </div>
           )}
         </div>
 
         {/* Financial Summary & Process Payment Button */}
-        <div className="p-4 border-t border-slate-200/80 bg-white space-y-3">
-          <div className="space-y-1.5 text-sm text-slate-500">
+        <div className="p-3 sm:p-3.5 border-t border-slate-200 bg-white shrink-0 space-y-2.5">
+          <div className="space-y-1 text-xs text-slate-500 font-semibold">
             <div className="flex justify-between">
-              <span>Subtotal :</span>
-              <span className="font-bold text-slate-600">Rp {(subtotalCart || 0).toLocaleString('id-ID')}</span>
+              <span>Subtotal:</span>
+              <span className="font-bold text-slate-700 font-mono">Rp {(subtotalCart || 0).toLocaleString('id-ID')}</span>
             </div>
             {diskonApplied.nilai > 0 && (
-              <div className="flex justify-between text-[#1E4648]">
-                <span>Diskon ({diskonApplied.kode}) :</span>
-                <span className="font-bold">-Rp {(diskonApplied?.nilai || 0).toLocaleString('id-ID')}</span>
+              <div className="flex justify-between text-emerald-700">
+                <span>Diskon ({diskonApplied.kode}):</span>
+                <span className="font-bold font-mono">-Rp {(diskonApplied?.nilai || 0).toLocaleString('id-ID')}</span>
               </div>
             )}
-            {customerMode === 'MEMBER' && customer.isMember && Math.floor(grandTotal / poinRate) > 0 && (
-              <div className="flex justify-between text-[#FF9500]">
-                <span>Estimasi Poin (Member) :</span>
-                <span className="font-bold">+{Math.floor(grandTotal / poinRate)} Poin</span>
+            {customerMode === 'MEMBER' && customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
+              <div className="flex justify-between text-amber-700">
+                <span className="flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-500" /> Poin Member:
+                </span>
+                <span className="font-bold font-mono">+{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin</span>
               </div>
             )}
           </div>
 
-          <div className="bg-slate-900 text-white rounded-lg p-4 flex justify-between items-center shadow-inner my-1.5">
-            <span className="text-sm font-bold uppercase tracking-wider text-slate-300">Total Tagihan</span>
-            <span className="text-xl font-bold text-[#B5C9C9]">Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>
+          {/* TOTAL TAGIHAN DISPLAY (Card Info Display, BUKAN Tombol) */}
+          <div className="bg-slate-50 border-2 border-slate-200/90 rounded-2xl p-3 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+                Total Tagihan
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">
+                {cartArray.length} item cucian
+              </span>
+            </div>
+            <span className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight">
+              Rp {(grandTotal || 0).toLocaleString('id-ID')}
+            </span>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          {/* ACTION BUTTONS: Trash + Primary PROSES BAYAR Button */}
+          <div className="flex gap-2 pt-0.5">
             <button
+              type="button"
               onClick={clearCart}
               disabled={cartArray.length === 0}
-              className="p-3.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-500 rounded-lg transition disabled:opacity-40 border border-slate-200/80"
+              className="p-3 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-400 hover:border-rose-200 rounded-xl transition disabled:opacity-30 border border-slate-200 shrink-0 cursor-pointer"
               title="Kosongkan keranjang"
             >
               <Trash2 className="w-5 h-5" />
             </button>
             <button
+              type="button"
               onClick={() => {
                 if (cartArray.length === 0) return;
                 const dropOffItem = cartArray.find(i => (i as any).kategoriDropOff || i.tipe === 'FullService');
@@ -2215,10 +2206,15 @@ export default function PosView({
                 setShowDetailTransaksiModal(true);
               }}
               disabled={cartArray.length === 0}
-              className="flex-1 bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-3.5 rounded-lg text-sm transition flex items-center justify-center gap-2 disabled:opacity-40 shadow-md cursor-pointer"
+              className={`flex-1 py-3.5 px-4 rounded-xl font-black text-sm sm:text-base transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                cartArray.length === 0
+                  ? 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-emerald-600 via-teal-700 to-[#1E4648] hover:from-emerald-500 hover:to-[#163536] text-white shadow-md shadow-emerald-900/20 active:scale-[0.98]'
+              }`}
             >
-              <CreditCard className="w-5 h-5" />
-              <span>Proses Bayar Rp {(grandTotal || 0).toLocaleString('id-ID')}</span>
+              <CreditCard className="w-5 h-5 text-emerald-200 shrink-0" />
+              <span>Proses Bayar</span>
+              <ArrowRight className="w-4 h-4 text-emerald-200 shrink-0" />
             </button>
           </div>
         </div>
