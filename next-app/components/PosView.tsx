@@ -52,7 +52,8 @@ import {
   Smartphone,
   Eye,
   Loader2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  UserPlus
 } from 'lucide-react';
 import { LayananItem, CartItem, ShiftKasir, AbsensiConfig, UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
@@ -2466,8 +2467,8 @@ export default function PosView({
                 {/* Registered Member Search, Select & Quick Add */}
                 {customerMode === 'MEMBER' && (
                   <div className="space-y-2 bg-amber-50/50 p-3.5 rounded-2xl border border-amber-200/80">
-                    <div className="flex items-center justify-between">
-                      <label className="block font-bold text-amber-950 text-xs">Pilih Data Member Terdaftar *</label>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <label className="block font-black text-amber-950 text-xs">Pilih Data Member Terdaftar *</label>
                       <button
                         type="button"
                         onClick={() => {
@@ -2481,9 +2482,23 @@ export default function PosView({
                             });
                           }
                         }}
-                        className="text-[11px] font-bold text-[#1E4648] hover:underline flex items-center gap-1"
+                        className={`tactile-btn px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                          showQuickAddMember
+                            ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
+                            : 'bg-teal-800 hover:bg-teal-900 text-white border border-teal-700 hover:shadow-md'
+                        }`}
                       >
-                        {showQuickAddMember ? '✕ Tutup Form' : '+ Daftar Member Baru'}
+                        {showQuickAddMember ? (
+                          <>
+                            <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <span>Tutup Form</span>
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="w-3.5 h-3.5 text-teal-200" />
+                            <span>+ Daftar Member Baru</span>
+                          </>
+                        )}
                       </button>
                     </div>
 
