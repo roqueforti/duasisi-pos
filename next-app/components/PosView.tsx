@@ -264,7 +264,36 @@ export default function PosView({
   const [showTutupShiftModal, setShowTutupShiftModal] = useState<boolean>(false);
   const [showCustomItemModal, setShowCustomItemModal] = useState<boolean>(false);
   const [showMobileCart, setShowMobileCart] = useState<boolean>(false);
-  const [catalogViewMode, setCatalogViewMode] = useState<'grid' | 'list'>('grid');
+  const [catalogViewMode, setCatalogViewMode] = useState<'auto' | 'grid' | 'list'>('auto');
+  const [catalogContainerWidth, setCatalogContainerWidth] = useState<number>(1000);
+  const catalogContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Auto-detect container width to automatically switch to List view if cards get squished
+  useEffect(() => {
+    if (!catalogContainerRef.current) return;
+    const updateWidth = () => {
+      if (catalogContainerRef.current) {
+        setCatalogContainerWidth(catalogContainerRef.current.clientWidth);
+      }
+    };
+    updateWidth();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          setCatalogContainerWidth(entry.contentRect.width);
+        }
+      });
+      observer.observe(catalogContainerRef.current);
+      return () => observer.disconnect();
+    } else {
+      window.addEventListener('resize', updateWidth);
+      return () => window.removeEventListener('resize', updateWidth);
+    }
+  }, []);
+
+  const isAutoList = catalogViewMode === 'auto' && catalogContainerWidth < 460;
+  const effectiveCatalogView = catalogViewMode === 'list' || isAutoList ? 'list' : 'grid';
 
   // Strict Mode Lock Screen State
   const [lockScreenStep, setLockScreenStep] = useState<1 | 2>(1);
@@ -1576,47 +1605,64 @@ export default function PosView({
             })}
           </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-1.5 ml-auto shrink-0">
+          {/* View Mode Toggle: Auto, Grid, List */}
+          <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 ml-auto shrink-0">
+            <button
+              onClick={() => setCatalogViewMode('auto')}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition flex items-center gap-1 cursor-pointer tactile-btn ${
+                catalogViewMode === 'auto'
+                  ? 'bg-[#1E4648] text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+              title="Mode Otomatis: Beralih ke List jika layar sempit atau zoom besar, Grid jika layar lebar"
+            >
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span>Auto{isAutoList ? ' (List)' : ''}</span>
+            </button>
             <button
               onClick={() => setCatalogViewMode('grid')}
-              className={`p-2 rounded-lg border transition ${
+              className={`p-1.5 rounded-lg transition cursor-pointer tactile-btn ${
                 catalogViewMode === 'grid'
-                  ? 'bg-[#1E4648] border-[#1E4648] text-white'
-                  : 'bg-white border-slate-200/80 text-slate-400 hover:text-slate-600'
+                  ? 'bg-[#1E4648] text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-700'
               }`}
-              title="Tampilan Grid"
+              title="Tampilan Grid (Kotak)"
             >
-              <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
-                <div className="bg-current rounded-sm" />
-                <div className="bg-current rounded-sm" />
-                <div className="bg-current rounded-sm" />
-                <div className="bg-current rounded-sm" />
+              <div className="w-3.5 h-3.5 grid grid-cols-2 gap-0.5">
+                <div className="bg-current rounded-xs" />
+                <div className="bg-current rounded-xs" />
+                <div className="bg-current rounded-xs" />
+                <div className="bg-current rounded-xs" />
               </div>
             </button>
             <button
               onClick={() => setCatalogViewMode('list')}
-              className={`p-2 rounded-lg border transition ${
+              className={`p-1.5 rounded-lg transition cursor-pointer tactile-btn ${
                 catalogViewMode === 'list'
-                  ? 'bg-[#1E4648] border-[#1E4648] text-white'
-                  : 'bg-white border-slate-200/80 text-slate-400 hover:text-slate-600'
+                  ? 'bg-[#1E4648] text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-700'
               }`}
-              title="Tampilan List"
+              title="Tampilan List (Daftar Baris)"
             >
-              <div className="w-4 h-4 flex flex-col gap-0.5">
-                <div className="h-0.5 bg-current" />
-                <div className="h-0.5 bg-current" />
-                <div className="h-0.5 bg-current" />
+              <div className="w-3.5 h-3.5 flex flex-col justify-between py-0.5">
+                <div className="h-0.5 bg-current rounded-full" />
+                <div className="h-0.5 bg-current rounded-full" />
+                <div className="h-0.5 bg-current rounded-full" />
               </div>
             </button>
           </div>
         </div>
 
         {/* STEP 1: Product Cards Grid or List */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
-          {catalogViewMode === 'grid' ? (
+        <div ref={catalogContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-4 pb-20 md:pb-4">
+          {effectiveCatalogView === 'grid' ? (
             // GRID VIEW
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-3 auto-rows-auto">
+            <div 
+              className="grid gap-2.5 sm:gap-3 auto-rows-auto"
+              style={{
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))'
+              }}
+            >
               {layananLoading ? (
                 // SKELETON LOADING GRID
                 Array.from({ length: 10 }).map((_, idx) => (
