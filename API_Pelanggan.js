@@ -528,12 +528,21 @@ function cekPoinPelanggan(phone) {
       return {
         success: true,
         pelanggan: {
+          noHp: hp,
+          nama: nama,
           maskedNama: maskedName,
           maskedHp: maskPhone(hp),
+          alamat: String(r[2] || ""),
           saldoPoin: saldoPoin,
           totalOrder: totalTx,
+          totalSpend: Number(r[5]) || 0,
+          terakhirOrder: r[6] ? fmtWib(r[6], "dd/MM/yyyy HH:mm") : "-",
           isMember: isMember,
           statusMember: isMember ? "MEMBER VIP" : "PELANGGAN REGULER",
+          statusKategori: isMember ? "Member" : (totalTx > 1 ? "Pelanggan Lama" : "Pelanggan Baru"),
+          tglDaftar: r[10] ? fmtWib(r[10], "dd/MM/yyyy") : "",
+          stamps75: Number(r[11]) || 0,
+          stamps45: Number(r[12]) || 0,
           activeOrders: activeOrders
         }
       };

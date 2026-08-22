@@ -35,14 +35,25 @@ import ClickSpark from '@/components/ClickSpark';
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
 import ENotaView from '@/components/ENotaView';
+import DigitalMemberCard from '@/components/DigitalMemberCard';
+import { PelangganItem } from '@/components/PelangganView';
 
 interface PelangganPoinData {
   maskedNama: string;
   maskedHp: string;
+  noHp?: string;
+  nama?: string;
+  alamat?: string;
   saldoPoin: number;
   totalOrder: number;
+  totalSpend?: number;
+  terakhirOrder?: string;
   isMember: boolean;
   statusMember: string;
+  statusKategori?: 'Member' | 'Pelanggan Lama' | 'Pelanggan Baru';
+  tglDaftar?: string;
+  stamps75?: number;
+  stamps45?: number;
   activeOrders?: Array<{
     noNota: string;
     tipe: string;
@@ -356,7 +367,7 @@ export default function CustomerLandingPage() {
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Cek Poin & Member</span>
+              <span>Cek Poin & Kartu Stempel</span>
             </button>
           </div>
 
@@ -367,7 +378,7 @@ export default function CustomerLandingPage() {
               text={
                 activeTab === 'lacak'
                   ? 'Cucian Bersih. Cepat & Terpantau.'
-                  : 'Poin Loyalitas & Keuntungan Member.'
+                  : 'Poin Loyalitas & Kartu Stempel Member.'
               }
               splitBy="word"
               hinge="top"
@@ -389,7 +400,7 @@ export default function CustomerLandingPage() {
             <p className="text-xs sm:text-sm text-white/60 leading-relaxed font-normal">
               {activeTab === 'lacak'
                 ? 'Proteksi 2-Faktor: Masukkan nomor nota dan 4 digit terakhir nomor HP Anda untuk melacak status pengerjaan.'
-                : 'Cek akumulasi poin cashback Anda dan nikmati promo cuci hemat di kasir.'}
+                : 'Cek kartu stempel digital (7.5kg & 4.5kg) serta akumulasi saldo poin loyalty reward Anda.'}
             </p>
           </div>
 
@@ -444,7 +455,7 @@ export default function CustomerLandingPage() {
                   </button>
                 </div>
               ) : (
-                /* Tab Poin: 1 Unified Solid Luxury Capsule */
+                /* Tab Poin & Stempel: 1 Unified Solid Luxury Capsule */
                 <div className="w-full rounded-2xl sm:rounded-full border border-[#1a464c] bg-[#07191b] shadow-2xl p-1.5 flex flex-col sm:flex-row items-center gap-1 transition focus-within:border-teal-400/60 focus-within:shadow-[0_0_25px_rgba(45,212,191,0.15)]">
                   <div className="w-full sm:flex-1 h-11 px-3.5 flex items-center">
                     <Phone className="w-4 h-4 text-teal-400 shrink-0 mr-2.5" />
@@ -466,7 +477,7 @@ export default function CustomerLandingPage() {
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <>
-                        <span>Cek Poin & Member</span>
+                        <span>Cek Poin & Stempel</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </>
                     )}
@@ -483,7 +494,7 @@ export default function CustomerLandingPage() {
                   <span>Proteksi 2-Faktor: Hanya pemilik nota & no. HP yang dapat melihat rincian</span>
                 </div>
               ) : (
-                <span className="text-[11px] text-white/50">Poin cashback langsung dapat ditukarkan di kasir outlet</span>
+                <span className="text-[11px] text-white/50">Cek kartu stempel digital (7.5kg & 4.5kg) & saldo cashback loyalty reward</span>
               )}
             </div>
 
@@ -698,78 +709,125 @@ export default function CustomerLandingPage() {
             );
           })()}
 
-          {foundPoin && (
-            <div className="w-full max-w-lg rounded-2xl border border-[#153a3e] bg-[#061517] p-5 text-left mb-6 shadow-2xl animate-fade-in">
-              {/* Member Header */}
-              <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 text-black flex items-center justify-center font-bold text-sm shadow-md">
-                    ⭐
-                  </div>
-                  <div>
-                    <span className="text-sm font-bold text-white block">{foundPoin.maskedNama}</span>
-                    <span className="text-[10px] font-mono text-white/50">{foundPoin.maskedHp}</span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#0a272a] border border-teal-500/40 text-teal-300">
-                  {foundPoin.statusMember}
-                </span>
-              </div>
+          {foundPoin && (() => {
+            const memberCustomerData: PelangganItem = {
+              noHp: foundPoin.noHp || phoneInput.trim(),
+              maskedHp: foundPoin.maskedHp || phoneInput.trim(),
+              nama: foundPoin.nama || foundPoin.maskedNama || 'Pelanggan Member',
+              alamat: foundPoin.alamat || '',
+              totalOrder: foundPoin.totalOrder || 0,
+              totalSpend: foundPoin.totalSpend || 0,
+              terakhirOrder: foundPoin.terakhirOrder || '-',
+              catatan: '',
+              isRepeatOrder: (foundPoin.totalOrder || 0) > 1,
+              saldoPoin: foundPoin.saldoPoin || 0,
+              isMember: foundPoin.isMember !== false,
+              statusMember: foundPoin.statusMember || (foundPoin.isMember ? 'MEMBER VIP' : 'PELANGGAN REGULER'),
+              statusKategori: foundPoin.statusKategori || (foundPoin.isMember ? 'Member' : 'Pelanggan Baru'),
+              stamps75: foundPoin.stamps75 !== undefined ? foundPoin.stamps75 : 0,
+              stamps45: foundPoin.stamps45 !== undefined ? foundPoin.stamps45 : 0,
+              tglDaftar: foundPoin.tglDaftar || ''
+            };
 
-              {/* Saldo Poin Display */}
-              <div className="bg-[#030d0f] border border-teal-500/30 rounded-xl p-4 text-center mb-4 shadow-inner">
-                <span className="text-[11px] text-teal-200/80 block font-medium mb-0.5">Total Saldo Poin Anda</span>
-                <div className="text-3xl font-black font-mono text-white tracking-tight">
-                  {foundPoin.saldoPoin} <span className="text-sm font-bold text-teal-300">Poin</span>
-                </div>
-                <p className="text-[11px] text-white/60 mt-1">
-                  Untuk info promo & penukaran (redeem) poin, silakan tanyakan langsung ke kasir kami
-                </p>
-              </div>
-
-              {/* Reward Info */}
-              <div className="bg-[#030d0f] rounded-xl p-3 border border-white/5 space-y-1.5 text-xs text-white/70 mb-4">
-                <div className="flex items-center gap-2 text-white/80 font-medium">
-                  <Gift className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Total Riwayat Cuci: {foundPoin.totalOrder} kali</span>
-                </div>
-                <p className="text-[11px] text-white/50 leading-relaxed pl-5.5">
-                  Kumpulkan poin pada setiap transaksi cuci. Poin dapat langsung ditukarkan untuk diskon atau gratis cuci.
-                </p>
-              </div>
-
-              {/* Active Orders for this customer */}
-              {foundPoin.activeOrders && foundPoin.activeOrders.length > 0 && (
-                <div className="space-y-2 mb-2">
-                  <span className="text-[11px] font-semibold text-white/60 block">Cucian Aktif Saat Ini:</span>
-                  {foundPoin.activeOrders.map((ord) => (
-                    <div
-                      key={ord.noNota}
-                      className="p-2.5 rounded-xl bg-[#030d0f] border border-white/10 flex items-center justify-between text-xs"
-                    >
-                      <div>
-                        <span className="font-mono font-bold text-white block">{ord.noNota}</span>
-                        <span className="text-[10px] text-white/50">Status: {ord.status}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearchNota(ord.noNota);
-                          setActiveTab('lacak');
-                          setFoundPoin(null);
-                          setFoundTx({ noNota: ord.noNota, status: ord.status } as any);
-                        }}
-                        className="text-xs text-teal-300 hover:text-teal-200 font-semibold flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>Lacak</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
+            return (
+              <div className="w-full max-w-xl text-left mb-6 space-y-4 animate-fade-in">
+                {/* 1. Digital Member Stamp Card (3D Flip & Rubber Stamp Seals) */}
+                <div className="w-full">
+                  <div className="flex items-center justify-between px-1 mb-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Kartu Member & Stempel Digital Anda</span>
                     </div>
-                  ))}
+                    <span className="text-[10px] text-white/50">Klik kartu untuk membalik (3D Flip)</span>
+                  </div>
+
+                  <DigitalMemberCard
+                    customer={memberCustomerData}
+                    canEdit={false}
+                  />
                 </div>
-              )}
-            </div>
-          )}
+
+                {/* 2. Saldo Poin & Summary Card */}
+                <div className="rounded-2xl border border-[#153a3e] bg-[#061517] p-5 shadow-2xl space-y-4">
+                  {/* Member Header */}
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 text-black flex items-center justify-center font-bold text-sm shadow-md">
+                        ⭐
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-white block">{foundPoin.maskedNama}</span>
+                        <span className="text-[10px] font-mono text-white/50">{foundPoin.maskedHp}</span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#0a272a] border border-teal-500/40 text-teal-300">
+                      {foundPoin.statusMember}
+                    </span>
+                  </div>
+
+                  {/* Saldo Poin Display */}
+                  <div className="bg-[#030d0f] border border-teal-500/30 rounded-xl p-4 text-center shadow-inner">
+                    <span className="text-[11px] text-teal-200/80 block font-medium mb-0.5">Total Saldo Poin Cashback</span>
+                    <div className="text-3xl font-black font-mono text-white tracking-tight">
+                      {foundPoin.saldoPoin} <span className="text-sm font-bold text-teal-300">Poin</span>
+                    </div>
+                    <p className="text-[11px] text-white/60 mt-1">
+                      Kumpulkan stempel & tukarkan poin Anda langsung di kasir outlet Dua SiSi Laundry
+                    </p>
+                  </div>
+
+                  {/* Reward & Stamp Quick Summary */}
+                  <div className="bg-[#030d0f] rounded-xl p-3 border border-white/5 space-y-2 text-xs text-white/70">
+                    <div className="flex items-center gap-2 text-white/80 font-medium">
+                      <Gift className="w-3.5 h-3.5 text-teal-400" />
+                      <span>Total Riwayat Cuci: {foundPoin.totalOrder} kali</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/10 text-[11px]">
+                      <div className="bg-[#061517] p-2.5 rounded-lg border border-teal-500/20">
+                        <span className="text-white/50 block text-[10px]">Stempel 7.5 KG:</span>
+                        <span className="text-teal-300 font-bold font-mono text-xs">{foundPoin.stamps75 || 0} / 10 Stempel</span>
+                      </div>
+                      <div className="bg-[#061517] p-2.5 rounded-lg border border-amber-500/20">
+                        <span className="text-white/50 block text-[10px]">Stempel 4.5 KG:</span>
+                        <span className="text-amber-300 font-bold font-mono text-xs">{foundPoin.stamps45 || 0} / 10 Stempel</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Active Orders for this customer */}
+                  {foundPoin.activeOrders && foundPoin.activeOrders.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-semibold text-white/60 block">Cucian Aktif Saat Ini:</span>
+                      {foundPoin.activeOrders.map((ord) => (
+                        <div
+                          key={ord.noNota}
+                          className="p-2.5 rounded-xl bg-[#030d0f] border border-white/10 flex items-center justify-between text-xs"
+                        >
+                          <div>
+                            <span className="font-mono font-bold text-white block">{ord.noNota}</span>
+                            <span className="text-[10px] text-white/50">Status: {ord.status}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSearchNota(ord.noNota);
+                              setActiveTab('lacak');
+                              setFoundPoin(null);
+                              setFoundTx({ noNota: ord.noNota, status: ord.status } as any);
+                            }}
+                            className="text-xs text-teal-300 hover:text-teal-200 font-semibold flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>Lacak</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 5. Minimalist Quick Badges & Slogan WFL */}
           <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-white/60 pt-1">
