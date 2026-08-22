@@ -19,7 +19,9 @@ import {
   MessageCircle,
   Send,
   Check,
-  Inbox
+  Inbox,
+  Timer,
+  Hourglass
 } from 'lucide-react';
 import { Mesin, Transaksi, LayananBahanBaku } from '@/lib/types';
 import { runBackend } from '@/lib/api';
@@ -401,6 +403,54 @@ export default function PesananView() {
       return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
     })();
 
+    // Active pipeline step info & start time & live elapsed duration
+    const activeStepInfo = (() => {
+      const curStatus = (order.status || 'Diterima').trim().toLowerCase();
+      const matchedStep = order.pipeline?.find(
+        (p) => p.status === 'Aktif' || p.namaStep.toLowerCase() === curStatus
+      );
+
+      const startTimeRaw = matchedStep?.waktuMulai || order.tanggal || '';
+      if (!startTimeRaw) return { timeStr: '-', elapsedStr: '-', elapsedMins: 0 };
+
+      // Parse date gracefully (support "YYYY-MM-DD HH:mm:ss", "DD/MM/YYYY HH:mm", ISO, etc.)
+      let startDate: Date;
+      if (typeof startTimeRaw === 'string' && startTimeRaw.includes('/')) {
+        const parts = startTimeRaw.split(' ')[0].split('/');
+        const timePart = startTimeRaw.split(' ')[1] || '00:00';
+        const [hh, mm, ss] = timePart.split(':');
+        startDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), Number(hh) || 0, Number(mm) || 0, Number(ss) || 0);
+      } else {
+        startDate = new Date(startTimeRaw);
+      }
+
+      if (isNaN(startDate.getTime())) {
+        return { timeStr: startTimeRaw, elapsedStr: '-', elapsedMins: 0 };
+      }
+
+      const timeStr = startDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      const nowMs = Date.now();
+      const diffMs = Math.max(0, nowMs - startDate.getTime());
+      const totalMins = Math.floor(diffMs / (1000 * 60));
+
+      let elapsedStr = '';
+      if (totalMins < 1) {
+        elapsedStr = 'Baru saja (< 1 mnt)';
+      } else if (totalMins < 60) {
+        elapsedStr = `${totalMins} Menit`;
+      } else if (totalMins < 1440) {
+        const h = Math.floor(totalMins / 60);
+        const m = totalMins % 60;
+        elapsedStr = `${h} Jam ${m > 0 ? `${m} Mnt` : ''}`;
+      } else {
+        const d = Math.floor(totalMins / 1440);
+        const h = Math.floor((totalMins % 1440) / 60);
+        elapsedStr = `${d} Hari ${h > 0 ? `${h} Jam` : ''}`;
+      }
+
+      return { timeStr, elapsedStr, elapsedMins: totalMins };
+    })();
+
     return (
       <article key={order.noNota} className="glass-card card-hover-lift p-3.5 space-y-3">
         <div className="flex items-start justify-between gap-2">
@@ -413,10 +463,45 @@ export default function PesananView() {
           </span>
         </div>
 
-        <div className="space-y-1.5 text-[11px] text-slate-500">
-          <div className="flex items-center gap-1.5 font-medium"><Clock3 className="h-3.5 w-3.5 text-slate-400" /><span>{order.estimasiSelesai || order.estimasi || 'Estimasi -'}</span></div>
-          {machine && <div className="flex items-center gap-1.5 font-bold text-teal-800"><WashingMachine className="h-3.5 w-3.5" /><span>Mesin {machine}</span></div>}
-          <p className="line-clamp-2 text-slate-600 font-medium">{order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')}</p>
+        <div className="space-y-2 text-[11px] text-slate-500">
+          {/* 1. Waktu Masuk Tahap & Durasi Berjalan */}
+          <div className="bg-slate-50/90 rounded-lg p-2 border border-slate-200/80 space-y-1">
+            <div className="flex items-center justify-between text-[10.5px]">
+              <span className="text-slate-500 font-medium flex items-center gap-1">
+                <Clock3 className="h-3 w-3 text-slate-400" />
+                <span>Mulai {order.status || 'Tahap Ini'}:</span>
+              </span>
+              <span className="font-bold text-slate-700 font-mono">{activeStepInfo.timeStr}</span>
+            </div>
+            <div className="flex items-center justify-between text-[10.5px]">
+              <span className="text-slate-500 font-medium flex items-center gap-1">
+                <Timer className="h-3 w-3 text-teal-600" />
+                <span>Durasi Berjalan:</span>
+              </span>
+              <span className="font-extrabold text-teal-800 bg-teal-100/70 px-1.5 py-0.2 rounded border border-teal-300/80 font-mono text-[10px]">
+                {activeStepInfo.elapsedStr}
+              </span>
+            </div>
+          </div>
+
+          {/* 2. Estimasi Target Selesai Order */}
+          <div className="flex items-center justify-between text-[10.5px] px-0.5 text-slate-500 font-medium">
+            <span className="flex items-center gap-1">
+              <span>🎯 Target Selesai:</span>
+            </span>
+            <span className="font-bold text-slate-700">{order.estimasiSelesai || order.estimasi || '-'}</span>
+          </div>
+
+          {machine && (
+            <div className="flex items-center gap-1.5 font-bold text-teal-800 bg-teal-50/80 px-2 py-1 rounded-md border border-teal-200">
+              <WashingMachine className="h-3.5 w-3.5 text-teal-700 shrink-0" />
+              <span className="truncate">Mesin: {machine}</span>
+            </div>
+          )}
+
+          <p className="line-clamp-2 text-slate-600 font-medium pt-0.5">
+            {order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')}
+          </p>
           
           {/* Linked Multi-Bahan Material Indicator */}
           {(() => {
