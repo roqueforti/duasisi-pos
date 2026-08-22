@@ -451,11 +451,39 @@ export default function PesananView() {
       return { timeStr, elapsedStr, elapsedMins: totalMins };
     })();
 
+    // Receipt creation timestamp (jam struk diterima)
+    const jamDiterimaStr = (() => {
+      if (!order.tanggal) return '';
+      let d: Date;
+      if (typeof order.tanggal === 'string' && order.tanggal.includes('/')) {
+        const parts = order.tanggal.split(' ')[0].split('/');
+        const timePart = order.tanggal.split(' ')[1] || '';
+        const [hh, mm] = timePart.split(':');
+        d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), Number(hh) || 0, Number(mm) || 0);
+      } else {
+        d = new Date(order.tanggal);
+      }
+      if (isNaN(d.getTime())) return String(order.tanggal);
+
+      const isToday = new Date().toDateString() === d.toDateString();
+      const timeOnly = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      if (isToday) return timeOnly;
+      const dateOnly = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      return `${dateOnly}, ${timeOnly}`;
+    })();
+
     return (
       <article key={order.noNota} className="glass-card card-hover-lift p-3.5 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-xs font-black text-slate-800 font-mono tracking-tight">{order.noNota}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="truncate text-xs font-black text-slate-800 font-mono tracking-tight">{order.noNota}</p>
+              {jamDiterimaStr && (
+                <span className="text-[10px] font-semibold text-slate-400 font-mono">
+                  • {jamDiterimaStr}
+                </span>
+              )}
+            </div>
             <p className="mt-0.5 truncate text-[11px] font-bold text-slate-500">{order.namaPelanggan}</p>
           </div>
           <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border shadow-2xs ${badgeWarna}`}>
