@@ -18,7 +18,8 @@ import {
   X,
   MessageCircle,
   Send,
-  Check
+  Check,
+  Inbox
 } from 'lucide-react';
 import { Mesin, Transaksi, LayananBahanBaku } from '@/lib/types';
 import { runBackend } from '@/lib/api';
@@ -28,6 +29,7 @@ import { DropOffPriorityItem } from './ProdukView';
 
 function getWorkflowIcon(status: string) {
   const s = (status || '').toLowerCase();
+  if (s.includes('terima')) return Inbox;
   if (s.includes('cuci')) return WashingMachine;
   if (s.includes('kering')) return Wind;
   if (s.includes('setrika') || s.includes('gosok')) return Sparkles;
@@ -178,19 +180,26 @@ export default function PesananView() {
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
-  // Dynamically compute Kanban columns from Master Steps and all active orders
+  // Dynamically compute Kanban columns from Master Steps and all active orders, starting with Diterima
   const kanbanColumns = useMemo(() => {
-    const cols: string[] = [];
+    const cols: string[] = ['Diterima'];
+
     if (Array.isArray(masterSteps) && masterSteps.length > 0) {
       masterSteps.forEach((s) => {
         const name = String(s.nama || '').trim();
-        if (name && !cols.includes(name) && name !== 'Selesai' && name !== 'Pesanan Diterima') {
+        if (
+          name &&
+          !cols.some(c => c.toLowerCase() === name.toLowerCase()) &&
+          name !== 'Selesai' &&
+          name.toLowerCase() !== 'pesanan diterima' &&
+          name.toLowerCase() !== 'diterima'
+        ) {
           cols.push(name);
         }
       });
     } else {
       ['Dicuci', 'Dikeringkan', 'Disetrika', 'Dilipat', 'Siap Diambil'].forEach((name) => {
-        if (!cols.includes(name)) cols.push(name);
+        if (!cols.some(c => c.toLowerCase() === name.toLowerCase())) cols.push(name);
       });
     }
 
@@ -198,13 +207,25 @@ export default function PesananView() {
       if (Array.isArray(o.pipeline)) {
         o.pipeline.forEach((p) => {
           const name = String(p.namaStep || '').trim();
-          if (name && !cols.includes(name) && name !== 'Selesai' && name !== 'Pesanan Diterima') {
+          if (
+            name &&
+            !cols.some(c => c.toLowerCase() === name.toLowerCase()) &&
+            name !== 'Selesai' &&
+            name.toLowerCase() !== 'pesanan diterima' &&
+            name.toLowerCase() !== 'diterima'
+          ) {
             cols.push(name);
           }
         });
       }
-      const statusStr = String(o.status || '');
-      if (statusStr && !cols.includes(statusStr) && statusStr !== 'Selesai' && statusStr !== 'Pesanan Diterima') {
+      const statusStr = String(o.status || '').trim();
+      if (
+        statusStr &&
+        !cols.some(c => c.toLowerCase() === statusStr.toLowerCase()) &&
+        statusStr !== 'Selesai' &&
+        statusStr.toLowerCase() !== 'pesanan diterima' &&
+        statusStr.toLowerCase() !== 'diterima'
+      ) {
         cols.push(statusStr);
       }
     });
@@ -214,11 +235,25 @@ export default function PesananView() {
 
   // Determine the next step tailored specifically to each order's pipeline
   const getNextStatusForOrder = useCallback((order: Transaksi): string | null => {
+    const curStatus = (order.status || 'Diterima').trim().toLowerCase();
+
     if (Array.isArray(order.pipeline) && order.pipeline.length > 0) {
-      const realSteps = order.pipeline.filter((p) => p.namaStep !== 'Pesanan Diterima');
+      // Physical processing steps in pipeline (e.g. Dicuci, Dikeringkan, Disetrika, Dilipat, Siap Diambil)
+      const realSteps = order.pipeline.filter((p) => {
+        const stepName = (p.namaStep || '').trim().toLowerCase();
+        return stepName !== 'pesanan diterima' && stepName !== 'diterima';
+      });
+
+      // 1. If the order is newly received (Diterima / Pesanan Diterima)
+      if (curStatus === 'diterima' || curStatus === 'pesanan diterima') {
+        return realSteps.length > 0 ? realSteps[0].namaStep : (kanbanColumns[1] || 'Dicuci');
+      }
+
+      // 2. If it's already in one of the real steps
       const activeIdx = realSteps.findIndex(
-        (p) => p.status === 'Aktif' || p.namaStep.toLowerCase() === (order.status || '').toLowerCase()
+        (p) => p.namaStep.toLowerCase() === curStatus || p.status === 'Aktif'
       );
+
       if (activeIdx >= 0 && activeIdx < realSteps.length - 1) {
         return realSteps[activeIdx + 1].namaStep;
       }
@@ -227,13 +262,19 @@ export default function PesananView() {
       }
     }
 
-    const curIdx = kanbanColumns.indexOf(order.status);
+    // Fallback based on kanbanColumns
+    const curIdx = kanbanColumns.findIndex(c => c.toLowerCase() === curStatus);
     if (curIdx >= 0 && curIdx < kanbanColumns.length - 1) {
       return kanbanColumns[curIdx + 1];
     }
     if (curIdx === kanbanColumns.length - 1) {
       return 'Selesai';
     }
+
+    if (curStatus === 'diterima' || curStatus === 'pesanan diterima') {
+      return kanbanColumns.find(c => c.toLowerCase() !== 'diterima' && c.toLowerCase() !== 'pesanan diterima') || 'Dicuci';
+    }
+
     return null;
   }, [kanbanColumns]);
 
@@ -578,9 +619,35 @@ export default function PesananView() {
         <div className="flex snap-x gap-3.5 overflow-x-auto pb-4">
           {kanbanColumns.map((status) => {
             const statusOrders = filteredOrders.filter((order) => {
-              if (order.status === status) return true;
-              const activeStep = order.pipeline?.find((p) => p.status === 'Aktif');
-              return activeStep?.namaStep === status;
+              const curStatus = (order.status || 'Diterima').trim().toLowerCase();
+              const colName = status.trim().toLowerCase();
+
+              // 1. Column Diterima (Pesanan Baru Masuk)
+              if (colName === 'diterima' || colName === 'pesanan diterima') {
+                if (curStatus === 'diterima' || curStatus === 'pesanan diterima') {
+                  return true;
+                }
+                const activeStep = order.pipeline?.find((p) => p.status === 'Aktif')?.namaStep?.trim().toLowerCase();
+                if (activeStep === 'diterima' || activeStep === 'pesanan diterima') {
+                  return true;
+                }
+                const hasStartedProcessing = order.pipeline?.some(
+                  (p) => p.namaStep.toLowerCase() !== 'pesanan diterima' && p.namaStep.toLowerCase() !== 'diterima' && (p.status === 'Aktif' || p.status === 'Selesai')
+                );
+                return !hasStartedProcessing && curStatus !== 'selesai' && curStatus !== 'void' && curStatus !== 'batal';
+              }
+
+              // 2. Processing Columns (Dicuci, Dikeringkan, Disetrika, Dilipat, Siap Diambil, etc.)
+              if (curStatus === colName && curStatus !== 'diterima') {
+                return true;
+              }
+
+              const activeStep = order.pipeline?.find((p) => p.status === 'Aktif')?.namaStep?.trim().toLowerCase();
+              if (activeStep === colName && curStatus !== 'diterima') {
+                return true;
+              }
+
+              return false;
             });
             const StatusIcon = getWorkflowIcon(status);
             return (

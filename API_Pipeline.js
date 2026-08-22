@@ -104,13 +104,12 @@ function createPipelineForNota(noNota, tipe, items, petugas) {
   }
 
   const now = new Date();
-  // Langkah paling awal (default): Pesanan Diterima
-  sh.appendRow([generateId("PIP"), noNota, 0, "Pesanan Diterima", "Selesai", petugas || "Kasir", "", now, now, "Otomatis oleh sistem"]);
+  // Langkah paling awal: Pesanan Diterima (Status: Aktif saat order baru dibuat)
+  sh.appendRow([generateId("PIP"), noNota, 0, "Pesanan Diterima", "Aktif", petugas || "Kasir", "", now, "", "Pesanan baru diterima kasir"]);
 
-  config.forEach((c, idx) => {
-    const status = idx === 0 ? "Aktif" : "Pending";
-    const waktuMulai = idx === 0 ? now : "";
-    sh.appendRow([generateId("PIP"), noNota, c.step, c.nama, status, "", "", waktuMulai, "", ""]);
+  config.forEach((c) => {
+    // Semua langkah pengerjaan fisik (Dicuci, Dikeringkan, dll) awalnya Pending
+    sh.appendRow([generateId("PIP"), noNota, c.step, c.nama, "Pending", "", "", "", "", ""]);
   });
 }
 
