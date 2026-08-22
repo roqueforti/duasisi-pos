@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'Kode.gs'
+      - '*.js'
+      - '*.gs'
       - 'appsscript.json'
       - '.github/workflows/deploy-appscript.yml'
   workflow_dispatch:

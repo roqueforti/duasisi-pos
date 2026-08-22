@@ -873,16 +873,33 @@ function hapusHariLibur(id) {
 // ============================================================
 // KAS SHIFT & SERAH TERIMA
 // ============================================================
-function calculateShiftNonCash_(openedAt) {
+function calculateShiftOmzet_(openedAt) {
   const sh = SS.getSheetByName(SHEET_TRANSAKSI);
-  if (!sh) return 0;
+  if (!sh) return { tunai: 0, nonTunai: 0 };
   const rows = sh.getDataRange().getValues();
-  return rows.reduce(function(total, row, index) {
-    if (index === 0 || !row[1] || new Date(row[1]).getTime() < openedAt.getTime()) return total;
-    if (row[9] === "Approved" || row[5] === "Void" || row[5] === "Batal") return total;
-    if (row[13] === "Tunai") return total;
-    return total + (Number(row[15]) || Number(row[4]) || 0);
-  }, 0);
+  let tunai = 0;
+  let nonTunai = 0;
+  const openedTime = openedAt.getTime();
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row[1] || new Date(row[1]).getTime() < openedTime) continue;
+    if (row[9] === "Approved" || row[5] === "Void" || row[5] === "Batal") continue;
+    const nominal = Number(row[15]) || Number(row[4]) || 0;
+    if (row[13] === "Tunai") {
+      tunai += nominal;
+    } else {
+      nonTunai += nominal;
+    }
+  }
+  return { tunai: tunai, nonTunai: nonTunai };
+}
+
+function calculateShiftNonCash_(openedAt) {
+  return calculateShiftOmzet_(openedAt).nonTunai;
+}
+
+function calculateShiftCash_(openedAt) {
+  return calculateShiftOmzet_(openedAt).tunai;
 }
 
 function getKasShiftAktif(outlet) {
@@ -892,8 +909,9 @@ function getKasShiftAktif(outlet) {
   for (let i = rows.length - 1; i >= 1; i--) {
     if (rows[i][10] === "Aktif" && (!outlet || rows[i][1] === outlet)) {
       const openedAt = new Date(rows[i][4]);
-      const omzetTunai = calculateShiftCash_(openedAt);
-      const omzetMerchant = calculateShiftNonCash_(openedAt);
+      const omzet = calculateShiftOmzet_(openedAt);
+      const omzetTunai = omzet.tunai;
+      const omzetMerchant = omzet.nonTunai;
       const kasAwal = Number(rows[i][6]) || 0;
       const saldoMerchantAwal = Number(rows[i][16]) || 0;
       return {

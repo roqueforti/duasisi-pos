@@ -73,11 +73,11 @@ export function useGlobalNotifications(currentRole: UserRole) {
 
       // 1. Check Inventory Low Stock (Stok <= MinStok)
       try {
-        const bahanList = await runBackend<any[]>('getBahanList');
-        if (Array.isArray(bahanList)) {
-          const lowStock = bahanList.filter(b => {
+        const invList = await runBackend<any[]>('getInventoryList');
+        if (Array.isArray(invList)) {
+          const lowStock = invList.filter(b => {
             const stok = Number(b.stok) || 0;
-            const min = Number(b.minStok) || 0;
+            const min = Number(b.stokMinimum !== undefined ? b.stokMinimum : b.minStok) || 0;
             return min > 0 && stok <= min;
           });
 

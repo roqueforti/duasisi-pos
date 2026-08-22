@@ -1235,18 +1235,23 @@ export default function PosView({
     setShiftSubmitting(true);
     setShiftSubmitStatusText('Menyiapkan rekonsiliasi kas...');
     try {
-      // 1. Upload photos to Google Drive
+      // 1. Upload photos to Google Drive in parallel
       const photoUrls: string[] = [];
       let failedUploadCount = 0;
       if (expensePhotos.length > 0) {
-        for (let i = 0; i < expensePhotos.length; i++) {
-          const url = await uploadPhotoToGoogleDrive(expensePhotos[i], i, expensePhotos.length);
+        setShiftSubmitStatusText(`Mengunggah ${expensePhotos.length} foto nota ke Drive...`);
+        const uploadPromises = expensePhotos.map(async (photo, i) => {
+          const url = await uploadPhotoToGoogleDrive(photo, i, expensePhotos.length);
+          return url;
+        });
+        const uploadResults = await Promise.all(uploadPromises);
+        uploadResults.forEach(url => {
           if (url) {
             photoUrls.push(url);
           } else {
             failedUploadCount++;
           }
-        }
+        });
       }
 
       setShiftSubmitStatusText('Menyimpan data rekonsiliasi kas & belanja...');

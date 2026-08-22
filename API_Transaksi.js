@@ -1,11 +1,11 @@
 // ============================================================
 // TRANSAKSI (POS) — with Pipeline auto-create
 // ============================================================
-function generateNoNota() {
+function generateNoNota(existingRows) {
   const sh = SS.getSheetByName(SHEET_TRANSAKSI);
   const today = fmtWib(new Date(), "yyMMdd");
   if (!sh) return "LDY-" + today + "-0001";
-  const rows = sh.getDataRange().getValues();
+  const rows = existingRows || sh.getDataRange().getValues();
   let maxCounter = 0;
   for (let i = 1; i < rows.length; i++) {
     const nota = String(rows[i][0]);
@@ -52,11 +52,15 @@ function simpanTransaksi(data) {
     const sisaTagihan = Math.max(0, total - nominalBayar);
     const statusPembayaran = sisaTagihan === 0 ? "Lunas" : nominalBayar > 0 ? "DP" : "Belum Bayar";
     const petugas = data.petugas || data.kasir || data.namaPetugas || "Kasir";
-    const noNota = (data.noNota && !String(data.noNota).startsWith('OFF-') && !String(data.noNota).startsWith('TRX-')) ? String(data.noNota) : generateNoNota();
+    const sheetRows = sh.getDataRange().getValues();
+    const isCustomNota = (data.noNota && !String(data.noNota).startsWith('OFF-') && !String(data.noNota).startsWith('TRX-'));
+    const noNota = isCustomNota ? String(data.noNota) : generateNoNota(sheetRows);
     const tanggal = data.tanggal ? new Date(data.tanggal) : new Date();
 
-    const duplicate = sh.getDataRange().getValues().some(function(row, index) { return index > 0 && String(row[0]) === noNota; });
-    if (duplicate) throw new Error("Nomor nota sudah digunakan.");
+    if (isCustomNota) {
+      const duplicate = sheetRows.some(function(row, index) { return index > 0 && String(row[0]) === noNota; });
+      if (duplicate) throw new Error("Nomor nota sudah digunakan.");
+    }
 
     items.forEach(function(item) {
       // Untuk Retail / FnB / Addon non-DropOff, potong langsung saat kasir checkout

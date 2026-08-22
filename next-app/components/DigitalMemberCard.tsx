@@ -115,7 +115,7 @@ export default function DigitalMemberCard({
       setLocalStamps45(0);
       onUpdateStamps?.('45', 0);
     }
-    await showAlert(`🎉 Selamat! Reward 1x Cuci Gratis ${activeCardType === '75' ? '7,5 KG' : '4,5 KG'} berhasil diklaim dan kartu di-reset ke 0 stempel.`, 'success');
+    await showAlert(`Selamat! Reward 1x Cuci Gratis ${activeCardType === '75' ? '7,5 KG' : '4,5 KG'} berhasil diklaim dan kartu di-reset ke 0 stempel.`, 'success');
   };
 
   const handleDownloadPNG = async () => {
@@ -145,16 +145,16 @@ export default function DigitalMemberCard({
     const phone = customer.noHp.replace(/[^0-9]/g, '');
     const targetPhone = phone.startsWith('0') ? '62' + phone.substring(1) : phone;
     const msg = [
-      `Halo Kak *${customer.nama}*! 👋`,
+      `Halo Kak *${customer.nama}*!`,
       `Berikut adalah update *Digital Member Loyalty Stamp Card* Anda di *Dua SiSi Laundry*:`,
       ``,
-      `🧺 *Kartu Member: ${activeCardType === '75' ? '7,5 KG' : '4,5 KG'}*`,
-      `⭐ Progres Stempel: *${currentStamps} dari 10 Stempel*`,
+      `*Kartu Member: ${activeCardType === '75' ? '7,5 KG' : '4,5 KG'}*`,
+      `Progres Stempel: *${currentStamps} dari 10 Stempel*`,
       isRewardReady 
-        ? `🎉 *SELAMAT! Anda berhak mendapatkan 1x Cuci GRATIS! Tunjukkan pesan ini saat berkunjung ke outlet.*` 
-        : `✨ Kumpulkan *${remainingStamps} stempel lagi* untuk mendapatkan 1x Cuci Gratis!`,
+        ? `*SELAMAT! Anda berhak mendapatkan 1x Cuci GRATIS! Tunjukkan pesan ini saat berkunjung ke outlet.*` 
+        : `Kumpulkan *${remainingStamps} stempel lagi* untuk mendapatkan 1x Cuci Gratis!`,
       ``,
-      `Terima kasih telah mencuci di Dua SiSi Laundry! 🫧`
+      `Terima kasih telah mencuci di Dua SiSi Laundry!`
     ].join('\n');
 
     const url = `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`;
@@ -175,7 +175,7 @@ export default function DigitalMemberCard({
               <div className="dmc-title-row">
                 <h3 className="dmc-title">Digital Member Loyalty Card</h3>
                 <span className="dmc-holo-badge">
-                  <ShieldCheck className="w-3 h-3 text-teal-700 inline" />
+                  <ShieldCheck className="w-3 h-3 text-teal-700 inline mr-1" />
                   Anti-Pemalsuan
                 </span>
               </div>
@@ -198,7 +198,7 @@ export default function DigitalMemberCard({
               onClick={() => setActiveCardType('75')}
               className={`dmc-tab-btn ${activeCardType === '75' ? 'active' : ''}`}
             >
-              <span>🧺 Kartu 7,5 KG</span>
+              <span>Kartu 7,5 KG</span>
               <span className="dmc-tab-count">
                 {localStamps75}/10
               </span>
@@ -210,7 +210,7 @@ export default function DigitalMemberCard({
               onClick={() => setActiveCardType('45')}
               className={`dmc-tab-btn ${activeCardType === '45' ? 'active' : ''}`}
             >
-              <span>🧺 Kartu 4,5 KG</span>
+              <span>Kartu 4,5 KG</span>
               <span className="dmc-tab-count">
                 {localStamps45}/10
               </span>
@@ -227,7 +227,7 @@ export default function DigitalMemberCard({
           <div className="dmc-flip-controller-bar">
             <div className="dmc-flip-badge-side">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>{isFlipped ? '🔄 Sisi Belakang: S&K & QR Member' : '📍 Sisi Depan: 10 Stempel Loyalty'}</span>
+              <span>{isFlipped ? 'Sisi Belakang: S&K & QR Member' : 'Sisi Depan: 10 Stempel Loyalty'}</span>
             </div>
             
             <button
@@ -546,7 +546,7 @@ export default function DigitalMemberCard({
                     <g transform="translate(0, 1060)">
                       <rect x="0" y="0" width="1850" height="150" rx="30" fill="#042F2E" stroke="#2DD4BF" strokeWidth="4" />
                       <text x="60" y="92" fill="#5EEAD4" fontSize="50" fontWeight="900">
-                        STATUS SAAT INI: <tspan fill="#FDE68A">{currentStamps} / 10 STEMPEL</tspan> {isRewardReady ? '🎉 (SIAP DIKLAIM!)' : `(Kurang ${remainingStamps} lagi)`}
+                        STATUS SAAT INI: <tspan fill="#FDE68A">{currentStamps} / 10 STEMPEL</tspan> {isRewardReady ? '(SIAP DIKLAIM)' : `(Kurang ${remainingStamps} lagi)`}
                       </text>
                     </g>
 
@@ -614,7 +614,7 @@ export default function DigitalMemberCard({
                     {/* Verified Security Subtitle */}
                     <rect x="110" y="990" width="700" height="130" rx="28" fill="#042F2E" stroke="#14B8A6" strokeWidth="3" />
                     <text x="460" y="1070" textAnchor="middle" fill="#FDE68A" fontSize="38" fontWeight="800" letterSpacing="2">
-                      🛡️ VERIFIED DIGITAL MEMBER
+                      VERIFIED DIGITAL MEMBER
                     </text>
 
                   </g>
@@ -646,7 +646,7 @@ export default function DigitalMemberCard({
                 <Gift className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-sm font-black tracking-tight">🎉 TARGET 10 STEMPEL TERCAPAI!</div>
+                <div className="text-sm font-black tracking-tight">TARGET 10 STEMPEL TERCAPAI</div>
                 <div className="text-xs font-semibold text-slate-800">
                   Pelanggan berhak mendapatkan <strong>1x Cuci Gratis ({activeCardType === '75' ? '7,5 KG' : '4,5 KG'})</strong>.
                 </div>
@@ -660,7 +660,7 @@ export default function DigitalMemberCard({
                 className="dmc-reward-claim-btn"
               >
                 <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                <span>Klaim Reward & Reset</span>
+                <span>Klaim Reward &amp; Reset</span>
               </button>
             )}
           </div>

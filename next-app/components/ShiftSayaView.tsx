@@ -261,12 +261,19 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
   };
 
 
-  // 1. Fetch Main Shift Data & Inventory
+  // 1. Fetch Main Shift Data & Inventory in Parallel for Max Performance
   const loadShiftData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Fetch active shift
-      const activeRes = await runBackend<ShiftKasir | null>('getKasShiftAktif', 'OUTLET-UTAMA').catch(() => null);
+      const [activeRes, staffRes, invRes, absensiRes, rekapRes] = await Promise.all([
+        runBackend<ShiftKasir | null>('getKasShiftAktif', 'OUTLET-UTAMA').catch(() => null),
+        runBackend<any[]>('getPegawaiList').catch(() => []),
+        runBackend<InventorySimpleItem[]>('getInventoryList').catch(() => []),
+        runBackend<any[]>('getRekapAbsensi').catch(() => []),
+        runBackend<RekapShiftItem[]>('getRekapKasShift').catch(() => [])
+      ]);
+
+      // 1. Set active shift
       if (activeRes && activeRes.idShift) {
         setShiftAktif(activeRes);
         if (onShiftStateChange) onShiftStateChange(true);
@@ -275,8 +282,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
         if (onShiftStateChange) onShiftStateChange(false);
       }
 
-      // 2. Fetch staff list
-      const staffRes = await runBackend<any[]>('getPegawaiList').catch(() => []);
+      // 2. Set staff list
       if (Array.isArray(staffRes)) {
         const activeStaff = staffRes.filter(s => s.status !== 'Resign' && s.status !== 'Nonaktif' && s.status !== 'Non-Aktif');
         setStaffList(activeStaff);
@@ -286,8 +292,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
         }
       }
 
-      // 3. Fetch inventory list
-      const invRes = await runBackend<InventorySimpleItem[]>('getInventoryList').catch(() => []);
+      // 3. Set inventory list
       if (Array.isArray(invRes)) {
         setInventoryList(invRes);
         if (invRes.length > 0) {
@@ -296,15 +301,13 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
       }
 
       // 4. Check today's clock in status
-      const absensiRes = await runBackend<any[]>('getRekapAbsensi').catch(() => []);
       if (Array.isArray(absensiRes) && absensiRes.length > 0) {
         const todayStr = new Date().toLocaleDateString('id-ID');
         const hasInToday = absensiRes.some(r => r.tanggal?.includes(todayStr) || r.clockIn);
         setTodayClockIn(hasInToday);
       }
 
-      // 5. Fetch past shifts
-      const rekapRes = await runBackend<RekapShiftItem[]>('getRekapKasShift').catch(() => []);
+      // 5. Set past shifts
       if (Array.isArray(rekapRes)) {
         setRekapShiftList(rekapRes.reverse());
       }
@@ -620,14 +623,49 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
 
     const selectedReplacement = staffList.find(s => s.id === replacementStaffId);
 
-    // Build expense description & photos
-    const expenseDesc = expenseList.map(e => `${e.nama} [${e.kategori}] (Rp ${e.nominal.toLocaleString('id-ID')})`).join(', ');
-    const expensePhotos = expenseList.filter(e => !!e.fotoUrl).map(e => e.fotoUrl!);
-
     setSubmitting(true);
-    setStatusText(closeMode === 'SERAH_TERIMA' ? 'Memproses Serah Terima Shift...' : 'Menutup Kasir Harian...');
+    setStatusText('Memproses penutupan kas shift...');
 
     try {
+      // 1. Upload any base64 expense receipt photos to Google Drive in parallel
+      const photoUrls: string[] = [];
+      const base64Photos = expenseList.filter(e => e.fotoUrl && e.fotoUrl.startsWith('data:'));
+      if (base64Photos.length > 0) {
+        setStatusText(`Mengunggah ${base64Photos.length} foto nota ke Google Drive...`);
+        const uploadPromises = base64Photos.map(async (item, idx) => {
+          try {
+            const fileName = `nota_${shiftAktif.idShift}_${Date.now()}_${idx + 1}.jpg`;
+            const uploadRes = await runBackend<{ success: boolean; fileUrl?: string }>(
+              'uploadExpensePhoto',
+              fileName,
+              item.fotoUrl,
+              'image/jpeg',
+              shiftAktif.idShift
+            );
+            if (uploadRes?.success && uploadRes.fileUrl) {
+              return uploadRes.fileUrl;
+            }
+          } catch (e) {
+            console.warn('Gagal upload nota expense:', e);
+          }
+          return null;
+        });
+        const results = await Promise.all(uploadPromises);
+        results.forEach(url => { if (url) photoUrls.push(url); });
+      }
+
+      // Add already hosted URL photos (non-base64)
+      expenseList.forEach(e => {
+        if (e.fotoUrl && !e.fotoUrl.startsWith('data:')) {
+          photoUrls.push(e.fotoUrl);
+        }
+      });
+
+      setStatusText(closeMode === 'SERAH_TERIMA' ? 'Memproses Serah Terima Shift...' : 'Menutup Kasir Harian...');
+
+      // Build expense description
+      const expenseDesc = expenseList.map(e => `${e.nama} [${e.kategori}] (Rp ${e.nominal.toLocaleString('id-ID')})`).join(', ');
+
       const payload: any = {
         shiftId: shiftAktif.idShift,
         idOutlet: 'OUTLET-UTAMA',
@@ -637,7 +675,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
         catatan: closingCatatan.trim(),
         expenseAmount: totalPengeluaran,
         expenseDesc: expenseDesc,
-        expensePhotos: expensePhotos
+        expensePhotos: photoUrls
       };
 
       if (closeMode === 'SERAH_TERIMA') {
@@ -674,6 +712,9 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
         catatan: closingCatatan.trim()
       });
 
+      // 2. Immediately mark shift as closed & reset inputs
+      setShiftAktif(null);
+      if (onShiftStateChange) onShiftStateChange(false);
       setShowClosingModal(false);
       setExpenseList([]);
       setKasAkhirFisikInput('');
@@ -685,6 +726,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
       setWaReportText(msg);
       setShowWaReportModal(true);
 
+      // 3. Refresh shift history in background
       loadShiftData();
     } catch (err: any) {
       console.error(err);

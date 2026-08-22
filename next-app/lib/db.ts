@@ -21,11 +21,11 @@ export async function simpanTransaksi(payload: any) {
 }
 
 export async function openKasShift(payload: any) {
-  return runBackend('bukaShift', payload);
+  return runBackend('openKasShift', payload);
 }
 
 export async function closeKasShift(payload: any) {
-  return runBackend('tutupShift', payload);
+  return runBackend('closeKasShift', payload);
 }
 
 export async function updateOrderStatus(id: string, status: string) {

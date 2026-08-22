@@ -129,7 +129,7 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
   if (!isPublicAction && sessionToken) payload.sessionToken = sessionToken;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
 
   let response: Response;
   try {
@@ -141,7 +141,7 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
     });
   } catch (err: any) {
     if (err.name === 'AbortError') {
-      throw new Error(`Koneksi ke server timeout (lebih dari 15 detik). Silakan periksa jaringan internet.`);
+      throw new Error(`Koneksi ke server timeout (lebih dari 25 detik). Silakan periksa jaringan internet.`);
     }
     throw err;
   } finally {

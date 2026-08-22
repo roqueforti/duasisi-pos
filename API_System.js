@@ -402,8 +402,11 @@ function closeKasShift(data) {
     if (!isFinite(kasFisik) || kasFisik < 0) return { success: false, message: "Kas akhir fisik tidak valid." };
     const saldoMerchantAkhir = Number(data.saldoMerchantAkhir !== undefined ? data.saldoMerchantAkhir : (data.merchantAkhir || 0));
     const openedAt = new Date(rows[rowIndex][4]);
-    const omzetTunai = calculateShiftCash_(openedAt);
-    const omzetMerchant = calculateShiftNonCash_(openedAt);
+    
+    // Single-pass calculation for both cash and non-cash omzet
+    const omzet = calculateShiftOmzet_(openedAt);
+    const omzetTunai = omzet.tunai;
+    const omzetMerchant = omzet.nonTunai;
     const kasAwal = Number(rows[rowIndex][6]) || 0;
     const saldoMerchantAwal = Number(rows[rowIndex][16]) || 0;
     
@@ -417,15 +420,27 @@ function closeKasShift(data) {
     const selisihMerchant = saldoMerchantAkhir - merchantSistem;
     const now = new Date();
 
-    // Handle expense photos
+    // Handle expense photos — ensure NO raw base64 data URLs (>2000 chars) are written to sheet cells
     let expensePhotos = "";
     if (data.expensePhotos && Array.isArray(data.expensePhotos) && data.expensePhotos.length > 0) {
-      const photoUrls = data.expensePhotos.map(photo => (typeof photo === 'object' && photo.fileUrl ? photo.fileUrl : String(photo))).join(" | ");
-      expensePhotos = photoUrls;
+      const photoUrls = data.expensePhotos
+        .map(photo => (typeof photo === 'object' && photo.fileUrl ? photo.fileUrl : String(photo)))
+        .filter(url => url && !url.startsWith('data:image') && url.length < 2000);
+      expensePhotos = photoUrls.join(" | ");
     }
 
-    sh.getRange(rowIndex + 1, 6).setValue(now);
-    sh.getRange(rowIndex + 1, 8, 1, 9).setValues([[
+    // Ensure sheet schema has at least 20 columns in 1 single call
+    const maxCols = sh.getMaxColumns();
+    if (maxCols < 20) {
+      sh.insertColumnsAfter(maxCols, 20 - maxCols);
+    }
+
+    const catatanFinal = (data.catatan || "") + (expenseDesc ? "\n\nBELANJA BARANG: " + expenseDesc + " (Rp " + expenseAmount.toLocaleString('id-ID') + ")" : "");
+
+    // Single contiguous write from column 6 to column 20 (15 columns)
+    sh.getRange(rowIndex + 1, 6, 1, 15).setValues([[
+      now, 
+      kasAwal, 
       kasSistem, 
       kasFisik, 
       selisihKas, 
@@ -434,14 +449,7 @@ function closeKasShift(data) {
       replacement.replacementEmployeeId || "", 
       replacement.replacementName || "", 
       data.mode === "SERAH_TERIMA" ? now : "", 
-      (data.catatan || "") + (expenseDesc ? "\n\nBELANJA BARANG: " + expenseDesc + " (Rp " + expenseAmount.toLocaleString('id-ID') + ")" : "")
-    ]]);
-    
-    // Store Extended columns: Saldo Awal Merchant (col 17), Saldo Akhir Merchant (col 18), Total Belanja (col 19), Foto Nota (col 20)
-    while (sh.getLastColumn() < 20) {
-      sh.insertColumnAfter(sh.getLastColumn());
-    }
-    sh.getRange(rowIndex + 1, 17, 1, 4).setValues([[
+      catatanFinal,
       saldoMerchantAwal,
       saldoMerchantAkhir,
       expenseAmount,
@@ -480,7 +488,11 @@ function getRekapKasShift() {
   const rows = sh.getDataRange().getValues(); rows.shift();
   return rows.map(function(r) {
     const rawPhotos = String(r[19] || "").trim();
-    const photoUrls = rawPhotos ? rawPhotos.split(" | ").map(function(url) { return url.trim(); }).filter(Boolean) : [];
+    const photoUrls = rawPhotos 
+      ? rawPhotos.split(" | ")
+          .map(function(url) { return url.trim(); })
+          .filter(function(u) { return u && !u.startsWith("data:image") && u.length < 2000; }) 
+      : [];
     
     // Parse catatan & belanja
     const catatan = String(r[15] || "");

@@ -21,7 +21,9 @@ import {
   Download,
   Upload,
   Plus,
-  UserPlus
+  UserPlus,
+  Award,
+  User
 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
@@ -348,7 +350,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                     ? 'bg-teal-100 text-teal-900 border border-teal-200'
                     : 'bg-slate-100 text-slate-700 border border-slate-200'
                 }`}>
-                  {selectedCust.isMember || selectedCust.statusMember === 'MEMBER' ? '⭐ Member Resmi' : selectedCust.totalOrder > 1 ? '🔁 Pelanggan Lama' : '👤 Pelanggan Baru'}
+                  {selectedCust.isMember || selectedCust.statusMember === 'MEMBER' ? 'Member Resmi' : selectedCust.totalOrder > 1 ? 'Pelanggan Lama' : 'Pelanggan Baru'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-mono mt-0.5">
