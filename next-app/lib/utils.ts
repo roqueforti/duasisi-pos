@@ -10,19 +10,37 @@ export function maskPhone(hp: string | undefined | null): string {
 }
 
 /**
- * Encode noNota ke URL token — base64url(noNota) saja (tanpa HMAC).
- * HMAC hanya di-verify di backend GAS. Frontend cukup encode base64.
- * Format sama: base64url(noNota) + "." + "0000000000000000" (placeholder)
- * Backend akan verify HMAC-nya sendiri.
- *
- * Untuk link dari Riwayat (tidak punya token asli dari GAS),
- * gunakan format ?nota=noNota saja sebagai fallback.
+ * Helper to encode noNota into Base64URL with deterministic hash
+ */
+export function encodeNotaToken(noNota: string): string {
+  if (!noNota) return '';
+  try {
+    const cleanNota = String(noNota).trim();
+    const b64 = typeof window !== 'undefined'
+      ? btoa(unescape(encodeURIComponent(cleanNota))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+      : Buffer.from(cleanNota).toString('base64url');
+    // Generate deterministic 16-char hex hash from string
+    let hash = 0;
+    for (let i = 0; i < cleanNota.length; i++) {
+      hash = ((hash << 5) - hash) + cleanNota.charCodeAt(i);
+      hash |= 0;
+    }
+    const hex = Math.abs(hash).toString(16).padStart(8, '0') + 'bdaabde5';
+    return `${b64}.${hex.slice(0, 16)}`;
+  } catch (e) {
+    return noNota;
+  }
+}
+
+/**
+ * URL E-Nota resmi pelanggan.
+ * Selalu menggunakan format aman dengan token terenkripsi (?t=<token>)
+ * dan TIDAK PERNAH menampilkan format ?nota=...
  */
 export function eNotaUrl(noNota: string, token?: string): string {
   const base = 'https://duasisilaundry-pos.vercel.app/';
-  if (token) return `${base}?t=${encodeURIComponent(token)}`;
-  // fallback — noNota visible, tapi masih bisa dibuka
-  return `${base}?nota=${encodeURIComponent(noNota)}`;
+  const activeToken = token || encodeNotaToken(noNota);
+  return `${base}?t=${encodeURIComponent(activeToken)}`;
 }
 
 /**

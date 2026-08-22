@@ -141,9 +141,19 @@ export function generateWhatsAppReceiptMessage(params: WhatsAppReceiptParams): s
  */
 export function generateWhatsAppReceiptFromTx(
   tx: Transaksi,
-  extra?: { token?: string; saldoPoin?: number; kembalian?: number }
+  extra?: { token?: string; saldoPoin?: number; kembalian?: number; isMember?: boolean }
 ): string {
   const estimasi = tx.estimasi || tx.estimasiSelesai || '';
+  const isMember = extra?.isMember !== undefined
+    ? extra.isMember
+    : (tx.isMember !== undefined ? tx.isMember : Boolean((tx as any).saldoPoin && (tx as any).saldoPoin > 0));
+  const poinEarned = tx.poinEarned !== undefined && tx.poinEarned > 0
+    ? tx.poinEarned
+    : (isMember ? Math.max(1, Math.floor((tx.total || 0) / 10000)) : 0);
+  const saldoPoin = extra?.saldoPoin !== undefined
+    ? extra.saldoPoin
+    : (tx as any).saldoPoin;
+  const token = extra?.token || (tx as any).token;
 
   return generateWhatsAppReceiptMessage({
     noNota: tx.noNota,
@@ -163,9 +173,9 @@ export function generateWhatsAppReceiptFromTx(
     kembalian: extra?.kembalian,
     sisaTagihan: tx.sisaTagihan,
     statusPembayaran: tx.statusPembayaran,
-    isMember: tx.isMember,
-    poinEarned: tx.poinEarned,
-    saldoPoin: extra?.saldoPoin,
-    token: extra?.token
+    isMember: isMember,
+    poinEarned: poinEarned,
+    saldoPoin: saldoPoin,
+    token: token
   });
 }

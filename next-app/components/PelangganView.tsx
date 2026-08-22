@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { maskPhone } from '@/lib/utils';
+import { maskPhone, eNotaUrl } from '@/lib/utils';
 import { UserRole, Transaksi } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
@@ -638,7 +638,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                         {/* E-Nota Link Button */}
                         <td className="py-3 px-4 text-center">
                           <a
-                            href={`/enota?nota=${encodeURIComponent(tx.noNota)}`}
+                            href={eNotaUrl(tx.noNota, (tx as any).token)}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition shadow-2xs"

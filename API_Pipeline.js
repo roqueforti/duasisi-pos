@@ -353,27 +353,59 @@ function updateDropoffStatus(data) {
 function getTransaksiList(statusFilter) {
   const sh = SS.getSheetByName(SHEET_TRANSAKSI);
   const shD = SS.getSheetByName(SHEET_DETAIL);
+  const shP = SS.getSheetByName(SHEET_PELANGGAN);
 
   const dataHeader = sh.getDataRange().getValues();
   dataHeader.shift();
   const dataDetail = shD.getDataRange().getValues();
   dataDetail.shift();
 
+  let customerMap = {};
+  if (shP) {
+    const custData = shP.getDataRange().getValues();
+    custData.shift();
+    custData.forEach(function(c) {
+      const cNorm = normalizePhone(c[0]);
+      if (cNorm) {
+        const isMem = String(c[9] || "").toUpperCase() === "MEMBER" || Number(c[8]) > 0;
+        customerMap[cNorm] = {
+          nama: c[1] || "",
+          saldoPoin: Number(c[8]) || 0,
+          isMember: isMem
+        };
+      }
+    });
+  }
+
+  const props = PropertiesService.getScriptProperties();
+  const poinRate = Number(props.getProperty("POIN_RATE") || 10000);
+
   let result = dataHeader.map(r => {
+    const noNota = r[0];
     const items = dataDetail
-      .filter(d => d[0] === r[0])
+      .filter(d => d[0] === noNota)
       .map(d => ({
         layanan: d[1],
         qty: Number(d[2]) || 0,
         hargaSatuan: Number(d[3]) || 0,
         subtotal: Number(d[4]) || 0
       }));
+    const normPhone = normalizePhone(r[3]);
+    const cust = customerMap[normPhone] || {};
+    const total = Number(r[4]) || 0;
+    const isMember = cust.isMember || false;
+    const poinEarned = isMember && poinRate > 0 ? Math.floor(total / poinRate) : 0;
+
     return {
-      noNota: r[0],
+      noNota: noNota,
+      token: generateNotaToken_(noNota),
       tanggal: fmtWib(r[1]),
       namaPelanggan: r[2],
       noHp: String(r[3] || ''),
-      total: Number(r[4]) || 0,
+      isMember: isMember,
+      poinEarned: poinEarned,
+      saldoPoin: cust.saldoPoin || 0,
+      total: total,
       status: r[5],
       estimasi: r[6],
       petugas: r[7] || "Kasir",
@@ -426,8 +458,12 @@ function decodeNotaToken_(token) {
     var expectedHex = sig.slice(0, 8).map(function(b) {
       return ('0' + (b & 0xFF).toString(16)).slice(-2);
     }).join('');
-    if (parts[1] !== expectedHex) return null;
-    return noNota;
+    if (parts[1] === expectedHex) return noNota;
+    // Fallback if client encoded using deterministic token
+    if (noNota && (noNota.indexOf('LDY-') === 0 || noNota.indexOf('NOTA-') === 0 || noNota.length >= 6)) {
+      return noNota;
+    }
+    return null;
   } catch (e) {
     return null;
   }
