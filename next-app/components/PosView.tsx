@@ -28,6 +28,7 @@ import {
   Clock,
   Check,
   ChevronRight,
+  ChevronLeft,
   AlertCircle,
   Edit3,
   Bluetooth,
@@ -2389,31 +2390,30 @@ export default function PosView({
         </div>
       )}
 
-      {/* 4. MODAL "Detail Transaksi & Pembayaran" (Split Layout: Kiri Detail Order & Customer, Kanan Kasir & Pembayaran) */}
+      {/* 4. MODAL "Detail Transaksi & Pembayaran" (Full Page Terminal: Kiri Detail Order & Customer, Kanan Kasir & Pembayaran) */}
       {showDetailTransaksiModal && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="relative bg-white rounded-3xl w-full max-w-5xl border border-slate-200/90 shadow-2xl flex flex-col lg:flex-row overflow-hidden my-auto max-h-[94vh] animate-scale-in">
+        <div className="fixed inset-0 z-[500] bg-slate-950 flex flex-col w-full h-full min-h-screen overflow-hidden animate-fade-in">
+          <div className="relative bg-white w-full h-full flex flex-col lg:flex-row overflow-hidden">
             
-            {/* Prominent Modal Close Button - Top Right Corner */}
-            <button 
-              type="button"
-              onClick={() => setShowDetailTransaksiModal(false)} 
-              className="absolute top-3.5 right-3.5 z-50 w-8 h-8 rounded-full bg-slate-800/80 hover:bg-rose-600 text-white flex items-center justify-center transition-all shadow-md backdrop-blur-xs cursor-pointer active:scale-95 border border-white/20"
-              title="Tutup Modal (Esc)"
-            >
-              <X className="w-4.5 h-4.5" />
-            </button>
-
             {/* LEFT PANEL: Transaction Summary & Customer Details */}
             <div className="flex-1 flex flex-col overflow-y-auto border-b lg:border-b-0 lg:border-r border-slate-200 min-w-0 bg-white">
-              {/* Header */}
-              <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0 bg-slate-50/50">
+              {/* Header with Back Button */}
+              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-slate-50/70">
                 <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDetailTransaksiModal(false)}
+                    className="tactile-btn p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition shadow-2xs flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+                    title="Kembali ke Layar Kasir"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span className="hidden sm:inline">Kembali</span>
+                  </button>
                   <div className="w-10 h-10 rounded-2xl bg-[#1E4648] text-white flex items-center justify-center shadow-xs shrink-0">
                     <Receipt className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-slate-800 leading-tight">Detail Transaksi & Pelanggan</h3>
+                    <h3 className="text-base font-black text-slate-800 leading-tight">Detail Transaksi & Pelanggan</h3>
                     <p className="text-xs text-slate-400 mt-0.5">Lengkapi identitas pemesan & instruksi pengerjaan</p>
                   </div>
                 </div>
@@ -2955,28 +2955,39 @@ export default function PosView({
             </div>
 
             {/* RIGHT PANEL: Payment Calculator & Numpad */}
-            <div className="w-full lg:w-[360px] xl:w-[390px] flex flex-col bg-slate-50 shrink-0 overflow-hidden">
-              {/* Total Banner - Compact */}
-              <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white py-3 px-4 text-center shrink-0 shadow-md">
-                <span className="text-[9px] text-teal-200 font-extrabold uppercase tracking-widest block">
-                  TOTAL PEMBAYARAN
-                </span>
-                <span className="text-2xl sm:text-3xl font-black text-white font-mono drop-shadow-sm leading-tight block mt-0.5">
-                  Rp {(grandTotal || 0).toLocaleString('id-ID')}
-                </span>
-                <div className="mt-0.5 flex items-center justify-center gap-1.5 text-[10px] font-medium">
-                  {diskonApplied.nilai > 0 && (
-                    <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full font-semibold">
-                      Diskon -Rp {diskonApplied.nilai.toLocaleString('id-ID')}
-                    </span>
-                  )}
-                  {customerMode === 'MEMBER' && customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
-                    <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-bold flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-300" />
-                      +{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin
-                    </span>
-                  )}
+            <div className="w-full lg:w-[400px] xl:w-[440px] flex flex-col bg-slate-50 shrink-0 overflow-hidden border-l border-slate-200 h-full justify-between">
+              {/* Total Banner with Close Button */}
+              <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white py-4 px-5 shrink-0 shadow-md relative flex items-center justify-between">
+                <div className="min-w-0">
+                  <span className="text-[9.5px] text-teal-200 font-extrabold uppercase tracking-widest block">
+                    TOTAL PEMBAYARAN
+                  </span>
+                  <span className="text-2xl sm:text-3xl font-black text-white font-mono drop-shadow-sm leading-tight block mt-0.5">
+                    Rp {(grandTotal || 0).toLocaleString('id-ID')}
+                  </span>
+                  <div className="mt-1 flex items-center gap-1.5 text-[10px] font-medium flex-wrap">
+                    {diskonApplied.nilai > 0 && (
+                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full font-semibold">
+                        Diskon -Rp {diskonApplied.nilai.toLocaleString('id-ID')}
+                      </span>
+                    )}
+                    {customerMode === 'MEMBER' && customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
+                      <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-bold flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-amber-300" />
+                        +{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin
+                      </span>
+                    )}
+                  </div>
                 </div>
+
+                <button 
+                  type="button"
+                  onClick={() => setShowDetailTransaksiModal(false)} 
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition-all shadow-md backdrop-blur-xs cursor-pointer active:scale-95 border border-white/20 shrink-0 ml-2"
+                  title="Tutup & Kembali ke Kasir (Esc)"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
               </div>
 
               {/* Payment Method Tabs - Compact Row */}
