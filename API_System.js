@@ -661,26 +661,28 @@ function getSecuritySettings() {
 function saveSecuritySettings(role, oldPin, newPin, emailManager) {
   const props = PropertiesService.getScriptProperties();
   
-  if (!newPin || newPin.length !== 4 || isNaN(newPin)) {
-    return { success: false, message: "PIN baru harus 4 digit angka." };
-  }
-
-  // Jika yang diganti Manager, cek old PIN manager
+  // Jika yang diganti Manager, PIN harus 6 digit angka
   if (role === "MANAGER") {
-    const currentManagerPin = props.getProperty("PIN_MANAGER") || "8888";
-    if (oldPin !== currentManagerPin) {
+    if (!newPin || String(newPin).length !== 6 || isNaN(newPin)) {
+      return { success: false, message: "PIN Manager baru harus 6 digit angka." };
+    }
+    const currentManagerPin = props.getProperty("PIN_MANAGER") || PIN_MANAGER || "888888";
+    if (String(oldPin) !== currentManagerPin) {
       return { success: false, message: "PIN Lama salah!" };
     }
-    props.setProperty("PIN_MANAGER", newPin);
+    props.setProperty("PIN_MANAGER", String(newPin));
     if (emailManager !== undefined) {
       props.setProperty("EMAIL_MANAGER", emailManager);
     }
-    return { success: true, message: "PIN Manager & Pengaturan berhasil diperbarui." };
+    return { success: true, message: "PIN Manager (6 digit) & Pengaturan berhasil diperbarui." };
   }
   
-  // Jika ganti PIN staff
+  // Jika ganti PIN staff (bisa 4 digit atau 6 digit)
   if (role === "STAFF") {
-    props.setProperty("PIN_STAFF", newPin);
+    if (!newPin || (String(newPin).length !== 4 && String(newPin).length !== 6) || isNaN(newPin)) {
+      return { success: false, message: "PIN Staff baru harus 4 atau 6 digit angka." };
+    }
+    props.setProperty("PIN_STAFF", String(newPin));
     return { success: true, message: "PIN Staff berhasil diperbarui." };
   }
 
@@ -690,7 +692,7 @@ function saveSecuritySettings(role, oldPin, newPin, emailManager) {
 function recoverPin(emailInput) {
   try {
     const props = PropertiesService.getScriptProperties();
-    const currentManagerPin = props.getProperty("PIN_MANAGER") || "8888";
+    const currentManagerPin = props.getProperty("PIN_MANAGER") || PIN_MANAGER || "888888";
     const registeredEmail = props.getProperty("EMAIL_MANAGER") || "";
     
     if (!registeredEmail) {
@@ -702,11 +704,11 @@ function recoverPin(emailInput) {
     }
 
     const subject = "🔑 Pemulihan PIN Manager - POS Dua Sisi Laundry";
-    const body = `Halo!\n\nIni adalah email otomatis dari sistem POS Dua Sisi Laundry.\n\nPIN Manager Anda saat ini adalah: ${currentManagerPin}\n\nHarap jaga kerahasiaan PIN ini.\n\nTerima kasih.`;
+    const body = `Halo!\n\nIni adalah email otomatis dari sistem POS Dua Sisi Laundry.\n\nPIN Manager (6 digit) Anda saat ini adalah: ${currentManagerPin}\n\nHarap jaga kerahasiaan PIN ini.\n\nTerima kasih.`;
 
     MailApp.sendEmail(registeredEmail, subject, body);
 
-    return { success: true, message: "Email berisi PIN pemulihan berhasil dikirim!" };
+    return { success: true, message: "Email berisi PIN pemulihan (6 digit) berhasil dikirim!" };
   } catch (err) {
     return { success: false, message: "Gagal mengirim email: " + err.message };
   }

@@ -162,7 +162,7 @@ function clearDataRows_(sheetName) {
 
 // PIN HAK AKSES PERAN
 const PIN_STAFF   = "1234";
-const PIN_MANAGER = "8888";
+const PIN_MANAGER = "888888";
 
 // ============ WEB APP ENTRY POINT (PURE REST API ENGINE) ============
 function doGet(e) {

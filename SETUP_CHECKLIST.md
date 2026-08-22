@@ -85,8 +85,8 @@ My Drive/
 ## ✅ PIN Credentials - Setup Required
 
 Apps Script default PINs:
-- **STAFF PIN:** `1234`
-- **MANAGER PIN:** `8888`
+- **STAFF PIN:** `1234` (4-digit)
+- **MANAGER PIN:** `888888` (6-digit)
 
 **For production, change PINs:**
 

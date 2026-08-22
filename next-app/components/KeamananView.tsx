@@ -37,8 +37,12 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
   };
 
   const handleChangeManagerPin = async () => {
-    if (oldManagerPin.length !== 4 || newManagerPin.length !== 4) {
-      await showAlert('PIN harus tepat 4 digit!', 'warning');
+    if (oldManagerPin.length < 4 || oldManagerPin.length > 6) {
+      await showAlert('PIN Lama harus 4 atau 6 digit!', 'warning');
+      return;
+    }
+    if (newManagerPin.length !== 6) {
+      await showAlert('PIN Manager Baru harus tepat 6 digit!', 'warning');
       return;
     }
     if (isNaN(Number(oldManagerPin)) || isNaN(Number(newManagerPin))) {
@@ -54,7 +58,7 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
     try {
       const res = await runBackend<{success: boolean, message: string}>('saveSecuritySettings', 'MANAGER', oldManagerPin, newManagerPin, emailManager);
       if (res && res.success) {
-        await showAlert('Pengaturan Keamanan Manager berhasil diubah!', 'success');
+        await showAlert('Pengaturan Keamanan PIN Manager (6 digit) berhasil disimpan!', 'success');
         setOldManagerPin('');
         setNewManagerPin('');
       } else {
@@ -68,8 +72,8 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
   };
 
   const handleChangeStaffPin = async () => {
-    if (newStaffPin.length !== 4) {
-      await showAlert('PIN harus tepat 4 digit!', 'warning');
+    if (newStaffPin.length !== 4 && newStaffPin.length !== 6) {
+      await showAlert('PIN Staff harus 4 atau 6 digit angka!', 'warning');
       return;
     }
     if (isNaN(Number(newStaffPin))) {
@@ -107,9 +111,9 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
       <div>
         <h1 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
           <ShieldCheck className="w-6 h-6 text-[#1E4648]" />
-          Manajemen Keamanan
+          Manajemen Keamanan & PIN
         </h1>
-        <p className="text-sm text-slate-500 mt-1">Kelola PIN akses dan pengaturan pemulihan (Lupa PIN).</p>
+        <p className="text-sm text-slate-500 mt-1">Kelola PIN akses terminal (Manager 6-digit & Staff) serta email pemulihan.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
@@ -118,9 +122,9 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
           <h3 className="font-bold text-slate-700 flex items-center gap-2 pb-2 border-b border-slate-100">
             <KeyRound className="w-5 h-5 text-rose-500" />
-            Pengaturan Keamanan Manager
+            Pengaturan Keamanan Manager (6 Digit)
           </h3>
-          <p className="text-[11px] text-slate-400">PIN untuk mengakses menu manajemen, serta email untuk pemulihan jika lupa PIN.</p>
+          <p className="text-[11px] text-slate-400">PIN 6-digit untuk mengakses menu manajemen, rekap, payroll, dan pemulihan jika lupa PIN.</p>
           
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1">Email Pemulihan</label>
@@ -137,38 +141,38 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
           </div>
 
           <div className="pt-2">
-            <label className="block text-xs font-bold text-slate-600 mb-1">PIN Lama (4 digit)</label>
+            <label className="block text-xs font-bold text-slate-600 mb-1">PIN Lama (4 - 6 digit)</label>
             <input
               type="password"
               inputMode="numeric"
-              maxLength={4}
+              maxLength={6}
               value={oldManagerPin}
               onChange={e => setOldManagerPin(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="• • • •"
+              placeholder="• • • • • •"
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400/20 text-center tracking-[8px] font-bold"
             />
           </div>
           
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">PIN Baru (4 digit)</label>
+            <label className="block text-xs font-bold text-slate-600 mb-1">PIN Manager Baru (Wajib 6 Digit)</label>
             <input
               type="password"
               inputMode="numeric"
-              maxLength={4}
+              maxLength={6}
               value={newManagerPin}
               onChange={e => setNewManagerPin(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="• • • •"
+              placeholder="• • • • • •"
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-400/20 text-center tracking-[8px] font-bold"
             />
           </div>
 
           <button
             onClick={handleChangeManagerPin}
-            disabled={loading || oldManagerPin.length !== 4 || newManagerPin.length !== 4 || !emailManager}
-            className="w-full mt-2 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold py-2 rounded-lg text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
+            disabled={loading || oldManagerPin.length < 4 || newManagerPin.length !== 6 || !emailManager}
+            className="w-full mt-2 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold py-2 rounded-lg text-sm transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
           >
             <Save className="w-4 h-4" />
-            Simpan Pengaturan
+            Simpan PIN Manager (6 Digit)
           </button>
         </div>
 
@@ -181,11 +185,11 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
           <p className="text-[11px] text-slate-400">PIN untuk staf kasir login dan melakukan operasional sehari-hari.</p>
           
           <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">PIN Baru (4 digit)</label>
+            <label className="block text-xs font-bold text-slate-600 mb-1">PIN Staff Baru (4 atau 6 digit)</label>
             <input
               type="password"
               inputMode="numeric"
-              maxLength={4}
+              maxLength={6}
               value={newStaffPin}
               onChange={e => setNewStaffPin(e.target.value.replace(/[^0-9]/g, ''))}
               placeholder="• • • •"
@@ -195,8 +199,8 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
 
           <button
             onClick={handleChangeStaffPin}
-            disabled={loading || newStaffPin.length !== 4}
-            className="w-full mt-2 bg-[#1E4648]/10 text-[#1E4648] hover:bg-[#1E4648]/20 font-bold py-2 rounded-lg text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
+            disabled={loading || (newStaffPin.length !== 4 && newStaffPin.length !== 6)}
+            className="w-full mt-2 bg-[#1E4648]/10 text-[#1E4648] hover:bg-[#1E4648]/20 font-bold py-2 rounded-lg text-sm transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
           >
             <Save className="w-4 h-4" />
             Update PIN Staff

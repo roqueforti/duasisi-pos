@@ -65,12 +65,18 @@ export default function LoginModal({ onSuccess, initialNotice }: LoginModalProps
 
   const handlePinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9]/g, '');
-    if (val.length <= 4) {
+    if (val.length <= 6) {
       setPin(val);
       setErrorMsg('');
-      if (val.length === 4) {
+      if (val.length === 6) {
         processPinVerification(val);
       }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && pin.length >= 4 && !loading) {
+      processPinVerification(pin);
     }
   };
 
@@ -95,7 +101,7 @@ export default function LoginModal({ onSuccess, initialNotice }: LoginModalProps
 
         <div className="text-xs font-medium text-[#B5C9C9]/90 mb-4 flex items-center justify-center gap-1.5">
           <KeyRound className="w-3.5 h-3.5 text-[#B5C9C9]" />
-          <span>Masukkan 4-digit PIN Terminal POS</span>
+          <span>Masukkan PIN Terminal POS (4 - 6 Digit)</span>
         </div>
 
         {notice && !errorMsg && (
@@ -114,19 +120,20 @@ export default function LoginModal({ onSuccess, initialNotice }: LoginModalProps
           </div>
         )}
 
-        {/* 4 Digit PIN Input (Auto-Verify on 4th Digit) */}
-        <div className="mb-5 relative">
+        {/* 4-6 Digit PIN Input (Auto-Verify on 6th Digit or Submit Button) */}
+        <div className="mb-4 relative">
           <input
             type="password"
             inputMode="numeric"
             pattern="[0-9]*"
             value={pin}
             onChange={handlePinChange}
-            placeholder="• • • •"
-            maxLength={4}
+            onKeyDown={handleKeyDown}
+            placeholder="• • • • • •"
+            maxLength={6}
             autoFocus
             disabled={loading}
-            className="w-full text-center text-3xl font-bold tracking-[14px] py-3.5 px-4 bg-slate-900 text-white placeholder-slate-600 border border-slate-700 rounded-xl outline-hidden focus:border-[#B5C9C9] focus:bg-slate-950 transition-all shadow-inner font-sans"
+            className="w-full text-center text-3xl font-bold tracking-[10px] py-3.5 px-4 bg-slate-900 text-white placeholder-slate-600 border border-slate-700 rounded-xl outline-hidden focus:border-[#B5C9C9] focus:bg-slate-950 transition-all shadow-inner font-sans"
           />
           {loading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B5C9C9]">
@@ -137,62 +144,79 @@ export default function LoginModal({ onSuccess, initialNotice }: LoginModalProps
 
         {/* On-screen Numpad (tablet & touch friendly) */}
         {!loading && (
-          <div className="grid grid-cols-3 gap-2.5 mb-2">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+          <div className="space-y-2.5 mb-2">
+            <div className="grid grid-cols-3 gap-2.5">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => {
+                    const next = pin + num;
+                    if (next.length <= 6) {
+                      setPin(next);
+                      setErrorMsg('');
+                      if (next.length === 6) processPinVerification(next);
+                    }
+                  }}
+                  disabled={loading || pin.length >= 6}
+                  className="py-3.5 bg-slate-800/90 hover:bg-slate-700 active:bg-slate-600 text-white font-bold text-xl rounded-xl border border-slate-700/80 transition-all disabled:opacity-40 select-none shadow-sm cursor-pointer"
+                >
+                  {num}
+                </button>
+              ))}
+              {/* Bottom row: clear left, 0 center, backspace right */}
               <button
-                key={num}
                 type="button"
                 onClick={() => {
-                  const next = pin + num;
-                  if (next.length <= 4) {
+                  setPin('');
+                  setErrorMsg('');
+                }}
+                disabled={loading}
+                className="py-3.5 bg-slate-800/90 hover:bg-rose-900 active:bg-rose-800 text-rose-400 font-bold text-sm rounded-xl border border-slate-700/80 transition-all disabled:opacity-40 select-none cursor-pointer"
+              >
+                C
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = pin + '0';
+                  if (next.length <= 6) {
                     setPin(next);
                     setErrorMsg('');
-                    if (next.length === 4) processPinVerification(next);
+                    if (next.length === 6) processPinVerification(next);
                   }
                 }}
-                disabled={loading || pin.length >= 4}
+                disabled={loading || pin.length >= 6}
                 className="py-3.5 bg-slate-800/90 hover:bg-slate-700 active:bg-slate-600 text-white font-bold text-xl rounded-xl border border-slate-700/80 transition-all disabled:opacity-40 select-none shadow-sm cursor-pointer"
               >
-                {num}
+                0
               </button>
-            ))}
-            {/* Bottom row: clear left, 0 center, backspace right */}
-            <button
-              type="button"
-              onClick={() => {
-                setPin('');
-                setErrorMsg('');
-              }}
-              disabled={loading}
-              className="py-3.5 bg-slate-800/90 hover:bg-rose-900 active:bg-rose-800 text-rose-400 font-bold text-sm rounded-xl border border-slate-700/80 transition-all disabled:opacity-40 select-none cursor-pointer"
-            >
-              C
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const next = pin + '0';
-                if (next.length <= 4) {
-                  setPin(next);
+              <button
+                type="button"
+                onClick={() => {
+                  setPin((p) => p.slice(0, -1));
                   setErrorMsg('');
-                  if (next.length === 4) processPinVerification(next);
-                }
-              }}
-              disabled={loading || pin.length >= 4}
-              className="py-3.5 bg-slate-800/90 hover:bg-slate-700 active:bg-slate-600 text-white font-bold text-xl rounded-xl border border-slate-700/80 transition-all disabled:opacity-40 select-none shadow-sm cursor-pointer"
-            >
-              0
-            </button>
+                }}
+                disabled={loading || pin.length === 0}
+                className="py-3.5 bg-slate-800/90 hover:bg-slate-700 active:bg-slate-600 text-slate-300 font-bold text-xl rounded-xl border border-slate-700/80 transition-all disabled:opacity-40 select-none cursor-pointer"
+              >
+                ⌫
+              </button>
+            </div>
+
+            {/* Direct Submit Action Button (Active when >= 4 digits) */}
             <button
               type="button"
-              onClick={() => {
-                setPin((p) => p.slice(0, -1));
-                setErrorMsg('');
-              }}
-              disabled={loading || pin.length === 0}
-              className="py-3.5 bg-slate-800/90 hover:bg-slate-700 active:bg-slate-600 text-slate-300 font-bold text-xl rounded-xl border border-slate-700/80 transition-all disabled:opacity-40 select-none cursor-pointer"
+              onClick={() => processPinVerification(pin)}
+              disabled={loading || pin.length < 4}
+              className={`w-full py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer ${
+                pin.length >= 4
+                  ? 'bg-gradient-to-r from-emerald-600 via-teal-700 to-[#1E4648] text-white hover:brightness-110'
+                  : 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/50'
+              }`}
             >
-              ⌫
+              <span>Masuk Terminal POS</span>
+              <span>➔</span>
             </button>
           </div>
         )}
