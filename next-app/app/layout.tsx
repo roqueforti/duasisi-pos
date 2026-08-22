@@ -1,14 +1,7 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { DialogProvider } from "@/components/DialogProvider";
 import { DisplaySettingsProvider } from "@/components/DisplaySettingsContext";
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  variable: "--font-jakarta",
-});
 
 export const metadata: Metadata = {
   title: "dua SiSi — Laundry Express & Coin POS",
@@ -83,7 +76,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${plusJakartaSans.variable} font-sans bg-[#F8FAFC] text-slate-700 antialiased min-h-screen overflow-y-auto`}>
+      <body className="font-sans bg-[#F8FAFC] text-slate-700 antialiased min-h-screen overflow-y-auto">
         <DialogProvider>
           <DisplaySettingsProvider>
             {children}

@@ -48,10 +48,18 @@ export default function DisplaySettingsModal({ isOpen, onClose }: DisplaySetting
     handleZoomChange(settings.zoomScale + delta);
   };
 
+  const zoomFactor = (settings.zoomScale || 100) / 100;
+  const inverseZoom = 1 / (zoomFactor || 1);
+
   return (
-    <div className="fixed inset-0 z-[500] flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in select-none">
+    <div 
+      className="fixed inset-0 z-[500] flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in select-none"
+      style={{
+        zoom: inverseZoom
+      }}
+    >
       <div 
-        className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden animate-pop-scale"
+        className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden animate-pop-scale"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
