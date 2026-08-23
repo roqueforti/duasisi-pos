@@ -925,10 +925,11 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
             {currentRole === 'MANAGER' && (
               <>
-                <button onClick={handleExportProduk} className="p-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition shadow-2xs cursor-pointer" title="Export Data Layanan ke CSV">
+                <button onClick={handleExportProduk} className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-xs font-semibold transition shadow-2xs flex items-center gap-1.5 cursor-pointer" title="Export Data Layanan yang ada ke CSV">
                   <Download className="w-3.5 h-3.5" />
+                  <span>Export</span>
                 </button>
-                <button onClick={handleDownloadTemplateProduk} className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-xs font-semibold transition shadow-2xs cursor-pointer" title="Download Template Kosong">
+                <button onClick={handleDownloadTemplateProduk} className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-xs font-semibold transition shadow-2xs cursor-pointer" title="Download Template Master Excel/CSV Baru">
                   Template
                 </button>
                 <label className="cursor-pointer px-2.5 py-1.5 border border-[#B5C9C9] rounded-lg text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-semibold transition flex items-center gap-1.5 shadow-2xs" title="Import Data Layanan dari CSV">
