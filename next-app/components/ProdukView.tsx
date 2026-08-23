@@ -564,6 +564,10 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   };
 
   const handleExportProduk = () => {
+    if (layananList.length === 0) {
+      showAlert('Belum ada data layanan untuk diexport.', 'warning');
+      return;
+    }
     const categoryOrderMap = new Map<string, number>();
     kategoriList.forEach((k, idx) => {
       categoryOrderMap.set((k.nama || '').toLowerCase().trim(), idx);
@@ -579,15 +583,60 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       }
       return (a.nama || '').localeCompare(b.nama || '', 'id');
     });
-    const rows = sorted.map(l => [l.nama, l.kategori || 'Self Service', l.harga, l.tipe || 'Bukan Layanan', l.aktif === 'Y' ? 'Aktif' : 'Non-Aktif']);
-    downloadCSV('export_produk.csv', toCSV(['Nama Layanan', 'Kategori', 'Harga', 'Tipe', 'Status'], rows));
+
+    const headers = [
+      'Kode',
+      'Nama Layanan',
+      'Kategori',
+      'Sub Kategori (Drop Off)',
+      'Tipe Layanan',
+      'Harga Jual',
+      'Harga Modal',
+      'Satuan',
+      'Status'
+    ];
+
+    const rows = sorted.map(l => [
+      l.id || '',
+      l.nama || '',
+      l.kategori || 'Self Service',
+      l.kategoriDropOff || (l.tipe === 'FullService' ? 'Reguler' : ''),
+      l.tipe === 'FullService' ? 'FullService' : (l.tipe === 'SelfService' ? 'SelfService' : 'Bukan Layanan'),
+      l.harga || 0,
+      l.hargaModal || 0,
+      l.satuan || 'kg',
+      l.aktif === 'Y' ? 'Aktif' : 'Non-Aktif'
+    ]);
+
+    downloadCSV('export_produk_layanan.csv', toCSV(headers, rows));
   };
 
   const handleDownloadTemplateProduk = () => {
-    downloadCSV('template_produk_kosong.csv', toCSV(
-      ['Nama Layanan', 'Kategori', 'Harga', 'Tipe', 'Status'],
-      [['Cuci Karpet', 'Self Service', 15000, 'SelfService', 'Aktif']]
-    ));
+    const headers = [
+      'Kode',
+      'Nama Layanan',
+      'Kategori',
+      'Sub Kategori (Drop Off)',
+      'Tipe Layanan',
+      'Harga Jual',
+      'Harga Modal',
+      'Satuan',
+      'Status'
+    ];
+
+    const sampleRows = [
+      ['DO-001', 'Cuci Lipat Reguler', 'Drop Off', 'Reguler', 'FullService', 7000, 3000, 'kg', 'Aktif'],
+      ['DO-002', 'Cuci Setrika Express (24 Jam)', 'Drop Off', 'Express', 'FullService', 15000, 6000, 'kg', 'Aktif'],
+      ['DO-003', 'Cuci Bed Cover (Besar)', 'Drop Off', 'Reguler', 'FullService', 35000, 12000, 'pcs', 'Aktif'],
+      ['SS-001', 'Cuci + Kering 7.5 Kg (45 Mnt)', 'Self Service', '', 'SelfService', 18000, 5000, 'paket', 'Aktif'],
+      ['SS-002', 'Pengering Saja (15 Menit)', 'Self Service', '', 'SelfService', 5000, 1500, 'paket', 'Aktif'],
+      ['ADD-001', 'Deterjen Cair Premium (1 Porsi)', 'Add On', '', 'Bukan Layanan', 1500, 700, 'porsi', 'Aktif'],
+      ['ADD-002', 'Softener Aroma Sakura', 'Add On', '', 'Bukan Layanan', 1000, 500, 'porsi', 'Aktif'],
+      ['ADD-003', 'Kantong Plastik Besar', 'Add On', '', 'Bukan Layanan', 1000, 400, 'pcs', 'Aktif'],
+      ['RTL-001', 'Air Mineral 600ml', 'Makanan dan Minuman', '', 'Bukan Layanan', 4000, 2500, 'botol', 'Aktif']
+    ];
+
+    downloadCSV('template_layanan_duasisi.csv', toCSV(headers, sampleRows));
   };
 
   const handleImportProduk = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -597,37 +646,116 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     try {
       const text = await readFileAsText(file);
       const rows = parseCSV(text);
-      if (rows.length === 0) { await showAlert('File CSV kosong atau format salah.', 'warning'); return; }
+      if (rows.length === 0) {
+        await showAlert('File CSV kosong atau format tidak sesuai.', 'warning');
+        return;
+      }
+
       let success = 0, fail = 0;
       for (const row of rows) {
-        const nama = row['Nama Layanan'] || row['nama'] || '';
-        if (!nama.trim()) { fail++; continue; }
-        const tipeRaw = String(row['Tipe'] || row['tipe'] || 'SelfService').trim();
-        let tipeVal: 'SelfService' | 'FullService' | '' = 'SelfService';
-        if (tipeRaw.toLowerCase().includes('bukan') || tipeRaw.toLowerCase() === 'kosong' || tipeRaw === '') {
-          tipeVal = '';
-        } else if (tipeRaw === 'FullService' || tipeRaw.toLowerCase().includes('drop off')) {
-          tipeVal = 'FullService';
+        // Helper fleksibel untuk membaca kolom dengan berbagai variasi nama header
+        const getCol = (...keys: string[]) => {
+          for (const key of keys) {
+            const foundKey = Object.keys(row).find(k => k.trim().toLowerCase() === key.toLowerCase());
+            if (foundKey && row[foundKey] !== undefined && row[foundKey] !== '') {
+              return row[foundKey].trim();
+            }
+          }
+          return '';
+        };
+
+        const nama = getCol('Nama Layanan', 'Nama Produk', 'nama', 'Nama');
+        if (!nama) {
+          fail++;
+          continue;
         }
+
+        const kode = getCol('Kode', 'Kode Produk', 'ID', 'kode', 'id');
+        const kategori = getCol('Kategori', 'kategori') || 'Self Service';
+        const subKategori = getCol('Sub Kategori (Drop Off)', 'Sub Kategori', 'Kecepatan Drop Off', 'kategoriDropOff', 'sub_kategori');
         
-        const aktifRaw = String(row['Status'] || row['status'] || 'Aktif').trim().toLowerCase();
-        const aktifVal = aktifRaw === 'aktif' || aktifRaw === 'y';
+        // Tipe Layanan parsing (SelfService / FullService / Bukan Layanan)
+        const tipeRaw = getCol('Tipe Layanan', 'Tipe', 'tipe');
+        let tipeVal: 'SelfService' | 'FullService' | '' = 'SelfService';
+        const tipeLower = tipeRaw.toLowerCase();
+        if (tipeLower.includes('bukan') || tipeLower === 'addon' || tipeLower === 'add on' || tipeLower === 'retail' || tipeLower === '') {
+          tipeVal = '';
+        } else if (tipeLower.includes('full') || tipeLower.includes('drop') || tipeLower.includes('do')) {
+          tipeVal = 'FullService';
+        } else if (tipeLower.includes('self') || tipeLower.includes('ss')) {
+          tipeVal = 'SelfService';
+        }
+
+        // Parsing angka uang (hilangkan "Rp", titik, dsb)
+        const parseCurrency = (raw: string) => {
+          if (!raw) return 0;
+          const cleaned = raw.replace(/[^0-9,-]/g, '').replace(',', '.');
+          return Number(cleaned) || 0;
+        };
+
+        const hargaVal = parseCurrency(getCol('Harga Jual', 'Harga', 'Tarif', 'harga'));
+        const hargaModalVal = parseCurrency(getCol('Harga Modal', 'HPP', 'Modal', 'hargaModal', 'modal'));
+        const satuanVal = getCol('Satuan', 'satuan') || (tipeVal === 'FullService' ? 'kg' : (tipeVal === 'SelfService' ? 'paket' : 'pcs'));
+        
+        // Deteksi icon otomatis cerdas jika tidak disediakan di file
+        const detectIcon = () => {
+          const userIcon = getCol('Icon', 'Emoji', 'icon');
+          if (userIcon) return userIcon;
+          const n = nama.toLowerCase();
+          const k = kategori.toLowerCase();
+          if (n.includes('bed cover') || n.includes('sprei') || n.includes('selimut')) return '🛏️';
+          if (n.includes('sepatu')) return '👟';
+          if (n.includes('karpet') || n.includes('gorden')) return '🧹';
+          if (n.includes('setrika') || n.includes('gosok')) return '👔';
+          if (n.includes('kering') || n.includes('dryer') || n.includes('pengering')) return '♨️';
+          if (n.includes('deterjen') || n.includes('sabun')) return '🧴';
+          if (n.includes('softener') || n.includes('pewangi') || n.includes('parfum')) return '🌸';
+          if (n.includes('plastik') || n.includes('kresek') || n.includes('bag')) return '🛍️';
+          if (n.includes('kopi') || n.includes('teh') || n.includes('minum') || n.includes('air') || n.includes('mineral')) return '🥤';
+          if (n.includes('snack') || n.includes('makan') || n.includes('roti')) return '🍿';
+          if (n.includes('express') || n.includes('kilat') || n.includes('cepat')) return '⚡';
+          if (tipeVal === 'FullService' || k.includes('drop')) return '👕';
+          if (k.includes('add') || k.includes('tambahan')) return '✨';
+          return '🧺';
+        };
+        const iconVal = detectIcon();
+
+        const statusRaw = (getCol('Status', 'Aktif', 'status', 'aktif') || 'Aktif').toLowerCase();
+        const aktifVal = statusRaw === 'aktif' || statusRaw === 'y' || statusRaw === 'true' || statusRaw === '1';
+
         try {
-          const id = await runBackend('tambahLayanan', {
-            nama: String(row['Nama Layanan'] || row['nama'] || '').trim(),
-            kategori: String(row['Kategori'] || row['kategori'] || 'Self Service').trim(),
-            harga: Number(row['Harga'] || row['harga']) || 0,
-            satuan: '',
-            icon: '🧺',
-            tipe: (row['Tipe'] || row['tipe'] || '').trim().toLowerCase() === 'bukan layanan' ? '' : (row['Tipe'] || row['tipe'] || '').trim(),
+          const res = await runBackend<{ success: boolean; id?: string }>('tambahLayanan', {
+            kode: kode || undefined,
+            nama,
+            kategori,
+            kategoriDropOff: (tipeVal === 'FullService' || kategori.toLowerCase().includes('drop')) ? (subKategori || 'Reguler') : '',
+            harga: hargaVal,
+            hargaModal: hargaModalVal,
+            satuan: satuanVal,
+            icon: iconVal,
+            tipe: tipeVal,
+            idInventory: 'none', // Tanpa pengaitan stok inventory sesuai request
+            pipelineSteps: []
           });
-          if (id && !aktifVal) await runBackend('toggleAktifLayanan', id, false);
+
+          const createdId = res?.id || (typeof res === 'string' ? res : '');
+          if (createdId && !aktifVal) {
+            await runBackend('toggleAktifLayanan', createdId, false);
+          }
           success++;
-        } catch { fail++; }
+        } catch {
+          fail++;
+        }
       }
+
+      clearCache('getLayananListAll');
+      clearCache('getLayananList');
       loadProduk();
-      await showAlert(`Import selesai: ${success} berhasil${fail > 0 ? `, ${fail} gagal` : ''}.`, 'info');
-    } catch (err) {
+      await showAlert(
+        `Import data layanan selesai:\n✅ ${success} berhasil${fail > 0 ? `\n❌ ${fail} gagal` : ''}`,
+        success > 0 ? 'success' : 'warning'
+      );
+    } catch {
       await showAlert('Gagal membaca file CSV.', 'error');
     }
   };

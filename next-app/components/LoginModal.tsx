@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { UserRole } from '@/lib/types';
 import { runBackend, setBackendSession, clearBackendSession } from '@/lib/api';
 import { KeyRound, Loader2, Clock } from 'lucide-react';
+import Link from 'next/link';
 
 interface LoginModalProps {
   onSuccess: (role: UserRole, label: string) => void;
@@ -218,6 +219,16 @@ export default function LoginModal({ onSuccess, initialNotice }: LoginModalProps
               <span>Masuk Terminal POS</span>
               <span>➔</span>
             </button>
+
+            {/* Lupa PIN Link */}
+            <div className="pt-2 text-center">
+              <Link
+                href="/lupa-pin"
+                className="text-xs text-slate-400 hover:text-[#B5C9C9] transition-colors inline-flex items-center gap-1 font-medium hover:underline"
+              >
+                <span>Lupa PIN Manager?</span>
+              </Link>
+            </div>
           </div>
         )}
       </div>
