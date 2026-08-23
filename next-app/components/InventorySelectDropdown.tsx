@@ -39,6 +39,12 @@ export default function InventorySelectDropdown({
     (inv) => inv.id === currentId && currentId !== 'none' && currentId !== '' && currentId !== null
   );
 
+  const formatStok = (num: number) => {
+    if (typeof num !== 'number' || isNaN(num)) return '0';
+    const rounded = Math.round(num * 100) / 100;
+    return rounded.toLocaleString('id-ID');
+  };
+
   // Position calculation for fixed rendering (prevents overflow clipping in table cells)
   const updatePosition = () => {
     if (triggerRef.current) {
@@ -81,30 +87,42 @@ export default function InventorySelectDropdown({
   // Click outside and scroll/resize handler
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
       if (
-        containerRef.current && !containerRef.current.contains(e.target as Node) &&
-        popoverRef.current && !popoverRef.current.contains(e.target as Node)
+        containerRef.current && !containerRef.current.contains(target) &&
+        popoverRef.current && !popoverRef.current.contains(target)
       ) {
         setIsOpen(false);
       }
     };
 
-    const handleScrollOrResize = () => {
+    const handleScroll = (e: Event) => {
+      // JIKA SCROLL TERJADI DI DALAM POPOVER/DROPDOWN, JANGAN TUTUP!
+      if (popoverRef.current && (popoverRef.current === e.target || popoverRef.current.contains(e.target as Node))) {
+        return;
+      }
+      // Jika scroll halaman luar, perbarui posisi popover
       if (isOpen) {
-        setIsOpen(false);
+        updatePosition();
+      }
+    };
+
+    const handleResize = () => {
+      if (isOpen) {
+        updatePosition();
       }
     };
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-      window.addEventListener('scroll', handleScrollOrResize, true);
-      window.addEventListener('resize', handleScrollOrResize);
+      window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('resize', handleResize);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', handleScrollOrResize, true);
-      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleResize);
     };
   }, [isOpen]);
 
@@ -149,7 +167,7 @@ export default function InventorySelectDropdown({
         }`}
         title={
           selectedItem
-            ? `Terpaut ke: ${selectedItem.nama} (Stok: ${selectedItem.stok} ${selectedItem.satuan})`
+            ? `Terpaut ke: ${selectedItem.nama} (Stok: ${formatStok(selectedItem.stok)} ${selectedItem.satuan})`
             : 'Klik untuk memilih item stok atau buat baru otomatis'
         }
       >
@@ -174,7 +192,7 @@ export default function InventorySelectDropdown({
                     : 'bg-teal-100 text-teal-800'
                 }`}
               >
-                {selectedItem.stok} {selectedItem.satuan || ''}
+                {formatStok(selectedItem.stok)} {selectedItem.satuan || ''}
               </span>
             )}
           </div>
@@ -263,7 +281,11 @@ export default function InventorySelectDropdown({
           </div>
 
           {/* Item List Section */}
-          <div className="overflow-y-auto flex-1 p-1 space-y-0.5 max-h-48 divide-y divide-slate-50">
+          <div 
+            className="overflow-y-auto flex-1 p-1 space-y-0.5 max-h-48 divide-y divide-slate-50 overscroll-contain"
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+          >
             <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Pilih dari Stok Tersedia ({filteredList.length})
             </div>
@@ -309,7 +331,7 @@ export default function InventorySelectDropdown({
                             : 'bg-slate-100 text-slate-700'
                         }`}
                       >
-                        {inv.stok} {inv.satuan || ''}
+                        {formatStok(inv.stok)} {inv.satuan || ''}
                       </span>
                       {isSelected && <Check className="w-3.5 h-3.5 text-[#1E4648] shrink-0" />}
                     </div>
