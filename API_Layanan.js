@@ -834,7 +834,7 @@ function updateStokInventory(id, perubahan, actor) {
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
       const stokLama = Number(rows[i][2]) || 0;
-      const stokBaru = Math.max(0, stokLama + Number(perubahan));
+      const stokBaru = Math.max(0, Math.round(((stokLama + Number(perubahan)) + 1e-7) * 10000) / 10000);
       sh.getRange(i + 1, 3).setValue(stokBaru);
       sh.getRange(i + 1, 6).setValue(new Date());
 

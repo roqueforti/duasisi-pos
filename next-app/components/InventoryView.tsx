@@ -118,9 +118,16 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     }
   };
 
+  const formatStok = (val: number | string) => {
+    const num = Number(val);
+    if (isNaN(num)) return '0';
+    const rounded = Math.round((num + Number.EPSILON) * 1000) / 1000;
+    return rounded.toLocaleString('id-ID', { maximumFractionDigits: 3 });
+  };
+
   const handleAdjustDelta = (item: InventoryItem, step: number) => {
     const currentDelta = pendingDeltas[item.id] || 0;
-    const newDelta = Math.round((currentDelta + step) * 100) / 100;
+    const newDelta = Math.round((currentDelta + step + Number.EPSILON) * 1000) / 1000;
 
     // Cegah stok akhir kurang dari 0
     if (item.stok + newDelta < 0) return;
@@ -158,7 +165,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     setItems((prev) =>
       prev.map((i) =>
         i.id === item.id
-          ? { ...i, stok: Math.max(0, Math.round((Number(i.stok) + delta) * 100) / 100) }
+          ? { ...i, stok: Math.max(0, Math.round((Number(i.stok) + delta + Number.EPSILON) * 1000) / 1000) }
           : i
       )
     );
@@ -391,7 +398,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
               ) : (
                 items.map((item) => {
                   const delta = pendingDeltas[item.id] || 0;
-                  const previewStok = Math.max(0, Math.round((Number(item.stok) + delta) * 100) / 100);
+                  const previewStok = Math.max(0, Math.round((Number(item.stok) + delta + Number.EPSILON) * 1000) / 1000);
                   const isMenipis = (delta ? previewStok : item.stok) <= item.stokMinimum;
                   return (
                     <tr key={item.id} className={`transition-colors ${delta ? 'bg-amber-50/40' : 'hover:bg-slate-50/80'}`}>
@@ -404,7 +411,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                       <td className="py-3 px-4 font-bold text-slate-700">
                         {delta !== 0 ? (
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-slate-400 line-through text-[11px]">{item.stok}</span>
+                            <span className="text-slate-400 line-through text-[11px]">{formatStok(item.stok)}</span>
                             <span className="text-slate-400 font-normal text-xs">➔</span>
                             <span
                               className={`px-1.5 py-0.5 rounded text-xs font-bold border ${
@@ -413,19 +420,19 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                                   : 'bg-rose-50 text-rose-700 border-rose-300'
                               }`}
                             >
-                              {previewStok} {item.satuan}
+                              {formatStok(previewStok)} {item.satuan}
                               <span className="text-[10px] ml-1 font-semibold opacity-80">
-                                ({delta > 0 ? `+${delta}` : delta})
+                                ({delta > 0 ? `+${formatStok(delta)}` : formatStok(delta)})
                               </span>
                             </span>
                           </div>
                         ) : (
                           <>
-                            {item.stok} <span className="text-slate-400 font-normal text-[11px]">{item.satuan}</span>
+                            {formatStok(item.stok)} <span className="text-slate-400 font-normal text-[11px]">{item.satuan}</span>
                           </>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-500">{item.stokMinimum} {item.satuan}</td>
+                      <td className="py-3 px-4 text-slate-500">{formatStok(item.stokMinimum)} {item.satuan}</td>
                       <td className="py-3 px-4">
                         {isMenipis ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/30 px-2 py-0.5 rounded">

@@ -41,8 +41,8 @@ export default function InventorySelectDropdown({
 
   const formatStok = (num: number) => {
     if (typeof num !== 'number' || isNaN(num)) return '0';
-    const rounded = Math.round(num * 100) / 100;
-    return rounded.toLocaleString('id-ID');
+    const rounded = Math.round((num + Number.EPSILON) * 1000) / 1000;
+    return rounded.toLocaleString('id-ID', { maximumFractionDigits: 3 });
   };
 
   // Position calculation for fixed rendering (prevents overflow clipping in table cells)

@@ -2045,8 +2045,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                           setBahanBakuList(newArr);
                                         }}
                                         min="0"
-                                        step="0.1"
-                                        placeholder="1"
+                                        step="any"
+                                        placeholder="1 (misal 0.02)"
                                         className="w-full px-2 py-1 text-xs border border-slate-200 rounded-lg outline-none focus:border-[#1E4648] font-bold text-slate-800"
                                       />
                                       <span className="text-[10px] font-semibold text-slate-500 shrink-0">
@@ -2116,14 +2116,14 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                               value={inventoryDeductionQty} 
                               onChange={(e) => setInventoryDeductionQty(e.target.value)} 
                               min="0" 
-                              step="0.1" 
+                              step="any" 
                               placeholder="1" 
-                              className="w-28 px-3 py-1.5 border border-orange-200 rounded-lg outline-none focus:border-orange-500 font-bold text-orange-900 bg-white text-xs" 
+                              className="w-32 px-3 py-1.5 border border-orange-200 rounded-lg outline-none focus:border-orange-500 font-bold text-orange-900 bg-white text-xs" 
                             />
                             <span className="text-xs font-semibold text-orange-800">{inventoryList.find(i => i.id === idInventory)?.satuan || 'unit'}</span>
                           </div>
                           <p className="text-[10px] text-orange-700 mt-1">
-                            Jumlah stok yang akan dikurangi setiap kali 1 {satuan || 'layanan'} dipesan.
+                            Jumlah stok yang dikurangi per 1 transaksi (contoh: <strong>0.02</strong> untuk 20 ml jika satuan liter, atau <strong>1</strong> porsi/sachet).
                           </p>
                         </div>
                       )}
