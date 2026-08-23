@@ -197,6 +197,44 @@ function generateLayananCode_(kategori, tipe) {
   return prefix + "-" + String(maxNum + 1).padStart(3, "0");
 }
 
+function findOrCreateInventoryByName_(nama, satuan, stokAwal, stokMin) {
+  if (!nama || String(nama).trim() === "") return "";
+  const sh = SS.getSheetByName(SHEET_INVENTORY);
+  if (!sh) return "";
+  const targetName = String(nama).trim().toLowerCase();
+  const rows = sh.getDataRange().getValues();
+  
+  // 1. Cek apakah barang dengan nama ini sudah ada di Master Inventory (cegah duplikasi)
+  for (let i = 1; i < rows.length; i++) {
+    const existingName = String(rows[i][1] || "").trim().toLowerCase();
+    if (existingName === targetName) {
+      return String(rows[i][0]).trim();
+    }
+  }
+  
+  // 2. Jika belum ada, buat baru di Sheet Inventory
+  const newId = generateId("INV");
+  sh.appendRow([
+    newId, 
+    String(nama).trim(), 
+    stokAwal !== undefined ? Number(stokAwal) : 0, 
+    satuan ? String(satuan).trim() : "pcs", 
+    stokMin !== undefined ? Number(stokMin) : 0, 
+    new Date()
+  ]);
+  
+  addAuditLog(
+    "System", 
+    "Auto Tambah Inventory", 
+    newId, 
+    "-", 
+    `Nama: ${nama}, Satuan: ${satuan || 'pcs'}`, 
+    `Otomatis dibuat saat penautan layanan ${nama}`
+  );
+  
+  return newId;
+}
+
 function tambahLayanan(data) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   const id = data.kode && String(data.kode).trim() ? String(data.kode).trim() : generateLayananCode_(data.kategori, data.tipe);
@@ -206,12 +244,7 @@ function tambahLayanan(data) {
   if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
     idInv = JSON.stringify(data.bahanBakuList);
   } else if (idInv === "auto") {
-    const invRes = tambahInventory({ nama: data.nama, stok: 0, satuan: data.satuan, stokMinimum: 0 });
-    if (invRes.success) {
-      idInv = invRes.id;
-    } else {
-      idInv = "";
-    }
+    idInv = findOrCreateInventoryByName_(data.nama, data.satuan, 0, 0);
   } else if (idInv === "none" || idInv === "NONE" || idInv === "-") {
     idInv = "";
   }
@@ -245,7 +278,7 @@ function tambahLayanan(data) {
     `Penambahan master produk ${data.nama}`
   );
 
-  return { success: true, id: id };
+  return { success: true, id: id, idInventory: idInv };
 }
 
 function importLayananBatch(items, actor) {
@@ -291,7 +324,13 @@ function importLayananBatch(items, actor) {
       }
 
       const pSteps = item.pipelineSteps ? (typeof item.pipelineSteps === 'string' ? item.pipelineSteps : JSON.stringify(item.pipelineSteps)) : "";
-      const idInv = item.idInventory && item.idInventory !== "none" ? item.idInventory : "";
+      let idInv = item.idInventory || "";
+      if (idInv === "auto") {
+        idInv = findOrCreateInventoryByName_(item.nama, item.satuan, 0, 0);
+      } else if (idInv === "none" || idInv === "NONE" || idInv === "-") {
+        idInv = "";
+      }
+      
       const aktif = item.aktif === false || item.aktif === "N" || item.aktif === "Non-Aktif" ? "N" : "Y";
       
       rowsToAppend.push([
@@ -321,8 +360,8 @@ function importLayananBatch(items, actor) {
       "Import Layanan Batch",
       "-",
       "-",
-      `Berhasil mengimpor ${rowsToAppend.length} produk layanan baru`,
-      "Import master data layanan CSV"
+      `Berhasil mengimpor ${rowsToAppend.length} produk`,
+      "Import master produk CSV"
     );
 
     return {
@@ -347,12 +386,7 @@ function updateLayanan(id, data) {
       if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
         idInv = JSON.stringify(data.bahanBakuList);
       } else if (idInv === "auto") {
-        const invRes = tambahInventory({ nama: data.nama, stok: 0, satuan: data.satuan, stokMinimum: 0 });
-        if (invRes.success) {
-          idInv = invRes.id;
-        } else {
-          idInv = "";
-        }
+        idInv = findOrCreateInventoryByName_(data.nama || rows[i][1], data.satuan || rows[i][3], 0, 0);
       } else if (idInv === "none" || idInv === "NONE" || idInv === "-") {
         idInv = "";
       }
@@ -389,10 +423,57 @@ function updateLayanan(id, data) {
         `Perubahan data layanan ${data.nama}`
       );
 
-      return { success: true, id: newId };
+      return { success: true, id: newId, idInventory: idInv };
     }
   }
   return { success: false, message: "Layanan tidak ditemukan" };
+}
+
+function pautkanInventoryLayanan(idLayanan, idInventory, actor) {
+  if (!idLayanan) return { success: false, message: "ID Layanan wajib diisi" };
+  const shL = SS.getSheetByName(SHEET_LAYANAN);
+  if (!shL) return { success: false, message: "Sheet Layanan tidak ditemukan" };
+  
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const rows = shL.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === idLayanan) {
+        let finalInvId = idInventory || "";
+        const namaLayanan = rows[i][1];
+        const satuanLayanan = rows[i][3];
+        
+        if (finalInvId === "auto") {
+          finalInvId = findOrCreateInventoryByName_(namaLayanan, satuanLayanan, 0, 0);
+        } else if (finalInvId === "none" || finalInvId === "NONE" || finalInvId === "-") {
+          finalInvId = "";
+        }
+        
+        shL.getRange(i + 1, 10).setValue(finalInvId);
+        SpreadsheetApp.flush();
+        
+        addAuditLog(
+          actor || "Manager",
+          "Pautkan Inventory Layanan",
+          idLayanan,
+          rows[i][9] || "Tanpa Stok",
+          finalInvId || "Tanpa Stok",
+          `Pautan stok layanan ${namaLayanan}`
+        );
+        
+        return {
+          success: true,
+          idLayanan: idLayanan,
+          idInventory: finalInvId,
+          message: finalInvId ? "Berhasil ditautkan ke stok" : "Kaitan stok dilepas"
+        };
+      }
+    }
+    return { success: false, message: "Layanan tidak ditemukan" };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function regenerateProductCodes() {

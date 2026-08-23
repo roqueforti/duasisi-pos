@@ -8,6 +8,14 @@ export interface LayananBahanBaku {
   tahap?: string;
 }
 
+export interface InventoryItem {
+  id: string;
+  nama: string;
+  stok: number;
+  satuan: string;
+  stokMinimum?: number;
+}
+
 export interface LayananItem {
   layanan: string;
   hargaSatuan: number;

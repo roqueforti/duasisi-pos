@@ -11,6 +11,7 @@ import SatuanInput from '@/components/SatuanInput';
 import { getIconComponent, getLayananStyleConfig, KategoriItem, PALETTE, ICON_OPTIONS } from '@/lib/categoryUtils';
 import { getStepIconComponent } from '@/components/LangkahView';
 import ImportProgressToast from '@/components/ImportProgressToast';
+import InventorySelectDropdown from '@/components/InventorySelectDropdown';
 
 export interface DropOffPriorityItem {
   id: string;
@@ -463,6 +464,52 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
   };
 
+  const handleQuickLinkInventory = async (idLayanan: string, newIdInv: string, productName: string) => {
+    try {
+      const res = await runBackend<{ success: boolean; idLayanan?: string; idInventory?: string; message?: string }>(
+        'pautkanInventoryLayanan',
+        idLayanan,
+        newIdInv
+      );
+
+      clearCache('getInventoryList');
+      clearCache('getLayananListAll');
+      clearCache('getLayananList');
+      clearCache('getDaftarLayanan');
+
+      await loadAllData(true);
+
+      const isAuto = newIdInv === 'auto';
+      const isUnlink = newIdInv === 'none' || !newIdInv;
+      if (isAuto) {
+        await showAlert(`Berhasil membuat item stok baru dan menautkannya ke "${productName}"!`, 'success');
+      } else if (isUnlink) {
+        await showAlert(`Pautan stok untuk "${productName}" telah dilepas.`, 'info');
+      } else {
+        const invObj = inventoryList.find(i => i.id === newIdInv);
+        await showAlert(`"${productName}" berhasil ditautkan ke stok "${invObj?.nama || newIdInv}"!`, 'success');
+      }
+    } catch (err: any) {
+      console.error(err);
+      try {
+        const item = layananList.find(l => l.id === idLayanan);
+        if (item) {
+          await runBackend('updateLayanan', idLayanan, {
+            ...item,
+            idInventory: newIdInv === 'none' ? '' : newIdInv
+          });
+          clearCache('getInventoryList');
+          clearCache('getLayananListAll');
+          clearCache('getLayananList');
+          await loadAllData(true);
+          await showAlert(`Pautan stok berhasil diperbarui!`, 'success');
+        }
+      } catch (fallbackErr: any) {
+        await showAlert('Gagal mengubah pautan stok: ' + (fallbackErr.message || String(fallbackErr)), 'error');
+      }
+    }
+  };
+
   const handleToggleAktif = async (id: string, isY: boolean) => {
     try {
       await runBackend('toggleAktifLayanan', id, !isY);
@@ -731,6 +778,18 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         const statusRaw = (getCol('Status', 'Aktif', 'status', 'aktif') || 'Aktif').toLowerCase();
         const aktifVal = statusRaw === 'aktif' || statusRaw === 'y' || statusRaw === 'true' || statusRaw === '1';
 
+        const rawInvCol = getCol('Inventory', 'idInventory', 'Barang Stok', 'Bahan', 'Stok', 'Item Stok');
+        let idInvToUse = 'none';
+        if (rawInvCol) {
+          const invColLower = rawInvCol.toLowerCase().trim();
+          if (invColLower === 'auto' || invColLower === 'otomatis' || invColLower === 'ya' || invColLower === 'y' || invColLower === 'true') {
+            idInvToUse = 'auto';
+          } else if (invColLower !== 'none' && invColLower !== 'tidak' && invColLower !== 'tanpa stok' && invColLower !== '-') {
+            const matchInv = inventoryList.find(i => i.id.toLowerCase() === invColLower || i.nama.toLowerCase() === invColLower);
+            idInvToUse = matchInv ? matchInv.id : 'auto';
+          }
+        }
+
         itemsToImport.push({
           kode: kode || undefined,
           nama,
@@ -742,7 +801,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
           satuan: satuanVal,
           icon: detectIcon(),
           tipe: tipeVal,
-          idInventory: 'none',
+          idInventory: idInvToUse,
           pipelineSteps: [],
           aktif: aktifVal ? 'Y' : 'N'
         });
@@ -1407,77 +1466,14 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         </td>
                         <td className="py-1.5 px-3" onClick={(e) => e.stopPropagation()}>
                           {(!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '') ? (
-                            <div className="flex items-center">
-                              <select
-                                value={pendingInventory[item.id] !== undefined ? pendingInventory[item.id] : (item.idInventory && item.idInventory !== 'none' ? item.idInventory : 'none')}
-                                onChange={(e) => {
-                                  setPendingInventory(prev => ({ ...prev, [item.id]: e.target.value }));
-                                }}
-                                className={`w-36 text-[10px] py-0.5 px-1.5 border rounded-lg outline-none cursor-pointer truncate font-bold ${
-                                  (pendingInventory[item.id] !== undefined ? pendingInventory[item.id] : (item.idInventory || 'none')) === 'none'
-                                    ? 'bg-slate-100 border-slate-300 text-slate-600'
-                                    : (pendingInventory[item.id] !== undefined ? pendingInventory[item.id] : item.idInventory) === 'auto'
-                                    ? 'bg-amber-50 border-amber-300 text-amber-800'
-                                    : 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                                }`}
-                              >
-                                <option value="none">Tanpa Stok</option>
-                                <option value="auto">+ Buat Baru di Stok</option>
-                                {inventoryList.map(inv => (
-                                  <option key={inv.id} value={inv.id}>
-                                    {inv.nama} (Stok: {inv.stok} {inv.satuan})
-                                  </option>
-                                ))}
-                              </select>
-                              {pendingInventory[item.id] !== undefined && pendingInventory[item.id] !== (item.idInventory || 'none') && (
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    const newVal = pendingInventory[item.id];
-                                    if (newVal === (item.idInventory || 'none')) {
-                                      setPendingInventory(prev => {
-                                        const newObj = { ...prev };
-                                        delete newObj[item.id];
-                                        return newObj;
-                                      });
-                                      return;
-                                    }
-                                    
-                                    setLoading(true);
-                                    try {
-                                      await runBackend('updateLayanan', item.id, {
-                                        ...item,
-                                        tipe: '',
-                                        idInventory: newVal === 'none' ? 'none' : newVal
-                                      });
-                                      clearCache('getInventoryList');
-                                      clearCache('getLayananListAll');
-                                      clearCache('getDaftarLayanan');
-                                      await loadInventory();
-                                      await loadProduk();
-                                      setPendingInventory(prev => {
-                                        const newObj = { ...prev };
-                                        delete newObj[item.id];
-                                        return newObj;
-                                      });
-                                      await showAlert(
-                                        newVal === 'none'
-                                          ? 'Pautan stok dilepas. Produk ini tidak akan mengubah stok item.'
-                                          : 'Pautan inventory berhasil disimpan!',
-                                        'success'
-                                      );
-                                    } catch (err: any) {
-                                      await showAlert('Gagal: ' + (err.message || String(err)), 'error');
-                                    } finally {
-                                      setLoading(false);
-                                    }
-                                  }}
-                                  className="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#1E4648] text-white hover:bg-[#153233] transition shadow-xs cursor-pointer"
-                                >
-                                  Simpan
-                                </button>
-                              )}
-                            </div>
+                            <InventorySelectDropdown
+                              currentId={item.idInventory}
+                              productName={item.nama}
+                              productSatuan={item.satuan}
+                              inventoryList={inventoryList}
+                              onSelect={(newId) => handleQuickLinkInventory(item.id, newId, item.nama)}
+                              size="sm"
+                            />
                           ) : (
                             <span className="text-slate-300 text-xs">-</span>
                           )}
@@ -2087,10 +2083,12 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                     <div className="space-y-3">
                       <div>
                         <label className="block font-semibold text-slate-700 mb-1 text-xs">Pautkan ke Stok Inventory (Opsional)</label>
-                        <select 
-                          value={idInventory || 'none'} 
-                          onChange={(e) => {
-                            const newId = e.target.value;
+                        <InventorySelectDropdown
+                          currentId={idInventory || 'none'}
+                          productName={nama || 'Produk'}
+                          productSatuan={satuan}
+                          inventoryList={inventoryList}
+                          onSelect={(newId) => {
                             setIdInventory(newId);
                             if (newId && newId !== 'none' && newId !== 'auto') {
                               const inv = inventoryList.find(i => i.id === newId);
@@ -2098,18 +2096,12 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                 setSatuan(inv.satuan);
                               }
                             }
-                          }} 
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#1E4648] text-xs font-semibold"
-                        >
-                          <option value="none">Tidak Ada (Tanpa Pengurangan Stok)</option>
-                          <option value="auto">+ Buat Item Baru di Inventory Otomatis</option>
-                          {inventoryList.map(inv => (
-                            <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
-                          ))}
-                        </select>
-                        <p className="text-[10px] text-slate-400 mt-1">
+                          }}
+                          size="md"
+                        />
+                        <p className="text-[10px] text-slate-400 mt-1.5">
                           {idInventory === 'none' || !idInventory
-                            ? 'Pilihan "Tidak Ada" memastikan transaksi produk ini tidak mengubah / memotong stok bahan.'
+                            ? 'Pilihan "Tanpa Stok" memastikan transaksi produk ini tidak mengubah / memotong stok bahan.'
                             : idInventory === 'auto'
                             ? 'Sistem akan otomatis membuat item baru di daftar inventory.'
                             : `Terpaut dengan stok ${inventoryList.find(i => i.id === idInventory)?.nama}.`}
