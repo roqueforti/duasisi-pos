@@ -9,6 +9,7 @@ import { maskPhone, eNotaUrl as buildENotaUrl, formatWaPhone } from '@/lib/utils
 import { generateWhatsAppReceiptFromTx } from '@/lib/whatsappUtils';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import PrinterModal from '@/components/PrinterModal';
+import ImportProgressToast from '@/components/ImportProgressToast';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 
@@ -22,6 +23,14 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   const [txList, setTxList] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<Transaksi | null>(null);
+
+  // Import CSV Toast Progress State
+  const [isImporting, setIsImporting] = useState(false);
+  const [importFileName, setImportFileName] = useState('');
+  const [importProgressText, setImportProgressText] = useState('');
+  const [importProgressPercent, setImportProgressPercent] = useState(0);
+  const [importIsComplete, setImportIsComplete] = useState(false);
+  const [importIsError, setImportIsError] = useState(false);
 
   // Bluetooth Thermal Printer Modal State
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState<boolean>(false);
@@ -324,29 +333,54 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   const handleImportTransaksiCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const currentFileName = file.name;
     e.target.value = '';
     try {
+      setIsImporting(true);
+      setImportFileName(currentFileName);
+      setImportProgressPercent(15);
+      setImportProgressText('Membaca berkas CSV transaksi...');
+      setImportIsComplete(false);
+      setImportIsError(false);
+
       const text = await readFileAsText(file);
       const rows = parseCSV(text);
       if (rows.length === 0) {
+        setImportIsError(true);
+        setImportProgressText('File CSV kosong atau format tidak sesuai.');
         await showAlert('File CSV kosong atau format tidak sesuai.', 'warning');
+        setTimeout(() => setIsImporting(false), 3000);
         return;
       }
-      setLoading(true);
+
+      setImportProgressPercent(45);
+      setImportProgressText(`Menyimpan ${rows.length} transaksi ke database...`);
+
       const res = await runBackend<{ success: boolean; importedCount: number; failedCount: number; errors?: string[]; message?: string }>(
         'importTransaksiBatch',
         rows
       );
       if (!res?.success) throw new Error(res?.message || 'Gagal memproses import transaksi');
+
+      setImportProgressPercent(90);
+      setImportProgressText('Memperbarui data riwayat...');
       clearCache('getTransaksiList');
       clearCache('getLaporanRange');
-      await showAlert(`Import selesai: ${res.importedCount} transaksi berhasil dimasukkan${res.failedCount > 0 ? `, ${res.failedCount} gagal` : ''}.`, 'success');
-      loadRiwayat();
-    } catch (err) {
+      await loadRiwayat();
+
+      setImportProgressPercent(100);
+      setImportIsComplete(true);
+      setImportProgressText(`Selesai! ${res.importedCount} transaksi berhasil dimasukkan.`);
+
+      setTimeout(() => {
+        setIsImporting(false);
+      }, 4000);
+    } catch (err: any) {
       console.error(err);
+      setImportIsError(true);
+      setImportProgressText(`Gagal: ${err?.message || String(err)}`);
       await showAlert(err instanceof Error ? err.message : 'Gagal import transaksi.', 'error');
-    } finally {
-      setLoading(false);
+      setTimeout(() => setIsImporting(false), 4000);
     }
   };
 
@@ -1180,6 +1214,18 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
         onClose={() => setIsPrinterModalOpen(false)}
         tx={txForPrintModal}
         printType="struk"
+      />
+
+      {/* Google Drive Style Floating Progress Bar (Pojok Kanan Bawah) */}
+      <ImportProgressToast
+        isOpen={isImporting}
+        title="Mengimpor Data Transaksi"
+        fileName={importFileName || 'transaksi.csv'}
+        statusText={importProgressText}
+        progressPercent={importProgressPercent}
+        isComplete={importIsComplete}
+        isError={importIsError}
+        onClose={() => setIsImporting(false)}
       />
     </div>
   );

@@ -248,6 +248,93 @@ function tambahLayanan(data) {
   return { success: true, id: id };
 }
 
+function importLayananBatch(items, actor) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return { success: false, message: "Data produk layanan kosong." };
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = SS.getSheetByName(SHEET_LAYANAN);
+    if (!sh) return { success: false, message: "Sheet Layanan tidak ditemukan." };
+    
+    if (sh.getMaxColumns() < 13) {
+      sh.insertColumnsAfter(sh.getMaxColumns(), 13 - sh.getMaxColumns());
+    }
+
+    const currentRows = sh.getDataRange().getValues();
+    const prefixCounters = {};
+    for (let i = 1; i < currentRows.length; i++) {
+      const code = String(currentRows[i][0] || "").trim();
+      const parts = code.split("-");
+      if (parts.length >= 2) {
+        const prefix = parts.slice(0, parts.length - 1).join("-");
+        const num = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(num)) {
+          if (!prefixCounters[prefix] || num > prefixCounters[prefix]) {
+            prefixCounters[prefix] = num;
+          }
+        }
+      }
+    }
+
+    const rowsToAppend = [];
+    items.forEach(function(item) {
+      const kat = item.kategori || "Self Service";
+      const tip = item.tipe !== undefined ? item.tipe : "SelfService";
+      const prefix = getProductPrefix_(kat, tip);
+      
+      let id = item.kode && String(item.kode).trim() ? String(item.kode).trim() : "";
+      if (!id) {
+        prefixCounters[prefix] = (prefixCounters[prefix] || 0) + 1;
+        id = prefix + "-" + String(prefixCounters[prefix]).padStart(3, "0");
+      }
+
+      const pSteps = item.pipelineSteps ? (typeof item.pipelineSteps === 'string' ? item.pipelineSteps : JSON.stringify(item.pipelineSteps)) : "";
+      const idInv = item.idInventory && item.idInventory !== "none" ? item.idInventory : "";
+      const aktif = item.aktif === false || item.aktif === "N" || item.aktif === "Non-Aktif" ? "N" : "Y";
+      
+      rowsToAppend.push([
+        id,
+        item.nama,
+        Number(item.harga) || 0,
+        item.satuan || (tip === "FullService" ? "kg" : "paket"),
+        item.icon || "🧺",
+        aktif,
+        tip,
+        pSteps,
+        kat,
+        idInv,
+        Number(item.hargaModal) || 0,
+        Number(item.inventoryDeductionQty) || 1,
+        item.kategoriDropOff || (tip === "FullService" || kat.toLowerCase().includes("drop") ? (item.subKategori || "Reguler") : "")
+      ]);
+    });
+
+    if (rowsToAppend.length > 0) {
+      const lastRow = sh.getLastRow();
+      sh.getRange(lastRow + 1, 1, rowsToAppend.length, 13).setValues(rowsToAppend);
+    }
+
+    addAuditLog(
+      actor || "Manager",
+      "Import Layanan Batch",
+      "-",
+      "-",
+      `Berhasil mengimpor ${rowsToAppend.length} produk layanan baru`,
+      "Import master data layanan CSV"
+    );
+
+    return {
+      success: true,
+      importedCount: rowsToAppend.length,
+      message: `Berhasil mengimpor ${rowsToAppend.length} produk layanan.`
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function updateLayanan(id, data) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   const rows = sh.getDataRange().getValues();
@@ -345,6 +432,95 @@ function hapusLayanan(id, actor) {
     }
   }
   return false;
+}
+
+function batchHapusLayanan(ids, actor) {
+  if (!Array.isArray(ids) || ids.length === 0) return { success: false, message: "ID layanan kosong" };
+  const sh = SS.getSheetByName(SHEET_LAYANAN);
+  if (!sh) return { success: false, message: "Sheet Layanan tidak ditemukan" };
+  
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const rows = sh.getDataRange().getValues();
+    const idSet = new Set(ids.map(id => String(id).trim()));
+    
+    let deletedCount = 0;
+    for (let i = rows.length - 1; i >= 1; i--) {
+      const rowId = String(rows[i][0]).trim();
+      if (idSet.has(rowId)) {
+        const nama = rows[i][1];
+        sh.deleteRow(i + 1);
+        deletedCount++;
+        addAuditLog(actor || "Manager", "Hapus Layanan Massal", rowId, `Nama: ${nama}`, "-", `Hapus massal produk ${nama}`);
+      }
+    }
+    SpreadsheetApp.flush();
+    return { success: true, deletedCount: deletedCount };
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function batchToggleAktifLayanan(ids, aktif, actor) {
+  if (!Array.isArray(ids) || ids.length === 0) return { success: false, message: "ID layanan kosong" };
+  const sh = SS.getSheetByName(SHEET_LAYANAN);
+  if (!sh) return { success: false, message: "Sheet Layanan tidak ditemukan" };
+  
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const rows = sh.getDataRange().getValues();
+    const idSet = new Set(ids.map(id => String(id).trim()));
+    const val = aktif ? "Y" : "N";
+    
+    let updatedCount = 0;
+    for (let i = 1; i < rows.length; i++) {
+      const rowId = String(rows[i][0]).trim();
+      if (idSet.has(rowId)) {
+        sh.getRange(i + 1, 6).setValue(val);
+        updatedCount++;
+      }
+    }
+    SpreadsheetApp.flush();
+    addAuditLog(actor || "Manager", "Toggle Status Layanan Massal", ids.join(", "), "-", `Status diubah ke ${val} (${updatedCount} item)`, `Ubah status massal`);
+    return { success: true, updatedCount: updatedCount };
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function batchUbahKategoriLayanan(ids, kategoriBaru, actor) {
+  if (!Array.isArray(ids) || ids.length === 0 || !kategoriBaru) return { success: false, message: "Parameter tidak valid" };
+  const sh = SS.getSheetByName(SHEET_LAYANAN);
+  if (!sh) return { success: false, message: "Sheet Layanan tidak ditemukan" };
+  
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    const rows = sh.getDataRange().getValues();
+    const idSet = new Set(ids.map(id => String(id).trim()));
+    
+    let updatedCount = 0;
+    for (let i = 1; i < rows.length; i++) {
+      const rowId = String(rows[i][0]).trim();
+      if (idSet.has(rowId)) {
+        sh.getRange(i + 1, 9).setValue(kategoriBaru);
+        updatedCount++;
+      }
+    }
+    SpreadsheetApp.flush();
+    addAuditLog(actor || "Manager", "Ubah Kategori Layanan Massal", ids.join(", "), "-", `Kategori diubah ke ${kategoriBaru} (${updatedCount} item)`, `Ubah kategori massal`);
+    return { success: true, updatedCount: updatedCount };
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ============================================================
@@ -495,6 +671,54 @@ function tambahInventory(data) {
   );
   
   return { success: true, id: id };
+}
+
+function importInventoryBatch(items, actor) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return { success: false, message: "Data inventory kosong." };
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = SS.getSheetByName(SHEET_INVENTORY);
+    if (!sh) return { success: false, message: "Sheet Inventory tidak ditemukan." };
+
+    const rowsToAppend = [];
+    const now = new Date();
+    items.forEach(function(item) {
+      const id = generateId("INV");
+      rowsToAppend.push([
+        id,
+        item.nama,
+        Number(item.stok) || 0,
+        item.satuan || "pcs",
+        Number(item.stokMinimum) || 0,
+        now
+      ]);
+    });
+
+    if (rowsToAppend.length > 0) {
+      const lastRow = sh.getLastRow();
+      sh.getRange(lastRow + 1, 1, rowsToAppend.length, 6).setValues(rowsToAppend);
+    }
+
+    addAuditLog(
+      actor || "Manager",
+      "Import Inventory Batch",
+      "-",
+      "-",
+      `Berhasil mengimpor ${rowsToAppend.length} item inventory`,
+      "Import master data inventory CSV"
+    );
+
+    return {
+      success: true,
+      importedCount: rowsToAppend.length,
+      message: `Berhasil mengimpor ${rowsToAppend.length} barang stok.`
+    };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function updateInventoryItem(id, data) {

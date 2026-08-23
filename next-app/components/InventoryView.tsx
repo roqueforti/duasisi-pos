@@ -8,6 +8,7 @@ import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import SatuanInput from '@/components/SatuanInput';
+import ImportProgressToast from '@/components/ImportProgressToast';
 
 interface InventoryItem {
   id: string;
@@ -209,33 +210,104 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     ));
   };
 
+  const [isImporting, setIsImporting] = useState(false);
+  const [importFileName, setImportFileName] = useState('');
+  const [importProgressText, setImportProgressText] = useState('');
+  const [importProgressPercent, setImportProgressPercent] = useState(0);
+  const [importIsComplete, setImportIsComplete] = useState(false);
+  const [importIsError, setImportIsError] = useState(false);
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const currentFileName = file.name;
     e.target.value = '';
     try {
+      setIsImporting(true);
+      setImportFileName(currentFileName);
+      setImportProgressPercent(15);
+      setImportProgressText('Membaca berkas CSV...');
+      setImportIsComplete(false);
+      setImportIsError(false);
+
       const text = await readFileAsText(file);
       const rows = parseCSV(text);
-      if (rows.length === 0) { await showAlert('File CSV kosong atau format salah.', 'warning'); return; }
-      let success = 0, fail = 0;
-      for (const row of rows) {
-        const nama = row['Nama Barang'] || row['nama'] || '';
-        if (!nama.trim()) { fail++; continue; }
-        try {
-          await runBackend('tambahInventory', {
-            nama: nama.trim(),
-            stok: Number(row['Stok'] || row['stok']) || 0,
-            satuan: (row['Satuan'] || row['satuan'] || 'pcs').trim(),
-            stokMinimum: Number(row['Stok Minimum'] || row['stok_minimum']) || 0,
-          });
-          success++;
-        } catch { fail++; }
+      if (rows.length === 0) {
+        setImportIsError(true);
+        setImportProgressText('File CSV kosong atau format salah.');
+        await showAlert('File CSV kosong atau format salah.', 'warning');
+        setTimeout(() => setIsImporting(false), 3000);
+        return;
       }
+      
+      setImportProgressPercent(35);
+      setImportProgressText(`Memvalidasi ${rows.length} baris barang stok...`);
+
+      const itemsToImport: any[] = [];
+      let fail = 0;
+
+      for (const row of rows) {
+        const nama = row['Nama Barang'] || row['nama'] || row['Nama'] || '';
+        if (!nama.trim()) { fail++; continue; }
+        itemsToImport.push({
+          nama: nama.trim(),
+          stok: Number(row['Stok'] || row['stok'] || row['Jumlah']) || 0,
+          satuan: (row['Satuan'] || row['satuan'] || 'pcs').trim(),
+          stokMinimum: Number(row['Stok Minimum'] || row['stok_minimum'] || row['Stok Min']) || 0,
+        });
+      }
+
+      if (itemsToImport.length === 0) {
+        setImportIsError(true);
+        setImportProgressText('Tidak ada data barang valid untuk diimpor.');
+        await showAlert('Tidak ada data barang yang valid untuk diimpor.', 'warning');
+        setTimeout(() => setIsImporting(false), 3000);
+        return;
+      }
+
+      setImportProgressPercent(60);
+      setImportProgressText(`Menyimpan ${itemsToImport.length} barang ke database...`);
+      let success = 0;
+
+      try {
+        const res = await runBackend<{ success: boolean; importedCount?: number; message?: string }>('importInventoryBatch', itemsToImport);
+        if (res && res.success) {
+          success = res.importedCount || itemsToImport.length;
+        } else {
+          throw new Error(res?.message || 'Gagal import batch');
+        }
+      } catch {
+        for (let i = 0; i < itemsToImport.length; i++) {
+          const item = itemsToImport[i];
+          const pct = 60 + Math.round(((i + 1) / itemsToImport.length) * 30);
+          setImportProgressPercent(pct);
+          setImportProgressText(`Menyimpan ${i + 1}/${itemsToImport.length}: ${item.nama}`);
+          try {
+            await runBackend('tambahInventory', item);
+            success++;
+          } catch {
+            fail++;
+          }
+        }
+      }
+
+      setImportProgressPercent(90);
+      setImportProgressText('Menyinkronkan data stok...');
       clearCache('getInventoryList');
       loadInventory();
-      await showAlert(`Import selesai: ${success} berhasil${fail > 0 ? `, ${fail} gagal` : ''}.`, 'success');
-    } catch (err) {
-      await showAlert('Gagal membaca file CSV.', 'error');
+
+      setImportProgressPercent(100);
+      setImportIsComplete(true);
+      setImportProgressText(`Selesai! ${success} barang berhasil disimpan.`);
+
+      setTimeout(() => {
+        setIsImporting(false);
+      }, 4000);
+    } catch (err: any) {
+      setImportIsError(true);
+      setImportProgressText(`Gagal: ${err?.message || String(err)}`);
+      await showAlert(`Gagal memproses file CSV: ${err?.message || String(err)}`, 'error');
+      setTimeout(() => setIsImporting(false), 4000);
     }
   };
 
@@ -562,6 +634,18 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
           </div>
         </div>
       )}
+
+      {/* Google Drive Style Floating Progress Bar (Pojok Kanan Bawah) */}
+      <ImportProgressToast
+        isOpen={isImporting}
+        title="Mengimpor Data Stok"
+        fileName={importFileName || 'inventory.csv'}
+        statusText={importProgressText}
+        progressPercent={importProgressPercent}
+        isComplete={importIsComplete}
+        isError={importIsError}
+        onClose={() => setIsImporting(false)}
+      />
     </div>
   );
 }

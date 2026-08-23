@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown, Sparkles, Shirt, Clock, Flame, Star, Layers, Delete, Search, Users } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown, Sparkles, Shirt, Clock, Flame, Star, Layers, Delete, Search, Users, Loader2, CheckCircle, XCircle, CheckSquare, Square } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import { UserRole, LayananBahanBaku } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import SatuanInput from '@/components/SatuanInput';
-import { getIconComponent, KategoriItem, PALETTE, ICON_OPTIONS } from '@/lib/categoryUtils';
+import { getIconComponent, getLayananStyleConfig, KategoriItem, PALETTE, ICON_OPTIONS } from '@/lib/categoryUtils';
 import { getStepIconComponent } from '@/components/LangkahView';
+import ImportProgressToast from '@/components/ImportProgressToast';
 
 export interface DropOffPriorityItem {
   id: string;
@@ -96,10 +97,21 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
   const [promoList, setPromoList] = useState<PromoVoucher[]>(defaultPromos);
   const [loading, setLoading] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importFileName, setImportFileName] = useState('');
+  const [importProgressText, setImportProgressText] = useState('');
+  const [importProgressPercent, setImportProgressPercent] = useState(0);
+  const [importIsComplete, setImportIsComplete] = useState(false);
+  const [importIsError, setImportIsError] = useState(false);
   const [filterKategori, setFilterKategori] = useState<string>('Semua');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortField, setSortField] = useState<'kategori' | 'nama' | 'kode' | 'harga' | 'tipe'>('kategori');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Checkbox & Bulk Actions State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
+  const [bulkTargetCategory, setBulkTargetCategory] = useState('');
 
   const handleHeaderSort = (field: 'kategori' | 'nama' | 'kode' | 'harga' | 'tipe') => {
     if (sortField === field) {
@@ -165,17 +177,76 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   // Pending Inventory Linking
   const [pendingInventory, setPendingInventory] = useState<Record<string, string>>({});
 
-  const loadProduk = async () => {
+  const loadAllData = useCallback(async (forceFresh = false) => {
     setLoading(true);
+    if (forceFresh) {
+      clearCache('getLayananListAll');
+      clearCache('getLayananList');
+      clearCache('getKategoriList');
+      clearCache('getInventoryList');
+      clearCache('getPromoList');
+      clearCache('getPoinConfig');
+      clearCache('getPriorityConfig');
+      clearCache('getPipelineConfigData');
+    }
     try {
-      const data = await runBackend<LayananItemBackend[]>('getLayananListAll');
-      if (Array.isArray(data)) setLayananList(data);
+      const [layData, katData, invData, promoData, poinData, priorityData, pipeData] = await Promise.all([
+        runBackend<LayananItemBackend[]>('getLayananListAll').catch(() => []),
+        runBackend<KategoriItem[]>('getKategoriList').catch(() => []),
+        runBackend<InventoryItem[]>('getInventoryList').catch(() => []),
+        runBackend<PromoVoucher[]>('getPromoList').catch(() => []),
+        runBackend<{ rate: number }>('getPoinConfig').catch(() => null),
+        runBackend<DropOffPriorityItem[]>('getPriorityConfig').catch(() => null),
+        runBackend<CustomPipelineStep[]>('getPipelineConfigData').catch(() => []),
+      ]);
+
+      if (Array.isArray(katData)) {
+        setKategoriList(katData.filter(k => k.aktif === 'Y'));
+      }
+      if (Array.isArray(layData)) {
+        setLayananList(layData);
+      }
+      if (Array.isArray(invData)) {
+        setInventoryList(invData);
+      }
+      if (Array.isArray(promoData) && promoData.length > 0) {
+        setPromoList(promoData);
+      }
+      if (poinData && poinData.rate) {
+        setPoinRate(poinData.rate.toString());
+      }
+      if (Array.isArray(priorityData) && priorityData.length > 0) {
+        setDropOffCategories(priorityData.map(d => ({
+          id: d.id || `do-${Date.now()}-${Math.random()}`,
+          nama: d.nama,
+          durasiJam: Number(d.durasiJam || (d as any).sla || 24),
+          icon: d.icon || 'Clock',
+          warna: d.warna || 'bg-teal-100 text-teal-800 border-teal-300',
+          keterangan: d.keterangan || '',
+          aktif: d.aktif !== false
+        })));
+      }
+      if (Array.isArray(pipeData)) {
+        setMasterPipelineSteps(pipeData);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Gagal memuat master data:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const loadProduk = useCallback(() => loadAllData(false), [loadAllData]);
+  const loadKategori = useCallback(() => loadAllData(false), [loadAllData]);
+  const loadInventory = useCallback(() => loadAllData(false), [loadAllData]);
+  const loadPromo = useCallback(() => loadAllData(false), [loadAllData]);
+  const loadPoinConfig = useCallback(() => loadAllData(false), [loadAllData]);
+  const loadDropOffCategories = useCallback(() => loadAllData(false), [loadAllData]);
+  const loadMasterPipelineSteps = useCallback(() => loadAllData(false), [loadAllData]);
+
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
 
   const handleRegenerateCodes = async () => {
     const isConfirmed = await showConfirm('Sesuaikan seluruh kode produk/layanan berdasarkan kategori dan tipenya (contoh: SS-001, DO-001, ADD-001, RTL-001)?');
@@ -187,7 +258,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         clearCache('getLayananList');
         clearCache('getLayananListAll');
         await showAlert(res.message || 'Kode produk berhasil disesuaikan menurut kategori & tipe!', 'success');
-        await loadProduk();
+        await loadAllData(true);
         return;
       }
 
@@ -215,51 +286,12 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       clearCache('getLayananList');
       clearCache('getLayananListAll');
       await showAlert('Kode produk berhasil disesuaikan menurut kategori & tipe!', 'success');
-      await loadProduk();
+      await loadAllData(true);
     } catch (err: any) {
       console.error(err);
       await showAlert('Gagal menyesuaikan kode produk: ' + (err?.message || String(err)), 'error');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadInventory = async () => {
-    try {
-      const data = await runBackend<InventoryItem[]>('getInventoryList');
-      if (Array.isArray(data)) setInventoryList(data);
-    } catch (err) {
-      console.error('Gagal memuat inventory:', err);
-    }
-  };
-
-  const loadPoinConfig = async () => {
-    try {
-      const config = await runBackend<{rate: number}>('getPoinConfig');
-      if (config) {
-        setPoinRate(config.rate.toString());
-      }
-    } catch (err) {
-      console.error('Gagal memuat konfigurasi poin:', err);
-    }
-  };
-
-  const loadDropOffCategories = async () => {
-    try {
-      const data = await runBackend<DropOffPriorityItem[]>('getPriorityConfig');
-      if (Array.isArray(data) && data.length > 0) {
-        setDropOffCategories(data.map(d => ({
-          id: d.id || `do-${Date.now()}-${Math.random()}`,
-          nama: d.nama,
-          durasiJam: Number(d.durasiJam || (d as any).sla || 24),
-          icon: d.icon || 'Clock',
-          warna: d.warna || 'bg-teal-100 text-teal-800 border-teal-300',
-          keterangan: d.keterangan || '',
-          aktif: d.aktif !== false
-        })));
-      }
-    } catch (err) {
-      console.error('Gagal memuat kategori drop off:', err);
     }
   };
 
@@ -353,45 +385,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       setLoading(false);
     }
   };
-
-  const loadMasterPipelineSteps = async () => {
-    try {
-      const data = await runBackend<CustomPipelineStep[]>('getPipelineConfigData');
-      if (Array.isArray(data)) {
-        setMasterPipelineSteps(data);
-      }
-    } catch (err) {
-      console.error('Gagal memuat master langkah:', err);
-    }
-  };
-
-  const loadPromo = async () => {
-    try {
-      const data = await runBackend<PromoVoucher[]>('getPromoList');
-      if (Array.isArray(data) && data.length > 0) setPromoList(data);
-    } catch (err) {
-      console.error('Gagal memuat promo:', err);
-    }
-  };
-
-  const loadKategori = async () => {
-    try {
-      const data = await runBackend<KategoriItem[]>('getKategoriList');
-      if (Array.isArray(data)) setKategoriList(data.filter(k => k.aktif === 'Y'));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    loadProduk();
-    loadInventory();
-    loadPromo();
-    loadPoinConfig();
-    loadKategori();
-    loadDropOffCategories();
-    loadMasterPipelineSteps();
-  }, []);
 
   const handleOpenAdd = () => {
     setEditingId(null);
@@ -642,16 +635,32 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const handleImportProduk = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const currentFileName = file.name;
     e.target.value = '';
     try {
+      setIsImporting(true);
+      setImportFileName(currentFileName);
+      setImportProgressPercent(15);
+      setImportProgressText('Membaca berkas CSV...');
+      setImportIsComplete(false);
+      setImportIsError(false);
+
       const text = await readFileAsText(file);
       const rows = parseCSV(text);
       if (rows.length === 0) {
+        setImportIsError(true);
+        setImportProgressText('File CSV kosong atau format tidak sesuai.');
         await showAlert('File CSV kosong atau format tidak sesuai.', 'warning');
+        setTimeout(() => setIsImporting(false), 3000);
         return;
       }
 
-      let success = 0, fail = 0;
+      setImportProgressPercent(35);
+      setImportProgressText(`Memvalidasi ${rows.length} baris produk...`);
+
+      const itemsToImport: any[] = [];
+      let failCount = 0;
+
       for (const row of rows) {
         // Helper fleksibel untuk membaca kolom dengan berbagai variasi nama header
         const getCol = (...keys: string[]) => {
@@ -666,7 +675,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
         const nama = getCol('Nama Layanan', 'Nama Produk', 'nama', 'Nama');
         if (!nama) {
-          fail++;
+          failCount++;
           continue;
         }
 
@@ -718,45 +727,88 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
           if (k.includes('add') || k.includes('tambahan')) return '✨';
           return '🧺';
         };
-        const iconVal = detectIcon();
 
         const statusRaw = (getCol('Status', 'Aktif', 'status', 'aktif') || 'Aktif').toLowerCase();
         const aktifVal = statusRaw === 'aktif' || statusRaw === 'y' || statusRaw === 'true' || statusRaw === '1';
 
-        try {
-          const res = await runBackend<{ success: boolean; id?: string }>('tambahLayanan', {
-            kode: kode || undefined,
-            nama,
-            kategori,
-            kategoriDropOff: (tipeVal === 'FullService' || kategori.toLowerCase().includes('drop')) ? (subKategori || 'Reguler') : '',
-            harga: hargaVal,
-            hargaModal: hargaModalVal,
-            satuan: satuanVal,
-            icon: iconVal,
-            tipe: tipeVal,
-            idInventory: 'none', // Tanpa pengaitan stok inventory sesuai request
-            pipelineSteps: []
-          });
-
-          const createdId = res?.id || (typeof res === 'string' ? res : '');
-          if (createdId && !aktifVal) {
-            await runBackend('toggleAktifLayanan', createdId, false);
-          }
-          success++;
-        } catch {
-          fail++;
-        }
+        itemsToImport.push({
+          kode: kode || undefined,
+          nama,
+          kategori,
+          subKategori,
+          kategoriDropOff: (tipeVal === 'FullService' || kategori.toLowerCase().includes('drop')) ? (subKategori || 'Reguler') : '',
+          harga: hargaVal,
+          hargaModal: hargaModalVal,
+          satuan: satuanVal,
+          icon: detectIcon(),
+          tipe: tipeVal,
+          idInventory: 'none',
+          pipelineSteps: [],
+          aktif: aktifVal ? 'Y' : 'N'
+        });
       }
 
+      if (itemsToImport.length === 0) {
+        setImportIsError(true);
+        setImportProgressText('Tidak ada produk valid yang dapat diimpor.');
+        await showAlert('Tidak ada produk valid yang dapat diimpor dari file CSV.', 'warning');
+        setTimeout(() => setIsImporting(false), 3000);
+        return;
+      }
+
+      setImportProgressPercent(60);
+      setImportProgressText(`Menyimpan ${itemsToImport.length} produk ke database...`);
+
+      let importedCount = 0;
+      try {
+        // Coba jalur cepat batch import
+        const res = await runBackend<{ success: boolean; importedCount?: number; message?: string }>('importLayananBatch', itemsToImport);
+        if (res && res.success) {
+          importedCount = res.importedCount || itemsToImport.length;
+        } else {
+          throw new Error(res?.message || 'Gagal import batch');
+        }
+      } catch (batchErr) {
+        console.warn('Batch import gagal / belum tersedia, fallback ke mode sekuensial...', batchErr);
+        // Fallback sekuensial jika batch API belum terdeploy
+        let seqSuccess = 0;
+        for (let i = 0; i < itemsToImport.length; i++) {
+          const item = itemsToImport[i];
+          const pct = 60 + Math.round(((i + 1) / itemsToImport.length) * 30);
+          setImportProgressPercent(pct);
+          setImportProgressText(`Menyimpan produk ${i + 1}/${itemsToImport.length}: ${item.nama}`);
+          try {
+            const res = await runBackend<{ success: boolean; id?: string }>('tambahLayanan', item);
+            const createdId = res?.id || (typeof res === 'string' ? res : '');
+            if (createdId && item.aktif === 'N') {
+              await runBackend('toggleAktifLayanan', createdId, false);
+            }
+            seqSuccess++;
+          } catch {
+            failCount++;
+          }
+        }
+        importedCount = seqSuccess;
+      }
+
+      setImportProgressPercent(90);
+      setImportProgressText('Menyinkronkan data katalog...');
       clearCache('getLayananListAll');
       clearCache('getLayananList');
-      loadProduk();
-      await showAlert(
-        `Import data layanan selesai:\n✅ ${success} berhasil${fail > 0 ? `\n❌ ${fail} gagal` : ''}`,
-        success > 0 ? 'success' : 'warning'
-      );
-    } catch {
-      await showAlert('Gagal membaca file CSV.', 'error');
+      await loadAllData(true);
+
+      setImportProgressPercent(100);
+      setImportIsComplete(true);
+      setImportProgressText(`Selesai! ${importedCount} produk berhasil masuk database.`);
+
+      setTimeout(() => {
+        setIsImporting(false);
+      }, 4000);
+    } catch (err: any) {
+      setImportIsError(true);
+      setImportProgressText(`Gagal: ${err?.message || String(err)}`);
+      await showAlert(`Gagal memproses file CSV: ${err?.message || String(err)}`, 'error');
+      setTimeout(() => setIsImporting(false), 4000);
     }
   };
 
@@ -827,6 +879,145 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
       return 0;
     });
+
+  // Checkbox helpers & Bulk Action Handlers
+  const isAllSelected = filteredLayananList.length > 0 && filteredLayananList.every(item => selectedIds.has(item.id));
+  const isSomeSelected = filteredLayananList.some(item => selectedIds.has(item.id)) && !isAllSelected;
+
+  const handleToggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const next = new Set(selectedIds);
+      filteredLayananList.forEach(item => next.add(item.id));
+      setSelectedIds(next);
+    } else {
+      const next = new Set(selectedIds);
+      filteredLayananList.forEach(item => next.delete(item.id));
+      setSelectedIds(next);
+    }
+  };
+
+  const handleToggleSelectRow = (id: string, e?: React.MouseEvent | React.ChangeEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkToggleStatus = async (aktif: boolean) => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    const actionName = aktif ? 'mengaktifkan' : 'menonaktifkan';
+    const isConfirmed = await showConfirm(`Apakah Anda yakin ingin ${actionName} ${ids.length} layanan yang dipilih?`);
+    if (!isConfirmed) return;
+
+    setLoading(true);
+    try {
+      try {
+        await runBackend('batchToggleAktifLayanan', ids, aktif);
+      } catch (e) {
+        for (const id of ids) {
+          await runBackend('toggleAktifLayanan', id, aktif);
+        }
+      }
+      clearCache('getLayananListAll');
+      clearCache('getLayananList');
+      await loadAllData(true);
+      setSelectedIds(new Set());
+      await showAlert(`${ids.length} layanan berhasil di${aktif ? 'aktifkan' : 'nonaktifkan'}!`, 'success');
+    } catch (err: any) {
+      await showAlert(`Gagal mengubah status layanan: ${err?.message || String(err)}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkHapus = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    const isConfirmed = await showConfirm(
+      `⚠️ PERINGATAN: Apakah Anda yakin ingin menghapus ${ids.length} layanan terpilih secara permanen? Tindakan ini tidak dapat dibatalkan.`
+    );
+    if (!isConfirmed) return;
+
+    setLoading(true);
+    try {
+      try {
+        await runBackend('batchHapusLayanan', ids);
+      } catch (e) {
+        for (const id of ids) {
+          await runBackend('hapusLayanan', id);
+        }
+      }
+      clearCache('getLayananListAll');
+      clearCache('getLayananList');
+      await loadAllData(true);
+      setSelectedIds(new Set());
+      await showAlert(`${ids.length} layanan berhasil dihapus dari database!`, 'success');
+    } catch (err: any) {
+      await showAlert(`Gagal menghapus layanan: ${err?.message || String(err)}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkUbahKategori = async () => {
+    if (selectedIds.size === 0 || !bulkTargetCategory) return;
+    const ids = Array.from(selectedIds);
+    setLoading(true);
+    try {
+      try {
+        await runBackend('batchUbahKategoriLayanan', ids, bulkTargetCategory);
+      } catch (e) {
+        for (const id of ids) {
+          const item = layananList.find(l => l.id === id);
+          if (item) {
+            await runBackend('updateLayanan', id, { ...item, kategori: bulkTargetCategory });
+          }
+        }
+      }
+      clearCache('getLayananListAll');
+      clearCache('getLayananList');
+      await loadAllData(true);
+      setSelectedIds(new Set());
+      setShowBulkCategoryModal(false);
+      await showAlert(`Kategori ${ids.length} layanan berhasil diubah menjadi "${bulkTargetCategory}"!`, 'success');
+    } catch (err: any) {
+      await showAlert(`Gagal mengubah kategori: ${err?.message || String(err)}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkExport = () => {
+    if (selectedIds.size === 0) return;
+    const selectedItems = layananList.filter(l => selectedIds.has(l.id));
+    const headers = [
+      'Kode',
+      'Nama Layanan',
+      'Kategori',
+      'Sub Kategori (Drop Off)',
+      'Tipe Layanan',
+      'Harga Jual',
+      'Harga Modal',
+      'Satuan',
+      'Status'
+    ];
+    const rows = selectedItems.map(l => [
+      l.id || '',
+      l.nama || '',
+      l.kategori || 'Self Service',
+      l.kategoriDropOff || (l.tipe === 'FullService' ? 'Reguler' : ''),
+      l.tipe === 'FullService' ? 'FullService' : (l.tipe === 'SelfService' ? 'SelfService' : 'Bukan Layanan'),
+      l.harga || 0,
+      l.hargaModal || 0,
+      l.satuan || 'kg',
+      l.aktif === 'Y' ? 'Aktif' : 'Non-Aktif'
+    ]);
+    downloadCSV(`export_layanan_terpilih_${selectedItems.length}.csv`, toCSV(headers, rows));
+  };
 
   return (
     <div className="p-3 md:p-4 space-y-4 w-full">
@@ -923,6 +1114,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
               ))}
             </select>
 
+            <button
+              onClick={() => loadAllData(true)}
+              disabled={loading}
+              className="p-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition shadow-2xs cursor-pointer flex items-center justify-center disabled:opacity-50"
+              title="Refresh / Muat Ulang Data Layanan & Kategori"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#1E4648]' : ''}`} />
+            </button>
+
             {currentRole === 'MANAGER' && (
               <>
                 <button onClick={handleExportProduk} className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-xs font-semibold transition shadow-2xs flex items-center gap-1.5 cursor-pointer" title="Export Data Layanan yang ada ke CSV">
@@ -937,14 +1137,6 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                   <span>Import</span>
                   <input type="file" accept=".csv" className="hidden" onChange={handleImportProduk} />
                 </label>
-                <button
-                  onClick={handleRegenerateCodes}
-                  className="px-2.5 py-1.5 border border-teal-200 bg-teal-50/70 hover:bg-teal-100 text-[#1E4648] rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer"
-                  title="Sesuaikan Kode Produk Berdasarkan Kategori & Tipe (SS-xxx, DO-xxx, ADD-xxx, RTL-xxx)"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                  <span>Auto Kode Kategori</span>
-                </button>
                 <button
                   onClick={handleOpenAdd}
                   className="bg-[#1E4648] hover:bg-[#163536] text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-xs cursor-pointer"
@@ -971,313 +1163,417 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       </div>
 
       {activeSubTab === 'Produk' && (
-        <div className="bg-white rounded-xl border border-slate-200/90 overflow-hidden shadow-2xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider select-none">
-                  <th 
-                    onClick={() => handleHeaderSort('kode')}
-                    className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
-                    title="Klik untuk mengurutkan berdasarkan Kode"
+        <div className="space-y-3">
+          {/* Floating / Sticky Bulk Action Bar */}
+          {selectedIds.size > 0 && (
+            <div className="bg-[#1E4648] text-white p-2.5 px-4 rounded-xl flex items-center justify-between gap-3 shadow-md animate-in slide-in-from-top-2 duration-200 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="bg-white/20 text-white font-bold text-xs px-2.5 py-1 rounded-lg">
+                  {selectedIds.size} Layanan Terpilih
+                </span>
+                <span className="text-xs text-white/80 hidden sm:inline">• Aksi Cepat Massal</span>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleBulkToggleStatus(true)}
+                  className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  title="Aktifkan seluruh layanan terpilih"
+                >
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Aktifkan</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBulkToggleStatus(false)}
+                  className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  title="Nonaktifkan seluruh layanan terpilih"
+                >
+                  <XCircle className="w-3.5 h-3.5 text-rose-300" />
+                  <span>Nonaktifkan</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkTargetCategory(kategoriList[0]?.nama || 'Self Service');
+                    setShowBulkCategoryModal(true);
+                  }}
+                  className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  title="Ubah kategori seluruh layanan terpilih"
+                >
+                  <Tag className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Ubah Kategori</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkExport}
+                  className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  title="Export hanya layanan yang dipilih ke CSV"
+                >
+                  <Download className="w-3.5 h-3.5 text-teal-300" />
+                  <span>Export</span>
+                </button>
+                {currentRole === 'MANAGER' && (
+                  <button
+                    type="button"
+                    onClick={handleBulkHapus}
+                    className="px-2.5 py-1.5 bg-rose-500/80 hover:bg-rose-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                    title="Hapus seluruh layanan terpilih"
                   >
-                    <div className="flex items-center gap-1">
-                      <span>Kode</span>
-                      {sortField === 'kode' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    onClick={() => handleHeaderSort('nama')}
-                    className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
-                    title="Klik untuk mengurutkan berdasarkan Nama Layanan"
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>Nama Produk / Layanan</span>
-                      {sortField === 'nama' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    onClick={() => handleHeaderSort('kategori')}
-                    className={`py-2.5 px-3 cursor-pointer transition ${sortField === 'kategori' ? 'bg-teal-50/70 text-[#1E4648]' : 'hover:text-[#1E4648] hover:bg-slate-100/80'}`}
-                    title="Klik untuk mengurutkan berdasarkan Kategori (Bawaan)"
-                  >
-                    <div className="flex items-center gap-1 font-extrabold text-[#1E4648]">
-                      <span>Kategori</span>
-                      {sortField === 'kategori' ? (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />
-                      ) : (
-                        <ArrowUp className="w-3 h-3 opacity-30" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    onClick={() => handleHeaderSort('tipe')}
-                    className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
-                    title="Klik untuk mengurutkan berdasarkan Tipe"
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>Tipe</span>
-                      {sortField === 'tipe' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
-                      )}
-                    </div>
-                  </th>
-                  <th className="py-2.5 px-3">Inventory</th>
-                  <th className="py-2.5 px-3">Potongan Stok</th>
-                  {currentRole === 'MANAGER' && <th className="py-2.5 px-3">Modal & Profit</th>}
-                  <th 
-                    onClick={() => handleHeaderSort('harga')}
-                    className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
-                    title="Klik untuk mengurutkan berdasarkan Tarif Jual"
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>Tarif Jual</span>
-                      {sortField === 'harga' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
-                      )}
-                    </div>
-                  </th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, idx) => (
-                    <tr key={idx} className="animate-pulse">
-                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>
-                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-28" /></td>
-                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>
-                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-14" /></td>
-                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-20" /></td>
-                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-12" /></td>
-                      {currentRole === 'MANAGER' && <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>}
-                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>
-                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-10" /></td>
-                      <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-12 ml-auto" /></td>
-                    </tr>
-                  ))
-                ) : filteredLayananList.length === 0 ? (
-                  <tr><td colSpan={currentRole === 'MANAGER' ? 10 : 9} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
-                ) : (
-                  filteredLayananList.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50/70 transition">
-                      <td className="py-1.5 px-3 whitespace-nowrap">
-                        <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/80">
-                          {item.id}
-                        </span>
-                      </td>
-                      <td className="py-1.5 px-3 font-semibold text-slate-700 text-xs">
-                        {item.nama}
-                      </td>
-                      <td className="py-1.5 px-3 text-slate-500 font-medium whitespace-nowrap">
-                        {(() => {
-                          if (!item.kategori) return <span className="text-slate-300 text-xs">-</span>;
-                          const kat = kategoriList.find(k => k.nama.toLowerCase() === (item.kategori || '').toLowerCase());
-                          const KatIcon = kat ? getIconComponent(kat.icon) : Tag;
-                          return (
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 border shadow-2xs ${kat?.warna || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
-                              <KatIcon className="w-3 h-3" />
-                              <span>{item.kategori}</span>
-                            </span>
-                          );
-                        })()}
-                      </td>
-                      <td className="py-1.5 px-3 whitespace-nowrap">
-                        {item.tipe === 'FullService' || (item.kategori || '').toLowerCase().includes('drop') ? (
-                          <div className="inline-flex items-center gap-1.5">
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-50 text-[#1E4648] border border-teal-200">
-                              Drop Off
-                            </span>
-                            {item.kategoriDropOff && (
-                              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                                {item.kategoriDropOff}
-                              </span>
-                            )}
-                          </div>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(new Set())}
+                  className="p-1.5 hover:bg-white/20 text-white/70 hover:text-white rounded-lg transition cursor-pointer ml-1"
+                  title="Batalkan Pilihan"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white rounded-xl border border-slate-200/90 overflow-hidden shadow-2xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider select-none">
+                    <th className="w-10 py-2.5 px-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = isSomeSelected;
+                        }}
+                        onChange={(e) => handleToggleSelectAll(e.target.checked)}
+                        className="w-4 h-4 text-[#1E4648] rounded border-slate-300 focus:ring-[#1E4648] cursor-pointer"
+                        title={isAllSelected ? 'Batalkan pilih semua' : 'Pilih semua'}
+                      />
+                    </th>
+                    <th 
+                      onClick={() => handleHeaderSort('kode')}
+                      className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
+                      title="Klik untuk mengurutkan berdasarkan Kode"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Kode</span>
+                        {sortField === 'kode' && (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleHeaderSort('nama')}
+                      className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
+                      title="Klik untuk mengurutkan berdasarkan Nama Layanan"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Nama Produk / Layanan</span>
+                        {sortField === 'nama' && (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleHeaderSort('kategori')}
+                      className={`py-2.5 px-3 cursor-pointer transition ${sortField === 'kategori' ? 'bg-teal-50/70 text-[#1E4648]' : 'hover:text-[#1E4648] hover:bg-slate-100/80'}`}
+                      title="Klik untuk mengurutkan berdasarkan Kategori (Bawaan)"
+                    >
+                      <div className="flex items-center gap-1 font-extrabold text-[#1E4648]">
+                        <span>Kategori</span>
+                        {sortField === 'kategori' ? (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />
                         ) : (
-                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
-                            {!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'Bukan Layanan' : item.tipe}
+                          <ArrowUp className="w-3 h-3 opacity-30" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      onClick={() => handleHeaderSort('tipe')}
+                      className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
+                      title="Klik untuk mengurutkan berdasarkan Tipe"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Tipe</span>
+                        {sortField === 'tipe' && (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="py-2.5 px-3">Inventory</th>
+                    <th className="py-2.5 px-3">Potongan Stok</th>
+                    {currentRole === 'MANAGER' && <th className="py-2.5 px-3">Modal & Profit</th>}
+                    <th 
+                      onClick={() => handleHeaderSort('harga')}
+                      className="py-2.5 px-3 cursor-pointer hover:text-[#1E4648] hover:bg-slate-100/80 transition"
+                      title="Klik untuk mengurutkan berdasarkan Tarif Jual"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Tarif Jual</span>
+                        {sortField === 'harga' && (
+                          sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-[#1E4648]" /> : <ArrowDown className="w-3 h-3 text-[#1E4648]" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {loading ? (
+                    Array.from({ length: 5 }).map((_, idx) => (
+                      <tr key={idx} className="animate-pulse">
+                        <td className="py-2 px-3 text-center"><div className="w-4 h-4 bg-slate-100 rounded mx-auto" /></td>
+                        <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>
+                        <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-28" /></td>
+                        <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>
+                        <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-14" /></td>
+                        <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-20" /></td>
+                        <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-12" /></td>
+                        {currentRole === 'MANAGER' && <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>}
+                        <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-16" /></td>
+                        <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-10" /></td>
+                        <td className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-12 ml-auto" /></td>
+                      </tr>
+                    ))
+                  ) : filteredLayananList.length === 0 ? (
+                    <tr><td colSpan={currentRole === 'MANAGER' ? 11 : 10} className="py-8 text-center text-slate-400">Belum ada data layanan</td></tr>
+                  ) : (
+                    filteredLayananList.map((item) => (
+                      <tr 
+                        key={item.id} 
+                        onClick={() => handleToggleSelectRow(item.id)}
+                        className={`transition cursor-pointer ${
+                          selectedIds.has(item.id) 
+                            ? 'bg-teal-50/70 border-l-2 border-l-[#1E4648]' 
+                            : 'hover:bg-slate-50/70'
+                        }`}
+                      >
+                        <td className="py-1.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(item.id)}
+                            onChange={(e) => handleToggleSelectRow(item.id, e)}
+                            className="w-4 h-4 text-[#1E4648] rounded border-slate-300 focus:ring-[#1E4648] cursor-pointer"
+                          />
+                        </td>
+                        <td className="py-1.5 px-3 whitespace-nowrap">
+                          <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/80">
+                            {item.id}
                           </span>
-                        )}
-                      </td>
-                      <td className="py-1.5 px-3">
-                        {(!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '') ? (
-                          <div className="flex items-center">
-                            <select
-                              value={pendingInventory[item.id] !== undefined ? pendingInventory[item.id] : (item.idInventory && item.idInventory !== 'none' ? item.idInventory : 'none')}
-                              onChange={(e) => {
-                                setPendingInventory(prev => ({ ...prev, [item.id]: e.target.value }));
-                              }}
-                              className={`w-36 text-[10px] py-0.5 px-1.5 border rounded-lg outline-none cursor-pointer truncate font-bold ${
-                                (pendingInventory[item.id] !== undefined ? pendingInventory[item.id] : (item.idInventory || 'none')) === 'none'
-                                  ? 'bg-slate-100 border-slate-300 text-slate-600'
-                                  : (pendingInventory[item.id] !== undefined ? pendingInventory[item.id] : item.idInventory) === 'auto'
-                                  ? 'bg-blue-50 border-blue-300 text-blue-700'
-                                  : 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                              }`}
-                            >
-                              <option value="none">Tidak Ada (Tanpa Stok)</option>
-                              <option value="auto">+ Buat Baru Otomatis</option>
-                              {inventoryList.map(inv => (
-                                <option key={inv.id} value={inv.id}>{inv.nama} (Stok: {inv.stok} {inv.satuan})</option>
-                              ))}
-                            </select>
-                            
-                            {pendingInventory[item.id] !== undefined && pendingInventory[item.id] !== (item.idInventory || 'none') && (
-                              <button
-                                onClick={async () => {
-                                  const newVal = pendingInventory[item.id];
-                                  const isConfirmed = await showConfirm(
-                                    newVal === 'auto' 
-                                      ? 'Buat item stok baru secara otomatis untuk produk ini?' 
-                                      : newVal === 'none'
-                                      ? 'Hapus pautan inventory (produk ini tidak akan memotong stok)?'
-                                      : 'Ubah pautan inventory untuk produk ini?'
-                                  );
-                                  if (!isConfirmed) {
-                                    setPendingInventory(prev => {
-                                      const newObj = { ...prev };
-                                      delete newObj[item.id];
-                                      return newObj;
-                                    });
-                                    return;
-                                  }
-                                  
-                                  setLoading(true);
-                                  try {
-                                    await runBackend('updateLayanan', item.id, {
-                                      ...item,
-                                      tipe: '',
-                                      idInventory: newVal === 'none' ? 'none' : newVal
-                                    });
-                                    clearCache('getInventoryList');
-                                    clearCache('getLayananListAll');
-                                    clearCache('getDaftarLayanan');
-                                    await loadInventory();
-                                    await loadProduk();
-                                    setPendingInventory(prev => {
-                                      const newObj = { ...prev };
-                                      delete newObj[item.id];
-                                      return newObj;
-                                    });
-                                    await showAlert(
-                                      newVal === 'none'
-                                        ? 'Pautan stok dilepas. Produk ini tidak akan mengubah stok item.'
-                                        : 'Pautan inventory berhasil disimpan!',
-                                      'success'
-                                    );
-                                  } catch (err: any) {
-                                    await showAlert('Gagal: ' + (err.message || String(err)), 'error');
-                                  } finally {
-                                    setLoading(false);
-                                  }
-                                }}
-                                className="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#1E4648] text-white hover:bg-[#153233] transition shadow-xs cursor-pointer"
-                              >
-                                Simpan
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-300 text-xs">-</span>
-                        )}
-                      </td>
-                      <td className="py-1.5 px-3 whitespace-nowrap">
-                        {(item.tipe === 'FullService' || (item.kategori || '').toLowerCase().includes('drop')) && item.bahanBakuList && item.bahanBakuList.length > 0 ? (
-                          <div className="flex flex-col gap-1 max-w-[180px]">
-                            {item.bahanBakuList.map((b, bIdx) => {
-                              const inv = inventoryList.find(i => i.id === b.idInventory);
-                              return (
-                                <span key={bIdx} className="text-[10px] font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 truncate" title={`${inv?.nama || b.idInventory}: ${b.qty} ${inv?.satuan || 'unit'}`}>
-                                  <strong className="text-slate-800">{inv?.nama || b.idInventory}</strong>: {b.qty} {inv?.satuan || 'unit'}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        ) : (item.idInventory && item.idInventory !== 'none' && inventoryList.some(inv => inv.id === item.idInventory)) ? (
-                          <div className="flex items-center gap-1">
-                            <span className="font-bold text-[#1E4648] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/80 text-[11px] font-mono">
-                              {item.inventoryDeductionQty !== undefined && item.inventoryDeductionQty !== null ? item.inventoryDeductionQty : 1}
-                              <span className="text-teal-900/80 font-medium text-[9px] ml-1">
-                                {inventoryList.find(inv => inv.id === item.idInventory)?.satuan || 'unit'}
-                              </span>
-                            </span>
-                            <span className="text-[9px] text-slate-400 font-medium">/ trx</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-[10px] italic">Tanpa Stok</span>
-                        )}
-                      </td>
-                      {currentRole === 'MANAGER' && (
-                        <td className="py-1.5 px-3 text-xs whitespace-nowrap">
-                          <div className="font-semibold text-slate-600 font-mono text-[11px]">Rp {(item?.hargaModal || 0).toLocaleString('id-ID')}</div>
+                        </td>
+                        <td className="py-1.5 px-3 font-semibold text-slate-700 text-xs">
+                          {item.nama}
+                        </td>
+                        <td className="py-1.5 px-3 text-slate-500 font-medium whitespace-nowrap">
                           {(() => {
-                            const hJual = item?.harga || 0;
-                            const hModal = item?.hargaModal || 0;
-                            if (hJual > 0) {
-                              const profitMargin = ((hJual - hModal) / hJual) * 100;
-                              return (
-                                <div className={`text-[9px] font-bold ${profitMargin < 0 ? 'text-red-500' : (profitMargin > 30 ? 'text-emerald-600' : 'text-[#FF9500]')}`}>
-                                  Margin: {profitMargin.toFixed(1)}%
-                                </div>
-                              );
-                            }
-                            return <div className="text-[9px] text-slate-400">Margin: -</div>;
+                            if (!item.kategori) return <span className="text-slate-300 text-xs">-</span>;
+                            const kat = kategoriList.find(k => (k.nama || '').toLowerCase().trim() === (item.kategori || '').toLowerCase().trim());
+                            const style = getLayananStyleConfig(
+                              { layanan: item.nama, kategori: item.kategori, tipe: item.tipe as any } as any,
+                              kategoriList
+                            );
+                            const KatIcon = kat ? getIconComponent(kat.icon) : (style.Icon || Tag);
+                            const badgeColor = kat?.warna || style.badgeStyle || 'bg-slate-100 text-slate-700 border-slate-200';
+                            return (
+                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 border shadow-2xs ${badgeColor}`}>
+                                <KatIcon className="w-3 h-3" />
+                                <span>{item.kategori}</span>
+                              </span>
+                            );
                           })()}
                         </td>
-                      )}
-                      <td className="py-1.5 px-3 font-black text-slate-900 font-mono text-xs whitespace-nowrap">
-                        Rp {(item?.harga || 0).toLocaleString('id-ID')}
-                      </td>
-                      <td className="py-1.5 px-3 whitespace-nowrap">
-                        {currentRole === 'MANAGER' ? (
-                          <button
-                            type="button"
-                            onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')}
-                            title={item.aktif === 'Y' ? 'Klik untuk Non-Aktifkan' : 'Klik untuk Aktifkan'}
-                            className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
-                          >
-                            <div
-                              className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 ease-in-out ${
-                                item.aktif === 'Y' ? 'bg-[#1E4648]' : 'bg-slate-300 group-hover:bg-slate-400'
-                              }`}
+                        <td className="py-1.5 px-3 whitespace-nowrap">
+                          {item.tipe === 'FullService' || (item.kategori || '').toLowerCase().includes('drop') ? (
+                            <div className="inline-flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-50 text-[#1E4648] border border-teal-200">
+                                Drop Off
+                              </span>
+                              {item.kategoriDropOff && (
+                                <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                                  {item.kategoriDropOff}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-700 border border-blue-100'}`}>
+                              {!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '' ? 'Bukan Layanan' : item.tipe}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-3" onClick={(e) => e.stopPropagation()}>
+                          {(!item.tipe || String(item.tipe).toLowerCase() === 'bukan layanan' || String(item.tipe) === '') ? (
+                            <div className="flex items-center">
+                              <select
+                                value={pendingInventory[item.id] !== undefined ? pendingInventory[item.id] : (item.idInventory && item.idInventory !== 'none' ? item.idInventory : 'none')}
+                                onChange={(e) => {
+                                  setPendingInventory(prev => ({ ...prev, [item.id]: e.target.value }));
+                                }}
+                                className={`w-36 text-[10px] py-0.5 px-1.5 border rounded-lg outline-none cursor-pointer truncate font-bold ${
+                                  (pendingInventory[item.id] !== undefined ? pendingInventory[item.id] : (item.idInventory || 'none')) === 'none'
+                                    ? 'bg-slate-100 border-slate-300 text-slate-600'
+                                    : (pendingInventory[item.id] !== undefined ? pendingInventory[item.id] : item.idInventory) === 'auto'
+                                    ? 'bg-amber-50 border-amber-300 text-amber-800'
+                                    : 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                                }`}
+                              >
+                                <option value="none">Tanpa Stok</option>
+                                <option value="auto">+ Buat Baru di Stok</option>
+                                {inventoryList.map(inv => (
+                                  <option key={inv.id} value={inv.id}>
+                                    {inv.nama} (Stok: {inv.stok} {inv.satuan})
+                                  </option>
+                                ))}
+                              </select>
+                              {pendingInventory[item.id] !== undefined && pendingInventory[item.id] !== (item.idInventory || 'none') && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const newVal = pendingInventory[item.id];
+                                    if (newVal === (item.idInventory || 'none')) {
+                                      setPendingInventory(prev => {
+                                        const newObj = { ...prev };
+                                        delete newObj[item.id];
+                                        return newObj;
+                                      });
+                                      return;
+                                    }
+                                    
+                                    setLoading(true);
+                                    try {
+                                      await runBackend('updateLayanan', item.id, {
+                                        ...item,
+                                        tipe: '',
+                                        idInventory: newVal === 'none' ? 'none' : newVal
+                                      });
+                                      clearCache('getInventoryList');
+                                      clearCache('getLayananListAll');
+                                      clearCache('getDaftarLayanan');
+                                      await loadInventory();
+                                      await loadProduk();
+                                      setPendingInventory(prev => {
+                                        const newObj = { ...prev };
+                                        delete newObj[item.id];
+                                        return newObj;
+                                      });
+                                      await showAlert(
+                                        newVal === 'none'
+                                          ? 'Pautan stok dilepas. Produk ini tidak akan mengubah stok item.'
+                                          : 'Pautan inventory berhasil disimpan!',
+                                        'success'
+                                      );
+                                    } catch (err: any) {
+                                      await showAlert('Gagal: ' + (err.message || String(err)), 'error');
+                                    } finally {
+                                      setLoading(false);
+                                    }
+                                  }}
+                                  className="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#1E4648] text-white hover:bg-[#153233] transition shadow-xs cursor-pointer"
+                                >
+                                  Simpan
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300 text-xs">-</span>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-3 whitespace-nowrap">
+                          {(item.tipe === 'FullService' || (item.kategori || '').toLowerCase().includes('drop')) && item.bahanBakuList && item.bahanBakuList.length > 0 ? (
+                            <div className="flex flex-col gap-1 max-w-[180px]">
+                              {item.bahanBakuList.map((b, bIdx) => {
+                                const inv = inventoryList.find(i => i.id === b.idInventory);
+                                return (
+                                  <span key={bIdx} className="text-[10px] font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 truncate" title={`${inv?.nama || b.idInventory}: ${b.qty} ${inv?.satuan || 'unit'}`}>
+                                    <strong className="text-slate-800">{inv?.nama || b.idInventory}</strong>: {b.qty} {inv?.satuan || 'unit'}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          ) : (item.idInventory && item.idInventory !== 'none' && inventoryList.some(inv => inv.id === item.idInventory)) ? (
+                            <div className="flex items-center gap-1">
+                              <span className="font-bold text-[#1E4648] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/80 text-[11px] font-mono">
+                                {item.inventoryDeductionQty !== undefined && item.inventoryDeductionQty !== null ? item.inventoryDeductionQty : 1}
+                                <span className="text-teal-900/80 font-medium text-[9px] ml-1">
+                                  {inventoryList.find(inv => inv.id === item.idInventory)?.satuan || 'unit'}
+                                </span>
+                              </span>
+                              <span className="text-[9px] text-slate-400 font-medium">/ trx</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-[10px] italic">Tanpa Stok</span>
+                          )}
+                        </td>
+                        {currentRole === 'MANAGER' && (
+                          <td className="py-1.5 px-3 text-xs whitespace-nowrap">
+                            <div className="font-semibold text-slate-600 font-mono text-[11px]">Rp {(item?.hargaModal || 0).toLocaleString('id-ID')}</div>
+                            {(() => {
+                              const hJual = item?.harga || 0;
+                              const hModal = item?.hargaModal || 0;
+                              if (hJual > 0) {
+                                const profitMargin = ((hJual - hModal) / hJual) * 100;
+                                return (
+                                  <div className={`text-[9px] font-bold ${profitMargin < 0 ? 'text-red-500' : (profitMargin > 30 ? 'text-emerald-600' : 'text-[#FF9500]')}`}>
+                                    Margin: {profitMargin.toFixed(1)}%
+                                  </div>
+                                );
+                              }
+                              return <div className="text-[9px] text-slate-400">Margin: -</div>;
+                            })()}
+                          </td>
+                        )}
+                        <td className="py-1.5 px-3 font-black text-slate-900 font-mono text-xs whitespace-nowrap">
+                          Rp {(item?.harga || 0).toLocaleString('id-ID')}
+                        </td>
+                        <td className="py-1.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          {currentRole === 'MANAGER' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAktif(item.id, item.aktif === 'Y')}
+                              title={item.aktif === 'Y' ? 'Klik untuk Non-Aktifkan' : 'Klik untuk Aktifkan'}
+                              className="inline-flex items-center gap-1.5 cursor-pointer select-none group"
                             >
                               <div
-                                className={`bg-white w-3 h-3 rounded-full shadow-xs transform transition-transform duration-200 ease-in-out ${
-                                  item.aktif === 'Y' ? 'translate-x-3' : 'translate-x-0'
+                                className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 ease-in-out ${
+                                  item.aktif === 'Y' ? 'bg-[#1E4648]' : 'bg-slate-300 group-hover:bg-slate-400'
                                 }`}
-                              />
-                            </div>
-                            <span className={`text-[10px] font-bold ${item.aktif === 'Y' ? 'text-[#1E4648]' : 'text-slate-400'}`}>
-                              {item.aktif === 'Y' ? 'Aktif' : 'Off'}
+                              >
+                                <div
+                                  className={`bg-white w-3 h-3 rounded-full shadow-xs transform transition-transform duration-200 ease-in-out ${
+                                    item.aktif === 'Y' ? 'translate-x-3' : 'translate-x-0'
+                                  }`}
+                                />
+                              </div>
+                              <span className={`text-[10px] font-bold ${item.aktif === 'Y' ? 'text-[#1E4648]' : 'text-slate-400'}`}>
+                                {item.aktif === 'Y' ? 'Aktif' : 'Off'}
+                              </span>
+                            </button>
+                          ) : (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.aktif === 'Y' ? 'bg-[#B5C9C9]/20 text-[#1E4648]' : 'bg-slate-100 text-slate-500'}`}>
+                              {item.aktif === 'Y' ? 'Aktif' : 'Non-Aktif'}
                             </span>
-                          </button>
-                        ) : (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.aktif === 'Y' ? 'bg-[#B5C9C9]/20 text-[#1E4648]' : 'bg-slate-100 text-slate-500'}`}>
-                            {item.aktif === 'Y' ? 'Aktif' : 'Non-Aktif'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-1.5 px-3 text-right space-x-1 whitespace-nowrap">
-                        {currentRole === 'MANAGER' ? (
-                          <>
-                            <button onClick={() => handleOpenEdit(item)} title="Edit Produk" className="p-1 rounded text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition"><Edit3 className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleHapusLayanan(item.id)} title="Hapus Produk" className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </>
-                        ) : (
-                          <span className="text-slate-400 text-xs">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-3 text-right space-x-1 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          {currentRole === 'MANAGER' ? (
+                            <>
+                              <button onClick={() => handleOpenEdit(item)} title="Edit Produk" className="p-1 rounded text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition"><Edit3 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleHapusLayanan(item.id)} title="Hapus Produk" className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </>
+                          ) : (
+                            <span className="text-slate-400 text-xs">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -2263,6 +2559,92 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
           </div>
         </div>
       )}
+
+      {/* Modal Ubah Kategori Massal */}
+      {showBulkCategoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-teal-50 text-[#1E4648] border border-teal-100">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">Ubah Kategori Massal</h3>
+                  <p className="text-[11px] text-slate-500">{selectedIds.size} produk terpilih</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBulkCategoryModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700">Pilih Kategori Baru:</label>
+              <div className="grid grid-cols-1 gap-1.5 max-h-56 overflow-y-auto pr-1">
+                {kategoriList.map(kat => {
+                  const KatIcon = getIconComponent(kat.icon);
+                  const isSelected = (bulkTargetCategory || '').toLowerCase().trim() === (kat.nama || '').toLowerCase().trim();
+                  return (
+                    <button
+                      key={kat.id}
+                      type="button"
+                      onClick={() => setBulkTargetCategory(kat.nama)}
+                      className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition text-left cursor-pointer ${
+                        isSelected
+                          ? 'border-[#1E4648] bg-teal-50/70 text-[#1E4648] shadow-xs'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`p-1.5 rounded-lg border text-xs ${kat.warna || 'bg-slate-100 text-slate-700'}`}>
+                          <KatIcon className="w-3.5 h-3.5" />
+                        </span>
+                        <span>{kat.nama}</span>
+                      </div>
+                      {isSelected && <CheckCircle className="w-4 h-4 text-[#1E4648]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowBulkCategoryModal(false)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2.5 rounded-xl text-xs font-bold transition flex-1"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkUbahKategori}
+                disabled={!bulkTargetCategory}
+                className="bg-[#1E4648] hover:bg-[#163536] text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-xs transition disabled:opacity-50 flex-1 cursor-pointer"
+              >
+                Terapkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Drive Style Floating Progress Bar (Pojok Kanan Bawah) */}
+      <ImportProgressToast
+        isOpen={isImporting}
+        title="Mengimpor Master Produk"
+        fileName={importFileName || 'layanan.csv'}
+        statusText={importProgressText}
+        progressPercent={importProgressPercent}
+        isComplete={importIsComplete}
+        isError={importIsError}
+        onClose={() => setIsImporting(false)}
+      />
     </div>
   );
 }

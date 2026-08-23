@@ -33,6 +33,7 @@ import { useDialog } from '@/components/DialogProvider';
 import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import DigitalMemberCard from '@/components/DigitalMemberCard';
+import ImportProgressToast from '@/components/ImportProgressToast';
 
 export interface PelangganItem {
   noHp: string;
@@ -65,6 +66,13 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [filterKategori, setFilterKategori] = useState<'Semua' | 'Member' | 'Lama' | 'Baru'>('Semua');
   const [sortBy, setSortBy] = useState<'terakhir' | 'order' | 'spend'>('terakhir');
 
+  // Import CSV Toast Progress State
+  const [isImporting, setIsImporting] = useState(false);
+  const [importFileName, setImportFileName] = useState('');
+  const [importProgressText, setImportProgressText] = useState('');
+  const [importProgressPercent, setImportProgressPercent] = useState(0);
+  const [importIsComplete, setImportIsComplete] = useState(false);
+  const [importIsError, setImportIsError] = useState(false);
 
   // Add Customer Modal State
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -210,15 +218,29 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const currentFileName = file.name;
+    e.target.value = '';
 
-    setLoading(true);
     try {
+      setIsImporting(true);
+      setImportFileName(currentFileName);
+      setImportProgressPercent(15);
+      setImportProgressText('Membaca berkas CSV pelanggan...');
+      setImportIsComplete(false);
+      setImportIsError(false);
+
       const text = await readFileAsText(file);
       const rows = parseCSV(text);
       if (rows.length === 0) {
+        setImportIsError(true);
+        setImportProgressText('File CSV kosong atau format tidak sesuai.');
         await showAlert('File CSV kosong atau format tidak sesuai.', 'warning');
+        setTimeout(() => setIsImporting(false), 3000);
         return;
       }
+
+      setImportProgressPercent(35);
+      setImportProgressText(`Memvalidasi ${rows.length} baris pelanggan...`);
 
       // Payload mapping
       const payload = rows.map(r => ({
@@ -229,23 +251,39 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
       })).filter(x => x.hp && x.nama);
 
       if (payload.length === 0) {
+        setImportIsError(true);
+        setImportProgressText('Tidak ada data valid (perlu No HP dan Nama).');
         await showAlert('Tidak ada data valid yang bisa diimport. Pastikan ada kolom "No HP" dan "Nama".', 'error');
+        setTimeout(() => setIsImporting(false), 3000);
         return;
       }
 
+      setImportProgressPercent(60);
+      setImportProgressText(`Menyimpan ${payload.length} pelanggan ke database...`);
+
       const res = await runBackend<{ success: boolean; added: number; updated: number }>('importPelangganBatch', payload);
       if (res && res.success) {
+        setImportProgressPercent(90);
+        setImportProgressText('Menyinkronkan daftar pelanggan...');
         clearCache('getDaftarPelanggan');
         await loadDataPelanggan();
-        await showAlert(`Berhasil import pelanggan! (Ditambahkan: ${res.added}, Diperbarui: ${res.updated})`, 'success');
+
+        setImportProgressPercent(100);
+        setImportIsComplete(true);
+        setImportProgressText(`Selesai! Ditambahkan: ${res.added}, Diperbarui: ${res.updated}`);
+
+        setTimeout(() => {
+          setIsImporting(false);
+        }, 4000);
       } else {
-        await showAlert('Gagal mengimport pelanggan.', 'error');
+        throw new Error('Gagal mengimport pelanggan dari backend');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setImportIsError(true);
+      setImportProgressText(`Gagal: ${err?.message || String(err)}`);
       await showAlert('Terjadi kesalahan saat memproses CSV.', 'error');
-    } finally {
-      setLoading(false);
+      setTimeout(() => setIsImporting(false), 4000);
     }
   };
 
@@ -1096,6 +1134,18 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
           </div>
         </div>
       )}
+
+      {/* Google Drive Style Floating Progress Bar (Pojok Kanan Bawah) */}
+      <ImportProgressToast
+        isOpen={isImporting}
+        title="Mengimpor Data Pelanggan"
+        fileName={importFileName || 'pelanggan.csv'}
+        statusText={importProgressText}
+        progressPercent={importProgressPercent}
+        isComplete={importIsComplete}
+        isError={importIsError}
+        onClose={() => setIsImporting(false)}
+      />
     </div>
   );
 }
