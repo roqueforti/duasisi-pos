@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { maskPhone, eNotaUrl } from '@/lib/utils';
+import { maskPhone, eNotaUrl, formatFriendlyErrorMessage } from '@/lib/utils';
 import { UserRole, Transaksi } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
@@ -287,9 +287,10 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
       }
     } catch (err: any) {
       console.error(err);
+      const friendly = formatFriendlyErrorMessage(err);
       setImportIsError(true);
-      setImportProgressText(`Gagal: ${err?.message || String(err)}`);
-      await showAlert('Terjadi kesalahan saat memproses berkas Excel/CSV: ' + (err?.message || String(err)), 'error');
+      setImportProgressText(`Gagal: ${friendly.title}`);
+      await showAlert(friendly.detail, 'error', friendly.title, friendly.suggestion);
       setTimeout(() => setIsImporting(false), 4000);
     }
   };

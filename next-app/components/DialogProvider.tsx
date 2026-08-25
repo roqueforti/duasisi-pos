@@ -9,12 +9,13 @@ interface DialogOptions {
   message: string;
   title?: string;
   type?: DialogType;
+  suggestion?: string;
   isConfirm?: boolean;
   isPrompt?: boolean;
 }
 
 interface DialogContextProps {
-  showAlert: (message: string, type?: DialogType, title?: string) => Promise<void>;
+  showAlert: (message: string, type?: DialogType, title?: string, suggestion?: string) => Promise<void>;
   showConfirm: (message: string, title?: string) => Promise<boolean>;
   showPrompt: (message: string, title?: string, defaultValue?: string) => Promise<string | null>;
 }
@@ -37,9 +38,9 @@ export const DialogProvider = ({ children }: { children: ReactNode }) => {
   // Use references to store resolve functions
   const [resolveFn, setResolveFn] = useState<{ fn: (val: any) => void } | null>(null);
 
-  const showAlert = useCallback((message: string, type: DialogType = 'info', title?: string) => {
+  const showAlert = useCallback((message: string, type: DialogType = 'info', title?: string, suggestion?: string) => {
     return new Promise<void>((resolve) => {
-      setOptions({ message, type, title, isConfirm: false });
+      setOptions({ message, type, title, suggestion, isConfirm: false });
       setResolveFn({ fn: resolve });
       setIsOpen(true);
     });
@@ -107,6 +108,12 @@ export const DialogProvider = ({ children }: { children: ReactNode }) => {
               <div className="w-full">
                 <h3 className="text-base font-black text-slate-900 tracking-tight">{getTitle()}</h3>
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed font-medium">{options.message}</p>
+                {options.suggestion && (
+                  <div className="mt-3.5 p-3 bg-amber-50/90 border border-amber-200/80 rounded-xl text-left text-[11px] text-amber-900 leading-snug flex items-start gap-2 shadow-2xs">
+                    <span className="text-amber-600 font-bold shrink-0">💡 Solusi:</span>
+                    <span className="font-medium text-amber-950">{options.suggestion}</span>
+                  </div>
+                )}
                 {options.isPrompt && (
                   <input
                     type="text"

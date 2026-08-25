@@ -5,7 +5,7 @@ import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, 
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { maskPhone, eNotaUrl as buildENotaUrl, formatWaPhone } from '@/lib/utils';
+import { maskPhone, eNotaUrl as buildENotaUrl, formatWaPhone, formatFriendlyErrorMessage } from '@/lib/utils';
 import { generateWhatsAppReceiptFromTx } from '@/lib/whatsappUtils';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import PrinterModal from '@/components/PrinterModal';
@@ -376,9 +376,10 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
       }, 4000);
     } catch (err: any) {
       console.error(err);
+      const friendly = formatFriendlyErrorMessage(err);
       setImportIsError(true);
-      setImportProgressText(`Gagal: ${err?.message || String(err)}`);
-      await showAlert(err instanceof Error ? err.message : 'Gagal import transaksi.', 'error');
+      setImportProgressText(`Gagal: ${friendly.title}`);
+      await showAlert(friendly.detail, 'error', friendly.title, friendly.suggestion);
       setTimeout(() => setIsImporting(false), 4000);
     }
   };

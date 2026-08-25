@@ -7,6 +7,7 @@ import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
+import { formatFriendlyErrorMessage } from '@/lib/utils';
 import SatuanInput from '@/components/SatuanInput';
 import ImportProgressToast from '@/components/ImportProgressToast';
 
@@ -320,9 +321,11 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
         setIsImporting(false);
       }, 4000);
     } catch (err: any) {
+      console.error(err);
+      const friendly = formatFriendlyErrorMessage(err);
       setImportIsError(true);
-      setImportProgressText(`Gagal: ${err?.message || String(err)}`);
-      await showAlert(`Gagal memproses file CSV: ${err?.message || String(err)}`, 'error');
+      setImportProgressText(`Gagal: ${friendly.title}`);
+      await showAlert(friendly.detail, 'error', friendly.title, friendly.suggestion);
       setTimeout(() => setIsImporting(false), 4000);
     }
   };

@@ -79,3 +79,62 @@ export function formatWaPhone(hp: string | undefined | null): string {
   }
   return clean;
 }
+
+/**
+ * Mengubah pesan error teknis menjadi pesan yang ramah pengguna, jelas, dan solutif.
+ */
+export function formatFriendlyErrorMessage(err: any): { title: string; detail: string; suggestion?: string } {
+  const rawMsg = String(err?.message || err || '').trim();
+  const lower = rawMsg.toLowerCase();
+
+  // 1. Network / Timeout
+  if (lower.includes('timeout') || lower.includes('aborterror') || lower.includes('failed to fetch') || lower.includes('network') || lower.includes('koneksi')) {
+    return {
+      title: 'Koneksi Terputus atau Lambat',
+      detail: 'Aplikasi tidak dapat terhubung ke server database Google Sheets.',
+      suggestion: 'Pastikan koneksi internet aktif dan stabil, lalu coba beberapa saat lagi.'
+    };
+  }
+
+  // 2. Sesi / Auth
+  if (lower.includes('sesi') || lower.includes('session') || lower.includes('kedaluwarsa') || lower.includes('akses ditolak')) {
+    return {
+      title: 'Sesi Login Kedaluwarsa',
+      detail: 'Sesi Anda telah berakhir demi keamanan data.',
+      suggestion: 'Silakan masukkan kembali PIN kasir / manager Anda untuk melanjutkan.'
+    };
+  }
+
+  // 3. Format Berkas / Excel / CSV
+  if (
+    lower.includes('reading') ||
+    lower.includes('undefined') ||
+    lower.includes('cannot read') ||
+    lower.includes('tidak sesuai') ||
+    lower.includes('kolom') ||
+    lower.includes('data kosong')
+  ) {
+    return {
+      title: 'Format Berkas Tidak Sesuai',
+      detail: 'Ada kolom atau baris pada file yang kosong atau formatnya tidak sesuai.',
+      suggestion: 'Gunakan tombol "Template Excel" untuk memastikan susunan kolom (No HP, Nama, dsb) sesuai dengan format baku.'
+    };
+  }
+
+  // 4. Data Duplikat
+  if (lower.includes('duplikat') || lower.includes('duplicate') || lower.includes('sudah digunakan') || lower.includes('already exist')) {
+    return {
+      title: 'Ditemukan Kode/Data Duplikat',
+      detail: rawMsg,
+      suggestion: 'Periksa kembali kode atau nomor yang Anda masukkan agar tidak ganda.'
+    };
+  }
+
+  // 5. Default
+  return {
+    title: 'Gagal Memproses Data',
+    detail: rawMsg || 'Terjadi kendala saat berkomunikasi dengan server.',
+    suggestion: 'Silakan periksa data input Anda atau hubungi manager jika kendala berlanjut.'
+  };
+}
+
