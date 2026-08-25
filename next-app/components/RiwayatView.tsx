@@ -7,7 +7,7 @@ import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { maskPhone, eNotaUrl as buildENotaUrl, formatWaPhone } from '@/lib/utils';
 import { generateWhatsAppReceiptFromTx } from '@/lib/whatsappUtils';
-import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
+import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import PrinterModal from '@/components/PrinterModal';
 import ImportProgressToast from '@/components/ImportProgressToast';
 import { UserRole } from '@/lib/types';
@@ -327,7 +327,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
       ['LDY-260801-0001', '2026-08-01 10:00', 'Ibu Ratna', '081234567890', 'SelfService', 'Cuci 7,5 Kg', 1, 10000, 'Tunai', 'Lunas', 'Kasir Siti', 'Pembukuan Offline'],
       ['LDY-260801-0002', '2026-08-01 11:30', 'Pak Hendra', '082345678901', 'Drop Off', 'Cuci Kering 7,5 Kg', 2, 18000, 'QRIS', 'Lunas', 'Kasir Siti', 'Titip selesai sore']
     ];
-    downloadCSV('template_import_transaksi_offline.csv', toCSV(headers, sampleRows));
+    downloadExcel('template_import_transaksi_offline.xlsx', headers, sampleRows, 'Template Transaksi');
   };
 
   const handleImportTransaksiCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -339,16 +339,15 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
       setIsImporting(true);
       setImportFileName(currentFileName);
       setImportProgressPercent(15);
-      setImportProgressText('Membaca berkas CSV transaksi...');
+      setImportProgressText('Membaca berkas Excel/CSV transaksi...');
       setImportIsComplete(false);
       setImportIsError(false);
 
-      const text = await readFileAsText(file);
-      const rows = parseCSV(text);
+      const rows = await readSpreadsheetFile(file);
       if (rows.length === 0) {
         setImportIsError(true);
-        setImportProgressText('File CSV kosong atau format tidak sesuai.');
-        await showAlert('File CSV kosong atau format tidak sesuai.', 'warning');
+        setImportProgressText('Berkas Excel/CSV kosong atau format tidak sesuai.');
+        await showAlert('Berkas Excel/CSV kosong atau format tidak sesuai.', 'warning');
         setTimeout(() => setIsImporting(false), 3000);
         return;
       }
@@ -470,19 +469,19 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
 
                 <button 
                   onClick={handleDownloadTemplateTransaksi}
-                  className="px-2.5 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-bold transition shadow-2xs"
-                  title="Download Template CSV Offline"
+                  className="px-2.5 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
+                  title="Download Template Excel (.xlsx) Pembukuan Offline"
                 >
-                  Template
+                  Template Excel
                 </button>
 
                 <label 
                   className="cursor-pointer flex items-center gap-1 px-3 py-2 bg-slate-100 hover:bg-[#1E4648] hover:text-white text-slate-700 font-bold rounded-xl text-xs transition shadow-2xs"
-                  title="Import Transaksi Pembukuan Offline (CSV)"
+                  title="Import Transaksi dari Berkas Excel (.xlsx, .xls) atau CSV"
                 >
                   <Upload className="w-3.5 h-3.5" />
                   <span>Import</span>
-                  <input type="file" accept=".csv" className="hidden" onChange={handleImportTransaksiCSV} />
+                  <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportTransaksiCSV} />
                 </label>
 
                 <button

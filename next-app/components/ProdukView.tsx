@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown, Sparkles, Shirt, Clock, Flame, Star, Layers, Delete, Search, Users, Loader2, CheckCircle, XCircle, CheckSquare, Square } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown, Sparkles, Shirt, Clock, Flame, Star, Layers, Delete, Search, Users, Loader2, CheckCircle, XCircle, CheckSquare, Square, AlertTriangle } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
+import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import { UserRole, LayananBahanBaku } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import SatuanInput from '@/components/SatuanInput';
@@ -12,6 +12,7 @@ import { getIconComponent, getLayananStyleConfig, KategoriItem, PALETTE, ICON_OP
 import { getStepIconComponent } from '@/components/LangkahView';
 import ImportProgressToast from '@/components/ImportProgressToast';
 import InventorySelectDropdown from '@/components/InventorySelectDropdown';
+import DuplicateCodesModal from '@/components/DuplicateCodesModal';
 
 export interface DropOffPriorityItem {
   id: string;
@@ -178,8 +179,34 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   // Pending Inventory Linking
   const [pendingInventory, setPendingInventory] = useState<Record<string, string>>({});
 
-  const loadAllData = useCallback(async (forceFresh = false) => {
-    setLoading(true);
+  // Duplicate Codes Audit Modal
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [isSilentSyncing, setIsSilentSyncing] = useState(false);
+
+  // Map of code occurrences across loaded products
+  const duplicateCodeMap = useMemo(() => {
+    const counts: Record<string, number> = {};
+    layananList.forEach(l => {
+      const c = (l.id || '').trim().toUpperCase();
+      if (c) counts[c] = (counts[c] || 0) + 1;
+    });
+    return counts;
+  }, [layananList]);
+
+  // Real-time duplicate check for the Add/Edit Product form
+  const duplicateCheck = useMemo(() => {
+    const trimmed = kode.trim().toUpperCase();
+    if (!trimmed) return null;
+    const found = layananList.find(l => l.id.toUpperCase() === trimmed && (!editingId || l.id !== editingId));
+    return found ? found.nama : null;
+  }, [kode, layananList, editingId]);
+
+  const loadAllData = useCallback(async (forceFresh = false, isSilent = false) => {
+    if (isSilent) {
+      setIsSilentSyncing(true);
+    } else {
+      setLoading(true);
+    }
     if (forceFresh) {
       clearCache('getLayananListAll');
       clearCache('getLayananList');
@@ -234,10 +261,11 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       console.error('Gagal memuat master data:', err);
     } finally {
       setLoading(false);
+      setIsSilentSyncing(false);
     }
   }, []);
 
-  const loadProduk = useCallback(() => loadAllData(false), [loadAllData]);
+  const loadProduk = useCallback((isSilent = false) => loadAllData(true, isSilent), [loadAllData]);
   const loadKategori = useCallback(() => loadAllData(false), [loadAllData]);
   const loadInventory = useCallback(() => loadAllData(false), [loadAllData]);
   const loadPromo = useCallback(() => loadAllData(false), [loadAllData]);
@@ -428,6 +456,17 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
   const handleSave = async () => {
     if (!nama.trim() || !harga.trim()) { await showAlert('Nama dan harga wajib diisi!', 'warning'); return; }
+    
+    // Check duplicate code client-side
+    if (kode.trim()) {
+      const trimmed = kode.trim().toUpperCase();
+      const duplicateItem = layananList.find(l => l.id.toUpperCase() === trimmed && (!editingId || l.id !== editingId));
+      if (duplicateItem) {
+        await showAlert(`Kode produk "${kode.trim()}" sudah digunakan oleh "${duplicateItem.nama}". Kode produk harus unik!`, 'warning');
+        return;
+      }
+    }
+
     const payloadPipeline = customPipelineSteps.map((s, i) => ({ ...s, step: i + 1 }));
     const filteredBahan = bahanBakuList.filter(b => b.idInventory && b.idInventory.trim());
     const payload = {
@@ -447,24 +486,60 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       };
     setLoading(true);
     try {
+      let res: any;
       if (editingId) {
-        await runBackend('updateLayanan', editingId, payload);
+        res = await runBackend('updateLayanan', editingId, payload);
       } else {
-        await runBackend('tambahLayanan', payload);
+        res = await runBackend('tambahLayanan', payload);
       }
+      if (res && res.success === false) {
+        await showAlert(res.message || 'Gagal menyimpan layanan', 'error');
+        setLoading(false);
+        return;
+      }
+
+      // Optimistic local state update (Zero-flicker, instant response)
+      const savedCode = (res && res.id) ? res.id : (payload.kode || editingId || 'NEW');
+      const optimisticItem: LayananItemBackend = {
+        id: savedCode,
+        nama: payload.nama,
+        harga: payload.harga,
+        satuan: payload.satuan,
+        icon: payload.icon,
+        aktif: 'Y',
+        tipe: (payload.tipe || '') as '' | 'SelfService' | 'FullService',
+        kategori: payload.kategori,
+        kategoriDropOff: payload.kategoriDropOff,
+        idInventory: payload.idInventory,
+        hargaModal: payload.hargaModal,
+        inventoryDeductionQty: payload.inventoryDeductionQty,
+        bahanBakuList: payload.bahanBakuList,
+        pipelineSteps: payload.pipelineSteps
+      };
+      setLayananList((prev) => {
+        if (editingId) {
+          return prev.map((item) => (item.id === editingId ? { ...item, ...optimisticItem } : item));
+        } else {
+          return [optimisticItem, ...prev];
+        }
+      });
+
+      setShowModal(false);
       clearCache('getLayananListAll');
       clearCache('getLayananList');
-      setShowModal(false);
-      loadProduk();
+      // Silent sync with backend without destroying the table
+      loadProduk(true);
       await showAlert('Layanan berhasil disimpan!', 'success');
-    } catch (err) {
-      await showAlert('Gagal menyimpan layanan', 'error');
+    } catch (err: any) {
+      await showAlert(err?.message || 'Gagal menyimpan layanan', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleQuickLinkInventory = async (idLayanan: string, newIdInv: string, productName: string) => {
+    // Optimistic update
+    setLayananList(prev => prev.map(item => item.id === idLayanan ? { ...item, idInventory: newIdInv === 'none' ? '' : newIdInv } : item));
     try {
       const res = await runBackend<{ success: boolean; idLayanan?: string; idInventory?: string; message?: string }>(
         'pautkanInventoryLayanan',
@@ -477,7 +552,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       clearCache('getLayananList');
       clearCache('getDaftarLayanan');
 
-      await loadAllData(true);
+      loadAllData(true, true);
 
       const isAuto = newIdInv === 'auto';
       const isUnlink = newIdInv === 'none' || !newIdInv;
@@ -501,7 +576,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
           clearCache('getInventoryList');
           clearCache('getLayananListAll');
           clearCache('getLayananList');
-          await loadAllData(true);
+          loadAllData(true, true);
           await showAlert(`Pautan stok berhasil diperbarui!`, 'success');
         }
       } catch (fallbackErr: any) {
@@ -511,11 +586,17 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   };
 
   const handleToggleAktif = async (id: string, isY: boolean) => {
+    // Optimistic update
+    setLayananList(prev => prev.map(item => item.id === id ? { ...item, aktif: isY ? 'N' : 'Y' } : item));
     try {
       await runBackend('toggleAktifLayanan', id, !isY);
-      loadProduk();
+      clearCache('getLayananListAll');
+      clearCache('getLayananList');
+      loadProduk(true);
       await showAlert(`Layanan berhasil di${isY ? 'nonaktifkan' : 'aktifkan'}!`, 'success');
     } catch (err) {
+      // Revert on error
+      setLayananList(prev => prev.map(item => item.id === id ? { ...item, aktif: isY ? 'Y' : 'N' } : item));
       await showAlert('Gagal mengubah status', 'error');
     }
   };
@@ -523,11 +604,17 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const handleHapusLayanan = async (id: string) => {
     const isConfirmed = await showConfirm('Yakin ingin menghapus layanan ini?');
     if (!isConfirmed) return;
+    const previous = [...layananList];
+    // Optimistic delete
+    setLayananList(prev => prev.filter(item => item.id !== id));
     try {
       await runBackend('hapusLayanan', id);
-      loadProduk();
+      clearCache('getLayananListAll');
+      clearCache('getLayananList');
+      loadProduk(true);
       await showAlert('Layanan berhasil dihapus!', 'success');
     } catch (err) {
+      setLayananList(previous);
       await showAlert('Gagal menghapus layanan', 'error');
     }
   };
@@ -648,7 +735,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       l.aktif === 'Y' ? 'Aktif' : 'Non-Aktif'
     ]);
 
-    downloadCSV('export_produk_layanan.csv', toCSV(headers, rows));
+    downloadExcel('export_produk_layanan.xlsx', headers, rows, 'Master Layanan');
   };
 
   const handleDownloadTemplateProduk = () => {
@@ -676,7 +763,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       ['RTL-001', 'Air Mineral 600ml', 'Makanan dan Minuman', '', 'Bukan Layanan', 4000, 2500, 'botol', 'Aktif']
     ];
 
-    downloadCSV('template_layanan_duasisi.csv', toCSV(headers, sampleRows));
+    downloadExcel('template_layanan_duasisi.xlsx', headers, sampleRows, 'Master Layanan');
   };
 
   const handleImportProduk = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -688,16 +775,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       setIsImporting(true);
       setImportFileName(currentFileName);
       setImportProgressPercent(15);
-      setImportProgressText('Membaca berkas CSV...');
+      setImportProgressText('Membaca berkas Excel/CSV...');
       setImportIsComplete(false);
       setImportIsError(false);
 
-      const text = await readFileAsText(file);
-      const rows = parseCSV(text);
+      const rows = await readSpreadsheetFile(file);
       if (rows.length === 0) {
         setImportIsError(true);
-        setImportProgressText('File CSV kosong atau format tidak sesuai.');
-        await showAlert('File CSV kosong atau format tidak sesuai.', 'warning');
+        setImportProgressText('Berkas Excel/CSV kosong atau format tidak sesuai.');
+        await showAlert('Berkas Excel/CSV kosong atau format tidak sesuai.', 'warning');
         setTimeout(() => setIsImporting(false), 3000);
         return;
       }
@@ -1174,27 +1260,40 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
             </select>
 
             <button
-              onClick={() => loadAllData(true)}
-              disabled={loading}
+              onClick={() => loadAllData(true, layananList.length > 0)}
+              disabled={loading || isSilentSyncing}
               className="p-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition shadow-2xs cursor-pointer flex items-center justify-center disabled:opacity-50"
               title="Refresh / Muat Ulang Data Layanan & Kategori"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#1E4648]' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${loading || isSilentSyncing ? 'animate-spin text-[#1E4648]' : ''}`} />
             </button>
 
             {currentRole === 'MANAGER' && (
               <>
+                <button
+                  type="button"
+                  onClick={() => setShowDuplicateModal(true)}
+                  className={`px-2.5 py-1.5 border rounded-lg text-xs font-semibold transition shadow-2xs flex items-center gap-1.5 cursor-pointer ${
+                    Object.values(duplicateCodeMap).some(count => count > 1)
+                      ? 'bg-amber-100 border-amber-300 text-amber-900 animate-pulse font-bold'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                  title="Audit dan rapikan jika ditemukan kode produk kembar/duplikat"
+                >
+                  <AlertTriangle className={`w-3.5 h-3.5 ${Object.values(duplicateCodeMap).some(count => count > 1) ? 'text-amber-600' : 'text-slate-400'}`} />
+                  <span>Audit Kode {Object.values(duplicateCodeMap).some(count => count > 1) && `(Duplikat!)`}</span>
+                </button>
                 <button onClick={handleExportProduk} className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-xs font-semibold transition shadow-2xs flex items-center gap-1.5 cursor-pointer" title="Export Data Layanan yang ada ke CSV">
                   <Download className="w-3.5 h-3.5" />
                   <span>Export</span>
                 </button>
-                <button onClick={handleDownloadTemplateProduk} className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-xs font-semibold transition shadow-2xs cursor-pointer" title="Download Template Master Excel/CSV Baru">
-                  Template
+                <button onClick={handleDownloadTemplateProduk} className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-xs font-semibold transition shadow-2xs cursor-pointer" title="Download Template Master Excel (.xlsx) Baru">
+                  Template Excel
                 </button>
-                <label className="cursor-pointer px-2.5 py-1.5 border border-[#B5C9C9] rounded-lg text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-semibold transition flex items-center gap-1.5 shadow-2xs" title="Import Data Layanan dari CSV">
+                <label className="cursor-pointer px-2.5 py-1.5 border border-[#B5C9C9] rounded-lg text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-semibold transition flex items-center gap-1.5 shadow-2xs" title="Import Data Layanan dari Berkas Excel (.xlsx, .xls) atau CSV">
                   <Upload className="w-3.5 h-3.5" />
                   <span>Import</span>
-                  <input type="file" accept=".csv" className="hidden" onChange={handleImportProduk} />
+                  <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportProduk} />
                 </label>
                 <button
                   onClick={handleOpenAdd}
@@ -1421,9 +1520,23 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                           />
                         </td>
                         <td className="py-1.5 px-3 whitespace-nowrap">
-                          <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/80">
-                            {item.id}
-                          </span>
+                          <div className="inline-flex items-center gap-1">
+                            <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/80">
+                              {item.id}
+                            </span>
+                            {(duplicateCodeMap[(item.id || '').trim().toUpperCase()] || 0) > 1 && (
+                              <span
+                                className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-0.5 cursor-pointer hover:bg-amber-200 transition"
+                                title="Kode ini terdeteksi kembar/duplikat! Klik tombol Audit Kode untuk merapikannya."
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowDuplicateModal(true);
+                                }}
+                              >
+                                ⚠️ Duplikat
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-1.5 px-3 font-semibold text-slate-700 text-xs">
                           {item.nama}
@@ -1864,9 +1977,20 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                       value={kode} 
                       onChange={(e) => setKode(e.target.value)} 
                       placeholder="Otomatis (contoh: SS-001, DO-001, ADD-001)" 
-                      className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648] font-mono text-xs" 
+                      className={`w-full px-3 py-2 border rounded-md outline-none font-mono text-xs ${
+                        duplicateCheck
+                          ? 'border-rose-400 bg-rose-50/50 text-rose-900 focus:border-rose-500'
+                          : 'border-slate-200 focus:border-[#1E4648]'
+                      }`}
                     />
-                    <p className="text-[10px] text-slate-400 mt-1">Kosongkan untuk penomoran otomatis berdasarkan kategori & tipe.</p>
+                    {duplicateCheck ? (
+                      <div className="mt-1 text-[11px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-1 rounded-md flex items-center gap-1.5 animate-shake">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                        <span>Kode ini sudah digunakan oleh "{duplicateCheck}". Kode produk harus unik!</span>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 mt-1">Kosongkan untuk penomoran otomatis berdasarkan kategori & tipe.</p>
+                    )}
                   </div>
 
                   <div>
@@ -2636,6 +2760,16 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         isComplete={importIsComplete}
         isError={importIsError}
         onClose={() => setIsImporting(false)}
+      />
+
+      {/* Modal Audit & Perapian Duplikasi Kode */}
+      <DuplicateCodesModal
+        isOpen={showDuplicateModal}
+        onClose={() => setShowDuplicateModal(false)}
+        onResolved={() => {
+          setShowDuplicateModal(false);
+          loadAllData(true);
+        }}
       />
     </div>
   );

@@ -30,7 +30,7 @@ import { clearCache } from '@/lib/cache';
 import { maskPhone, eNotaUrl } from '@/lib/utils';
 import { UserRole, Transaksi } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
-import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
+import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import DigitalMemberCard from '@/components/DigitalMemberCard';
 import ImportProgressToast from '@/components/ImportProgressToast';
@@ -198,21 +198,28 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
 
   const handleExportCSV = () => {
     if (pelangganList.length === 0) return;
+    const headers = ['No HP', 'Nama', 'Status Member', 'Alamat', 'Tanggal Lahir', 'Total Order', 'Total Belanja (Rp)', 'Saldo Poin', 'Catatan'];
     const rows = pelangganList.map(p => [
       p.noHp,
       p.nama,
+      p.isMember ? 'MEMBER' : 'REGULER',
       p.alamat || '',
       p.tglLahir || '',
-      p.totalOrder.toString(),
-      p.totalSpend.toString(),
-      p.saldoPoin.toString(),
+      p.totalOrder,
+      p.totalSpend,
+      p.saldoPoin,
       p.catatan || ''
     ]);
-    downloadCSV('export_pelanggan.csv', toCSV(['No HP', 'Nama', 'Alamat', 'Tanggal Lahir', 'Total Order', 'Total Belanja', 'Saldo Poin', 'Catatan'], rows));
+    downloadExcel('export_pelanggan.xlsx', headers, rows, 'Pelanggan');
   };
 
   const handleDownloadTemplate = () => {
-    downloadCSV('template_pelanggan_kosong.csv', toCSV(['No HP', 'Nama', 'Alamat (Opsional)', 'Tanggal Lahir (YYYY-MM-DD)'], [['081234567890', 'Budi Santoso', 'Jl. Merdeka No. 1', '1995-08-17']]));
+    const headers = ['No HP', 'Nama', 'Alamat', 'Tanggal Lahir (YYYY-MM-DD)', 'Catatan'];
+    const sampleRows = [
+      ['081234567890', 'Budi Santoso', 'Jl. Merdeka No. 1', '1995-08-17', 'Pelanggan Reguler'],
+      ['085712345678', 'Siti Rahma', 'Komp. Melati Indah B2', '1998-12-05', 'Member VIP']
+    ];
+    downloadExcel('template_import_pelanggan.xlsx', headers, sampleRows, 'Template Pelanggan');
   };
 
   const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -225,16 +232,15 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
       setIsImporting(true);
       setImportFileName(currentFileName);
       setImportProgressPercent(15);
-      setImportProgressText('Membaca berkas CSV pelanggan...');
+      setImportProgressText('Membaca berkas Excel/CSV pelanggan...');
       setImportIsComplete(false);
       setImportIsError(false);
 
-      const text = await readFileAsText(file);
-      const rows = parseCSV(text);
+      const rows = await readSpreadsheetFile(file);
       if (rows.length === 0) {
         setImportIsError(true);
-        setImportProgressText('File CSV kosong atau format tidak sesuai.');
-        await showAlert('File CSV kosong atau format tidak sesuai.', 'warning');
+        setImportProgressText('Berkas kosong atau format kolom tidak sesuai.');
+        await showAlert('Berkas kosong atau format tidak sesuai.', 'warning');
         setTimeout(() => setIsImporting(false), 3000);
         return;
       }
@@ -242,17 +248,18 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
       setImportProgressPercent(35);
       setImportProgressText(`Memvalidasi ${rows.length} baris pelanggan...`);
 
-      // Payload mapping
+      // Payload mapping (robust case-insensitive & key alias)
       const payload = rows.map(r => ({
-        hp: r['no hp'] || r['nohp'] || r['hp'] || r['telepon'] || r['phone'] || '',
-        nama: r['nama'] || r['nama pelanggan'] || r['customer'] || '',
-        alamat: r['alamat'] || r['address'] || '',
-        tglLahir: r['tanggal lahir'] || r['ttl'] || r['tgl lahir'] || ''
+        hp: String(r['no hp'] || r['nohp'] || r['hp'] || r['telepon'] || r['phone'] || r['nomor hp'] || '').trim(),
+        nama: String(r['nama'] || r['nama pelanggan'] || r['customer'] || r['name'] || '').trim(),
+        alamat: String(r['alamat'] || r['address'] || r['alamat (opsional)'] || '').trim(),
+        tglLahir: String(r['tanggal lahir'] || r['tanggal lahir (yyyy-mm-dd)'] || r['ttl'] || r['tgl lahir'] || r['birthdate'] || '').trim(),
+        catatan: String(r['catatan'] || r['notes'] || r['note'] || r['keterangan'] || '').trim()
       })).filter(x => x.hp && x.nama);
 
       if (payload.length === 0) {
         setImportIsError(true);
-        setImportProgressText('Tidak ada data valid (perlu No HP dan Nama).');
+        setImportProgressText('Tidak ada data valid (perlu kolom No HP dan Nama).');
         await showAlert('Tidak ada data valid yang bisa diimport. Pastikan ada kolom "No HP" dan "Nama".', 'error');
         setTimeout(() => setIsImporting(false), 3000);
         return;
@@ -282,7 +289,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
       console.error(err);
       setImportIsError(true);
       setImportProgressText(`Gagal: ${err?.message || String(err)}`);
-      await showAlert('Terjadi kesalahan saat memproses CSV.', 'error');
+      await showAlert('Terjadi kesalahan saat memproses berkas Excel/CSV: ' + (err?.message || String(err)), 'error');
       setTimeout(() => setIsImporting(false), 4000);
     }
   };
@@ -733,27 +740,27 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
             <>
               <button 
                 onClick={handleDownloadTemplate} 
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition flex items-center gap-1.5" 
-                title="Download Template CSV Pelanggan"
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition flex items-center gap-1.5 cursor-pointer" 
+                title="Download Template Excel (.xlsx) Pelanggan"
               >
                 <Download className="w-3.5 h-3.5 text-slate-500" />
-                <span>Template</span>
+                <span>Template Excel</span>
               </button>
               <button 
                 onClick={handleExportCSV} 
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition flex items-center gap-1.5" 
-                title="Export Data ke CSV"
+                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition flex items-center gap-1.5 cursor-pointer" 
+                title="Export Data Pelanggan ke Excel (.xlsx)"
               >
                 <Download className="w-3.5 h-3.5 text-slate-500" />
                 <span>Export</span>
               </button>
               <label 
                 className="cursor-pointer px-3 py-2 bg-slate-100 hover:bg-[#1E4648] hover:text-white text-slate-700 font-semibold rounded-lg text-xs transition flex items-center gap-1.5" 
-                title="Import Pelanggan dari File CSV"
+                title="Import Pelanggan dari Berkas Excel (.xlsx, .xls) atau CSV"
               >
                 <Upload className="w-3.5 h-3.5 text-slate-500 group-hover:text-white" />
                 <span>Import</span>
-                <input type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
+                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportCSV} />
               </label>
             </>
           )}

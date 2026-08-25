@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Navbar from '@/components/Navbar';
 import LoginModal from '@/components/LoginModal';
@@ -22,7 +22,8 @@ import LangkahView from '@/components/LangkahView';
 import PayrollView from '@/components/PayrollView';
 import KeamananView from '@/components/KeamananView';
 import MesinView from '@/components/MesinView';
-import { UserRole } from '@/lib/types';
+import DuplicateCodesModal from '@/components/DuplicateCodesModal';
+import { UserRole, DuplicateGroup } from '@/lib/types';
 import {
   clearBackendSession,
   parseSessionToken,
@@ -62,6 +63,8 @@ export default function PosAppRoot() {
   const [refreshKey, setRefreshKey] = useState<number>(0);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [isShiftActive, setIsShiftActive] = useState<boolean>(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState<boolean>(false);
+  const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[]>([]);
 
   const checkShiftStatus = async () => {
     try {
@@ -69,6 +72,25 @@ export default function PosAppRoot() {
       setIsShiftActive(!!(activeShift && activeShift.idShift));
     } catch {
       setIsShiftActive(false);
+    }
+  };
+
+  const checkDuplicateCodes = async () => {
+    try {
+      const res = await runBackend<{
+        hasDuplicates: boolean;
+        totalDuplicateGroups: number;
+        totalDuplicateRows: number;
+        duplicateGroups: DuplicateGroup[];
+      }>('checkDuplicateItemCodes');
+      if (res && res.hasDuplicates && Array.isArray(res.duplicateGroups) && res.duplicateGroups.length > 0) {
+        setDuplicateGroups(res.duplicateGroups);
+        setShowDuplicateModal(true);
+      } else {
+        setShowDuplicateModal(false);
+      }
+    } catch (e) {
+      console.error('Check duplicate codes failed:', e);
     }
   };
 
@@ -90,10 +112,16 @@ export default function PosAppRoot() {
     refreshNotifications
   } = useGlobalNotifications(currentRole);
 
-  // Check shift status on role change & mount
+  const hasCheckedDuplicatesRef = useRef(false);
+
+  // Check shift status on role change & mount (duplicate codes checked once per manager session)
   useEffect(() => {
     if (currentRole) {
       checkShiftStatus();
+      if (currentRole === 'MANAGER' && !hasCheckedDuplicatesRef.current) {
+        hasCheckedDuplicatesRef.current = true;
+        checkDuplicateCodes();
+      }
     }
   }, [currentRole, refreshKey]);
 
@@ -156,6 +184,9 @@ export default function PosAppRoot() {
     setCurrentRole(role);
     setSessionNotice(null);
     checkShiftStatus();
+    if (role === 'MANAGER') {
+      checkDuplicateCodes();
+    }
     let savedTab: string | null = null;
     try {
       savedTab = localStorage.getItem('duasisi_last_active_tab');
@@ -165,11 +196,13 @@ export default function PosAppRoot() {
   };
 
   const handleLogout = () => {
+    hasCheckedDuplicatesRef.current = false;
     clearBackendSession();
     clearCache();
     setCurrentRole('');
     setSessionNotice(null);
     setIsShiftActive(false);
+    setShowDuplicateModal(false);
   };
 
   const handleGlobalRefresh = () => {
@@ -263,6 +296,17 @@ export default function PosAppRoot() {
               {currentTab === 'keamanan' && <KeamananView currentRole={currentRole} />}
             </main>
           </div>
+
+          {/* Modal Perapian Duplikasi Kode */}
+          <DuplicateCodesModal
+            isOpen={showDuplicateModal}
+            onClose={() => setShowDuplicateModal(false)}
+            onResolved={() => {
+              setShowDuplicateModal(false);
+              handleGlobalRefresh();
+            }}
+            initialGroups={duplicateGroups}
+          />
         </div>
       )}
     </>

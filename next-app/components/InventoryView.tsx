@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload, Check, X, Loader2 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { toCSV, downloadCSV, parseCSV, readFileAsText } from '@/lib/csvUtils';
+import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import SatuanInput from '@/components/SatuanInput';
@@ -84,6 +84,14 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
 
   const handleSave = async () => {
     if (!nama.trim()) { await showAlert('Masukkan nama barang!', 'warning'); return; }
+    
+    // Check duplicate inventory item name
+    const duplicate = items.find(i => i.nama.trim().toLowerCase() === nama.trim().toLowerCase() && (!editId || i.id !== editId));
+    if (duplicate) {
+      await showAlert(`Barang dengan nama "${nama.trim()}" sudah ada di master inventory (ID: ${duplicate.id}). Gunakan nama yang unik!`, 'warning');
+      return;
+    }
+
     setLoading(true);
     try {
       if (editId) {
@@ -207,14 +215,16 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
 
   const handleExport = () => {
     const rows = items.map(i => [i.nama, i.stok, i.satuan, i.stokMinimum]);
-    downloadCSV('template_inventory.csv', toCSV(['Nama Barang', 'Stok', 'Satuan', 'Stok Minimum'], rows));
+    downloadExcel('export_inventory.xlsx', ['Nama Barang', 'Stok', 'Satuan', 'Stok Minimum'], rows, 'Master Inventory');
   };
 
   const handleDownloadTemplate = () => {
-    downloadCSV('template_inventory_kosong.csv', toCSV(
+    downloadExcel(
+      'template_inventory_kosong.xlsx',
       ['Nama Barang', 'Stok', 'Satuan', 'Stok Minimum'],
-      [['Deterjen Cair', 10, 'liter', 3], ['Pewangi', 5, 'botol', 2]]
-    ));
+      [['Deterjen Cair Premium', 10, 'liter', 3], ['Pewangi Sakura', 5, 'botol', 2]],
+      'Template Inventory'
+    );
   };
 
   const [isImporting, setIsImporting] = useState(false);
@@ -233,16 +243,15 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
       setIsImporting(true);
       setImportFileName(currentFileName);
       setImportProgressPercent(15);
-      setImportProgressText('Membaca berkas CSV...');
+      setImportProgressText('Membaca berkas Excel/CSV...');
       setImportIsComplete(false);
       setImportIsError(false);
 
-      const text = await readFileAsText(file);
-      const rows = parseCSV(text);
+      const rows = await readSpreadsheetFile(file);
       if (rows.length === 0) {
         setImportIsError(true);
-        setImportProgressText('File CSV kosong atau format salah.');
-        await showAlert('File CSV kosong atau format salah.', 'warning');
+        setImportProgressText('Berkas Excel/CSV kosong atau format tidak sesuai.');
+        await showAlert('Berkas Excel/CSV kosong atau format tidak sesuai.', 'warning');
         setTimeout(() => setIsImporting(false), 3000);
         return;
       }
@@ -340,14 +349,14 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                 <Download className="w-3.5 h-3.5" />
               </button>
               {/* Download template kosong */}
-              <button onClick={handleDownloadTemplate} className="px-3 py-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 text-xs font-medium transition" title="Download Template Kosong">
-                Template
+              <button onClick={handleDownloadTemplate} className="px-3 py-1.5 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 text-xs font-medium transition cursor-pointer" title="Download Template Master Excel (.xlsx) Kosong">
+                Template Excel
               </button>
-              {/* Import CSV */}
-              <label className="cursor-pointer px-3 py-1.5 border border-[#B5C9C9] rounded-md text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-medium transition flex items-center gap-1.5" title="Import Data dari CSV">
+              {/* Import Excel / CSV */}
+              <label className="cursor-pointer px-3 py-1.5 border border-[#B5C9C9] rounded-md text-[#1E4648] hover:bg-[#B5C9C9]/10 text-xs font-medium transition flex items-center gap-1.5" title="Import Data dari Berkas Excel (.xlsx, .xls) atau CSV">
                 <Upload className="w-3.5 h-3.5" />
                 <span>Import</span>
-                <input type="file" accept=".csv" className="hidden" onChange={handleImport} />
+                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
               </label>
             </>
           )}

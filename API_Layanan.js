@@ -76,8 +76,13 @@ function getLayananListAll() {
     }
   });
 
-  const data = shL ? shL.getDataRange().getValues() : [];
-  data.shift();
+  const rawData = shL ? shL.getDataRange().getValues() : [];
+  if (rawData.length <= 1) return [];
+  rawData.shift(); // Remove header row
+  
+  // Filter out completely blank rows
+  const data = rawData.filter(r => (r[0] && String(r[0]).trim() !== "") || (r[1] && String(r[1]).trim() !== ""));
+  
   return data.map(r => {
     let pipelineSteps = [];
     try { if (r[7]) pipelineSteps = JSON.parse(r[7]); } catch(e) {}
@@ -185,16 +190,26 @@ function generateLayananCode_(kategori, tipe) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   if (!sh) return prefix + "-001";
   const rows = sh.getDataRange().getValues();
+  const existingCodes = new Set();
   let maxNum = 0;
   for (let i = 1; i < rows.length; i++) {
     const code = String(rows[i][0] || "").trim();
-    if (code.startsWith(prefix + "-")) {
-      const parts = code.split("-");
-      const numPart = parseInt(parts[parts.length - 1], 10);
-      if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
+    if (code) {
+      existingCodes.add(code.toUpperCase());
+      if (code.startsWith(prefix + "-")) {
+        const parts = code.split("-");
+        const numPart = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
+      }
     }
   }
-  return prefix + "-" + String(maxNum + 1).padStart(3, "0");
+  let candidateNum = maxNum + 1;
+  let candidateCode = prefix + "-" + String(candidateNum).padStart(3, "0");
+  while (existingCodes.has(candidateCode.toUpperCase())) {
+    candidateNum++;
+    candidateCode = prefix + "-" + String(candidateNum).padStart(3, "0");
+  }
+  return candidateCode;
 }
 
 function findOrCreateInventoryByName_(nama, satuan, stokAwal, stokMin) {
@@ -237,48 +252,71 @@ function findOrCreateInventoryByName_(nama, satuan, stokAwal, stokMin) {
 
 function tambahLayanan(data) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
-  const id = data.kode && String(data.kode).trim() ? String(data.kode).trim() : generateLayananCode_(data.kategori, data.tipe);
-  const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : "";
-  let idInv = data.idInventory || "";
-  
-  if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
-    idInv = JSON.stringify(data.bahanBakuList);
-  } else if (idInv === "auto") {
-    idInv = findOrCreateInventoryByName_(data.nama, data.satuan, 0, 0);
-  } else if (idInv === "none" || idInv === "NONE" || idInv === "-") {
-    idInv = "";
+  if (!sh) return { success: false, message: "Sheet Layanan tidak ditemukan." };
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const rows = sh.getDataRange().getValues();
+    let id = data.kode && String(data.kode).trim() ? String(data.kode).trim() : generateLayananCode_(data.kategori, data.tipe);
+    
+    // ENFORCE UNIQUE CODE CONSTRAINT
+    const idUpper = id.toUpperCase();
+    for (let i = 1; i < rows.length; i++) {
+      const existingCode = String(rows[i][0] || "").trim().toUpperCase();
+      if (existingCode === idUpper) {
+        return { 
+          success: false, 
+          message: `Kode produk "${id}" sudah terdaftar pada item "${rows[i][1]}". Kode item harus unik!` 
+        };
+      }
+    }
+
+    const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : "";
+    let idInv = data.idInventory || "";
+    
+    if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
+      idInv = JSON.stringify(data.bahanBakuList);
+    } else if (idInv === "auto") {
+      idInv = findOrCreateInventoryByName_(data.nama, data.satuan, 0, 0);
+    } else if (idInv === "none" || idInv === "NONE" || idInv === "-") {
+      idInv = "";
+    }
+
+    if (sh.getMaxColumns() < 13) {
+      sh.insertColumnsAfter(sh.getMaxColumns(), 13 - sh.getMaxColumns());
+    }
+
+    sh.appendRow([
+      id, 
+      data.nama, 
+      data.harga, 
+      data.satuan, 
+      data.icon || "🧺", 
+      "Y", 
+      data.tipe !== undefined ? data.tipe : "", 
+      pSteps, 
+      data.kategori || "Self Service", 
+      idInv, 
+      data.hargaModal || 0, 
+      data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : 1,
+      data.kategoriDropOff || ""
+    ]);
+
+    addAuditLog(
+      data.actor || "Manager", 
+      "Tambah Layanan", 
+      id, 
+      "-", 
+      `Nama: ${data.nama}, Harga: Rp ${Number(data.harga || 0).toLocaleString('id-ID')}, Satuan: ${data.satuan || 'kg'}, Kategori: ${data.kategori || 'Self Service'}`,
+      `Penambahan master produk ${data.nama} (Kode: ${id})`
+    );
+
+    SpreadsheetApp.flush();
+    return { success: true, id: id, idInventory: idInv };
+  } finally {
+    lock.releaseLock();
   }
-
-  if (sh.getMaxColumns() < 13) {
-    sh.insertColumnsAfter(sh.getMaxColumns(), 13 - sh.getMaxColumns());
-  }
-
-  sh.appendRow([
-    id, 
-    data.nama, 
-    data.harga, 
-    data.satuan, 
-    data.icon || "🧺", 
-    "Y", 
-    data.tipe !== undefined ? data.tipe : "", 
-    pSteps, 
-    data.kategori || "Self Service", 
-    idInv, 
-    data.hargaModal || 0, 
-    data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : 1,
-    data.kategoriDropOff || ""
-  ]);
-
-  addAuditLog(
-    data.actor || "Manager", 
-    "Tambah Layanan", 
-    id, 
-    "-", 
-    `Nama: ${data.nama}, Harga: Rp ${Number(data.harga || 0).toLocaleString('id-ID')}, Satuan: ${data.satuan || 'kg'}, Kategori: ${data.kategori || 'Self Service'}`,
-    `Penambahan master produk ${data.nama}`
-  );
-
-  return { success: true, id: id, idInventory: idInv };
 }
 
 function importLayananBatch(items, actor) {
@@ -296,16 +334,21 @@ function importLayananBatch(items, actor) {
     }
 
     const currentRows = sh.getDataRange().getValues();
+    const usedCodes = new Set();
     const prefixCounters = {};
+    
     for (let i = 1; i < currentRows.length; i++) {
       const code = String(currentRows[i][0] || "").trim();
-      const parts = code.split("-");
-      if (parts.length >= 2) {
-        const prefix = parts.slice(0, parts.length - 1).join("-");
-        const num = parseInt(parts[parts.length - 1], 10);
-        if (!isNaN(num)) {
-          if (!prefixCounters[prefix] || num > prefixCounters[prefix]) {
-            prefixCounters[prefix] = num;
+      if (code) {
+        usedCodes.add(code.toUpperCase());
+        const parts = code.split("-");
+        if (parts.length >= 2) {
+          const prefix = parts.slice(0, parts.length - 1).join("-");
+          const num = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(num)) {
+            if (!prefixCounters[prefix] || num > prefixCounters[prefix]) {
+              prefixCounters[prefix] = num;
+            }
           }
         }
       }
@@ -318,10 +361,20 @@ function importLayananBatch(items, actor) {
       const prefix = getProductPrefix_(kat, tip);
       
       let id = item.kode && String(item.kode).trim() ? String(item.kode).trim() : "";
-      if (!id) {
-        prefixCounters[prefix] = (prefixCounters[prefix] || 0) + 1;
-        id = prefix + "-" + String(prefixCounters[prefix]).padStart(3, "0");
+      
+      // Jika kode kosong atau sudah dipakai, buat kode unik berikutnya
+      if (!id || usedCodes.has(id.toUpperCase())) {
+        let counter = (prefixCounters[prefix] || 0) + 1;
+        let genCode = prefix + "-" + String(counter).padStart(3, "0");
+        while (usedCodes.has(genCode.toUpperCase())) {
+          counter++;
+          genCode = prefix + "-" + String(counter).padStart(3, "0");
+        }
+        prefixCounters[prefix] = counter;
+        id = genCode;
       }
+      
+      usedCodes.add(id.toUpperCase());
 
       const pSteps = item.pipelineSteps ? (typeof item.pipelineSteps === 'string' ? item.pipelineSteps : JSON.stringify(item.pipelineSteps)) : "";
       let idInv = item.idInventory || "";
@@ -361,7 +414,7 @@ function importLayananBatch(items, actor) {
       "-",
       "-",
       `Berhasil mengimpor ${rowsToAppend.length} produk`,
-      "Import master produk CSV"
+      "Import master produk CSV dengan jaminan kode unik"
     );
 
     return {
@@ -376,57 +429,257 @@ function importLayananBatch(items, actor) {
 
 function updateLayanan(id, data) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
-  const rows = sh.getDataRange().getValues();
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] === id) {
-      const newId = data.kode && String(data.kode).trim() ? String(data.kode).trim() : rows[i][0];
-      const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : (rows[i][7] || "");
-      let idInv = data.idInventory !== undefined ? data.idInventory : (rows[i][9] || "");
+  if (!sh) return { success: false, message: "Sheet Layanan tidak ditemukan." };
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const rows = sh.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]) === String(id)) {
+        const newId = data.kode && String(data.kode).trim() ? String(data.kode).trim() : rows[i][0];
+        
+        // ENFORCE UNIQUE CODE: check if newId is used in OTHER rows
+        if (newId.toUpperCase() !== String(id).toUpperCase()) {
+          for (let j = 1; j < rows.length; j++) {
+            if (j !== i && String(rows[j][0] || "").trim().toUpperCase() === newId.toUpperCase()) {
+              return { 
+                success: false, 
+                message: `Kode produk "${newId}" sudah digunakan oleh item "${rows[j][1]}". Kode item harus unik!` 
+              };
+            }
+          }
+        }
+
+        const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : (rows[i][7] || "");
+        let idInv = data.idInventory !== undefined ? data.idInventory : (rows[i][9] || "");
+        
+        if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
+          idInv = JSON.stringify(data.bahanBakuList);
+        } else if (idInv === "auto") {
+          idInv = findOrCreateInventoryByName_(data.nama || rows[i][1], data.satuan || rows[i][3], 0, 0);
+        } else if (idInv === "none" || idInv === "NONE" || idInv === "-") {
+          idInv = "";
+        }
+
+        if (sh.getMaxColumns() < 13) {
+          sh.insertColumnsAfter(sh.getMaxColumns(), 13 - sh.getMaxColumns());
+        }
+
+        const dataSebelum = `Kode: ${rows[i][0]}, Nama: ${rows[i][1]}, Harga: Rp ${Number(rows[i][2] || 0).toLocaleString('id-ID')}, Satuan: ${rows[i][3] || 'kg'}, Kategori: ${rows[i][8] || '-'}`;
+        const dataSesudah = `Kode: ${newId}, Nama: ${data.nama}, Harga: Rp ${Number(data.harga || 0).toLocaleString('id-ID')}, Satuan: ${data.satuan || 'kg'}, Kategori: ${data.kategori || rows[i][8] || '-'}`;
+
+        sh.getRange(i + 1, 1, 1, 13).setValues([[
+          newId, 
+          data.nama, 
+          data.harga, 
+          data.satuan, 
+          data.icon || "🧺", 
+          rows[i][5], 
+          data.tipe !== undefined ? data.tipe : rows[i][6], 
+          pSteps, 
+          data.kategori || rows[i][8], 
+          idInv, 
+          data.hargaModal !== undefined ? data.hargaModal : (Number(rows[i][10]) || 0), 
+          data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : (rows[i][11] !== undefined && rows[i][11] !== "" ? Number(rows[i][11]) : 1),
+          data.kategoriDropOff !== undefined ? data.kategoriDropOff : (rows[i][12] || "")
+        ]]);
+
+        addAuditLog(
+          data.actor || "Manager", 
+          "Edit Layanan", 
+          newId, 
+          dataSebelum, 
+          dataSesudah, 
+          `Perubahan data layanan ${data.nama}`
+        );
+
+        SpreadsheetApp.flush();
+        return { success: true, id: newId, idInventory: idInv };
+      }
+    }
+    return { success: false, message: "Layanan tidak ditemukan" };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Memeriksa seluruh sheet Layanan untuk mendeteksi apakah ada kode item yang duplikat.
+ * Mengembalikan ringkasan grup kode duplikat beserta saran kode unik baru.
+ */
+function checkDuplicateItemCodes() {
+  const sh = SS.getSheetByName(SHEET_LAYANAN);
+  if (!sh) return { hasDuplicates: false, totalDuplicateGroups: 0, totalDuplicateRows: 0, duplicateGroups: [] };
+  
+  const data = sh.getDataRange().getValues();
+  if (data.length <= 1) return { hasDuplicates: false, totalDuplicateGroups: 0, totalDuplicateRows: 0, duplicateGroups: [] };
+  
+  const codeMap = {};
+  const allUsedCodes = new Set();
+  const prefixCounters = {};
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const rawCode = String(row[0] || "").trim();
+    if (!rawCode) continue;
+    
+    allUsedCodes.add(rawCode.toUpperCase());
+    
+    const parts = rawCode.split("-");
+    if (parts.length >= 2) {
+      const prefix = parts.slice(0, parts.length - 1).join("-");
+      const num = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(num)) {
+        if (!prefixCounters[prefix] || num > prefixCounters[prefix]) {
+          prefixCounters[prefix] = num;
+        }
+      }
+    }
+    
+    if (!codeMap[rawCode]) {
+      codeMap[rawCode] = [];
+    }
+    codeMap[rawCode].push({
+      rowIndex: i + 1,
+      id: rawCode,
+      nama: String(row[1] || ""),
+      harga: Number(row[2]) || 0,
+      satuan: String(row[3] || ""),
+      icon: String(row[4] || "🧺"),
+      aktif: String(row[5] || "Y"),
+      tipe: String(row[6] || ""),
+      kategori: String(row[8] || ""),
+      idInventory: String(row[9] || ""),
+      hargaModal: Number(row[10]) || 0,
+      inventoryDeductionQty: Number(row[11]) || 1,
+      kategoriDropOff: String(row[12] || "")
+    });
+  }
+
+  const duplicateGroups = [];
+  let totalDuplicateRows = 0;
+
+  for (const code in codeMap) {
+    if (codeMap[code].length > 1) {
+      totalDuplicateRows += codeMap[code].length;
       
-      if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
-        idInv = JSON.stringify(data.bahanBakuList);
-      } else if (idInv === "auto") {
-        idInv = findOrCreateInventoryByName_(data.nama || rows[i][1], data.satuan || rows[i][3], 0, 0);
-      } else if (idInv === "none" || idInv === "NONE" || idInv === "-") {
-        idInv = "";
-      }
+      const itemsWithSuggestions = codeMap[code].map((item, idx) => {
+        if (idx === 0) {
+          return {
+            ...item,
+            isPrimary: true,
+            suggestedCode: item.id
+          };
+        }
+        
+        const prefix = getProductPrefix_(item.kategori, item.tipe);
+        let counter = (prefixCounters[prefix] || 0) + 1;
+        let candidate = prefix + "-" + String(counter).padStart(3, "0");
+        while (allUsedCodes.has(candidate.toUpperCase())) {
+          counter++;
+          candidate = prefix + "-" + String(counter).padStart(3, "0");
+        }
+        prefixCounters[prefix] = counter;
+        allUsedCodes.add(candidate.toUpperCase());
 
-      if (sh.getMaxColumns() < 13) {
-        sh.insertColumnsAfter(sh.getMaxColumns(), 13 - sh.getMaxColumns());
-      }
+        return {
+          ...item,
+          isPrimary: false,
+          suggestedCode: candidate
+        };
+      });
 
-      const dataSebelum = `Nama: ${rows[i][1]}, Harga: Rp ${Number(rows[i][2] || 0).toLocaleString('id-ID')}, Satuan: ${rows[i][3] || 'kg'}, Kategori: ${rows[i][8] || '-'}`;
-      const dataSesudah = `Nama: ${data.nama}, Harga: Rp ${Number(data.harga || 0).toLocaleString('id-ID')}, Satuan: ${data.satuan || 'kg'}, Kategori: ${data.kategori || rows[i][8] || '-'}`;
-
-      sh.getRange(i + 1, 1, 1, 13).setValues([[
-        newId, 
-        data.nama, 
-        data.harga, 
-        data.satuan, 
-        data.icon || "🧺", 
-        rows[i][5], 
-        data.tipe !== undefined ? data.tipe : rows[i][6], 
-        pSteps, 
-        data.kategori || rows[i][8], 
-        idInv, 
-        data.hargaModal !== undefined ? data.hargaModal : (Number(rows[i][10]) || 0), 
-        data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : (rows[i][11] !== undefined && rows[i][11] !== "" ? Number(rows[i][11]) : 1),
-        data.kategoriDropOff !== undefined ? data.kategoriDropOff : (rows[i][12] || "")
-      ]]);
-
-      addAuditLog(
-        data.actor || "Manager", 
-        "Edit Layanan", 
-        newId, 
-        dataSebelum, 
-        dataSesudah, 
-        `Perubahan data layanan ${data.nama}`
-      );
-
-      return { success: true, id: newId, idInventory: idInv };
+      duplicateGroups.push({
+        code: code,
+        count: codeMap[code].length,
+        items: itemsWithSuggestions
+      });
     }
   }
-  return { success: false, message: "Layanan tidak ditemukan" };
+
+  return {
+    hasDuplicates: duplicateGroups.length > 0,
+    totalDuplicateGroups: duplicateGroups.length,
+    totalDuplicateRows: totalDuplicateRows,
+    duplicateGroups: duplicateGroups
+  };
+}
+
+/**
+ * Menyimpan dan mengeksekusi resolusi perapian kode duplikat yang dipilih Manajemen.
+ * Mendukung aksi: RENAME / AUTO_RECODE, MERGE, DELETE.
+ */
+function resolveDuplicateItemCodes(resolutions, actor) {
+  if (!Array.isArray(resolutions) || resolutions.length === 0) {
+    return { success: false, message: "Daftar perapian kode kosong." };
+  }
+  
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = SS.getSheetByName(SHEET_LAYANAN);
+    if (!sh) return { success: false, message: "Sheet Layanan tidak ditemukan." };
+    
+    const rows = sh.getDataRange().getValues();
+    let updatedCount = 0;
+    let deletedCount = 0;
+    const auditLogs = [];
+    
+    // 1. Eksekusi Perubahan Kode (RENAME / AUTO_RECODE)
+    for (const res of resolutions) {
+      if (res.action === "RENAME" || res.action === "AUTO_RECODE") {
+        const rIndex = Number(res.rowIndex);
+        const newCode = String(res.newCode || "").trim();
+        if (rIndex >= 2 && rIndex <= rows.length && newCode) {
+          const oldCode = String(rows[rIndex - 1][0]);
+          const nama = String(rows[rIndex - 1][1]);
+          sh.getRange(rIndex, 1).setValue(newCode);
+          updatedCount++;
+          auditLogs.push(`Ubah kode [${nama}] dari "${oldCode}" -> "${newCode}"`);
+        }
+      }
+    }
+    
+    // 2. Eksekusi Penghapusan baris (DELETE / MERGE) dari bawah ke atas agar index baris tidak bergeser
+    const deleteRowIndices = resolutions
+      .filter(r => r.action === "DELETE" || r.action === "MERGE")
+      .map(r => Number(r.rowIndex))
+      .filter(rIndex => rIndex >= 2 && rIndex <= rows.length)
+      .sort((a, b) => b - a);
+      
+    for (const rIndex of deleteRowIndices) {
+      const nama = String(rows[rIndex - 1][1]);
+      const code = String(rows[rIndex - 1][0]);
+      sh.deleteRow(rIndex);
+      deletedCount++;
+      auditLogs.push(`Hapus duplikat [${nama}] kode "${code}" (baris ${rIndex})`);
+    }
+    
+    SpreadsheetApp.flush();
+    
+    if (auditLogs.length > 0) {
+      addAuditLog(
+        actor || "Manager",
+        "Rapikan Duplikasi Kode",
+        "-",
+        "-",
+        `Diperbarui: ${updatedCount}, Dihapus: ${deletedCount}`,
+        auditLogs.slice(0, 10).join("; ") + (auditLogs.length > 10 ? ` (+${auditLogs.length - 10} lainnya)` : "")
+      );
+    }
+    
+    return {
+      success: true,
+      updatedCount: updatedCount,
+      deletedCount: deletedCount,
+      message: `Perapian kode berhasil! ${updatedCount} item diperbarui kodenya, ${deletedCount} item duplikat dibersihkan.`
+    };
+  } catch (err) {
+    return { success: false, message: "Gagal merapikan duplikasi: " + err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function pautkanInventoryLayanan(idLayanan, idInventory, actor) {
@@ -496,7 +749,11 @@ function toggleAktifLayanan(id, aktifBaru) {
   const sh = SS.getSheetByName(SHEET_LAYANAN);
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] === id) { sh.getRange(i + 1, 6).setValue(aktifBaru ? "Y" : "N"); return true; }
+    if (rows[i][0] === id) { 
+      sh.getRange(i + 1, 6).setValue(aktifBaru ? "Y" : "N"); 
+      SpreadsheetApp.flush();
+      return true; 
+    }
   }
   return false;
 }
@@ -508,6 +765,7 @@ function hapusLayanan(id, actor) {
     if (rows[i][0] === id) {
       const nama = rows[i][1];
       sh.deleteRow(i + 1);
+      SpreadsheetApp.flush();
       addAuditLog(actor || "Manager", "Hapus Layanan", id, `Nama: ${nama}, Harga: Rp ${rows[i][2]}`, "-", `Hapus master layanan ${nama}`);
       return true;
     }

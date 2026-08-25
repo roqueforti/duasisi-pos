@@ -348,3 +348,43 @@ export interface BahanInventory {
   minStok: number;
 }
 
+export interface DuplicateItemRow {
+  rowIndex: number;
+  id: string;
+  nama: string;
+  harga: number;
+  satuan: string;
+  icon?: string;
+  aktif?: string;
+  tipe?: string;
+  kategori?: string;
+  idInventory?: string;
+  hargaModal?: number;
+  inventoryDeductionQty?: number;
+  kategoriDropOff?: string;
+  isPrimary?: boolean;
+  suggestedCode?: string;
+}
+
+export interface DuplicateGroup {
+  code: string;
+  count: number;
+  items: DuplicateItemRow[];
+}
+
+export interface DuplicateCheckResult {
+  hasDuplicates: boolean;
+  totalDuplicateGroups: number;
+  totalDuplicateRows: number;
+  duplicateGroups: DuplicateGroup[];
+}
+
+export interface DuplicateResolutionPayload {
+  rowIndex: number;
+  originalId: string;
+  nama: string;
+  action: 'RENAME' | 'AUTO_RECODE' | 'DELETE' | 'MERGE';
+  newCode?: string;
+  targetId?: string;
+}
+

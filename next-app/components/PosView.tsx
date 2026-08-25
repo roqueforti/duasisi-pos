@@ -329,19 +329,29 @@ export default function PosView({
       'getLayananListAll',
       (data) => {
         if (Array.isArray(data)) {
-          const activeData = data.filter(item => item.aktif === 'Y');
-          setLayananList(activeData.map((item) => ({
-            layanan: item.nama,
-            hargaSatuan: Number(item.harga),
-            tipe: item.tipe || 'SelfService',
-            satuan: item.satuan || 'paket',
-            icon: item.icon,
-            kategori: item.kategori || (item.tipe === 'FullService' ? 'Drop Off' : 'Self Service'),
-            kategoriDropOff: item.kategoriDropOff || '',
-            kategoriWarna: item.kategoriWarna,
-            kategoriIcon: item.kategoriIcon,
-            idInventory: item.idInventory || null,
-          })));
+          const activeData = data.filter(item => item && item.aktif === 'Y');
+          // Deduplicate items cleanly so POS screen never displays duplicate product cards
+          const seen = new Set<string>();
+          const dedupedList: LayananItem[] = [];
+          for (const item of activeData) {
+            const key = `${(item.id || item.nama || '').trim().toLowerCase()}_${(item.kategori || '').toLowerCase()}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              dedupedList.push({
+                layanan: item.nama,
+                hargaSatuan: Number(item.harga),
+                tipe: item.tipe || 'SelfService',
+                satuan: item.satuan || 'paket',
+                icon: item.icon,
+                kategori: item.kategori || (item.tipe === 'FullService' ? 'Drop Off' : 'Self Service'),
+                kategoriDropOff: item.kategoriDropOff || '',
+                kategoriWarna: item.kategoriWarna,
+                kategoriIcon: item.kategoriIcon,
+                idInventory: item.idInventory || null,
+              });
+            }
+          }
+          setLayananList(dedupedList);
         }
         setLayananLoading(false);
       },

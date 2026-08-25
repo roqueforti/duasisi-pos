@@ -31,6 +31,15 @@ function tambahPromo(data) {
   }
   const id = generateId("PRM");
   const kode = String(data.kodeVoucher).trim().toUpperCase();
+  if (!kode) return { success: false, message: "Kode voucher wajib diisi." };
+
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][1] || "").trim().toUpperCase() === kode) {
+      return { success: false, message: `Kode voucher "${kode}" sudah terdaftar. Kode harus unik!` };
+    }
+  }
+
   const targetPelanggan = data.targetPelanggan === "MEMBER" ? "MEMBER" : "SEMUA";
   const maxPakai = Number(data.maxPakaiPerPelanggan) || 0;
   
@@ -51,9 +60,19 @@ function editPromo(id, data) {
   const sh = SS.getSheetByName(SHEET_PROMO);
   if (!sh) return { success: false, message: "Sheet Promo tidak ditemukan" };
   const rows = sh.getDataRange().getValues();
+  
+  const newKode = data.kodeVoucher ? String(data.kodeVoucher).trim().toUpperCase() : null;
+  if (newKode) {
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]) !== String(id) && String(rows[i][1] || "").trim().toUpperCase() === newKode) {
+        return { success: false, message: `Kode voucher "${newKode}" sudah digunakan promo lain. Kode harus unik!` };
+      }
+    }
+  }
+
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
-      if (data.kodeVoucher) sh.getRange(i + 1, 2).setValue(String(data.kodeVoucher).trim().toUpperCase());
+      if (newKode) sh.getRange(i + 1, 2).setValue(newKode);
       if (data.jenisDiskon) sh.getRange(i + 1, 3).setValue(data.jenisDiskon);
       if (data.nilaiDiskon !== undefined) sh.getRange(i + 1, 4).setValue(Number(data.nilaiDiskon));
       if (data.minTransaksi !== undefined) sh.getRange(i + 1, 5).setValue(Number(data.minTransaksi));

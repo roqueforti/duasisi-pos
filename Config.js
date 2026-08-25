@@ -25,7 +25,7 @@ const MIGRATION_KEY   = "SPREADSHEET_SCHEMA_VERSION";
 // Fungsi maintenance/destruktif (reset, seed, setup, migration) sengaja tidak diekspos.
 const ALLOWED_API_ACTIONS = Object.freeze({
   verifikasiPin: true,
-  getLayananList: true, getLayananListAll: true, tambahLayanan: true, updateLayanan: true, toggleAktifLayanan: true, hapusLayanan: true, regenerateProductCodes: true, importLayananBatch: true, batchHapusLayanan: true, batchToggleAktifLayanan: true, batchUbahKategoriLayanan: true, pautkanInventoryLayanan: true,
+  getLayananList: true, getLayananListAll: true, tambahLayanan: true, updateLayanan: true, toggleAktifLayanan: true, hapusLayanan: true, regenerateProductCodes: true, importLayananBatch: true, batchHapusLayanan: true, batchToggleAktifLayanan: true, batchUbahKategoriLayanan: true, pautkanInventoryLayanan: true, checkDuplicateItemCodes: true, resolveDuplicateItemCodes: true,
   getInventoryList: true, tambahInventory: true, updateStokInventory: true, updateInventoryItem: true, hapusInventory: true, importInventoryBatch: true,
   getMesinList: true, tambahMesin: true, mulaiPakaiMesin: true, selesaiMesin: true, setMaintenanceMesin: true, hapusMesin: true,
   simpanTransaksi: true, pelunasanDP: true,
@@ -51,7 +51,7 @@ const ALLOWED_API_ACTIONS = Object.freeze({
 });
 const PUBLIC_API_ACTIONS = Object.freeze({ verifikasiPin: true, getTransaksiByNota: true, recoverPin: true, cekPoinPelanggan: true, logClientActivity: true });
 const MANAGER_API_ACTIONS = Object.freeze({
-  tambahLayanan: true, updateLayanan: true, toggleAktifLayanan: true, hapusLayanan: true, regenerateProductCodes: true, importLayananBatch: true, batchHapusLayanan: true, batchToggleAktifLayanan: true, batchUbahKategoriLayanan: true, pautkanInventoryLayanan: true,
+  tambahLayanan: true, updateLayanan: true, toggleAktifLayanan: true, hapusLayanan: true, regenerateProductCodes: true, importLayananBatch: true, batchHapusLayanan: true, batchToggleAktifLayanan: true, batchUbahKategoriLayanan: true, pautkanInventoryLayanan: true, checkDuplicateItemCodes: true, resolveDuplicateItemCodes: true,
   tambahInventory: true, hapusInventory: true, updateInventoryItem: true, importInventoryBatch: true,
   tambahMesin: true, hapusMesin: true,
   tambahPromo: true, hapusPromo: true, editPromo: true,
