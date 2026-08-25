@@ -418,50 +418,139 @@ function getRiwayatPelangganByHp(noHp) {
 }
 
 function importPelangganBatch(payload) {
-  if (!Array.isArray(payload) || payload.length === 0) return { success: false, msg: "Data kosong" };
+  if (!Array.isArray(payload) || payload.length === 0) {
+    return { success: false, message: "Data pelanggan kosong." };
+  }
   
   let shP = SS.getSheetByName(SHEET_PELANGGAN);
   if (!shP) {
     shP = SS.insertSheet(SHEET_PELANGGAN);
-    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin"]);
+    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member", "Tanggal Lahir"]);
   }
 
-  const data = shP.getDataRange().getValues();
-  const hpIndexMap = {}; 
-  
-  for (let i = 1; i < data.length; i++) {
-    const rowHp = normalizePhone(data[i][0]);
-    if (rowHp) hpIndexMap[rowHp] = i;
+  if (shP.getMaxColumns() < 11) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 11 - shP.getMaxColumns());
+    shP.getRange(1, 10).setValue("Status Member");
+    shP.getRange(1, 11).setValue("Tanggal Lahir");
   }
 
-  const now = new Date();
-  let addedCount = 0;
-  let updatedCount = 0;
-  let newDataRows = [];
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const data = shP.getDataRange().getValues();
+    const hpRowMap = {}; // Maps clean phone -> { rowNum, nama, alamat, catatan, tglLahir }
 
-  payload.forEach(item => {
-    if (!item.hp || !item.nama) return;
-    const cleanHp = normalizePhone(item.hp);
-    if (!cleanHp || cleanHp.length < 9) return;
-
-    if (hpIndexMap.hasOwnProperty(cleanHp)) {
-      const rIdx = hpIndexMap[cleanHp];
-      if (!data[rIdx][1] || data[rIdx][1].toString().trim() === "") {
-        shP.getRange(rIdx + 1, 2).setValue(item.nama);
-        updatedCount++;
+    for (let i = 1; i < data.length; i++) {
+      const rowHp = normalizePhone(data[i][0]);
+      if (rowHp) {
+        hpRowMap[rowHp] = {
+          rowNum: i + 1,
+          nama: String(data[i][1] || ""),
+          alamat: String(data[i][2] || ""),
+          catatan: String(data[i][7] || ""),
+          tglLahir: String(data[i][10] || "")
+        };
       }
-    } else {
-      newDataRows.push([cleanHp, item.nama, "", now, 0, 0, "", "", 0]);
-      addedCount++;
-      hpIndexMap[cleanHp] = data.length + newDataRows.length - 1; 
     }
-  });
 
-  if (newDataRows.length > 0) {
-    shP.getRange(data.length + 1, 1, newDataRows.length, newDataRows[0].length).setValues(newDataRows);
+    const now = new Date();
+    let addedCount = 0;
+    let updatedCount = 0;
+    const newRowsToAppend = [];
+    const processedInBatch = new Set();
+
+    payload.forEach(item => {
+      if (!item) return;
+      const rawHp = item.hp || item.noHp || item.nohp || item.phone || item.telepon;
+      const rawNama = item.nama || item.namaPelanggan || item.customer || item.name;
+      if (!rawHp || !rawNama) return;
+
+      const cleanHp = normalizePhone(rawHp);
+      if (!cleanHp || cleanHp.length < 8) return;
+
+      const nama = String(rawNama).trim();
+      const alamat = String(item.alamat || item.address || "").trim();
+      const tglLahir = String(item.tglLahir || item.ttl || "").trim();
+      const catatan = String(item.catatan || item.notes || item.keterangan || "").trim();
+
+      // Case 1: Already exists in existing spreadsheet rows
+      if (hpRowMap[cleanHp]) {
+        const existing = hpRowMap[cleanHp];
+        let hasChanges = false;
+
+        if (!existing.nama || existing.nama === "Pelanggan" || existing.nama.trim() === "") {
+          shP.getRange(existing.rowNum, 2).setValue(nama);
+          existing.nama = nama;
+          hasChanges = true;
+        }
+        if (alamat && (!existing.alamat || existing.alamat.trim() === "")) {
+          shP.getRange(existing.rowNum, 3).setValue(alamat);
+          existing.alamat = alamat;
+          hasChanges = true;
+        }
+        if (catatan && (!existing.catatan || existing.catatan.trim() === "")) {
+          shP.getRange(existing.rowNum, 8).setValue(catatan);
+          existing.catatan = catatan;
+          hasChanges = true;
+        }
+        if (tglLahir && (!existing.tglLahir || existing.tglLahir.trim() === "")) {
+          shP.getRange(existing.rowNum, 11).setValue(tglLahir);
+          existing.tglLahir = tglLahir;
+          hasChanges = true;
+        }
+
+        if (hasChanges) updatedCount++;
+      } 
+      // Case 2: Already staged for insertion in this batch
+      else if (processedInBatch.has(cleanHp)) {
+        // Skip duplicate rows within the same batch file
+      } 
+      // Case 3: Completely new customer
+      else {
+        processedInBatch.add(cleanHp);
+        // ["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member", "Tanggal Lahir"]
+        newRowsToAppend.push([
+          cleanHp,
+          nama,
+          alamat || "",
+          now,
+          0,
+          0,
+          "",
+          catatan || "",
+          0,
+          "UMUM",
+          tglLahir || ""
+        ]);
+        addedCount++;
+      }
+    });
+
+    if (newRowsToAppend.length > 0) {
+      const lastRow = shP.getLastRow();
+      shP.getRange(lastRow + 1, 1, newRowsToAppend.length, 11).setValues(newRowsToAppend);
+    }
+
+    SpreadsheetApp.flush();
+
+    addAuditLog(
+      "Manager",
+      "Import Pelanggan Batch",
+      "-",
+      "-",
+      `Ditambahkan: ${addedCount}, Diperbarui: ${updatedCount}`,
+      `Import data pelanggan massal dari file Excel/CSV`
+    );
+
+    return { 
+      success: true, 
+      added: addedCount, 
+      updated: updatedCount,
+      message: `Berhasil mengimpor ${addedCount} pelanggan baru, ${updatedCount} diperbarui.`
+    };
+  } finally {
+    lock.releaseLock();
   }
-
-  return { success: true, added: addedCount, updated: updatedCount };
 }
 
 function cekPoinPelanggan(phone) {
