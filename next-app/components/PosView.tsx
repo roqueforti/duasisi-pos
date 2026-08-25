@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Search, 
   Plus, 
@@ -170,8 +170,8 @@ export default function PosView({
   // 1. Cart & Order State
   const [cart, setCart] = useState<{ [key: string]: CartItem }>({});
   const [customer, setCustomer] = useState<CustomerState>({ nama: '', noHp: '' });
-  const [customerMode, setCustomerMode] = useState<'UMUM' | 'MEMBER'>('UMUM');
-  const [customerSource, setCustomerSource] = useState<'BARU' | 'TERDAFTAR'>('BARU');
+  const [isManualCustomer, setIsManualCustomer] = useState<boolean>(false);
+  const [activeSuggestionField, setActiveSuggestionField] = useState<'noHp' | 'nama' | null>(null);
   const [showQuickAddMember, setShowQuickAddMember] = useState<boolean>(false);
   const [newMemberForm, setNewMemberForm] = useState({ nama: '', noHp: '', alamat: '', tglLahir: '' });
   const [savingMember, setSavingMember] = useState<boolean>(false);
@@ -382,7 +382,7 @@ export default function PosView({
               noHp: c.noHp,
               alamat: c.alamat,
               isMember: isMem,
-              memberStatus: isMem ? 'Member' : (totalTx > 1 ? 'Pelanggan Lama' : 'Pelanggan Baru'),
+              memberStatus: isMem ? 'Member' : (totalTx >= 1 ? 'Pelanggan Lama' : 'Pelanggan Baru'),
               poin: Number(c.saldoPoin || c.poin || 0),
               totalOrder: totalTx,
             };
@@ -734,7 +734,7 @@ export default function PosView({
               alamat: c.alamat,
               tglLahir: c.tglLahir,
               isMember: isMem,
-              memberStatus: isMem ? 'Member' : (totalTx > 1 ? 'Pelanggan Lama' : 'Pelanggan Baru'),
+              memberStatus: isMem ? 'Member' : (totalTx >= 1 ? 'Pelanggan Lama' : 'Pelanggan Baru'),
               poin: Number(c.saldoPoin || c.poin || 0),
               totalOrder: totalTx,
             };
@@ -751,8 +751,6 @@ export default function PosView({
           poin: 0,
           totalOrder: 0
         });
-        setCustomerMode('MEMBER');
-        setCustomerSource('TERDAFTAR');
         setShowQuickAddMember(false);
         setNewMemberForm({ nama: '', noHp: '', alamat: '', tglLahir: '' });
         await showAlert(res.message || `Member ${finalNama} berhasil didaftarkan!`, 'success');
@@ -778,21 +776,105 @@ export default function PosView({
         });
 
         if (found) {
+          const isMem = Boolean(found.isMember || found.memberStatus?.toLowerCase().includes('member'));
           return {
             ...prev,
             noHp: phoneVal,
             nama: prev.nama && prev.nama !== 'Pelanggan Umum' ? prev.nama : found.nama,
             alamat: found.alamat,
-            isMember: found.isMember,
-            memberStatus: found.memberStatus,
+            tglLahir: found.tglLahir,
+            isMember: isMem,
+            memberStatus: isMem ? 'Member' : 'Pelanggan Lama',
+            poin: Number(found.poin || 0),
+            totalOrder: Number(found.totalOrder || 0),
+          };
+        } else {
+          return {
+            ...prev,
+            noHp: phoneVal,
+            isMember: false,
+            memberStatus: 'Pelanggan Baru',
+            poin: 0,
+            totalOrder: 0,
+          };
+        }
+      }
+      return {
+        ...prev,
+        noHp: phoneVal,
+        isMember: false,
+        memberStatus: undefined,
+        poin: 0
+      };
+    });
+  };
+
+  // Handle customer name input change with auto-check on exact match
+  const handleCustomerNameInput = (nameVal: string) => {
+    setCustomer(prev => {
+      const q = nameVal.trim().toLowerCase();
+      if (q && q !== 'pelanggan umum') {
+        const found = customerList.find(c => (c.nama || '').trim().toLowerCase() === q);
+        if (found) {
+          const isMem = Boolean(found.isMember || found.memberStatus?.toLowerCase().includes('member'));
+          return {
+            ...prev,
+            nama: nameVal,
+            noHp: prev.noHp || found.noHp,
+            alamat: found.alamat,
+            tglLahir: found.tglLahir,
+            isMember: isMem,
+            memberStatus: isMem ? 'Member' : 'Pelanggan Lama',
             poin: Number(found.poin || 0),
             totalOrder: Number(found.totalOrder || 0),
           };
         }
       }
-      return { ...prev, noHp: phoneVal };
+      return { ...prev, nama: nameVal };
     });
   };
+
+  // Handle select customer from live suggestions
+  const handleSelectCustomer = (c: CustomerState) => {
+    const isMem = Boolean(c.isMember || c.memberStatus?.toLowerCase().includes('member'));
+    setCustomer({
+      ...c,
+      nama: c.nama,
+      noHp: c.noHp,
+      alamat: c.alamat,
+      tglLahir: c.tglLahir,
+      isMember: isMem,
+      memberStatus: isMem ? 'Member' : 'Pelanggan Lama',
+      poin: Number(c.poin || 0),
+      totalOrder: Number(c.totalOrder || 0)
+    });
+    setIsManualCustomer(false);
+    setActiveSuggestionField(null);
+  };
+
+  // Live matching customers for Phone input (matches phone digits OR name)
+  const phoneMatches = useMemo(() => {
+    const raw = (customer.noHp || '').trim();
+    const clean = raw.replace(/\D/g, '');
+    if (!raw || (clean.length < 2 && raw.length < 2)) return [];
+    return customerList.filter(c => {
+      const cHpClean = (c.noHp || '').replace(/\D/g, '');
+      const cNameLower = (c.nama || '').toLowerCase();
+      return (clean && cHpClean.includes(clean)) || (raw.length >= 2 && cNameLower.includes(raw.toLowerCase()));
+    }).slice(0, 6);
+  }, [customer.noHp, customerList]);
+
+  // Live matching customers for Name input (matches letter-by-letter OR phone digits)
+  const nameMatches = useMemo(() => {
+    const raw = (customer.nama || '').trim();
+    if (!raw || raw.length < 1 || raw.toLowerCase() === 'pelanggan umum') return [];
+    const clean = raw.replace(/\D/g, '');
+    return customerList.filter(c => {
+      const cNameLower = (c.nama || '').toLowerCase();
+      const cHpClean = (c.noHp || '').replace(/\D/g, '');
+      return cNameLower.includes(raw.toLowerCase()) || (clean && clean.length >= 2 && cHpClean.includes(clean));
+    }).slice(0, 6);
+  }, [customer.nama, customerList]);
 
   // Toast Auto Clear
   useEffect(() => {
@@ -874,7 +956,7 @@ export default function PosView({
       setVoucherMsg({ type: 'error', text: 'Masukkan kode voucher terlebih dahulu' });
       return;
     }
-    const isMemberCust = Boolean(customer.isMember || customerMode === 'MEMBER');
+    const isMemberCust = Boolean(customer.isMember);
     const custPhone = customer.noHp ? customer.noHp.trim() : '';
 
     try {
@@ -959,13 +1041,16 @@ export default function PosView({
       return;
     }
     const kasir = namaKasirInput || 'Kasir 1';
-    const custName = customer.nama || 'Pelanggan Umum';
+    const custName = (customer.nama || '').trim() || 'Pelanggan Umum';
+    const custHp = (customer.noHp || '').trim();
     const total = grandTotal;
     const bayar = Number(uangBayarInput) || total;
 
-    if (!customer.nama.trim() || !customer.noHp.trim()) {
-      await showAlert('Nama dan No. HP / WhatsApp pelanggan wajib diisi.', 'warning');
-      return;
+    if (!isManualCustomer) {
+      if (!customer.nama.trim() || !customer.noHp.trim()) {
+        await showAlert('Nama dan No. HP / WhatsApp pelanggan wajib diisi.\n\nJika pelanggan tidak ingin memberikan nomor HP / turis asing / data tidak lengkap, centang opsi "Input Manual / Data Pelanggan Tidak Lengkap".', 'warning');
+        return;
+      }
     }
     if (metodeBayar === 'Tunai' && (!uangBayarInput || bayar < total)) {
       await showAlert('Nominal uang tunai belum cukup.', 'warning');
@@ -984,7 +1069,7 @@ export default function PosView({
 
       const res = await runBackend<{ success: boolean; noNota: string; total: number; token?: string }>('simpanTransaksi', {
         namaPelanggan: custName,
-        noHp: customer.noHp,
+        noHp: custHp,
         kasir,
         tipeLayanan: autoTipeLayanan,
         tingkatLayanan: hasDropOff ? tingkatLayanan : 'Reguler',
@@ -1003,8 +1088,8 @@ export default function PosView({
       if (!res?.success || !res.noNota) throw new Error('Backend tidak mengembalikan nomor nota');
 
       const resTotal = Number(res.total) || grandTotal;
-      const currCust = customerList.find(c => (customer.noHp && c.noHp === customer.noHp) || (customer.nama && c.nama === customer.nama));
-      const isActualMember = Boolean((customer.isMember || customerMode === 'MEMBER') && (customer.isMember || currCust?.isMember));
+      const currCust = custHp ? customerList.find(c => c.noHp === custHp) : (custName !== 'Pelanggan Umum' ? customerList.find(c => c.nama === custName) : null);
+      const isActualMember = Boolean(customer.isMember || currCust?.isMember);
       const saldoPoinLama = Number(customer.poin || currCust?.poin || 0);
       const poinEarned = isActualMember ? Math.floor(resTotal / (poinRate || 10000)) : 0;
       const saldoPoinBaru = isActualMember ? (saldoPoinLama + poinEarned) : 0;
@@ -1014,7 +1099,7 @@ export default function PosView({
         token: res.token || '',
         kasir,
         pelanggan: custName,
-        noHp: customer.noHp,
+        noHp: custHp,
         isMember: isActualMember,
         metodeBayar,
         subtotal: subtotalCart,
@@ -1375,6 +1460,9 @@ export default function PosView({
   const handleCompleteFlowAndReset = () => {
     const trxId = completedOrderData?.trxId || 'TRX-POS';
     clearCart();
+    setCustomer({ nama: '', noHp: '' });
+    setIsManualCustomer(false);
+    setShowQuickAddMember(false);
     setCatatanOrderInput('');
     setUangBayarInput('');
     setShowSuccessModal(false);
@@ -2159,7 +2247,7 @@ export default function PosView({
                 <span className="font-bold font-mono">-Rp {(diskonApplied?.nilai || 0).toLocaleString('id-ID')}</span>
               </div>
             )}
-            {customerMode === 'MEMBER' && customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
+            {customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
               <div className="flex justify-between text-amber-700">
                 <span className="flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-500" /> Poin Member:
@@ -2321,7 +2409,15 @@ export default function PosView({
                       </div>
                       <button
                         onClick={() => {
-                          setCustomer(filtered[0]);
+                          const isMem = Boolean(filtered[0].isMember || filtered[0].memberStatus?.toLowerCase().includes('member'));
+                          setCustomer({
+                            ...filtered[0],
+                            isMember: isMem,
+                            memberStatus: isMem ? 'Member' : 'Pelanggan Lama',
+                            poin: Number(filtered[0].poin || 0),
+                            totalOrder: Number(filtered[0].totalOrder || 0)
+                          });
+                          setIsManualCustomer(false);
                           setShowCustModal(false);
                         }}
                         className="w-full py-2 bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1.5"
@@ -2344,7 +2440,15 @@ export default function PosView({
                         <div 
                           key={idx}
                           onClick={() => {
-                            setCustomer(c);
+                            const isMem = Boolean(c.isMember || c.memberStatus?.toLowerCase().includes('member'));
+                            setCustomer({
+                              ...c,
+                              isMember: isMem,
+                              memberStatus: isMem ? 'Member' : 'Pelanggan Lama',
+                              poin: Number(c.poin || 0),
+                              totalOrder: Number(c.totalOrder || 0)
+                            });
+                            setIsManualCustomer(false);
                             setShowCustModal(false);
                           }}
                           className="p-3 bg-slate-50 hover:bg-[#B5C9C9]/20/50 border border-slate-200 hover:border-[#B5C9C9] rounded-lg cursor-pointer transition flex items-center justify-between"
@@ -2426,360 +2530,511 @@ export default function PosView({
 
               {/* Form Content - Spacious & Senior Friendly */}
               <div className="p-6 sm:p-8 space-y-6 text-sm font-semibold text-slate-700">
-                {/* Customer Type Segmented Toggle */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block font-black text-slate-800 text-sm">Tipe Pelanggan *</label>
-                    <span className="text-xs font-bold text-slate-500">
-                      {customerMode === 'MEMBER' ? '⭐ Mode Loyalitas & Member' : '👤 Mode Pelanggan Umum'}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerMode('UMUM');
-                        setCustomerSource('BARU');
-                        setShowQuickAddMember(false);
-                      }}
-                      className={`py-3.5 px-4 rounded-xl font-black transition text-sm flex items-center justify-center gap-2 cursor-pointer ${
-                        customerMode === 'UMUM'
-                          ? 'bg-[#1E4648] text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                      }`}
-                    >
-                      <User className="w-4 h-4" />
-                      <span>Pelanggan Umum</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomerMode('MEMBER');
-                        setCustomerSource('TERDAFTAR');
-                      }}
-                      className={`py-3.5 px-4 rounded-xl font-black transition text-sm flex items-center justify-center gap-2 cursor-pointer ${
-                        customerMode === 'MEMBER'
-                          ? 'bg-[#1E4648] text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                      }`}
-                    >
-                      <Sparkles className="w-4 h-4 text-amber-300" />
-                      <span>Member Terdaftar</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Registered Member Search, Select & Quick Add */}
-                {customerMode === 'MEMBER' && (
-                  <div className="space-y-3 bg-amber-50/70 p-4 sm:p-5 rounded-2xl border-2 border-amber-300">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <label className="block font-black text-amber-950 text-sm">Pilih Data Member Terdaftar *</label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowQuickAddMember(!showQuickAddMember);
-                          if (!showQuickAddMember) {
-                            setNewMemberForm({
-                              nama: customer.nama !== 'Pelanggan Umum' ? customer.nama : '',
-                              noHp: customer.noHp,
-                              alamat: customer.alamat || '',
-                              tglLahir: ''
-                            });
-                          }
-                        }}
-                        className={`tactile-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                          showQuickAddMember
-                            ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
-                            : 'bg-teal-800 hover:bg-teal-900 text-white border border-teal-700 hover:shadow-md'
-                        }`}
-                      >
-                        {showQuickAddMember ? (
-                          <>
-                            <X className="w-4 h-4 stroke-[2.5]" />
-                            <span>Tutup Form</span>
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus className="w-4 h-4 text-teal-200" />
-                            <span>+ Daftar Member Baru</span>
-                          </>
-                        )}
-                      </button>
+                {/* Unified Customer Data Form Section */}
+                <div className="space-y-4">
+                  {/* Section Title Bar */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-teal-100/80 text-[#1E4648] flex items-center justify-center shadow-2xs shrink-0">
+                        <User className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <label className="block font-black text-slate-800 text-sm sm:text-base leading-tight">Data Pelanggan</label>
+                        <p className="text-[11px] text-slate-400 font-normal mt-0.5">Satu form untuk semua pelanggan · Deteksi otomatis Member & Pelanggan Lama</p>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCustModal(true)}
+                      className="tactile-btn px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-[#1E4648] hover:text-[#163536] rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs border border-slate-200"
+                      title="Cari / Pilih dari data pelanggan terdaftar"
+                    >
+                      <Search className="w-3.5 h-3.5" />
+                      <span>Cari Pelanggan</span>
+                    </button>
+                  </div>
 
-                    {!showQuickAddMember ? (
-                      <select
-                        value={customer.isMember ? customer.noHp : ''}
-                        onChange={(e) => {
-                          const found = customerList.find((c) => c.noHp === e.target.value && c.isMember);
-                          if (found) {
-                            setCustomer({
-                              ...found,
-                              isMember: true,
-                              memberStatus: 'Member',
-                              poin: Number(found.poin || 0),
-                            });
-                          }
-                        }}
-                        className="w-full px-4 py-3.5 bg-white border-2 border-amber-300 rounded-xl font-bold text-sm text-slate-800 outline-none focus:border-[#1E4648]"
-                      >
-                        <option value="">-- Cari / Pilih Member Terdaftar --</option>
-                        {customerList.filter((c) => c.isMember).length === 0 ? (
-                          <option value="" disabled>Belum ada member terdaftar (Klik + Daftar Member Baru)</option>
-                        ) : (
-                          customerList.filter((c) => c.isMember).map((c) => (
-                            <option key={c.noHp} value={c.noHp}>
-                              ⭐ {c.nama} ({c.noHp}) {c.poin ? `· ${c.poin} Poin` : ''} {c.totalOrder ? `· ${c.totalOrder}x order` : ''}
-                            </option>
-                          ))
-                        )}
-                      </select>
-                    ) : (
-                      /* Quick Inline Member Registration Form */
-                      <div className="bg-white p-4 rounded-xl border border-amber-300 space-y-3">
-                        <div className="text-sm font-black text-amber-900 flex items-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-amber-600" />
-                          <span>Daftarkan Member Baru Langsung di Kasir</span>
+                  {/* Checkbox Card: Input Manual / Data Pelanggan Tidak Lengkap */}
+                  <div className={`p-3.5 sm:p-4 rounded-2xl border-2 transition-all ${
+                    isManualCustomer 
+                      ? 'bg-amber-50/80 border-amber-300 shadow-2xs' 
+                      : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                  }`}>
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isManualCustomer}
+                        onChange={(e) => setIsManualCustomer(e.target.checked)}
+                        className="w-4.5 h-4.5 mt-0.5 rounded text-[#1E4648] border-slate-300 focus:ring-[#1E4648] cursor-pointer shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="font-black text-xs sm:text-sm text-slate-800">
+                            Input Manual / Data Pelanggan Tidak Lengkap
+                          </span>
+                          {isManualCustomer && (
+                            <span className="text-[10px] font-black text-amber-900 bg-amber-200/90 px-2.5 py-0.5 rounded-full border border-amber-300">
+                              Identitas Fleksibel
+                            </span>
+                          )}
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                          <input
-                            type="text"
-                            placeholder="Nama Lengkap Member *"
-                            value={newMemberForm.nama}
-                            onChange={(e) => setNewMemberForm({ ...newMemberForm, nama: e.target.value })}
-                            className="px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white"
-                          />
-                          <input
-                            type="tel"
-                            placeholder="No. WhatsApp / HP *"
-                            value={newMemberForm.noHp}
-                            onChange={(e) => setNewMemberForm({ ...newMemberForm, noHp: e.target.value })}
-                            className="px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white"
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-600 mb-1">Tanggal Lahir (TTL) *</label>
-                            <input
-                              type="date"
-                              required
-                              value={newMemberForm.tglLahir}
-                              onChange={(e) => setNewMemberForm({ ...newMemberForm, tglLahir: e.target.value })}
-                              className="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white"
-                            />
-                          </div>
-                          <div>
-                            <AddressAutocomplete
-                              label="Alamat Lengkap Member"
-                              required
-                              value={newMemberForm.alamat}
-                              onChange={(addr) => setNewMemberForm({ ...newMemberForm, alamat: addr })}
-                              placeholder="Ketik nama jalan / komplek / kos..."
-                            />
-                          </div>
-                        </div>
-                        <div className="flex gap-2 pt-1">
-                          <button
-                            type="button"
-                            disabled={savingMember}
-                            onClick={() => handleDaftarMemberQuick()}
-                            className="flex-1 py-3 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                            <span>{savingMember ? 'Mendaftarkan...' : 'Simpan & Aktifkan Member'}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShowQuickAddMember(false)}
-                            className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-sm cursor-pointer"
-                          >
-                            Batal
-                          </button>
-                        </div>
+                        <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5 leading-relaxed">
+                          Gunakan jika pelanggan tidak ingin memberikan nomor HP, turis asing/bule, atau data diri belum lengkap.
+                        </p>
+                      </div>
+                    </label>
+                    {isManualCustomer && (
+                      <div className="mt-2.5 pt-2.5 border-t border-amber-200/90 text-xs text-amber-950 flex items-center gap-1.5 font-semibold">
+                        <span>💡</span>
+                        <span>No. WhatsApp & data lainnya bersifat <strong>opsional</strong>. Transaksi tetap dapat diproses langsung tanpa validasi nomor HP.</span>
                       </div>
                     )}
                   </div>
-                )}
 
-                {/* Member Points Card & Loyalty Projection (ONLY FOR VERIFIED MEMBERS) */}
-                {customerMode === 'MEMBER' && customer.isMember && (
-                  <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/10 border-2 border-amber-300 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-[#FF9500] text-white flex items-center justify-center font-black text-base shadow-xs shrink-0">
-                        <Star className="w-5 h-5 fill-white text-white" />
+                  {/* Guidance Banner (Normal Mode) */}
+                  {!isManualCustomer && !customer.noHp && (
+                    <div className="flex items-center gap-3 p-3.5 bg-gradient-to-r from-teal-50/90 via-emerald-50/80 to-teal-50/90 border border-teal-200 rounded-2xl text-xs sm:text-sm text-teal-950 shadow-2xs">
+                      <div className="p-2 rounded-xl bg-[#1E4648] text-white shrink-0 shadow-2xs">
+                        <Smartphone className="w-4 h-4" />
                       </div>
-                      <div>
-                        <div className="font-black text-sm text-slate-900">
-                          Poin Loyalitas Pelanggan (Member)
-                        </div>
-                        <div className="text-xs text-slate-600 mt-0.5">
-                          Saldo Saat Ini: <span className="font-black text-slate-900 font-mono text-sm">{customer.poin || 0} Poin</span>
-                        </div>
+                      <div className="leading-relaxed font-medium text-xs sm:text-sm">
+                        <span className="font-black text-[#1E4648]">Petunjuk Kasir:</span> Masukkan <strong>No. WhatsApp / HP</strong> terlebih dahulu. Sistem otomatis mendeteksi apakah pelanggan <strong>⭐ Member</strong>, <strong>👤 Pelanggan Lama</strong>, atau <strong>✨ Pelanggan Baru</strong>.
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <span className="text-[10px] font-extrabold text-amber-800 uppercase block tracking-wider">Dapat dari Order Ini</span>
-                      <span className="text-sm font-black text-emerald-700 font-mono bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-300 inline-block mt-0.5">
-                        +{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin
-                      </span>
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Guidance Banner: Masukkan No. WhatsApp Terlebih Dahulu */}
-                <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-teal-50/90 via-emerald-50/80 to-teal-50/90 border border-teal-200 rounded-2xl text-xs sm:text-sm text-teal-950 shadow-2xs">
-                  <div className="p-2 rounded-xl bg-[#1E4648] text-white shrink-0 shadow-2xs">
-                    <Smartphone className="w-4.5 h-4.5" />
-                  </div>
-                  <div className="leading-relaxed font-medium">
-                    <span className="font-black text-[#1E4648]">Petunjuk Kasir:</span> Masukkan <strong>No. WhatsApp / HP</strong> terlebih dahulu. Sistem otomatis mendeteksi apakah pelanggan <strong>⭐ Member</strong>, <strong>👤 Pelanggan Lama</strong>, atau <strong>✨ Pelanggan Baru</strong>.
-                  </div>
-                </div>
-
-                {/* Customer Identity Inputs (Prioritas 1: No. WA, Prioritas 2: Nama) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Slot 1: No. WhatsApp / HP */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block font-black text-slate-800 text-sm">No. WhatsApp / HP *</label>
-                      {(() => {
-                        const digits = (customer.noHp || '').replace(/\D/g, '');
-                        if (digits.length === 0) {
-                          return <span className="text-xs text-slate-400 font-normal">Wajib diisi</span>;
-                        }
-                        if (digits.length < 8) {
-                          return <span className="text-xs text-amber-600 font-bold">Min. 9 digit</span>;
-                        }
-                        const match = customerList.find(c => {
-                          const cHp = (c.noHp || '').replace(/\D/g, '');
-                          return cHp && (cHp === digits || cHp.endsWith(digits) || digits.endsWith(cHp));
-                        });
-                        if (match?.isMember || customer.isMember) {
-                          return <span className="text-xs text-amber-900 bg-amber-100 font-black px-2 py-0.5 rounded-full border border-amber-300">⭐ Member</span>;
-                        }
-                        if (match) {
-                          return <span className="text-xs text-teal-900 bg-teal-100 font-black px-2 py-0.5 rounded-full border border-teal-300">👤 Pelanggan Lama</span>;
-                        }
-                        return <span className="text-xs text-sky-900 bg-sky-100 font-black px-2 py-0.5 rounded-full border border-sky-300">✨ Pelanggan Baru</span>;
-                      })()}
-                    </div>
-                    <input
-                      type="tel"
-                      value={customer.noHp}
-                      disabled={customerMode === 'MEMBER' && !showQuickAddMember && !!customer.noHp}
-                      onChange={(e) => handleCustomerPhoneInput(e.target.value)}
-                      placeholder="Contoh: 08123456789"
-                      className="w-full px-4 py-3.5 sm:py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-base text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white disabled:opacity-60 transition shadow-2xs"
-                    />
-                  </div>
-
-                  {/* Slot 2: Nama Pelanggan */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block font-black text-slate-800 text-sm">Nama Pelanggan *</label>
-                      {customer.nama && customer.nama !== 'Pelanggan Umum' && (
-                        <span className="text-xs text-slate-400 font-normal">Nama pemesan</span>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      value={customer.nama}
-                      disabled={customerMode === 'MEMBER' && !showQuickAddMember && !!customer.noHp}
-                      onChange={(e) => setCustomer({ ...customer, nama: e.target.value })}
-                      placeholder="Nama lengkap pemesan"
-                      className="w-full px-4 py-3.5 sm:py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-base text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white disabled:opacity-60 transition shadow-2xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Auto-check Customer Detection Banner in Pelanggan Umum Mode */}
-                {customerMode === 'UMUM' && (() => {
-                  const cleanInputHp = (customer.noHp || '').replace(/[^0-9]/g, '');
-                  if (cleanInputHp.length < 8) return null;
-
-                  const detected = customerList.find(c => {
-                    const cHp = (c.noHp || '').replace(/[^0-9]/g, '');
-                    return cHp && (cHp === cleanInputHp || cHp.endsWith(cleanInputHp) || cleanInputHp.endsWith(cHp));
-                  });
-
-                  if (detected) {
-                    if (detected.isMember) {
-                      return (
-                        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 flex items-center justify-between text-sm shadow-xs">
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">⭐</span>
-                            <div>
-                              <div className="font-black text-amber-950 text-sm sm:text-base">Terdaftar Sebagai Member: {detected.nama}</div>
-                              <div className="text-xs text-amber-800 font-semibold mt-0.5">Saldo: {detected.poin || 0} Poin · {detected.totalOrder || 0}x Transaksi</div>
-                            </div>
-                          </div>
+                  {/* Customer Identity Inputs with Live Letter-by-Letter Suggestions */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Slot 1: No. WhatsApp / HP */}
+                    <div className="relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block font-black text-slate-800 text-sm">
+                          No. WhatsApp / HP {isManualCustomer ? <span className="text-xs text-slate-400 font-normal">(Opsional)</span> : '*'}
+                        </label>
+                        {(() => {
+                          const digits = (customer.noHp || '').replace(/\D/g, '');
+                          if (digits.length === 0) {
+                            return (
+                              <span className="text-xs text-slate-400 font-normal">
+                                {isManualCustomer ? 'Boleh dikosongkan' : 'Wajib diisi'}
+                              </span>
+                            );
+                          }
+                          if (digits.length < 8) {
+                            return <span className="text-xs text-amber-600 font-bold">Min. 8 digit</span>;
+                          }
+                          if (customer.isMember) {
+                            return (
+                              <span className="text-xs text-amber-900 bg-amber-100 font-black px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1">
+                                ⭐ Member
+                              </span>
+                            );
+                          }
+                          if (customer.memberStatus === 'Pelanggan Lama') {
+                            return (
+                              <span className="text-xs text-teal-900 bg-teal-100 font-black px-2 py-0.5 rounded-full border border-teal-300 flex items-center gap-1">
+                                👤 Pelanggan Lama
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="text-xs text-sky-900 bg-sky-100 font-black px-2 py-0.5 rounded-full border border-sky-300 flex items-center gap-1">
+                              ✨ Pelanggan Baru
+                            </span>
+                          );
+                        })()}
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          value={customer.noHp}
+                          onFocus={() => setActiveSuggestionField('noHp')}
+                          onBlur={() => setTimeout(() => setActiveSuggestionField(null), 250)}
+                          onChange={(e) => {
+                            handleCustomerPhoneInput(e.target.value);
+                            setActiveSuggestionField('noHp');
+                          }}
+                          placeholder={isManualCustomer ? "Ketik No. HP / Nama (Opsional)" : "Ketik No. HP / Cari Nama..."}
+                          className="w-full pl-4 pr-10 py-3.5 sm:py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-base text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white transition shadow-2xs"
+                        />
+                        {customer.noHp && (
                           <button
                             type="button"
                             onClick={() => {
-                              setCustomerMode('MEMBER');
-                              setCustomerSource('TERDAFTAR');
-                              setCustomer({ ...detected, isMember: true, poin: Number(detected.poin || 0) });
+                              setCustomer(prev => ({ ...prev, noHp: '', isMember: false, memberStatus: undefined, poin: 0 }));
                             }}
-                            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs sm:text-sm transition shadow-xs cursor-pointer"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-200/70 transition cursor-pointer"
+                            title="Hapus nomor HP"
                           >
-                            Gunakan Data Member
+                            <X className="w-4 h-4" />
                           </button>
+                        )}
+                      </div>
+
+                      {/* Live Suggestions Dropdown for Phone Field */}
+                      {activeSuggestionField === 'noHp' && phoneMatches.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border-2 border-teal-600 rounded-2xl shadow-2xl overflow-hidden animate-fade-in divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                          <div className="px-3.5 py-2 bg-teal-50/90 text-[11px] font-black text-[#1E4648] flex items-center justify-between sticky top-0 backdrop-blur-xs">
+                            <span className="flex items-center gap-1.5">
+                              <Search className="w-3.5 h-3.5" /> Ditemukan {phoneMatches.length} pelanggan:
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-normal">Klik untuk memilih</span>
+                          </div>
+                          {phoneMatches.map((c, idx) => {
+                            const isMem = Boolean(c.isMember || c.memberStatus?.toLowerCase().includes('member'));
+                            return (
+                              <div
+                                key={idx}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleSelectCustomer(c);
+                                }}
+                                className="p-3 hover:bg-teal-50/80 cursor-pointer transition flex items-center justify-between gap-3 text-left group"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs ${
+                                    isMem ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-teal-100 text-[#1E4648]'
+                                  }`}>
+                                    {isMem ? '⭐' : '👤'}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-black text-slate-900 truncate flex items-center gap-1.5">
+                                      <span className="group-hover:text-[#1E4648] transition-colors">{c.nama}</span>
+                                      {isMem && (
+                                        <span className="text-[9.5px] bg-amber-100 text-amber-900 font-extrabold px-1.5 py-0.2 rounded border border-amber-300">
+                                          Member
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 font-mono font-semibold truncate">
+                                      {c.noHp} {c.alamat ? `· ${c.alamat}` : ''}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  {isMem ? (
+                                    <span className="text-[11px] font-mono font-black text-amber-800 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                                      {c.poin || 0} Poin
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg">
+                                      {c.totalOrder || 1}x Order
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Slot 2: Nama Pelanggan */}
+                    <div className="relative">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block font-black text-slate-800 text-sm">
+                          Nama Pelanggan {isManualCustomer ? <span className="text-xs text-slate-400 font-normal">(Opsional)</span> : '*'}
+                        </label>
+                        {customer.nama && customer.nama !== 'Pelanggan Umum' && (
+                          <span className="text-xs text-slate-400 font-normal">Nama pemesan</span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={customer.nama}
+                          onFocus={() => setActiveSuggestionField('nama')}
+                          onBlur={() => setTimeout(() => setActiveSuggestionField(null), 250)}
+                          onChange={(e) => {
+                            handleCustomerNameInput(e.target.value);
+                            setActiveSuggestionField('nama');
+                          }}
+                          placeholder={isManualCustomer ? "Nama pemesan (default: Pelanggan Umum)" : "Ketik nama pelanggan..."}
+                          className="w-full pl-4 pr-10 py-3.5 sm:py-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-base text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white transition shadow-2xs"
+                        />
+                        {customer.nama && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomer(prev => ({ ...prev, nama: '' }));
+                            }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-200/70 transition cursor-pointer"
+                            title="Hapus nama"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Live Suggestions Dropdown for Name Field */}
+                      {activeSuggestionField === 'nama' && nameMatches.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border-2 border-teal-600 rounded-2xl shadow-2xl overflow-hidden animate-fade-in divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                          <div className="px-3.5 py-2 bg-teal-50/90 text-[11px] font-black text-[#1E4648] flex items-center justify-between sticky top-0 backdrop-blur-xs">
+                            <span className="flex items-center gap-1.5">
+                              <Search className="w-3.5 h-3.5" /> Ditemukan {nameMatches.length} nama pelanggan:
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-normal">Klik untuk memilih</span>
+                          </div>
+                          {nameMatches.map((c, idx) => {
+                            const isMem = Boolean(c.isMember || c.memberStatus?.toLowerCase().includes('member'));
+                            return (
+                              <div
+                                key={idx}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleSelectCustomer(c);
+                                }}
+                                className="p-3 hover:bg-teal-50/80 cursor-pointer transition flex items-center justify-between gap-3 text-left group"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs ${
+                                    isMem ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-teal-100 text-[#1E4648]'
+                                  }`}>
+                                    {isMem ? '⭐' : '👤'}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-black text-slate-900 truncate flex items-center gap-1.5">
+                                      <span className="group-hover:text-[#1E4648] transition-colors">{c.nama}</span>
+                                      {isMem && (
+                                        <span className="text-[9.5px] bg-amber-100 text-amber-900 font-extrabold px-1.5 py-0.2 rounded border border-amber-300">
+                                          Member
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 font-mono font-semibold truncate">
+                                      {c.noHp} {c.alamat ? `· ${c.alamat}` : ''}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  {isMem ? (
+                                    <span className="text-[11px] font-mono font-black text-amber-800 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                                      {c.poin || 0} Poin
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg">
+                                      {c.totalOrder || 1}x Order
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Auto-check Customer Detection Banner / Loyalty Cards */}
+                  {(() => {
+                    const cleanHp = (customer.noHp || '').replace(/[^0-9]/g, '');
+                    if (cleanHp.length < 8 && !customer.isMember) return null;
+
+                    if (customer.isMember) {
+                      return (
+                        <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/10 border-2 border-amber-300 rounded-2xl p-4 flex items-center justify-between shadow-2xs flex-wrap gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-[#FF9500] text-white flex items-center justify-center font-black text-base shadow-xs shrink-0">
+                              <Star className="w-5 h-5 fill-white text-white" />
+                            </div>
+                            <div>
+                              <div className="font-black text-sm text-slate-900 flex items-center gap-2">
+                                <span>⭐ Member Terdaftar: {customer.nama || 'Member'}</span>
+                              </div>
+                              <div className="text-xs text-slate-600 mt-0.5">
+                                Saldo: <span className="font-black text-slate-900 font-mono text-sm">{customer.poin || 0} Poin</span> · {customer.totalOrder || 0}x Order
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-[10px] font-extrabold text-amber-800 uppercase block tracking-wider">Dapat dari Order Ini</span>
+                            <span className="text-sm font-black text-emerald-700 font-mono bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-300 inline-block mt-0.5">
+                              +{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin
+                            </span>
+                          </div>
                         </div>
                       );
-                    } else {
+                    }
+
+                    if (customer.memberStatus === 'Pelanggan Lama') {
                       return (
                         <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 flex items-center justify-between text-sm flex-wrap gap-2 shadow-xs">
                           <div className="flex items-center gap-3 text-slate-700">
-                            <span className="text-2xl">👤</span>
+                            <div className="w-9 h-9 rounded-xl bg-teal-100 text-[#1E4648] flex items-center justify-center font-bold text-base shrink-0">
+                              👤
+                            </div>
                             <div>
                               <div className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
-                                <span>Pelanggan Umum: {detected.nama}</span>
-                                <span className="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-0.5 rounded-full">Bukan Member</span>
+                                <span>Pelanggan Lama: {customer.nama || 'Pelanggan'}</span>
+                                <span className="text-xs bg-slate-200 text-slate-700 font-bold px-2.5 py-0.5 rounded-full">Pelanggan Biasa</span>
                               </div>
-                              <div className="text-xs text-slate-500 font-medium mt-0.5">Pernah order {detected.totalOrder || 1}x sebelumnya · Belum terdaftar member</div>
+                              <div className="text-xs text-slate-500 font-medium mt-0.5">
+                                Pernah order {customer.totalOrder || 1}x sebelumnya · Belum terdaftar member
+                              </div>
                             </div>
                           </div>
                           <button
                             type="button"
                             onClick={() => {
-                              setCustomerMode('MEMBER');
-                              setShowQuickAddMember(true);
-                              setNewMemberForm({ nama: detected.nama || customer.nama, noHp: detected.noHp || customer.noHp, alamat: detected.alamat || '', tglLahir: (detected as any)?.tglLahir || '' });
+                              setShowQuickAddMember(!showQuickAddMember);
+                              if (!showQuickAddMember) {
+                                setNewMemberForm({
+                                  nama: customer.nama && customer.nama !== 'Pelanggan Umum' ? customer.nama : '',
+                                  noHp: customer.noHp,
+                                  alamat: customer.alamat || '',
+                                  tglLahir: customer.tglLahir || ''
+                                });
+                              }
                             }}
-                            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs sm:text-sm transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                            className={`px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition shadow-xs flex items-center gap-1.5 cursor-pointer ${
+                              showQuickAddMember
+                                ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
+                                : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white'
+                            }`}
                           >
-                            <Sparkles className="w-4 h-4 text-white" />
-                            <span>+ Daftarkan Member</span>
+                            {showQuickAddMember ? (
+                              <>
+                                <X className="w-4 h-4" />
+                                <span>Tutup Form</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4 text-white" />
+                                <span>+ Daftarkan Member</span>
+                              </>
+                            )}
                           </button>
                         </div>
                       );
                     }
-                  } else {
+
+                    // Pelanggan Baru
                     return (
                       <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 flex items-center justify-between text-sm flex-wrap gap-2 shadow-xs">
                         <div className="flex items-center gap-3 text-slate-600">
-                          <span className="text-2xl">✨</span>
+                          <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center font-bold text-base shrink-0">
+                            ✨
+                          </div>
                           <div>
-                            <div className="font-black text-slate-800 text-sm sm:text-base">Pelanggan Baru (Belum Terdaftar)</div>
+                            <div className="font-black text-slate-800 text-sm sm:text-base">Pelanggan Baru</div>
                             <div className="text-xs text-slate-500 mt-0.5">Nomor ini belum pernah order sebelumnya.</div>
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => {
-                            setCustomerMode('MEMBER');
-                            setShowQuickAddMember(true);
-                            setNewMemberForm({ nama: customer.nama, noHp: customer.noHp, alamat: '', tglLahir: '' });
+                            setShowQuickAddMember(!showQuickAddMember);
+                            if (!showQuickAddMember) {
+                              setNewMemberForm({
+                                nama: customer.nama && customer.nama !== 'Pelanggan Umum' ? customer.nama : '',
+                                noHp: customer.noHp,
+                                alamat: '',
+                                tglLahir: ''
+                              });
+                            }
                           }}
-                          className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black text-xs sm:text-sm transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                          className={`px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm transition shadow-xs flex items-center gap-1.5 cursor-pointer ${
+                            showQuickAddMember
+                              ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
+                              : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white'
+                          }`}
                         >
-                          <Sparkles className="w-4 h-4 text-white" />
-                          <span>+ Daftarkan Jadi Member</span>
+                          {showQuickAddMember ? (
+                            <>
+                              <X className="w-4 h-4" />
+                              <span>Tutup Form</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 text-white" />
+                              <span>+ Daftarkan Jadi Member</span>
+                            </>
+                          )}
                         </button>
                       </div>
                     );
-                  }
-                })()}
+                  })()}
+
+                  {/* Inline Quick Member Registration Form */}
+                  {showQuickAddMember && (
+                    <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-amber-300 space-y-3.5 shadow-xs">
+                      <div className="flex items-center justify-between pb-2 border-b border-amber-200/80">
+                        <div className="text-sm font-black text-amber-950 flex items-center gap-2">
+                          <Sparkles className="w-4.5 h-4.5 text-amber-600" />
+                          <span>Daftarkan Sebagai Member Resmi (Dapatkan Poin Loyalitas)</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowQuickAddMember(false)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap Member *</label>
+                          <input
+                            type="text"
+                            placeholder="Nama Lengkap Member"
+                            value={newMemberForm.nama}
+                            onChange={(e) => setNewMemberForm({ ...newMemberForm, nama: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">No. WhatsApp / HP *</label>
+                          <input
+                            type="tel"
+                            placeholder="No. WhatsApp / HP"
+                            value={newMemberForm.noHp}
+                            onChange={(e) => setNewMemberForm({ ...newMemberForm, noHp: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Lahir (TTL) *</label>
+                          <input
+                            type="date"
+                            required
+                            value={newMemberForm.tglLahir}
+                            onChange={(e) => setNewMemberForm({ ...newMemberForm, tglLahir: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:bg-white"
+                          />
+                        </div>
+                        <div>
+                          <AddressAutocomplete
+                            label="Alamat Lengkap Member"
+                            required
+                            value={newMemberForm.alamat}
+                            onChange={(addr) => setNewMemberForm({ ...newMemberForm, alamat: addr })}
+                            placeholder="Ketik nama jalan / komplek / kos..."
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="button"
+                          disabled={savingMember}
+                          onClick={() => handleDaftarMemberQuick()}
+                          className="flex-1 py-3 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>{savingMember ? 'Mendaftarkan...' : 'Simpan & Aktifkan Member'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowQuickAddMember(false)}
+                          className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-sm cursor-pointer"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Staff Kasir & Service Type */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2946,7 +3201,7 @@ export default function PosView({
                         <span className="font-mono font-black">-Rp {diskonApplied.nilai.toLocaleString('id-ID')}</span>
                       </div>
                     )}
-                    {customerMode === 'MEMBER' && customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
+                    {customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
                       <div className="flex justify-between text-amber-800 font-bold pt-0.5">
                         <span className="flex items-center gap-1.5">
                           <Sparkles className="w-4 h-4 text-amber-500" /> Perolehan Poin (Member):
@@ -2976,7 +3231,7 @@ export default function PosView({
                         Diskon -Rp {diskonApplied.nilai.toLocaleString('id-ID')}
                       </span>
                     )}
-                    {customerMode === 'MEMBER' && customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
+                    {customer.isMember && Math.floor((grandTotal || 0) / (poinRate || 10000)) > 0 && (
                       <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-bold flex items-center gap-1">
                         <Sparkles className="w-3 h-3 text-amber-300" />
                         +{Math.floor((grandTotal || 0) / (poinRate || 10000))} Poin
