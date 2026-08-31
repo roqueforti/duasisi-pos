@@ -259,6 +259,7 @@ export default function PosView({
   ]);
 
   const [showDetailTransaksiModal, setShowDetailTransaksiModal] = useState<boolean>(false);
+  const [mobileCheckoutTab, setMobileCheckoutTab] = useState<'detail' | 'bayar'>('detail');
   const [showKonfirmasiBayarModal, setShowKonfirmasiBayarModal] = useState<boolean>(false);
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   const [showPreviewStrukModal, setShowPreviewStrukModal] = useState<boolean>(false);
@@ -2300,6 +2301,7 @@ export default function PosView({
                     else setTingkatLayanan('Reguler');
                   }
                 }
+                setMobileCheckoutTab('detail');
                 setShowDetailTransaksiModal(true);
               }}
               disabled={cartArray.length === 0}
@@ -2501,13 +2503,72 @@ export default function PosView({
 
       {/* 4. MODAL "Detail Transaksi & Pembayaran" (Full Page Terminal: Kiri Detail Order & Customer, Kanan Kasir & Pembayaran) */}
       {showDetailTransaksiModal && (
-        <div className="fixed inset-0 z-[500] bg-slate-950 flex flex-col w-full h-full min-h-screen overflow-hidden animate-fade-in">
-          <div className="relative bg-white w-full h-full flex flex-col lg:flex-row overflow-hidden">
+        <div className="fixed inset-0 z-[500] bg-slate-950 flex flex-col w-full h-[100dvh] max-h-[100dvh] overflow-hidden animate-fade-in select-none">
+          <div className="relative bg-white w-full h-full max-h-[100dvh] flex flex-col lg:flex-row overflow-hidden">
             
+            {/* MOBILE TOP TAB BAR (< lg screens only) */}
+            <div className="lg:hidden shrink-0 bg-slate-900 text-white px-3 py-2.5 flex items-center justify-between border-b border-slate-800 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setShowDetailTransaksiModal(false)}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition shrink-0 cursor-pointer"
+                  title="Kembali ke Layar Kasir"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <div className="min-w-0">
+                  <div className="text-[9.5px] text-teal-300 font-extrabold uppercase tracking-wider">TOTAL TAGIHAN</div>
+                  <div className="text-sm font-black font-mono leading-tight truncate text-white">
+                    Rp {(grandTotal || 0).toLocaleString('id-ID')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Segmented Switcher for Mobile */}
+              <div className="flex bg-slate-800 p-1 rounded-xl gap-1 border border-slate-700/80">
+                <button
+                  type="button"
+                  onClick={() => setMobileCheckoutTab('detail')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${
+                    mobileCheckoutTab === 'detail'
+                      ? 'bg-[#1E4648] text-white shadow-xs'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>1. Pelanggan</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileCheckoutTab('bayar')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${
+                    mobileCheckoutTab === 'bayar'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-300 hover:text-white'
+                  }`}
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>2. Bayar</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowDetailTransaksiModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition shrink-0 cursor-pointer"
+                title="Tutup (Esc)"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
             {/* LEFT PANEL: Transaction Summary & Customer Details */}
-            <div className="flex-1 flex flex-col overflow-y-auto border-b lg:border-b-0 lg:border-r border-slate-200 min-w-0 bg-white">
-              {/* Header with Back Button */}
-              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-slate-50/70">
+            <div className={`flex-1 min-w-0 flex flex-col h-full max-h-full overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-200 bg-white ${
+              mobileCheckoutTab === 'detail' ? 'flex' : 'hidden lg:flex'
+            }`}>
+              {/* Header with Back Button (Visible on Desktop / lg+) */}
+              <div className="hidden lg:flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-slate-50/70">
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -2516,7 +2577,7 @@ export default function PosView({
                     title="Kembali ke Layar Kasir"
                   >
                     <ChevronLeft className="w-4 h-4" />
-                    <span className="hidden sm:inline">Kembali</span>
+                    <span>Kembali</span>
                   </button>
                   <div className="w-10 h-10 rounded-2xl bg-[#1E4648] text-white flex items-center justify-center shadow-xs shrink-0">
                     <Receipt className="w-5 h-5" />
@@ -2529,7 +2590,7 @@ export default function PosView({
               </div>
 
               {/* Form Content - Spacious & Senior Friendly */}
-              <div className="p-6 sm:p-8 space-y-6 text-sm font-semibold text-slate-700">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-7 space-y-5 text-sm font-semibold text-slate-700 overscroll-contain">
                 {/* Unified Customer Data Form Section */}
                 <div className="space-y-4">
                   {/* Section Title Bar */}
@@ -3212,12 +3273,32 @@ export default function PosView({
                   </div>
                 </div>
               </div>
+
+              {/* Mobile Bottom Sticky Bar when on 'detail' tab (< lg) */}
+              <div className="lg:hidden shrink-0 p-3 bg-white border-t border-slate-200 shadow-md flex items-center justify-between gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <div className="min-w-0">
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">TOTAL TAGIHAN:</span>
+                  <span className="text-base font-black text-[#1E4648] font-mono leading-tight block">
+                    Rp {(grandTotal || 0).toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileCheckoutTab('bayar')}
+                  className="py-3 px-5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer transition active:scale-[0.98]"
+                >
+                  <span>Lanjut ke Pembayaran</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* RIGHT PANEL: Payment Calculator & Numpad */}
-            <div className="w-full lg:w-[400px] xl:w-[440px] flex flex-col bg-slate-50 shrink-0 overflow-hidden border-l border-slate-200 h-full justify-between">
+            <div className={`w-full lg:w-[390px] xl:w-[430px] flex flex-col bg-slate-50 shrink-0 border-l border-slate-200 h-full max-h-full overflow-hidden justify-between ${
+              mobileCheckoutTab === 'bayar' ? 'flex' : 'hidden lg:flex'
+            }`}>
               {/* Total Banner with Close Button */}
-              <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white py-4 px-5 shrink-0 shadow-md relative flex items-center justify-between">
+              <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white py-3.5 sm:py-4 px-4 sm:px-5 shrink-0 shadow-md relative flex items-center justify-between">
                 <div className="min-w-0">
                   <span className="text-[9.5px] text-teal-200 font-extrabold uppercase tracking-widest block">
                     TOTAL PEMBAYARAN
@@ -3266,7 +3347,7 @@ export default function PosView({
                         key={m.id}
                         type="button"
                         onClick={() => setMetodeBayar(m.id as any)}
-                        className={`py-1.5 px-1 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center justify-center gap-0.5 ${
+                        className={`py-1.5 px-1 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
                           isSelected
                             ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
                             : 'bg-white text-slate-700 border-slate-200/90 hover:border-[#1E4648] hover:bg-slate-50'
@@ -3280,160 +3361,162 @@ export default function PosView({
                 </div>
               </div>
 
-              {/* Tunai: Numpad Calculator - Auto Fit */}
-              {metodeBayar === 'Tunai' ? (
-                <div className="flex-1 flex flex-col justify-between p-3 overflow-hidden">
-                  {/* Display Input & Quick Reset */}
-                  <div className="mb-1.5">
-                    <div className="flex justify-between items-center mb-0.5">
-                      <span className="font-bold text-slate-600 text-[11px]">Uang Diterima:</span>
-                      {uangBayarInput && uangBayarInput !== '0' && (
-                        <button
-                          type="button"
-                          onClick={() => setUangBayarInput('0')}
-                          className="text-[10px] font-bold text-rose-500 hover:underline"
-                        >
-                          Reset (C)
-                        </button>
-                      )}
+              {/* Scrollable Center Area: Numpad / Non-Tunai Display */}
+              <div className="flex-1 min-h-0 overflow-y-auto p-3 overscroll-contain flex flex-col justify-start">
+                {metodeBayar === 'Tunai' ? (
+                  <div className="space-y-2">
+                    {/* Display Input & Quick Reset */}
+                    <div>
+                      <div className="flex justify-between items-center mb-0.5">
+                        <span className="font-bold text-slate-600 text-[11px]">Uang Diterima:</span>
+                        {uangBayarInput && uangBayarInput !== '0' && (
+                          <button
+                            type="button"
+                            onClick={() => setUangBayarInput('0')}
+                            className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
+                          >
+                            Reset (C)
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        readOnly
+                        value={uangBayarInput ? `Rp ${Number(uangBayarInput).toLocaleString('id-ID')}` : 'Rp 0'}
+                        className="w-full px-3 py-1.5 bg-white border-2 border-slate-300 rounded-xl font-black text-xl text-[#1E4648] text-right font-mono shadow-2xs"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      readOnly
-                      value={uangBayarInput ? `Rp ${Number(uangBayarInput).toLocaleString('id-ID')}` : 'Rp 0'}
-                      className="w-full px-3 py-1.5 bg-white border-2 border-slate-300 rounded-xl font-black text-xl text-[#1E4648] text-right font-mono shadow-2xs"
-                    />
-                  </div>
 
-                  {/* Quick Shortcut Buttons */}
-                  <div className="grid grid-cols-4 gap-1.5 mb-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setUangBayarInput((grandTotal || 0).toString())}
-                      className="py-1 bg-white border border-slate-200 hover:bg-teal-50 hover:border-[#1E4648] text-[#1E4648] font-bold rounded-lg text-[11px] transition shadow-2xs"
-                    >
-                      Uang Pas
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUangBayarInput('20000')}
-                      className="py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-[11px] transition shadow-2xs"
-                    >
-                      20K
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUangBayarInput('50000')}
-                      className="py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-[11px] transition shadow-2xs"
-                    >
-                      50K
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUangBayarInput('100000')}
-                      className="py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-[11px] transition shadow-2xs"
-                    >
-                      100K
-                    </button>
-                  </div>
-
-                  {/* Numpad Grid - Compact & Complete with 0, 00, 000 */}
-                  <div className="grid grid-cols-3 gap-1.5 mb-1.5">
-                    {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((num) => (
+                    {/* Quick Shortcut Buttons */}
+                    <div className="grid grid-cols-4 gap-1.5">
                       <button
-                        key={num}
                         type="button"
-                        onClick={() =>
-                          setUangBayarInput((prev) => (prev === '0' || !prev ? num.toString() : prev + num))
-                        }
-                        className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-lg shadow-2xs active:scale-95 transition font-mono"
+                        onClick={() => setUangBayarInput((grandTotal || 0).toString())}
+                        className="py-1 bg-white border border-slate-200 hover:bg-teal-50 hover:border-[#1E4648] text-[#1E4648] font-bold rounded-lg text-[11px] transition shadow-2xs cursor-pointer"
                       >
-                        {num}
+                        Uang Pas
                       </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '0'))}
-                      className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-lg shadow-2xs active:scale-95 transition font-mono"
-                    >
-                      0
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '00'))}
-                      className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-base shadow-2xs active:scale-95 transition font-mono"
-                    >
-                      00
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '000'))}
-                      className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-base shadow-2xs active:scale-95 transition font-mono"
-                    >
-                      000
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUangBayarInput('0')}
-                      className="py-1.5 sm:py-2 bg-rose-50 border-2 border-rose-200 hover:bg-rose-100 text-rose-600 font-bold rounded-xl text-sm shadow-2xs active:scale-95 transition"
-                    >
-                      C
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUangBayarInput((prev) => prev.slice(0, -1) || '0')}
-                      className="col-span-2 py-1.5 sm:py-2 bg-slate-100 border-2 border-slate-200 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs shadow-2xs active:scale-95 transition flex items-center justify-center gap-1.5"
-                    >
-                      <Delete className="w-4 h-4" />
-                      <span>Hapus</span>
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => setUangBayarInput('20000')}
+                        className="py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-[11px] transition shadow-2xs cursor-pointer"
+                      >
+                        20K
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUangBayarInput('50000')}
+                        className="py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-[11px] transition shadow-2xs cursor-pointer"
+                      >
+                        50K
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUangBayarInput('100000')}
+                        className="py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg text-[11px] transition shadow-2xs cursor-pointer"
+                      >
+                        100K
+                      </button>
+                    </div>
 
-                  {/* Kembalian / Kekurangan Display - Compact Bar */}
-                  {Number(uangBayarInput) >= grandTotal && Number(uangBayarInput) > 0 ? (
-                    <div className="bg-emerald-50 border border-emerald-300 rounded-xl py-1.5 px-3 flex items-center justify-between shadow-2xs">
-                      <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">KEMBALIAN:</span>
-                      <span className="text-base font-black text-emerald-700 font-mono">
-                        Rp {(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}
-                      </span>
+                    {/* Numpad Grid - Compact & Complete with 0, 00, 000 */}
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((num) => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() =>
+                            setUangBayarInput((prev) => (prev === '0' || !prev ? num.toString() : prev + num))
+                          }
+                          className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-lg shadow-2xs active:scale-95 transition font-mono cursor-pointer"
+                        >
+                          {num}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '0'))}
+                        className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-lg shadow-2xs active:scale-95 transition font-mono cursor-pointer"
+                      >
+                        0
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '00'))}
+                        className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-base shadow-2xs active:scale-95 transition font-mono cursor-pointer"
+                      >
+                        00
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '000'))}
+                        className="py-1.5 sm:py-2 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-base shadow-2xs active:scale-95 transition font-mono cursor-pointer"
+                      >
+                        000
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUangBayarInput('0')}
+                        className="py-1.5 sm:py-2 bg-rose-50 border-2 border-rose-200 hover:bg-rose-100 text-rose-600 font-bold rounded-xl text-sm shadow-2xs active:scale-95 transition cursor-pointer"
+                      >
+                        C
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUangBayarInput((prev) => prev.slice(0, -1) || '0')}
+                        className="col-span-2 py-1.5 sm:py-2 bg-slate-100 border-2 border-slate-200 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs shadow-2xs active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Delete className="w-4 h-4" />
+                        <span>Hapus</span>
+                      </button>
                     </div>
-                  ) : Number(uangBayarInput) > 0 ? (
-                    <div className="bg-rose-50 border border-rose-300 rounded-xl py-1.5 px-3 flex items-center justify-between shadow-2xs">
-                      <span className="text-[10px] font-extrabold text-rose-800 uppercase tracking-wider">KURANG:</span>
-                      <span className="text-base font-black text-rose-700 font-mono">
-                        Rp {(grandTotal - Number(uangBayarInput)).toLocaleString('id-ID')}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="py-1 text-center text-[10px] text-slate-400 font-medium">
-                      Pilih shortcut atau tekan tombol angka untuk bayar tunai
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* Non-Tunai Display */
-                <div className="flex-1 flex flex-col items-center justify-center gap-2 p-4 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-200 text-[#1E4648] flex items-center justify-center shadow-2xs">
-                    {metodeBayar === 'QRIS' ? (
-                      <QrCode className="w-6 h-6" />
+
+                    {/* Kembalian / Kekurangan Display - Compact Bar */}
+                    {Number(uangBayarInput) >= grandTotal && Number(uangBayarInput) > 0 ? (
+                      <div className="bg-emerald-50 border border-emerald-300 rounded-xl py-1.5 px-3 flex items-center justify-between shadow-2xs">
+                        <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">KEMBALIAN:</span>
+                        <span className="text-base font-black text-emerald-700 font-mono">
+                          Rp {(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    ) : Number(uangBayarInput) > 0 ? (
+                      <div className="bg-rose-50 border border-rose-300 rounded-xl py-1.5 px-3 flex items-center justify-between shadow-2xs">
+                        <span className="text-[10px] font-extrabold text-rose-800 uppercase tracking-wider">KURANG:</span>
+                        <span className="text-base font-black text-rose-700 font-mono">
+                          Rp {(grandTotal - Number(uangBayarInput)).toLocaleString('id-ID')}
+                        </span>
+                      </div>
                     ) : (
-                      <CreditCard className="w-6 h-6" />
+                      <div className="py-1 text-center text-[10px] text-slate-400 font-medium">
+                        Pilih shortcut atau tekan tombol angka untuk bayar tunai
+                      </div>
                     )}
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-800">Pembayaran {metodeBayar}</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Nominal: <span className="font-bold text-[#1E4648] font-mono">Rp {grandTotal.toLocaleString('id-ID')}</span>
-                    </p>
+                ) : (
+                  /* Non-Tunai Display */
+                  <div className="my-auto flex flex-col items-center justify-center gap-3 p-4 text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-teal-50 border border-teal-200 text-[#1E4648] flex items-center justify-center shadow-2xs">
+                      {metodeBayar === 'QRIS' ? (
+                        <QrCode className="w-7 h-7" />
+                      ) : (
+                        <CreditCard className="w-7 h-7" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-base font-black text-slate-800">Pembayaran {metodeBayar}</h4>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Nominal Tagihan: <span className="font-black text-[#1E4648] font-mono text-sm">Rp {grandTotal.toLocaleString('id-ID')}</span>
+                      </p>
+                    </div>
+                    <div className="text-[11px] text-slate-600 bg-white border border-slate-200 rounded-xl p-3 max-w-xs shadow-2xs leading-relaxed">
+                      Pastikan dana telah masuk atau struk EDC berhasil keluar sebelum konfirmasi pembayaran.
+                    </div>
                   </div>
-                  <div className="text-[11px] text-slate-500 bg-white border border-slate-200 rounded-xl p-2.5 mt-1 max-w-xs shadow-2xs">
-                    Pastikan dana telah masuk atau struk EDC berhasil keluar sebelum konfirmasi.
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Bottom Submit Action - Compact */}
-              <div className="p-3 border-t border-slate-200 bg-white shrink-0">
+              {/* Bottom Submit Action - ALWAYS VISIBLE STICKY FOOTER */}
+              <div className="p-3 sm:p-4 border-t border-slate-200 bg-white shrink-0 z-20 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 <button
                   type="button"
                   onClick={handleConfirmPaymentSafe}
@@ -3441,15 +3524,23 @@ export default function PosView({
                     paymentSubmitting ||
                     (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal)
                   }
-                  className={`w-full font-bold py-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition ${
+                  className={`w-full font-black py-3.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition cursor-pointer active:scale-[0.98] ${
                     paymentSubmitting ||
                     (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal)
-                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-                      : 'bg-[#1E4648] hover:bg-[#163536] text-white shadow-teal-900/20'
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                      : 'bg-gradient-to-r from-emerald-600 via-teal-700 to-[#1E4648] hover:from-emerald-500 hover:to-[#163536] text-white shadow-emerald-900/20'
                   }`}
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{paymentSubmitting ? 'Memproses...' : 'Konfirmasi & Selesaikan Bayar'}</span>
+                  <CheckCircle2 className="w-5 h-5 shrink-0" />
+                  <span className="tracking-wide">
+                    {paymentSubmitting 
+                      ? 'Memproses Pembayaran...' 
+                      : (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal
+                          ? `Kurang Rp ${(grandTotal - Number(uangBayarInput)).toLocaleString('id-ID')}`
+                          : 'Konfirmasi & Selesaikan Bayar'
+                        )
+                    }
+                  </span>
                 </button>
               </div>
             </div>
@@ -3460,7 +3551,7 @@ export default function PosView({
       {/* STEP 6 & 7: UNIFIED MODAL "Pembayaran Berhasil & Live Preview Cetakan" */}
       {showSuccessModal && completedOrderData && (
         <div className="fixed inset-0 z-[600] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="relative bg-white rounded-3xl w-full max-w-5xl border border-slate-200/90 shadow-2xl flex flex-col lg:flex-row overflow-hidden my-auto max-h-[94vh] animate-scale-in">
+          <div className="relative bg-white rounded-3xl w-full max-w-5xl border border-slate-200/90 shadow-2xl flex flex-col lg:flex-row overflow-hidden my-auto max-h-[94dvh] animate-scale-in">
             
             {/* Prominent Modal Close Button - Top Right Corner */}
             <button 
