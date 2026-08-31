@@ -322,7 +322,65 @@ function approveVoidTransaksi(noNota, isApproved, managerName, managerId, catata
       if (data[i][9] !== "PendingApproval") return { success: false, message: "Transaksi tidak berada dalam antrean approval" };
       const voidStatus = isApproved ? "Approved" : "Rejected";
       sh.getRange(i + 1, 10).setValue(voidStatus);
-      if (isApproved) sh.getRange(i + 1, 6).setValue("Void");
+      if (isApproved) {
+        sh.getRange(i + 1, 6).setValue("Void");
+        
+        // Kembalikan stok inventory yang sempat terpotong
+        try {
+          const tipeTx = String(data[i][8] || "SelfService");
+          const statusTerakhir = String(data[i][5] || "");
+          const shD = SS.getSheetByName(SHEET_DETAIL);
+          if (shD) {
+            const detailRows = shD.getDataRange().getValues();
+            const allLayanan = typeof getLayananListAll === 'function' ? getLayananListAll() : [];
+            let restoredLogs = [];
+            
+            for (let d = 1; d < detailRows.length; d++) {
+              if (String(detailRows[d][0]) === noNota) {
+                const namaItem = detailRows[d][1];
+                const qtyItem = Number(detailRows[d][2]) || 1;
+                const lay = allLayanan.find(function(l) { return l.nama === namaItem; });
+                
+                if (lay) {
+                  // Kasus 1: Retail / Addon / Non-DropOff (dipotong saat checkout)
+                  if (tipeTx !== "FullService" && lay.idInventory) {
+                    const mult = lay.inventoryDeductionQty !== undefined ? Number(lay.inventoryDeductionQty) : 1;
+                    const returnQty = qtyItem * mult;
+                    if (typeof updateStokInventory === 'function') {
+                      updateStokInventory(lay.idInventory, returnQty, managerName || "Void System");
+                    }
+                    restoredLogs.push(lay.idInventory + " (+" + returnQty + ")");
+                  }
+                  
+                  // Kasus 2: Drop Off FullService jika sudah sempat masuk tahap Dicuci / Selesai
+                  if (tipeTx === "FullService") {
+                    const listBahan = Array.isArray(lay.bahanBakuList) && lay.bahanBakuList.length > 0
+                      ? lay.bahanBakuList
+                      : (lay.idInventory ? [{ idInventory: lay.idInventory, qty: lay.inventoryDeductionQty || 1, tahap: 'Dicuci' }] : []);
+                    
+                    const tahapTerlewati = ["Dicuci", "Dikeringkan", "Disetrika", "Selesai", "Diambil"].indexOf(statusTerakhir) !== -1;
+                    if (tahapTerlewati) {
+                      listBahan.forEach(function(b) {
+                        const returnQty = qtyItem * (Number(b.qty) || 1);
+                        if (typeof updateStokInventory === 'function') {
+                          updateStokInventory(b.idInventory, returnQty, managerName || "Void System");
+                        }
+                        restoredLogs.push(b.idInventory + " (+" + returnQty + ")");
+                      });
+                    }
+                  }
+                }
+              }
+            }
+            
+            if (restoredLogs.length > 0) {
+              addAuditLog(managerName || "Manager", "Restorasi Stok Void", noNota, "Pengembalian stok void: " + restoredLogs.join(", "));
+            }
+          }
+        } catch (errRestok) {
+          Logger.log("Gagal mengembalikan stok void: " + errRestok);
+        }
+      }
       const detail = "Keputusan: " + voidStatus + "; alasan: " + (data[i][10] || "-") + "; catatan: " + (catatan || "-") + "; approver_id: " + (managerId || "-");
       addAuditLog(managerName || "Manager", isApproved ? "Approve Void" : "Reject Void", noNota, detail);
       return { success: true, statusVoid: voidStatus, status: isApproved ? "Void" : data[i][5], message: "Keputusan void berhasil disimpan (" + voidStatus + ")" };
