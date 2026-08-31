@@ -147,7 +147,7 @@ export interface ShiftKasir {
   totalOmzetMerchant?: number;
   selisihKas?: number;
   selisihMerchant?: number;
-  status: 'Buka' | 'Tutup';
+  status: 'Buka' | 'Tutup' | 'Aktif' | string;
   waktuBuka: string;
   waktuTutup?: string;
   daftarBelanja?: string;

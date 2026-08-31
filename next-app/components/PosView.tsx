@@ -312,9 +312,33 @@ export default function PosView({
   const [clockInCatatan, setClockInCatatan] = useState('');
   const [clockInSubmitting, setClockInSubmitting] = useState(false);
 
-  // Shift & Kas State
-  const [shiftAktif, setShiftAktif] = useState<ShiftKasir | null>(null);
-  const [shiftLoading, setShiftLoading] = useState(true);
+  // Shift & Kas State (Initialized with persistent active shift cache to eliminate refresh jump)
+  const [cachedInitialShift] = useState<ShiftKasir | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const cached = localStorage.getItem('pos_active_shift_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.idShift && (parsed.status === 'Buka' || parsed.status === 'Aktif')) return parsed;
+      }
+    } catch {}
+    return null;
+  });
+  const [shiftAktif, setShiftAktifState] = useState<ShiftKasir | null>(cachedInitialShift);
+  const [shiftLoading, setShiftLoading] = useState(!cachedInitialShift);
+
+  const setShiftAktif = useCallback((data: ShiftKasir | null) => {
+    setShiftAktifState(data);
+    if (typeof window !== 'undefined') {
+      try {
+        if (data && data.idShift && (data.status === 'Buka' || data.status === 'Aktif')) {
+          localStorage.setItem('pos_active_shift_cache', JSON.stringify(data));
+        } else {
+          localStorage.removeItem('pos_active_shift_cache');
+        }
+      } catch {}
+    }
+  }, []);
   const [shiftSubmitting, setShiftSubmitting] = useState(false);
   const [closeShiftMode, setCloseShiftMode] = useState<'SERAH_TERIMA' | 'TUTUP_HARIAN'>('SERAH_TERIMA');
   const [replacementEmployeeId, setReplacementEmployeeId] = useState('');

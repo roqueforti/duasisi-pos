@@ -142,17 +142,44 @@ export default function ShiftSayaView({
   // Active Sub-Tab
   const [activeSubTab, setActiveSubTab] = useState<'shift_saya' | 'pengeluaran' | 'riwayat_shift'>(initialSubTab);
 
-  useEffect(() => {
-    if (initialSubTab) setActiveSubTab(initialSubTab);
-  }, [initialSubTab]);
+  // Persistent active shift cache helper to prevent flash on reload
+  const getCachedActiveShift = (): ShiftKasir | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const cached = localStorage.getItem('pos_active_shift_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.idShift && (parsed.status === 'Buka' || parsed.status === 'Aktif')) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return null;
+  };
 
-  // Loading States
-  const [loading, setLoading] = useState<boolean>(true);
+  const saveCachedActiveShift = (shift: ShiftKasir | null) => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (shift && shift.idShift && (shift.status === 'Buka' || shift.status === 'Aktif')) {
+        localStorage.setItem('pos_active_shift_cache', JSON.stringify(shift));
+      } else {
+        localStorage.removeItem('pos_active_shift_cache');
+      }
+    } catch {}
+  };
+
+  // Shift & Loading States (Initialized with cached active shift if available to eliminate layout jump)
+  const [cachedInitial] = useState<ShiftKasir | null>(() => getCachedActiveShift());
+  const [shiftAktif, setShiftAktifState] = useState<ShiftKasir | null>(cachedInitial);
+  const [loading, setLoading] = useState<boolean>(() => !cachedInitial);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [statusText, setStatusText] = useState<string>('');
 
-  // Shift States
-  const [shiftAktif, setShiftAktif] = useState<ShiftKasir | null>(null);
+  const setShiftAktif = useCallback((data: ShiftKasir | null) => {
+    setShiftAktifState(data);
+    saveCachedActiveShift(data);
+  }, []);
+
   const [staffList, setStaffList] = useState<any[]>(DEFAULT_STAFF_LIST);
   const [rekapShiftList, setRekapShiftList] = useState<RekapShiftItem[]>([]);
   const [inventoryList, setInventoryList] = useState<InventorySimpleItem[]>([]);
@@ -979,7 +1006,34 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
         {/* ========================================================================= */}
         {activeSubTab === 'shift_saya' && (
           <>
-            {!shiftAktif ? (
+            {loading && !shiftAktif ? (
+              /* SKELETON LOADING STATE (Mencegah kedipan / flash saat memuat data) */
+              <div className="w-full space-y-5 animate-pulse">
+                <div className="w-full h-32 bg-slate-200/80 rounded-2xl border border-slate-200 flex flex-col justify-center p-6 space-y-3">
+                  <div className="h-4 bg-slate-300 rounded w-1/4"></div>
+                  <div className="h-6 bg-slate-300/80 rounded w-1/3"></div>
+                  <div className="h-3 bg-slate-300/60 rounded w-1/2"></div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="h-48 bg-slate-100 border border-slate-200 rounded-2xl p-5 space-y-3">
+                    <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+                    <div className="h-8 bg-slate-200 rounded w-full"></div>
+                    <div className="h-4 bg-slate-200 rounded w-2/3"></div>
+                  </div>
+                  <div className="h-48 bg-slate-100 border border-slate-200 rounded-2xl p-5 space-y-3">
+                    <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+                    <div className="h-8 bg-slate-200 rounded w-full"></div>
+                    <div className="h-4 bg-slate-200 rounded w-2/3"></div>
+                  </div>
+                </div>
+
+                <div className="h-36 bg-slate-100 border border-slate-200 rounded-2xl p-5 space-y-3">
+                  <div className="h-4 bg-slate-200 rounded w-1/4"></div>
+                  <div className="h-10 bg-slate-200 rounded w-full"></div>
+                </div>
+              </div>
+            ) : !shiftAktif ? (
               /* OPENING SHIFT VIEW (FULL WIDTH LAYOUT) */
               <div className="w-full space-y-5">
                 
