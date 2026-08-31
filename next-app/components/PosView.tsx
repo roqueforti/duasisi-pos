@@ -456,6 +456,20 @@ export default function PosView({
         setShiftAktif(data);
       } else {
         setShiftAktif(null);
+        runBackend<any[]>('getRekapKasShift').then(rekap => {
+          if (Array.isArray(rekap) && rekap.length > 0) {
+            const last = rekap[0];
+            if (last && last.kasAkhirFisik !== undefined && Number(last.kasAkhirFisik) > 0) {
+              setKasAwalInput(String(last.kasAkhirFisik));
+            }
+            if (last && last.saldoMerchantAkhir !== undefined && Number(last.saldoMerchantAkhir) > 0) {
+              setSaldoMerchantAwalInput(String(last.saldoMerchantAkhir));
+            }
+            if (last && last.namaPengganti) {
+              setNamaKasirInput(last.namaPengganti);
+            }
+          }
+        }).catch(() => {});
       }
     } catch (error) {
       console.error('Gagal memuat kas shift:', error);

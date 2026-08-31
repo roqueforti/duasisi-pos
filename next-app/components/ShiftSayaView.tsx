@@ -91,6 +91,8 @@ export interface RekapShiftItem {
   catatan?: string;
   saldoAwalMerchant?: number;
   saldoAkhirMerchant?: number;
+  saldoMerchantAwal?: number;
+  saldoMerchantAkhir?: number;
   totalBelanja?: number;
   fotoNota?: string[];
 }
@@ -163,6 +165,12 @@ export default function ShiftSayaView({
   const [kasAwalInput, setKasAwalInput] = useState<string>('100000');
   const [saldoMerchantAwalInput, setSaldoMerchantAwalInput] = useState<string>('0');
   const [namaKasirInput, setNamaKasirInput] = useState<string>('');
+  const [handoverPrefillInfo, setHandoverPrefillInfo] = useState<{
+    fromKasir: string;
+    kasFisik: number;
+    merchant: number;
+    time: string;
+  } | null>(null);
   const [checklist, setChecklist] = useState<{
     areaKasir: boolean;
     mesinSiap: boolean;
@@ -333,9 +341,27 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
         setTodayClockIn(hasInToday);
       }
 
-      // 5. Set past shifts
+      // 5. Set past shifts & auto-prefill opening form from latest handover
       if (Array.isArray(rekapRes)) {
-        setRekapShiftList(rekapRes.reverse());
+        setRekapShiftList(rekapRes);
+        if (!activeRes && rekapRes.length > 0) {
+          const lastShift = rekapRes[0];
+          if (lastShift && lastShift.kasAkhirFisik !== undefined && Number(lastShift.kasAkhirFisik) > 0) {
+            setKasAwalInput(String(lastShift.kasAkhirFisik));
+            setHandoverPrefillInfo({
+              fromKasir: lastShift.namaKasir,
+              kasFisik: Number(lastShift.kasAkhirFisik) || 0,
+              merchant: Number(lastShift.saldoMerchantAkhir) || 0,
+              time: lastShift.waktuTutup || lastShift.waktuBuka
+            });
+          }
+          if (lastShift && lastShift.saldoMerchantAkhir !== undefined && Number(lastShift.saldoMerchantAkhir) > 0) {
+            setSaldoMerchantAwalInput(String(lastShift.saldoMerchantAkhir));
+          }
+          if (lastShift && lastShift.namaPengganti) {
+            setNamaKasirInput(lastShift.namaPengganti);
+          }
+        }
       }
     } catch (err) {
       console.error('Gagal memuat status kas shift:', err);
@@ -1051,6 +1077,24 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                       </div>
                     </div>
 
+                    {/* Banner Otomatis Terisi dari Serah Terima Shift Sebelumnya */}
+                    {handoverPrefillInfo && (
+                      <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between text-xs text-teal-900 flex-wrap gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <span className="p-1.5 bg-teal-100 rounded-lg text-teal-800 font-black">🤝</span>
+                          <div>
+                            <span className="font-bold">Meneruskan Kas Serah Terima Shift Sebelumnya:</span>
+                            <div className="text-[11px] text-teal-700">
+                              Dari Kasir <strong>{handoverPrefillInfo.fromKasir}</strong> ({handoverPrefillInfo.time}) — Kas Fisik: <strong className="font-mono text-teal-950 font-black">Rp {handoverPrefillInfo.kasFisik.toLocaleString('id-ID')}</strong> | Merchant: <strong className="font-mono text-indigo-950 font-black">Rp {handoverPrefillInfo.merchant.toLocaleString('id-ID')}</strong>
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-[10px] bg-teal-200 text-teal-900 font-black px-2.5 py-0.5 rounded-full uppercase shrink-0">
+                          Otomatis Terisi
+                        </span>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Uang Fisik Laci */}
                       <div className="bg-teal-50/50 border border-teal-200/80 rounded-xl p-3.5 space-y-2 flex flex-col justify-between">
@@ -1310,7 +1354,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                       <div className="text-right">
                         <span className="text-[10px] text-slate-400 block font-semibold">Total Uang Fisik Laci Saat Ini</span>
                         <span className="text-base sm:text-lg font-black font-mono text-emerald-400">
-                          Rp {((shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran).toLocaleString('id-ID')}
+                          Rp {(shiftAktif.kumulatif?.ekspektasiKasHariIni !== undefined ? shiftAktif.kumulatif.ekspektasiKasHariIni : ((shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran)).toLocaleString('id-ID')}
                         </span>
                       </div>
                     </div>

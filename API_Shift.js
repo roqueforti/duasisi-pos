@@ -966,12 +966,35 @@ function calculateShiftCash_(openedAt) {
   return calculateShiftOmzet_(openedAt).tunai;
 }
 
+function parseDateRobust_(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  let str = String(val).trim().replace(" WIB", "").replace(" WITA", "").replace(" WIT", "");
+  if (str.includes("/")) {
+    const parts = str.split(" ");
+    const dmy = parts[0].split("/");
+    if (dmy.length === 3) {
+      let hh = 0, mm = 0, ss = 0;
+      if (parts[1]) {
+        const time = parts[1].split(":");
+        hh = Number(time[0]) || 0;
+        mm = Number(time[1]) || 0;
+        ss = Number(time[2]) || 0;
+      }
+      const d = new Date(Number(dmy[2]), Number(dmy[1]) - 1, Number(dmy[0]), hh, mm, ss);
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function calculateTodayKumulatif_(outlet, activeShiftOpenedAt) {
   const shKas = SS.getSheetByName(SHEET_KAS_SHIFT);
   const shTx = SS.getSheetByName(SHEET_TRANSAKSI);
   if (!shKas || shKas.getLastRow() < 2) return null;
 
-  const activeDate = activeShiftOpenedAt instanceof Date ? activeShiftOpenedAt : new Date(activeShiftOpenedAt);
+  const activeDate = parseDateRobust_(activeShiftOpenedAt) || new Date();
   const startOfDay = new Date(activeDate.getFullYear(), activeDate.getMonth(), activeDate.getDate(), 0, 0, 0);
 
   // 1. Get all recorded shifts today up to active shift
@@ -984,9 +1007,9 @@ function calculateTodayKumulatif_(outlet, activeShiftOpenedAt) {
     const r = kasRows[i];
     if (!r[4]) continue;
     if (outlet && r[1] && r[1] !== outlet) continue;
-    const shiftOpen = new Date(r[4]);
-    if (isNaN(shiftOpen.getTime())) continue;
-    if (shiftOpen >= startOfDay && shiftOpen <= activeDate) {
+    const shiftOpen = parseDateRobust_(r[4]);
+    if (!shiftOpen) continue;
+    if (shiftOpen.getTime() >= startOfDay.getTime() && shiftOpen.getTime() <= activeDate.getTime()) {
       if (todayShifts.length === 0) {
         modalAwalHariIni = Number(r[6]) || 0; // Modal Awal shift pertama pagi ini
       }
@@ -1014,9 +1037,16 @@ function calculateTodayKumulatif_(outlet, activeShiftOpenedAt) {
     for (let j = 1; j < txRows.length; j++) {
       const tx = txRows[j];
       if (!tx[1]) continue;
-      const txTime = new Date(tx[1]);
-      if (isNaN(txTime.getTime()) || txTime < startOfDay) continue;
-      if (tx[9] === "Approved" || tx[9] === "PendingApproval" || tx[5] === "Void" || tx[5] === "Batal") continue;
+      const txTime = parseDateRobust_(tx[1]);
+      if (!txTime || txTime.getTime() < startOfDay.getTime()) continue;
+      if (
+        tx[9] === "Approved" || 
+        tx[9] === "PendingApproval" || 
+        tx[5] === "Void" || 
+        tx[5] === "Batal" ||
+        String(tx[14]).toLowerCase().includes("void") || 
+        String(tx[14]).toLowerCase().includes("batal")
+      ) continue;
       
       const totalTagihan = Number(tx[4]) || 0;
       const nominalBayarDP = Number(tx[15]) || 0;

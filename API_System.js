@@ -502,6 +502,14 @@ function getRekapKasShift() {
       rincianBelanja = parts[1] || "";
     }
 
+    const kasAwal = Number(r[6]) || 0;
+    const kasAkhirSistem = Number(r[7]) || 0;
+    const totalBelanja = Number(r[18]) || 0;
+    const omzetTunai = Math.max(0, kasAkhirSistem - kasAwal + totalBelanja);
+    const saldoMerchantAwal = Number(r[16]) || 0;
+    const saldoMerchantAkhir = Number(r[17]) || 0;
+    const omzetMerchant = Math.max(0, saldoMerchantAkhir - saldoMerchantAwal);
+
     return {
       idShift: r[0],
       idOutlet: r[1],
@@ -509,8 +517,9 @@ function getRekapKasShift() {
       idUser: r[3] || "",
       waktuBuka: fmtWib(r[4]),
       waktuTutup: r[5] ? fmtWib(r[5]) : "",
-      kasAwal: Number(r[6]) || 0,
-      kasAkhirSistem: Number(r[7]) || 0,
+      kasAwal: kasAwal,
+      omzetTunai: omzetTunai,
+      kasAkhirSistem: kasAkhirSistem,
       kasAkhirFisik: Number(r[8]) || 0,
       selisihKas: Number(r[9]) || 0,
       status: r[10],
@@ -520,9 +529,10 @@ function getRekapKasShift() {
       waktuHandover: r[14] ? fmtWib(r[14]) : "",
       catatan: catatan,
       rincianBelanja: rincianBelanja,
-      saldoMerchantAwal: Number(r[16]) || 0,
-      saldoMerchantAkhir: Number(r[17]) || 0,
-      totalBelanja: Number(r[18]) || 0,
+      saldoMerchantAwal: saldoMerchantAwal,
+      saldoMerchantAkhir: saldoMerchantAkhir,
+      omzetMerchant: omzetMerchant,
+      totalBelanja: totalBelanja,
       fotoNota: photoUrls
     };
   }).reverse();
