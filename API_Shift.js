@@ -904,13 +904,18 @@ function calculateShiftOmzet_(openedAt) {
   let pendingVoidTotal = 0;
   const pendingVoidList = [];
   const openedTime = openedAt.getTime();
+
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row[1] || new Date(row[1]).getTime() < openedTime) continue;
-    if (row[9] === "Approved" || row[5] === "Void" || row[5] === "Batal") continue;
-    const nominal = Number(row[15]) || Number(row[4]) || 0;
-    
-    // Deteksi transaksi yang sedang menunggu persetujuan Void
+
+    // Nominal uang riil yang dibayar (jika DP gunakan nominal bayar row[15], jika lunas gunakan total row[4])
+    const totalTagihan = Number(row[4]) || 0;
+    const nominalBayarDP = Number(row[15]) || 0;
+    const sisaTagihan = Number(row[16]) || 0;
+    const nominal = (sisaTagihan > 0 && nominalBayarDP > 0) ? nominalBayarDP : totalTagihan;
+
+    // 1. Deteksi transaksi yang sedang menunggu persetujuan Void
     if (row[9] === "PendingApproval") {
       pendingVoidCount++;
       pendingVoidTotal += nominal;
@@ -921,14 +926,29 @@ function calculateShiftOmzet_(openedAt) {
         metodeBayar: String(row[13] || "Tunai"),
         alasan: String(row[10] || "-")
       });
+      // Hiraukan void: Transaksi pending void TIDAK DIHITUNG ke uang kas riil shift
+      continue;
     }
 
-    if (row[13] === "Tunai") {
+    // 2. Skip transaksi yang sudah berstatus Void / Batal / Approved Void
+    if (
+      row[9] === "Approved" || 
+      row[5] === "Void" || 
+      row[5] === "Batal" || 
+      String(row[14]).toLowerCase().includes("void") || 
+      String(row[14]).toLowerCase().includes("batal")
+    ) {
+      continue;
+    }
+
+    const metode = String(row[13] || "Tunai").trim();
+    if (metode === "Tunai") {
       tunai += nominal;
     } else {
       nonTunai += nominal;
     }
   }
+
   return { 
     tunai: tunai, 
     nonTunai: nonTunai,
