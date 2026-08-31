@@ -324,6 +324,7 @@ export default function PosView({
   const [saldoMerchantAwalInput, setSaldoMerchantAwalInput] = useState('0');
   const [kasAkhirFisik, setKasAkhirFisik] = useState('');
   const [saldoMerchantAkhirInput, setSaldoMerchantAkhirInput] = useState('');
+  const [closeShiftCatatan, setCloseShiftCatatan] = useState('');
   const [customItemForm, setCustomItemForm] = useState({
     layanan: '',
     hargaSatuan: '',
@@ -1354,6 +1355,14 @@ export default function PosView({
 
   const handleCloseShiftWithExpense = async () => {
     if (!shiftAktif) return;
+
+    if (shiftAktif.pendingVoidCount && shiftAktif.pendingVoidCount > 0) {
+      const confirmProceed = await showConfirm(
+        `⚠️ Terdapat ${shiftAktif.pendingVoidCount} transaksi void yang masih MENUNGGU PERSETUJUAN Manager (Total Rp ${(shiftAktif.pendingVoidTotal || 0).toLocaleString('id-ID')}).\n\nUang transaksi ini sementara masih tercatat di kas laci.\n\nTetap lanjutkan penutupan kas shift sekarang?`
+      );
+      if (!confirmProceed) return;
+    }
+
     const kasAkhir = Number(kasAkhirFisik);
     if (!Number.isFinite(kasAkhir) || kasAkhir < 0) {
       await showAlert('Kas akhir fisik laci harus berupa angka nol atau lebih.', 'warning');
@@ -1367,6 +1376,37 @@ export default function PosView({
     if (closeShiftMode === 'SERAH_TERIMA' && !handoverResult?.eligible) {
       await showAlert('Clock In staf pengganti harus diverifikasi sebelum serah terima.', 'warning');
       return;
+    }
+
+    // Perhitungan Selisih Kas & Merchant
+    const expectedKas = (shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalShiftExpense;
+    const selisihKas = kasAkhir - expectedKas;
+    const expectedMerchant = (shiftAktif.saldoMerchantAwal || 0) + (shiftAktif.totalOmzetMerchant || 0);
+    const selisihMerchant = saldoMerchantAkhir - expectedMerchant;
+    const hasSelisih = selisihKas !== 0 || selisihMerchant !== 0;
+
+    // ATURAN: Jika ada selisih, tetap bisa diproses asalkan WAJIB mengisi catatan alasan selisih
+    if (hasSelisih && !closeShiftCatatan.trim()) {
+      await showAlert(
+        `⚠️ Terdapat SELISIH antara uang riil dan catatan sistem:\n` +
+        (selisihKas !== 0 ? `• Selisih Kas Laci : ${selisihKas > 0 ? '+' : ''}Rp ${selisihKas.toLocaleString('id-ID')} (${selisihKas > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
+        (selisihMerchant !== 0 ? `• Selisih Merchant : ${selisihMerchant > 0 ? '+' : ''}Rp ${selisihMerchant.toLocaleString('id-ID')} (${selisihMerchant > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
+        `\nAnda WAJIB mengisi kolom Catatan/Keterangan alasan selisih sebelum melanjutkan ganti/tutup shift.`,
+        'warning'
+      );
+      return;
+    }
+
+    // Jika ada selisih dan catatan sudah diisi, tampilkan konfirmasi ringkasan selisih
+    if (hasSelisih) {
+      const confirmProceedWithDiff = await showConfirm(
+        `⚠️ Konfirmasi Rekonsiliasi Kas dengan SELISIH:\n\n` +
+        (selisihKas !== 0 ? `• Kas Laci: ${selisihKas > 0 ? '+' : ''}Rp ${selisihKas.toLocaleString('id-ID')} (${selisihKas > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
+        (selisihMerchant !== 0 ? `• Merchant: ${selisihMerchant > 0 ? '+' : ''}Rp ${selisihMerchant.toLocaleString('id-ID')} (${selisihMerchant > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
+        `• Catatan: "${closeShiftCatatan.trim()}"\n\n` +
+        `Tetap lanjutkan proses ${closeShiftMode === 'SERAH_TERIMA' ? 'Serah Terima Shift' : 'Tutup Kas Shift'} sekarang?`
+      );
+      if (!confirmProceedWithDiff) return;
     }
 
     setShiftSubmitting(true);
@@ -1404,6 +1444,7 @@ export default function PosView({
         mode: closeShiftMode,
         kasAkhir,
         saldoMerchantAkhir,
+        catatan: closeShiftCatatan.trim(),
         replacementEmployeeId: closeShiftMode === 'SERAH_TERIMA' ? replacementEmployeeId : '',
         handoverConfirmed: closeShiftMode === 'SERAH_TERIMA',
         userName: shiftAktif.namaKasir,
@@ -1421,6 +1462,7 @@ export default function PosView({
       setShowTutupShiftModal(false);
       setKasAkhirFisik('');
       setSaldoMerchantAkhirInput('');
+      setCloseShiftCatatan('');
       setReplacementEmployeeId('');
       setHandoverResult(null);
       setExpenseItemList([{ nama: '', nominal: '' }]);
@@ -4441,6 +4483,34 @@ export default function PosView({
                     </div>
                   </div>
 
+                  {/* Warning: Ada Pengajuan Void yang Belum Di-Approve */}
+                  {shiftAktif?.pendingVoidCount && shiftAktif.pendingVoidCount > 0 ? (
+                    <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-3.5 space-y-2 shadow-xs">
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-black text-amber-950">
+                            ⚠️ Ada {shiftAktif.pendingVoidCount} Pengajuan Void Menunggu Approval Manager
+                          </h4>
+                          <p className="text-[11px] text-amber-800 leading-relaxed">
+                            Total tertahan <strong>Rp {(shiftAktif.pendingVoidTotal || 0).toLocaleString('id-ID')}</strong> masih terhitung di kas laci karena belum disetujui Manager.
+                          </p>
+                        </div>
+                      </div>
+
+                      {shiftAktif.pendingVoidList && shiftAktif.pendingVoidList.length > 0 && (
+                        <div className="bg-white/80 border border-amber-200 rounded-xl p-2 divide-y divide-amber-100 max-h-24 overflow-y-auto">
+                          {shiftAktif.pendingVoidList.map((pv, idx) => (
+                            <div key={idx} className="py-1 flex items-center justify-between text-[11px]">
+                              <span className="font-mono font-bold text-slate-800">{pv.noNota} <span className="font-normal text-slate-500">({pv.namaPelanggan})</span></span>
+                              <span className="font-mono font-bold text-rose-600">Rp {(pv.nominal || 0).toLocaleString('id-ID')} <span className="text-[9px] text-amber-700">[{pv.metodeBayar}]</span></span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
                   {/* Mode Penutupan */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Mode Penutupan</label>
@@ -4497,6 +4567,47 @@ export default function PosView({
                       )}
                     </div>
                   )}
+
+                  {/* Catatan / Keterangan Penutupan */}
+                  {(() => {
+                    const expectedKas = (shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0) - totalShiftExpense;
+                    const diffKas = kasAkhirFisik !== '' ? (Number(kasAkhirFisik) || 0) - expectedKas : 0;
+                    const expectedMerch = (shiftAktif?.saldoMerchantAwal || 0) + (shiftAktif?.totalOmzetMerchant || 0);
+                    const diffMerch = saldoMerchantAkhirInput !== '' ? (Number(saldoMerchantAkhirInput) || 0) - expectedMerch : 0;
+                    const hasDiff = (kasAkhirFisik !== '' && diffKas !== 0) || (saldoMerchantAkhirInput !== '' && diffMerch !== 0);
+
+                    return (
+                      <div className={`p-3 rounded-xl border transition ${
+                        hasDiff ? 'bg-amber-50/70 border-amber-300 shadow-2xs' : 'bg-slate-50 border-slate-200'
+                      }`}>
+                        <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                          <span>Catatan / Keterangan Penutupan {hasDiff ? <span className="text-rose-600 font-black">* (Wajib Diisi Karena Ada Selisih)</span> : <span className="text-slate-400 font-normal">(Opsional)</span>}</span>
+                          {hasDiff && (
+                            <span className="text-[10px] font-black bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full animate-pulse">
+                              Ada Selisih
+                            </span>
+                          )}
+                        </label>
+                        <textarea
+                          value={closeShiftCatatan}
+                          onChange={(e) => setCloseShiftCatatan(e.target.value)}
+                          placeholder={hasDiff ? 'Jelaskan alasan selisih kas fisik atau saldo merchant di sini (wajib)...' : 'Contoh: Uang fisik sesuai, operasional shift lancar...'}
+                          rows={2}
+                          className={`w-full px-3 py-2 rounded-xl text-xs outline-none transition bg-white border ${
+                            hasDiff 
+                              ? 'border-amber-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-300/30' 
+                              : 'border-slate-200 focus:border-[#1E4648]'
+                          }`}
+                        />
+                        {hasDiff && (
+                          <p className="text-[11px] text-amber-800 font-medium mt-1.5 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span>Sistem tetap memproses ganti/tutup shift meskipun ada selisih, asalkan Anda mengisi alasan di kolom ini.</span>
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* RIGHT COLUMN: Belanja Barang & Slot Foto Nota */}

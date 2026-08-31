@@ -896,23 +896,46 @@ function hapusHariLibur(id) {
 // ============================================================
 function calculateShiftOmzet_(openedAt) {
   const sh = SS.getSheetByName(SHEET_TRANSAKSI);
-  if (!sh) return { tunai: 0, nonTunai: 0 };
+  if (!sh) return { tunai: 0, nonTunai: 0, pendingVoidCount: 0, pendingVoidTotal: 0, pendingVoidList: [] };
   const rows = sh.getDataRange().getValues();
   let tunai = 0;
   let nonTunai = 0;
+  let pendingVoidCount = 0;
+  let pendingVoidTotal = 0;
+  const pendingVoidList = [];
   const openedTime = openedAt.getTime();
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row[1] || new Date(row[1]).getTime() < openedTime) continue;
     if (row[9] === "Approved" || row[5] === "Void" || row[5] === "Batal") continue;
     const nominal = Number(row[15]) || Number(row[4]) || 0;
+    
+    // Deteksi transaksi yang sedang menunggu persetujuan Void
+    if (row[9] === "PendingApproval") {
+      pendingVoidCount++;
+      pendingVoidTotal += nominal;
+      pendingVoidList.push({
+        noNota: String(row[0] || ""),
+        namaPelanggan: String(row[2] || "Pelanggan"),
+        nominal: nominal,
+        metodeBayar: String(row[13] || "Tunai"),
+        alasan: String(row[10] || "-")
+      });
+    }
+
     if (row[13] === "Tunai") {
       tunai += nominal;
     } else {
       nonTunai += nominal;
     }
   }
-  return { tunai: tunai, nonTunai: nonTunai };
+  return { 
+    tunai: tunai, 
+    nonTunai: nonTunai,
+    pendingVoidCount: pendingVoidCount,
+    pendingVoidTotal: pendingVoidTotal,
+    pendingVoidList: pendingVoidList
+  };
 }
 
 function calculateShiftNonCash_(openedAt) {
@@ -946,7 +969,10 @@ function getKasShiftAktif(outlet) {
         totalOmzetTunai: omzetTunai,
         totalOmzetMerchant: omzetMerchant,
         kasAkhirSistem: kasAwal + omzetTunai,
-        status: "Buka"
+        status: "Buka",
+        pendingVoidCount: omzet.pendingVoidCount || 0,
+        pendingVoidTotal: omzet.pendingVoidTotal || 0,
+        pendingVoidList: omzet.pendingVoidList || []
       };
     }
   }

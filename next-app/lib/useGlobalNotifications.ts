@@ -21,6 +21,8 @@ export interface BadgeCounts {
   inventory: number;
   absensi: number;
   riwayat: number;
+  shift_saya?: number;
+  rekap?: number;
 }
 
 const READ_STORAGE_KEY = 'duasisi_read_notifications';
@@ -31,7 +33,9 @@ export function useGlobalNotifications(currentRole: UserRole) {
     pesanan: 0,
     inventory: 0,
     absensi: 0,
-    riwayat: 0
+    riwayat: 0,
+    shift_saya: 0,
+    rekap: 0
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [readIds, setReadIds] = useState<string[]>(() => {
@@ -154,6 +158,8 @@ export function useGlobalNotifications(currentRole: UserRole) {
         if (Array.isArray(txList)) {
           const pendingVoid = txList.filter(t => t.statusVoid === 'PendingApproval');
           counts.riwayat = pendingVoid.length;
+          counts.rekap = pendingVoid.length;
+          counts.shift_saya = pendingVoid.length;
           if (pendingVoid.length > 0) {
             items.push({
               id: `void-pending-${pendingVoid.length}`,

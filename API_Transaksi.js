@@ -302,8 +302,12 @@ function ajukanVoidTransaksi(noNota, alasan, petugas) {
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === noNota) {
       if (!String(alasan || "").trim()) return { success: false, message: "Alasan void wajib diisi" };
-      if (data[i][9] === "PendingApproval") return { success: false, message: "Permintaan void sudah menunggu approval" };
       if (data[i][9] === "Approved" || data[i][5] === "Void") return { success: false, message: "Transaksi sudah berstatus Void" };
+      if (data[i][9] === "PendingApproval") {
+        // Jika sudah PendingApproval (misal retry request), perbarui alasan dan beri respon sukses
+        sh.getRange(i + 1, 11).setValue(String(alasan).trim());
+        return { success: true, message: "Permintaan void sudah terdaftar dan menunggu approval Manager" };
+      }
       sh.getRange(i + 1, 10).setValue("PendingApproval");
       sh.getRange(i + 1, 11).setValue(String(alasan).trim());
       addAuditLog(petugas || "Kasir", "Pengajuan Void", noNota, alasan);
@@ -324,6 +328,7 @@ function approveVoidTransaksi(noNota, isApproved, managerName, managerId, catata
       sh.getRange(i + 1, 10).setValue(voidStatus);
       if (isApproved) {
         sh.getRange(i + 1, 6).setValue("Void");
+        sh.getRange(i + 1, 15).setValue("Batal / Void");
         
         // Kembalikan stok inventory yang sempat terpotong
         try {

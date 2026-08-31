@@ -44,6 +44,15 @@ export interface ShiftKasir {
   totalOmzetMerchant: number;
   kasAkhirSistem: number;
   status: string;
+  pendingVoidCount?: number;
+  pendingVoidTotal?: number;
+  pendingVoidList?: Array<{
+    noNota: string;
+    namaPelanggan: string;
+    nominal: number;
+    metodeBayar: string;
+    alasan?: string;
+  }>;
 }
 
 export interface ExpenseItem {
@@ -222,6 +231,8 @@ export default function ShiftSayaView({
     selisihKas: number;
     selisihMerchant: number;
     catatan?: string;
+    pendingVoidCount?: number;
+    pendingVoidTotal?: number;
   }) => {
     const isHandover = data.mode === 'SERAH_TERIMA';
     const selisihKasText = data.selisihKas === 0 ? 'Rp 0 (SESUAI ✅)' : data.selisihKas > 0 ? `+Rp ${data.selisihKas.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(data.selisihKas).toLocaleString('id-ID')} (KURANG ⚠️)`;
@@ -230,6 +241,10 @@ export default function ShiftSayaView({
     const expenseLines = (data.expensesList && data.expensesList.length > 0)
       ? data.expensesList.map((e, idx) => `  ${idx + 1}. ${e.nama}: Rp ${(e.nominal || 0).toLocaleString('id-ID')}`).join('\n')
       : (data.totalBelanja > 0 ? `  • Total Pengeluaran: Rp ${data.totalBelanja.toLocaleString('id-ID')}` : '  - Tidak ada pengeluaran belanja');
+
+    const pendingVoidLine = (data.pendingVoidCount && data.pendingVoidCount > 0)
+      ? `\n⚠️ *PERHATIAN VOID PENDING*:\n• Ada *${data.pendingVoidCount} transaksi* menunggu persetujuan Void oleh Manager.\n• Total Tertahan: Rp ${(data.pendingVoidTotal || 0).toLocaleString('id-ID')}\n`
+      : '';
 
     return `📊 *LAPORAN PENUTUPAN KAS SHIFT*
 *DUA SISI LAUNDRY EXPRESS & COIN*
@@ -240,7 +255,7 @@ export default function ShiftSayaView({
 🔄 *Mode*: ${isHandover ? 'SERAH TERIMA SHIFT (HANDOVER)' : 'TUTUP HARIAN (CLOSING OUTLET)'}
 👤 *Kasir Bertugas*: ${data.namaKasir}
 ${isHandover && data.namaPengganti ? `➡️ *Kasir Pengganti*: ${data.namaPengganti}\n` : ''}⏱️ *Jam Kerja*: ${data.waktuBuka} - ${data.waktuTutup}
-
+${pendingVoidLine}
 💵 *REKONSILIASI KAS LACI (TUNAI)*
 • Modal Awal Laci : Rp ${(data.kasAwal || 0).toLocaleString('id-ID')}
 • Pemasukan POS   : + Rp ${(data.omzetTunai || 0).toLocaleString('id-ID')}
@@ -617,6 +632,13 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
   const handleCloseShift = async () => {
     if (!shiftAktif) return;
 
+    if (shiftAktif.pendingVoidCount && shiftAktif.pendingVoidCount > 0) {
+      const confirmProceed = await showConfirm(
+        `⚠️ Terdapat ${shiftAktif.pendingVoidCount} transaksi void yang masih MENUNGGU PERSETUJUAN Manager (Total Rp ${(shiftAktif.pendingVoidTotal || 0).toLocaleString('id-ID')}).\n\nUang transaksi ini sementara masih tercatat di kas laci.\n\nTetap lanjutkan penutupan kas shift sekarang?`
+      );
+      if (!confirmProceed) return;
+    }
+
     const kasFisik = Number(kasAkhirFisikInput);
     if (!Number.isFinite(kasFisik) || kasFisik < 0) {
       await showAlert('Masukkan total fisik uang kas di laci kasir!', 'warning');
@@ -632,6 +654,37 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
     if (closeMode === 'SERAH_TERIMA' && (!replacementStaffId || !handoverVerified)) {
       await showAlert('Lakukan verifikasi staf pengganti terlebih dahulu untuk mode Serah Terima!', 'warning');
       return;
+    }
+
+    // Perhitungan Selisih Kas & Merchant
+    const expectedKas = (shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran;
+    const selisihKas = kasFisik - expectedKas;
+    const expectedMerchant = (shiftAktif.saldoMerchantAwal || 0) + (shiftAktif.totalOmzetMerchant || 0);
+    const selisihMerchant = saldoMerchantAkhir - expectedMerchant;
+    const hasSelisih = selisihKas !== 0 || selisihMerchant !== 0;
+
+    // ATURAN: Jika ada selisih (kurang atau lebih), proses TETAP BISA DILANJUTKAN asalkan WAJIB mengisi catatan
+    if (hasSelisih && !closingCatatan.trim()) {
+      await showAlert(
+        `⚠️ Terdapat SELISIH antara uang riil dan catatan sistem:\n` +
+        (selisihKas !== 0 ? `• Selisih Kas Laci : ${selisihKas > 0 ? '+' : ''}Rp ${selisihKas.toLocaleString('id-ID')} (${selisihKas > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
+        (selisihMerchant !== 0 ? `• Selisih Merchant : ${selisihMerchant > 0 ? '+' : ''}Rp ${selisihMerchant.toLocaleString('id-ID')} (${selisihMerchant > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
+        `\nAnda WAJIB mengisi kolom Catatan/Keterangan alasan selisih sebelum melanjutkan ganti/tutup shift.`,
+        'warning'
+      );
+      return;
+    }
+
+    // Jika ada selisih dan catatan sudah diisi, tampilkan konfirmasi ringkasan selisih
+    if (hasSelisih) {
+      const confirmProceedWithDiff = await showConfirm(
+        `⚠️ Konfirmasi Rekonsiliasi Kas dengan SELISIH:\n\n` +
+        (selisihKas !== 0 ? `• Kas Laci: ${selisihKas > 0 ? '+' : ''}Rp ${selisihKas.toLocaleString('id-ID')} (${selisihKas > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
+        (selisihMerchant !== 0 ? `• Merchant: ${selisihMerchant > 0 ? '+' : ''}Rp ${selisihMerchant.toLocaleString('id-ID')} (${selisihMerchant > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
+        `• Catatan: "${closingCatatan.trim()}"\n\n` +
+        `Tetap lanjutkan proses ${closeMode === 'SERAH_TERIMA' ? 'Serah Terima Shift' : 'Tutup Kasir Harian'} sekarang?`
+      );
+      if (!confirmProceedWithDiff) return;
     }
 
     const selectedReplacement = staffList.find(s => s.id === replacementStaffId || s.nama === replacementStaffId);
@@ -722,7 +775,9 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
         kasAkhirFisik: kasFisik,
         selisihKas: selKas,
         selisihMerchant: selMerch,
-        catatan: closingCatatan.trim()
+        catatan: closingCatatan.trim(),
+        pendingVoidCount: shiftAktif.pendingVoidCount,
+        pendingVoidTotal: shiftAktif.pendingVoidTotal
       });
 
       // 2. Immediately mark shift as closed & reset inputs
@@ -1928,6 +1983,34 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                 </div>
               </div>
 
+              {/* Warning: Ada Pengajuan Void yang Belum Di-Approve */}
+              {shiftAktif.pendingVoidCount && shiftAktif.pendingVoidCount > 0 ? (
+                <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-3.5 space-y-2 shadow-xs">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black text-amber-950">
+                        ⚠️ Ada {shiftAktif.pendingVoidCount} Pengajuan Void Menunggu Approval Manager
+                      </h4>
+                      <p className="text-[11px] text-amber-800 leading-relaxed">
+                        Total tertahan <strong>Rp {(shiftAktif.pendingVoidTotal || 0).toLocaleString('id-ID')}</strong> masih terhitung di kas laci karena belum disetujui Manager. Harap beri tahu kasir pengganti atau Manager.
+                      </p>
+                    </div>
+                  </div>
+
+                  {shiftAktif.pendingVoidList && shiftAktif.pendingVoidList.length > 0 && (
+                    <div className="bg-white/80 border border-amber-200 rounded-xl p-2 divide-y divide-amber-100 max-h-24 overflow-y-auto">
+                      {shiftAktif.pendingVoidList.map((pv, idx) => (
+                        <div key={idx} className="py-1 flex items-center justify-between text-[11px]">
+                          <span className="font-mono font-bold text-slate-800">{pv.noNota} <span className="font-normal text-slate-500">({pv.namaPelanggan})</span></span>
+                          <span className="font-mono font-bold text-rose-600">Rp {(pv.nominal || 0).toLocaleString('id-ID')} <span className="text-[9px] text-amber-700">[{pv.metodeBayar}]</span></span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
               {/* Handover Replacement Staff */}
               {closeMode === 'SERAH_TERIMA' && (() => {
                 const filteredStaff = staffList.filter(s => 
@@ -2174,16 +2257,45 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
 
 
               {/* Catatan Closing */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Catatan / Keterangan Penutupan</label>
-                <input
-                  type="text"
-                  value={closingCatatan}
-                  onChange={(e) => setClosingCatatan(e.target.value)}
-                  placeholder="Contoh: Uang fisik sesuai, operasional lancar..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1E4648]"
-                />
-              </div>
+              {(() => {
+                const expectedKas = (shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran;
+                const diffKas = kasAkhirFisikInput !== '' ? (Number(kasAkhirFisikInput) || 0) - expectedKas : 0;
+                const expectedMerch = (shiftAktif.saldoMerchantAwal || 0) + (shiftAktif.totalOmzetMerchant || 0);
+                const diffMerch = saldoMerchantAkhirInput !== '' ? (Number(saldoMerchantAkhirInput) || 0) - expectedMerch : 0;
+                const hasDiff = (kasAkhirFisikInput !== '' && diffKas !== 0) || (saldoMerchantAkhirInput !== '' && diffMerch !== 0);
+
+                return (
+                  <div className={`p-3.5 rounded-2xl border transition ${
+                    hasDiff ? 'bg-amber-50/70 border-amber-300 shadow-2xs' : 'bg-slate-50/50 border-slate-200'
+                  }`}>
+                    <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                      <span>Catatan / Keterangan Penutupan {hasDiff ? <span className="text-rose-600 font-black">* (Wajib Diisi Karena Ada Selisih)</span> : <span className="text-slate-400 font-normal">(Opsional)</span>}</span>
+                      {hasDiff && (
+                        <span className="text-[10px] font-black bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full animate-pulse">
+                          Ada Selisih
+                        </span>
+                      )}
+                    </label>
+                    <textarea
+                      value={closingCatatan}
+                      onChange={(e) => setClosingCatatan(e.target.value)}
+                      placeholder={hasDiff ? 'Jelaskan alasan selisih kas fisik atau saldo merchant di sini (wajib)...' : 'Contoh: Uang fisik sesuai, operasional lancar...'}
+                      rows={2}
+                      className={`w-full px-3 py-2 rounded-xl text-xs outline-none transition bg-white border ${
+                        hasDiff 
+                          ? 'border-amber-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-300/30' 
+                          : 'border-slate-200 focus:border-[#1E4648]'
+                      }`}
+                    />
+                    {hasDiff && (
+                      <p className="text-[11px] text-amber-800 font-medium mt-1.5 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Sistem tetap memproses ganti/tutup shift meskipun ada selisih, asalkan Anda menuliskan alasannya di sini.</span>
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="flex gap-2.5 p-4 border-t border-slate-100 bg-slate-50">

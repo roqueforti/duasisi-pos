@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, Check, Download, Upload, Calendar, ArrowRight } from 'lucide-react';
+import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, AlertTriangle, Check, Download, Upload, Calendar, ArrowRight, Coins, Smartphone, CreditCard, Banknote, CheckCircle2 } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
@@ -15,7 +15,7 @@ import { useDialog } from '@/components/DialogProvider';
 
 export default function RiwayatView({ currentRole }: { currentRole?: UserRole } = {}) {
   const { showAlert, showConfirm } = useDialog();
-  const [filter, setFilter] = useState<'Semua' | 'SelfService' | 'FullService' | 'NonLayanan'>('Semua');
+  const [filter, setFilter] = useState<'Semua' | 'SelfService' | 'FullService' | 'NonLayanan' | 'PendingVoid'>('Semua');
   const [periodePreset, setPeriodePreset] = useState<'all' | 'today' | 'yesterday' | 'last7days' | 'thisMonth' | 'lastMonth' | 'custom'>('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -40,6 +40,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   const [showVoidModal, setShowVoidModal] = useState(false);
   const [txToVoid, setTxToVoid] = useState<Transaksi | null>(null);
   const [alasanVoidInput, setAlasanVoidInput] = useState('');
+  const [submittingVoid, setSubmittingVoid] = useState(false);
 
   // State for DP Settlement Modal (FR-POS-16)
   const [showPelunasanModal, setShowPelunasanModal] = useState(false);
@@ -140,19 +141,45 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   }, []);
 
   const handleAjukanVoid = async () => {
-    if (!txToVoid) return;
-    if (!alasanVoidInput.trim()) { await showAlert('Alasan pembatalan (void) wajib diisi!', 'warning'); return; }
+    if (!txToVoid || submittingVoid) return;
+    const alasan = alasanVoidInput.trim();
+    if (!alasan) { 
+      await showAlert('Alasan pembatalan (void) wajib diisi!', 'warning'); 
+      return; 
+    }
+
+    const noNota = txToVoid.noNota;
+    setSubmittingVoid(true);
+    // Tutup modal input pengajuan segera agar kasir tidak dapat menekan tombol berulang kali
+    setShowVoidModal(false);
 
     try {
-      const result = await runBackend<{ success: boolean; message?: string }>('ajukanVoidTransaksi', txToVoid.noNota, alasanVoidInput.trim(), 'Kasir 1');
-      if (!result?.success) throw new Error(result?.message || 'Pengajuan void ditolak backend');
-      await showAlert(`Permohonan void nota ${txToVoid.noNota} berhasil dikirim ke Manager/Owner.`, 'success');
-      setShowVoidModal(false);
-      setAlasanVoidInput('');
-      loadRiwayat();
-    } catch (error) {
+      const result = await runBackend<{ success: boolean; message?: string }>('ajukanVoidTransaksi', noNota, alasan, 'Kasir 1');
+      if (result?.success || (result?.message && result.message.toLowerCase().includes('sudah menunggu approval'))) {
+        setAlasanVoidInput('');
+        setTxToVoid(null);
+        clearCache('getTransaksiList');
+        clearCache('getKasShiftAktif');
+        await loadRiwayat();
+        await showAlert(`Permohonan void nota ${noNota} berhasil dikirim ke Manager/Owner.`, 'success');
+      } else {
+        throw new Error(result?.message || 'Pengajuan void ditolak backend');
+      }
+    } catch (error: any) {
       console.error(error);
-      await showAlert('Gagal mengajukan void. Data transaksi tidak diubah.', 'error');
+      const errMsg = error?.message || '';
+      if (errMsg.toLowerCase().includes('sudah menunggu approval')) {
+        setAlasanVoidInput('');
+        setTxToVoid(null);
+        clearCache('getTransaksiList');
+        clearCache('getKasShiftAktif');
+        await loadRiwayat();
+        await showAlert(`Permohonan void nota ${noNota} sudah terkirim dan menunggu approval Manager.`, 'info');
+      } else {
+        await showAlert(errMsg || 'Gagal mengajukan void. Data transaksi tidak diubah.', 'error');
+      }
+    } finally {
+      setSubmittingVoid(false);
     }
   };
 
@@ -297,6 +324,42 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     return true;
   };
 
+  const pendingVoidCount = (txList || []).filter((t) => t?.statusVoid === 'PendingApproval').length;
+
+  const filteredTx = (txList || []).filter((t) => {
+    if (!t) return false;
+    let matchFilter = true;
+    if (filter === 'SelfService') {
+      matchFilter = t.tipe === 'SelfService';
+    } else if (filter === 'FullService') {
+      matchFilter = t.tipe === 'FullService';
+    } else if (filter === 'NonLayanan') {
+      matchFilter = !t.tipe || t.tipe === '' || t.tipe === 'NonLayanan' || t.tipe === 'Bukan Layanan';
+    } else if (filter === 'PendingVoid') {
+      matchFilter = t.statusVoid === 'PendingApproval';
+    }
+
+    const matchPeriod = filter === 'PendingVoid' ? true : isDateInSelectedPeriod(t.tanggal);
+
+    const q = (search || '').toLowerCase().trim();
+    const matchSearch =
+      !q ||
+      (t.noNota || '').toLowerCase().includes(q) ||
+      (t.namaPelanggan && (t.namaPelanggan || '').toLowerCase().includes(q)) ||
+      (t.noHp && (t.noHp || '').includes(q));
+    return matchFilter && matchPeriod && matchSearch;
+  });
+
+  const getFilterLabel = (f: 'Semua' | 'SelfService' | 'FullService' | 'NonLayanan' | 'PendingVoid') => {
+    switch (f) {
+      case 'Semua': return 'Semua Tipe';
+      case 'SelfService': return 'Self Service';
+      case 'FullService': return 'Drop Off';
+      case 'NonLayanan': return 'Non-Layanan / Retail';
+      case 'PendingVoid': return `🛑 Void Pending (${pendingVoidCount})`;
+    }
+  };
+
   const handleExportCSV = () => {
     const headers = [
       'No Nota', 'Tanggal', 'Nama Pelanggan', 'No HP', 'Tipe Layanan', 'Total',
@@ -384,40 +447,75 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     }
   };
 
-  const filteredTx = (txList || []).filter((t) => {
-    if (!t) return false;
-    let matchFilter = true;
-    if (filter === 'SelfService') {
-      matchFilter = t.tipe === 'SelfService';
-    } else if (filter === 'FullService') {
-      matchFilter = t.tipe === 'FullService';
-    } else if (filter === 'NonLayanan') {
-      matchFilter = !t.tipe || t.tipe === '' || t.tipe === 'NonLayanan' || t.tipe === 'Bukan Layanan';
-    }
+  const nonVoidFilteredTx = (filteredTx || []).filter(t => 
+    t && 
+    t.status !== 'Void' && 
+    t.status !== 'Batal' && 
+    t.statusVoid !== 'Approved'
+  );
 
-    const matchPeriod = isDateInSelectedPeriod(t.tanggal);
+  const totalRealDiterima = nonVoidFilteredTx.reduce((sum, t) => {
+    const paid = (t.sisaTagihan && t.sisaTagihan > 0) 
+      ? Math.max(0, (t.total || 0) - t.sisaTagihan) 
+      : (t.total || 0);
+    return sum + paid;
+  }, 0);
 
-    const q = (search || '').toLowerCase().trim();
-    const matchSearch =
-      !q ||
-      (t.noNota || '').toLowerCase().includes(q) ||
-      (t.namaPelanggan && (t.namaPelanggan || '').toLowerCase().includes(q)) ||
-      (t.noHp && (t.noHp || '').includes(q));
-    return matchFilter && matchPeriod && matchSearch;
-  });
+  const methodBreakdown = nonVoidFilteredTx.reduce((acc, t) => {
+    const rawMethod = (t.metodeBayar || 'Tunai').trim();
+    const paid = (t.sisaTagihan && t.sisaTagihan > 0) 
+      ? Math.max(0, (t.total || 0) - t.sisaTagihan) 
+      : (t.total || 0);
+    acc[rawMethod] = (acc[rawMethod] || 0) + paid;
+    return acc;
+  }, {} as Record<string, number>);
 
-  const getFilterLabel = (f: 'Semua' | 'SelfService' | 'FullService' | 'NonLayanan') => {
-    switch (f) {
-      case 'Semua': return 'Semua Tipe';
-      case 'SelfService': return 'Self Service';
-      case 'FullService': return 'Drop Off';
-      case 'NonLayanan': return 'Non-Layanan / Retail';
-    }
-  };
+  const totalVoidNominal = (filteredTx || [])
+    .filter(t => t && (t.status === 'Void' || t.status === 'Batal' || t.statusVoid === 'Approved'))
+    .reduce((sum, t) => sum + (t.total || 0), 0);
+
+  const voidCountInFilter = (filteredTx || [])
+    .filter(t => t && (t.status === 'Void' || t.status === 'Batal' || t.statusVoid === 'Approved')).length;
 
   return (
     <div className="p-3 md:p-4 space-y-4 w-full">
       
+      {/* Top Banner Alert for Pending Void */}
+      {pendingVoidCount > 0 && (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-pop-scale">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 rounded-xl bg-rose-100 text-rose-700 font-bold shrink-0 mt-0.5 sm:mt-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-extrabold text-xs text-rose-950">
+                  Ada {pendingVoidCount} Transaksi Menunggu Persetujuan Void (Batal)
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white shadow-xs animate-pulse">
+                  {pendingVoidCount} Pending
+                </span>
+              </div>
+              <p className="text-[11px] text-rose-800 mt-0.5">
+                {currentRole === 'MANAGER'
+                  ? 'Klik tombol di samping untuk meninjau dan menyetujui / menolak permohonan void kasir.'
+                  : 'Permohonan void kasir sedang dalam antrean review persetujuan oleh Manager.'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setFilter(filter === 'PendingVoid' ? 'Semua' : 'PendingVoid')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer shadow-xs ${
+              filter === 'PendingVoid'
+                ? 'bg-slate-800 hover:bg-slate-900 text-white'
+                : 'bg-rose-600 hover:bg-rose-700 text-white'
+            }`}
+          >
+            {filter === 'PendingVoid' ? 'Tampilkan Semua Transaksi' : `Filter ${pendingVoidCount} Nota Void`}
+          </button>
+        </div>
+      )}
+
       {/* Header Filters & Controls */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs">
         
@@ -428,7 +526,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                   filter === f
                     ? 'bg-[#1E4648] text-white shadow-2xs'
                     : 'text-slate-600 hover:text-slate-800'
@@ -437,6 +535,24 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                 {getFilterLabel(f)}
               </button>
             ))}
+
+            {pendingVoidCount > 0 && (
+              <button
+                onClick={() => setFilter('PendingVoid')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  filter === 'PendingVoid'
+                    ? 'bg-rose-600 text-white shadow-2xs'
+                    : 'text-rose-700 hover:bg-rose-50'
+                }`}
+              >
+                <span>🛑 Void Pending</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
+                  filter === 'PendingVoid' ? 'bg-white text-rose-700' : 'bg-rose-600 text-white'
+                }`}>
+                  {pendingVoidCount}
+                </span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 flex-1 min-w-[280px]">
@@ -556,10 +672,133 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
           )}
 
           <div className="ml-auto text-[11px] text-slate-400 font-semibold">
-            Menampilkan <strong>{filteredTx.length}</strong> transaksi
+            Menampilkan <strong>{filteredTx.length}</strong> transaksi (<strong>{nonVoidFilteredTx.length}</strong> valid)
           </div>
         </div>
 
+      </div>
+
+      {/* Summary Cards: Uang Riil Diterima & Rincian per Metode Pembayaran (Non-Void) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Card 1: Total Riil Uang Diterima (Bersih Non-Void) */}
+        <div className="bg-gradient-to-br from-[#042f2e] to-[#115e59] rounded-2xl p-4 text-white shadow-sm flex flex-col justify-between border border-teal-600/30">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-teal-200 uppercase tracking-wider flex items-center gap-1.5">
+              <Banknote className="w-4 h-4 text-emerald-300" />
+              <span>Total Uang Riil Diterima</span>
+            </span>
+            <span className="text-[9px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-black border border-emerald-400/30">
+              NON-VOID ✅
+            </span>
+          </div>
+          <div className="my-2.5">
+            <div className="text-2xl font-black font-mono tracking-tight text-white">
+              Rp {totalRealDiterima.toLocaleString('id-ID')}
+            </div>
+            <div className="text-[11px] text-teal-200/90 mt-0.5">
+              Bersih dari <strong>{nonVoidFilteredTx.length}</strong> transaksi valid
+            </div>
+          </div>
+          {voidCountInFilter > 0 ? (
+            <div className="text-[10px] text-rose-200 bg-rose-950/40 border border-rose-500/30 px-2 py-1 rounded-xl flex items-center justify-between">
+              <span>🚫 {voidCountInFilter} Nota Void Diabaikan:</span>
+              <span className="font-mono font-bold">-Rp {totalVoidNominal.toLocaleString('id-ID')}</span>
+            </div>
+          ) : (
+            <div className="text-[10px] text-teal-300/80 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              <span>Semua transaksi pada filter ini berstatus aktif/valid</span>
+            </div>
+          )}
+        </div>
+
+        {/* Card 2: Pemasukan Kas Tunai */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Coins className="w-4 h-4 text-emerald-600" />
+              <span>Tunai (Kas Laci)</span>
+            </span>
+            <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-200">
+              Fisik Laci
+            </span>
+          </div>
+          <div className="my-2">
+            <div className="text-xl font-black font-mono text-slate-900">
+              Rp {(methodBreakdown['Tunai'] || 0).toLocaleString('id-ID')}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              {totalRealDiterima > 0 ? Math.round(((methodBreakdown['Tunai'] || 0) / totalRealDiterima) * 100) : 0}% dari total uang masuk
+            </div>
+          </div>
+          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-emerald-500 rounded-full transition-all duration-300" 
+              style={{ width: `${totalRealDiterima > 0 ? ((methodBreakdown['Tunai'] || 0) / totalRealDiterima) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Card 3: Pemasukan QRIS Digital */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Smartphone className="w-4 h-4 text-indigo-600" />
+              <span>QRIS Digital</span>
+            </span>
+            <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold border border-indigo-200">
+              Merchant QRIS
+            </span>
+          </div>
+          <div className="my-2">
+            <div className="text-xl font-black font-mono text-slate-900">
+              Rp {(methodBreakdown['QRIS'] || 0).toLocaleString('id-ID')}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              {totalRealDiterima > 0 ? Math.round(((methodBreakdown['QRIS'] || 0) / totalRealDiterima) * 100) : 0}% dari total uang masuk
+            </div>
+          </div>
+          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-indigo-500 rounded-full transition-all duration-300" 
+              style={{ width: `${totalRealDiterima > 0 ? ((methodBreakdown['QRIS'] || 0) / totalRealDiterima) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Card 4: Transfer Bank / EDC / Non-Tunai Lainnya */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <CreditCard className="w-4 h-4 text-sky-600" />
+              <span>Transfer & EDC</span>
+            </span>
+            <span className="text-[10px] bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full font-bold border border-sky-200">
+              Non-Tunai
+            </span>
+          </div>
+          <div className="my-2">
+            <div className="text-xl font-black font-mono text-slate-900">
+              Rp {(
+                (methodBreakdown['Transfer BCA'] || 0) + 
+                (methodBreakdown['Transfer'] || 0) + 
+                (methodBreakdown['EDC'] || 0) + 
+                (methodBreakdown['Debit'] || 0)
+              ).toLocaleString('id-ID')}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              Rekening Bank & Mesin Gesek
+            </div>
+          </div>
+          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-sky-500 rounded-full transition-all duration-300" 
+              style={{ 
+                width: `${totalRealDiterima > 0 ? (((methodBreakdown['Transfer BCA'] || 0) + (methodBreakdown['Transfer'] || 0) + (methodBreakdown['EDC'] || 0) + (methodBreakdown['Debit'] || 0)) / totalRealDiterima) * 100 : 0}%` 
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Transaction Table */}
@@ -604,17 +843,26 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                   const isDropOff = Boolean(tx.tipe === 'FullService' || tx.tipe === 'Drop Off' || (tx.tipe as string) === 'DropOff');
                   const isSelfService = Boolean(tx.tipe === 'SelfService' || tx.tipe === 'Self Service');
                   const speedLower = String(tx.tingkatLayanan || 'Reguler').toLowerCase();
+                  const isVoid = Boolean(
+                    tx.status === 'Void' || 
+                    tx.status === 'Batal' || 
+                    tx.statusVoid === 'Approved'
+                  );
 
                   return (
-                    <tr key={tx.noNota} className="hover:bg-slate-50/80 transition-colors text-xs">
+                    <tr key={tx.noNota} className={`hover:bg-slate-50/80 transition-colors text-xs ${isVoid ? 'bg-slate-50/40 opacity-75' : ''}`}>
                       {/* 1. No Nota */}
                       <td className="py-2.5 px-3.5 font-bold text-slate-700 whitespace-nowrap">
-                        <div className="font-mono text-xs">{tx.noNota}</div>
-                        {tx.statusVoid === 'PendingApproval' && (
+                        <div className={`font-mono text-xs ${isVoid ? 'line-through text-slate-400' : ''}`}>{tx.noNota}</div>
+                        {tx.statusVoid === 'PendingApproval' ? (
                           <span className="text-[9px] text-[#FF9500] font-semibold bg-[#FF9500]/10 border border-[#FF9500]/30 px-1 py-0.2 rounded mt-0.5 inline-block">
                             Pending Void
                           </span>
-                        )}
+                        ) : isVoid ? (
+                          <span className="text-[9px] text-rose-600 font-bold bg-rose-50 border border-rose-200 px-1 py-0.2 rounded mt-0.5 inline-block">
+                            Void
+                          </span>
+                        ) : null}
                       </td>
 
                       {/* 2. Tanggal & Kasir */}
@@ -659,7 +907,12 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
 
                       {/* 5. Status Pengerjaan (Produksi) */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        {isDropOff ? (() => {
+                        {isVoid ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
+                            <span>🚫 Dibatalkan (Void)</span>
+                          </span>
+                        ) : isDropOff ? (() => {
                           const st = String(tx.status || 'Diterima');
                           const badgeCls =
                             st === 'Siap Diambil'
@@ -681,7 +934,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                             </span>
                           );
                         })() : (
-                          <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">
                             Selesai di Tempat
                           </span>
                         )}
@@ -689,29 +942,46 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
 
                       {/* 6. Total Tagihan */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div className="font-bold text-[#1E4648] text-xs">Rp {(tx?.total || 0).toLocaleString('id-ID')}</div>
-                        {tx.sisaTagihan && tx.sisaTagihan > 0 ? (
-                          <div className="text-[9px] text-rose-600 font-bold">
-                            Sisa: Rp {(tx?.sisaTagihan || 0).toLocaleString('id-ID')}
+                        {isVoid ? (
+                          <div>
+                            <div className="font-bold text-slate-400 line-through text-xs">
+                              Rp {(tx?.total || 0).toLocaleString('id-ID')}
+                            </div>
+                            <span className="text-[9px] font-black text-rose-600 uppercase tracking-tight">
+                              [Dibatalkan]
+                            </span>
                           </div>
                         ) : (
-                          <div className="text-[10px] text-slate-400">{tx.metodeBayar || 'Tunai'}</div>
+                          <div>
+                            <div className="font-bold text-[#1E4648] text-xs">Rp {(tx?.total || 0).toLocaleString('id-ID')}</div>
+                            {tx.sisaTagihan && tx.sisaTagihan > 0 ? (
+                              <div className="text-[9px] text-rose-600 font-bold">
+                                Sisa: Rp {(tx?.sisaTagihan || 0).toLocaleString('id-ID')}
+                              </div>
+                            ) : (
+                              <div className="text-[10px] text-slate-400">{tx.metodeBayar || 'Tunai'}</div>
+                            )}
+                          </div>
                         )}
                       </td>
 
                       {/* 7. Status Pembayaran */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
-                            tx.statusVoid === 'Approved' || tx.status === 'Void' || tx.status === 'Batal'
-                              ? 'bg-rose-50 text-rose-700 border-rose-200'
-                              : tx.statusPembayaran === 'DP' || (tx.sisaTagihan || 0) > 0
+                        {isVoid ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200">
+                            🚫 Tidak Lunas (Void)
+                          </span>
+                        ) : (
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                              tx.statusPembayaran === 'DP' || (tx.sisaTagihan || 0) > 0
                                 ? 'bg-amber-50 text-amber-700 border-amber-200'
                                 : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          }`}
-                        >
-                          <span>{tx.statusVoid === 'Approved' || tx.status === 'Void' || tx.status === 'Batal' ? 'VOID' : tx.statusPembayaran || ((tx.sisaTagihan || 0) > 0 ? 'DP' : 'Lunas')}</span>
-                        </span>
+                            }`}
+                          >
+                            <span>{tx.statusPembayaran || ((tx.sisaTagihan || 0) > 0 ? 'DP' : 'Lunas')}</span>
+                          </span>
+                        )}
                       </td>
 
                       {/* 8. Aksi & Approval */}
@@ -733,13 +1003,15 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                           </button>
                           
                           {/* Send WA Notification */}
-                          <button
-                            onClick={() => tx.status === 'Siap Diambil' ? handleSendSiapWA(tx) : handleWhatsAppStruk(tx)}
-                            className="p-1.5 text-[#1E4648] hover:bg-[#B5C9C9]/20 rounded-lg transition"
-                            title={tx.status === 'Siap Diambil' ? "Kirim WA Siap Diambil" : "Kirim WA Struk"}
-                          >
-                            <Send className="w-3.5 h-3.5" />
-                          </button>
+                          {!isVoid && (
+                            <button
+                              onClick={() => tx.status === 'Siap Diambil' ? handleSendSiapWA(tx) : handleWhatsAppStruk(tx)}
+                              className="p-1.5 text-[#1E4648] hover:bg-[#B5C9C9]/20 rounded-lg transition"
+                              title={tx.status === 'Siap Diambil' ? "Kirim WA Siap Diambil" : "Kirim WA Struk"}
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
                           {/* DP Pelunasan Button */}
                           {tx.sisaTagihan && tx.sisaTagihan > 0 ? (
@@ -799,9 +1071,26 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowVoidModal(false)} className="bg-slate-100 text-slate-600 font-semibold px-3 py-2 rounded-md text-xs">Batal</button>
-              <button onClick={handleAjukanVoid} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 rounded-md text-xs transition">
-                Kirim Pengajuan Void
+              <button 
+                onClick={() => setShowVoidModal(false)} 
+                disabled={submittingVoid}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-3 py-2 rounded-md text-xs cursor-pointer disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleAjukanVoid} 
+                disabled={submittingVoid}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2 rounded-md text-xs transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {submittingVoid ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Mengirim...</span>
+                  </>
+                ) : (
+                  <span>Kirim Pengajuan Void</span>
+                )}
               </button>
             </div>
           </div>

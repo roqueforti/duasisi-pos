@@ -122,6 +122,15 @@ export interface ShiftKasir {
   daftarBelanja?: string;
   nominalBelanja?: number;
   fotoNotaBelanja?: string[];
+  pendingVoidCount?: number;
+  pendingVoidTotal?: number;
+  pendingVoidList?: Array<{
+    noNota: string;
+    namaPelanggan: string;
+    nominal: number;
+    metodeBayar: string;
+    alasan?: string;
+  }>;
 }
 
 export interface PromoVoucher {
