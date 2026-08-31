@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, AlertTriangle, Check, Download, Upload, Calendar, ArrowRight, Coins, Smartphone, CreditCard, Banknote, CheckCircle2 } from 'lucide-react';
+import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, AlertTriangle, Check, Download, Upload, Calendar, ArrowRight, Coins, Smartphone, CreditCard, Banknote, CheckCircle2, Clock, History, UserCheck } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
@@ -19,6 +19,9 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   const [periodePreset, setPeriodePreset] = useState<'all' | 'today' | 'yesterday' | 'last7days' | 'thisMonth' | 'lastMonth' | 'custom'>('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [selectedShiftId, setSelectedShiftId] = useState<string>('all');
+  const [activeShift, setActiveShift] = useState<any>(null);
+  const [recordedShifts, setRecordedShifts] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [txList, setTxList] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,8 +130,14 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   const loadRiwayat = async () => {
     setLoading(true);
     try {
-      const data = await runBackend<Transaksi[]>('getTransaksiList', 'Semua');
-      setTxList(Array.isArray(data) ? data : []);
+      const [txData, activeShiftData, rekapShiftData] = await Promise.all([
+        runBackend<Transaksi[]>('getTransaksiList', 'Semua'),
+        runBackend<any>('getKasShiftAktif').catch(() => null),
+        runBackend<any[]>('getRekapKasShift').catch(() => []),
+      ]);
+      setTxList(Array.isArray(txData) ? txData : []);
+      setActiveShift(activeShiftData || null);
+      setRecordedShifts(Array.isArray(rekapShiftData) ? rekapShiftData : []);
     } catch (err) {
       console.error('Gagal memuat riwayat:', err);
     } finally {
@@ -261,23 +270,64 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     setIsPrinterModalOpen(true);
   };
 
+  // Helper Parsing Timestamp
+  const parseTimestamp = (ts: string | Date | undefined | null): Date | null => {
+    if (!ts) return null;
+    if (ts instanceof Date) return isNaN(ts.getTime()) ? null : ts;
+    let str = String(ts).trim();
+    str = str.replace(' WIB', '').replace(' WITA', '').replace(' WIT', '').trim();
+    if (str.includes('/')) {
+      const spaceParts = str.split(' ');
+      const dateParts = spaceParts[0].split('/');
+      if (dateParts.length === 3) {
+        const day = Number(dateParts[0]);
+        const month = Number(dateParts[1]) - 1;
+        const year = Number(dateParts[2]);
+        let hours = 0, minutes = 0, seconds = 0;
+        if (spaceParts[1]) {
+          const timeParts = spaceParts[1].split(':');
+          hours = Number(timeParts[0]) || 0;
+          minutes = Number(timeParts[1]) || 0;
+          seconds = Number(timeParts[2]) || 0;
+        }
+        const d = new Date(year, month, day, hours, minutes, seconds);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const isTxInSelectedShift = (txTanggal: string | undefined): boolean => {
+    if (selectedShiftId === 'all') return true;
+    const txDate = parseTimestamp(txTanggal);
+    if (!txDate) return true;
+
+    if (selectedShiftId === 'active') {
+      if (!activeShift?.waktuBuka) return true;
+      const start = parseTimestamp(activeShift.waktuBuka);
+      if (!start) return true;
+      return txDate.getTime() >= start.getTime();
+    }
+
+    const shift = recordedShifts.find((s) => s.idShift === selectedShiftId);
+    if (!shift || !shift.waktuBuka) return true;
+    const start = parseTimestamp(shift.waktuBuka);
+    const end = shift.waktuTutup ? parseTimestamp(shift.waktuTutup) : null;
+    if (!start) return true;
+    if (end) {
+      return txDate.getTime() >= start.getTime() && txDate.getTime() <= end.getTime();
+    }
+    return txDate.getTime() >= start.getTime();
+  };
+
   // Helper Period Matching
   const isDateInSelectedPeriod = (tglStr: string): boolean => {
     if (periodePreset === 'all') return true;
     if (!tglStr) return false;
     
-    let d: Date;
-    if (tglStr.includes('/')) {
-      const parts = tglStr.split(' ')[0].split('/');
-      if (parts.length === 3) {
-        d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-      } else {
-        d = new Date(tglStr);
-      }
-    } else {
-      d = new Date(tglStr);
-    }
-    if (isNaN(d.getTime())) return true;
+    const d = parseTimestamp(tglStr);
+    if (!d) return true;
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -339,7 +389,9 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
       matchFilter = t.statusVoid === 'PendingApproval';
     }
 
-    const matchPeriod = filter === 'PendingVoid' ? true : isDateInSelectedPeriod(t.tanggal);
+    // Jika filter shift spesifik sedang dipilih, abaikan filter preset tanggal agar tidak saling bertabrakan
+    const matchPeriod = (filter === 'PendingVoid' || selectedShiftId !== 'all') ? true : isDateInSelectedPeriod(t.tanggal);
+    const matchShift = isTxInSelectedShift(t.tanggal);
 
     const q = (search || '').toLowerCase().trim();
     const matchSearch =
@@ -347,7 +399,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
       (t.noNota || '').toLowerCase().includes(q) ||
       (t.namaPelanggan && (t.namaPelanggan || '').toLowerCase().includes(q)) ||
       (t.noHp && (t.noHp || '').includes(q));
-    return matchFilter && matchPeriod && matchSearch;
+    return matchFilter && matchPeriod && matchShift && matchSearch;
   });
 
   const getFilterLabel = (f: 'Semua' | 'SelfService' | 'FullService' | 'NonLayanan' | 'PendingVoid') => {
@@ -674,6 +726,94 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
           <div className="ml-auto text-[11px] text-slate-400 font-semibold">
             Menampilkan <strong>{filteredTx.length}</strong> transaksi (<strong>{nonVoidFilteredTx.length}</strong> valid)
           </div>
+        </div>
+
+        {/* Shift Filter: Semua Shift | Shift Aktif | Shift Tercatat */}
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap text-xs">
+          <div className="flex items-center gap-1 text-slate-500 font-bold uppercase text-[10px] tracking-wider shrink-0 mr-1">
+            <Clock className="w-3.5 h-3.5 text-[#1E4648]" /> Filter Shift:
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap flex-1">
+            {/* Button: Semua Shift */}
+            <button
+              type="button"
+              onClick={() => setSelectedShiftId('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                selectedShiftId === 'all'
+                  ? 'bg-[#1E4648] text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80'
+              }`}
+            >
+              <span>Semua Shift</span>
+            </button>
+
+            {/* Button: Shift Sedang Aktif */}
+            {activeShift && (
+              <button
+                type="button"
+                onClick={() => setSelectedShiftId('active')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  selectedShiftId === 'active'
+                    ? 'bg-emerald-700 text-white shadow-xs ring-2 ring-emerald-500/30'
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                }`}
+                title={`Shift aktif: ${activeShift.namaKasir}`}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                <span>🟢 Shift Aktif ({activeShift.namaKasir})</span>
+              </button>
+            )}
+
+            {/* Select Dropdown: Shift Tercatat (Selesai/Tutup) */}
+            {recordedShifts.length > 0 && (
+              <div className="relative flex items-center">
+                <select
+                  value={selectedShiftId !== 'all' && selectedShiftId !== 'active' ? selectedShiftId : ''}
+                  onChange={(e) => {
+                    if (e.target.value) setSelectedShiftId(e.target.value);
+                    else setSelectedShiftId('all');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border outline-none transition cursor-pointer ${
+                    selectedShiftId !== 'all' && selectedShiftId !== 'active'
+                      ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-2xs'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <option value="" className="text-slate-800 bg-white">
+                    📋 Riwayat Shift Tercatat ({recordedShifts.length} Shift)...
+                  </option>
+                  {recordedShifts.map((s) => (
+                    <option key={s.idShift} value={s.idShift} className="text-slate-800 bg-white">
+                      Shift {s.idShift} · {s.namaKasir} ({s.waktuBuka}{s.waktuTutup ? ` s/d ${s.waktuTutup.split(' ')[1] || s.waktuTutup}` : ''})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Reset Filter Button */}
+            {selectedShiftId !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setSelectedShiftId('all')}
+                className="px-2.5 py-1 text-[11px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition cursor-pointer"
+              >
+                ✕ Reset Shift
+              </button>
+            )}
+          </div>
+
+          {selectedShiftId !== 'all' && (
+            <div className="text-[11px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2.5 py-1 rounded-xl flex items-center gap-1">
+              <UserCheck className="w-3.5 h-3.5 text-teal-600" />
+              <span>
+                {selectedShiftId === 'active'
+                  ? `Shift Aktif: ${activeShift?.namaKasir || 'Kasir'}`
+                  : `Shift: ${recordedShifts.find(s => s.idShift === selectedShiftId)?.namaKasir || selectedShiftId}`}
+              </span>
+            </div>
+          )}
         </div>
 
       </div>
