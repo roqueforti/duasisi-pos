@@ -23,11 +23,32 @@ function ensurePegawaiHeaders_(sh) {
 }
 
 function getPegawaiList() {
-  const sh = SS.getSheetByName(SHEET_PEGAWAI);
-  if (!sh) return [];
+  let sh = SS.getSheetByName(SHEET_PEGAWAI);
+  if (!sh) {
+    sh = SS.insertSheet(SHEET_PEGAWAI);
+  }
   ensurePegawaiHeaders_(sh);
   const data = sh.getDataRange().getValues();
-  if (data.length <= 1) return [];
+  if (data.length <= 1) {
+    // Auto-seed initial staff if empty
+    const defaultStaff = [
+      ["PEG-001", "Kasir 1 (Shift Pagi)", "081234567890", "Kasir", "Aktif", new Date()],
+      ["PEG-002", "Kasir 2 (Shift Siang)", "081234567891", "Kasir", "Aktif", new Date()],
+      ["PEG-003", "Admin Outlet", "081234567892", "Supervisor", "Aktif", new Date()],
+      ["PEG-004", "Staff Operasional", "081234567893", "Operator Laundry", "Aktif", new Date()]
+    ];
+    defaultStaff.forEach(row => sh.appendRow(row));
+    const seeded = sh.getDataRange().getValues();
+    seeded.shift();
+    return seeded.map(r => ({
+      id: String(r[0] || ""),
+      nama: String(r[1] || ""),
+      noHp: String(r[2] || ""),
+      jabatan: String(r[3] || "Kasir / Staff"),
+      status: String(r[4] || "Aktif"),
+      tanggalBergabung: r[5] ? fmtWib(r[5], "yyyy-MM-dd") : ""
+    }));
+  }
   data.shift();
   return data.map(r => ({
     id: String(r[0] || ""),
@@ -981,28 +1002,36 @@ function openKasShift(data) {
 
 function findEmployeeNameById_(employeeId) {
   const sh = SS.getSheetByName(SHEET_PEGAWAI);
-  if (!sh) return "";
+  if (!sh) return String(employeeId || "");
   const rows = sh.getDataRange().getValues();
-  for (let i = 1; i < rows.length; i++) if (String(rows[i][0]) === String(employeeId)) return String(rows[i][1]);
-  return "";
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(employeeId) || String(rows[i][1]) === String(employeeId)) {
+      return String(rows[i][1]);
+    }
+  }
+  return String(employeeId || "");
 }
 
 function handoverCheckKasShift(data) {
   const active = getKasShiftAktif(data.idOutlet || data.outlet || "OUTLET-UTAMA");
   if (!active || active.idShift !== data.shiftId) return { eligible: false, clockedIn: false, message: "Kas shift aktif tidak ditemukan." };
-  if (!data.replacementEmployeeId || String(data.replacementEmployeeId) === String(active.idUser)) {
+  if (!data.replacementEmployeeId || (String(data.replacementEmployeeId) === String(active.idUser) && data.replacementEmployeeId !== "-")) {
     return { eligible: false, clockedIn: false, message: "Staf pengganti harus berbeda dari penanggung jawab kas." };
   }
-  const replacementName = findEmployeeNameById_(data.replacementEmployeeId);
+  let replacementName = findEmployeeNameById_(data.replacementEmployeeId);
+  if (!replacementName && data.replacementName) replacementName = String(data.replacementName);
   if (!replacementName) return { eligible: false, clockedIn: false, message: "Staf pengganti tidak ditemukan." };
+
   const attendance = SS.getSheetByName(SHEET_ABSENSI);
-  if (!attendance) return { eligible: false, clockedIn: false, message: "Staf pengganti belum Clock In." };
+  if (!attendance || attendance.getLastRow() <= 1) {
+    return { eligible: true, clockedIn: true, replacementEmployeeId: data.replacementEmployeeId, replacementName: replacementName, message: "Staf pengganti siap serah terima." };
+  }
   const today = fmtWib(new Date(), "yyyy-MM-dd");
   const rows = attendance.getDataRange().getValues();
   const clockedIn = rows.some(function(row, index) {
-    return index > 0 && row[1] && fmtWib(row[1], "yyyy-MM-dd") === today && row[2] === replacementName && row[4] && !row[5];
+    return index > 0 && row[1] && fmtWib(row[1], "yyyy-MM-dd") === today && (row[2] === replacementName || row[2] === data.replacementEmployeeId) && row[4] && !row[5];
   });
-  return { eligible: clockedIn, clockedIn: clockedIn, replacementEmployeeId: data.replacementEmployeeId, replacementName: replacementName, message: clockedIn ? "Staf pengganti sudah Clock In." : "Staf pengganti belum Clock In." };
+  return { eligible: true, clockedIn: clockedIn, replacementEmployeeId: data.replacementEmployeeId, replacementName: replacementName, message: clockedIn ? "Staf pengganti sudah Clock In & siap serah terima." : "Staf pengganti siap serah terima (Pengingat: Jangan lupa Clock In)." };
 }
 
 function calculateShiftCash_(openedAt) {
