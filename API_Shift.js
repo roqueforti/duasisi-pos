@@ -966,6 +966,89 @@ function calculateShiftCash_(openedAt) {
   return calculateShiftOmzet_(openedAt).tunai;
 }
 
+function calculateTodayKumulatif_(outlet, activeShiftOpenedAt) {
+  const shKas = SS.getSheetByName(SHEET_KAS_SHIFT);
+  const shTx = SS.getSheetByName(SHEET_TRANSAKSI);
+  if (!shKas || shKas.getLastRow() < 2) return null;
+
+  const activeDate = activeShiftOpenedAt instanceof Date ? activeShiftOpenedAt : new Date(activeShiftOpenedAt);
+  const startOfDay = new Date(activeDate.getFullYear(), activeDate.getMonth(), activeDate.getDate(), 0, 0, 0);
+
+  // 1. Get all recorded shifts today up to active shift
+  const kasRows = shKas.getDataRange().getValues();
+  const todayShifts = [];
+  let modalAwalHariIni = 0;
+  let totalBelanjaHariIni = 0;
+
+  for (let i = 1; i < kasRows.length; i++) {
+    const r = kasRows[i];
+    if (!r[4]) continue;
+    if (outlet && r[1] && r[1] !== outlet) continue;
+    const shiftOpen = new Date(r[4]);
+    if (isNaN(shiftOpen.getTime())) continue;
+    if (shiftOpen >= startOfDay && shiftOpen <= activeDate) {
+      if (todayShifts.length === 0) {
+        modalAwalHariIni = Number(r[6]) || 0; // Modal Awal shift pertama pagi ini
+      }
+      totalBelanjaHariIni += Number(r[18]) || 0;
+      todayShifts.push({
+        idShift: r[0],
+        namaKasir: r[2],
+        waktuBuka: fmtWib(r[4]),
+        waktuTutup: r[5] ? fmtWib(r[5]) : "",
+        kasAwal: Number(r[6]) || 0,
+        kasAkhirFisik: Number(r[8]) || 0,
+        selisihKas: Number(r[9]) || 0,
+        status: r[10],
+        modeTutup: r[11] || "",
+        totalBelanja: Number(r[18]) || 0
+      });
+    }
+  }
+
+  // 2. Get all non-void transactions today from startOfDay to now
+  let omzetTunaiHariIni = 0;
+  let omzetMerchantHariIni = 0;
+  if (shTx && shTx.getLastRow() >= 2) {
+    const txRows = shTx.getDataRange().getValues();
+    for (let j = 1; j < txRows.length; j++) {
+      const tx = txRows[j];
+      if (!tx[1]) continue;
+      const txTime = new Date(tx[1]);
+      if (isNaN(txTime.getTime()) || txTime < startOfDay) continue;
+      if (tx[9] === "Approved" || tx[9] === "PendingApproval" || tx[5] === "Void" || tx[5] === "Batal") continue;
+      
+      const totalTagihan = Number(tx[4]) || 0;
+      const nominalBayarDP = Number(tx[15]) || 0;
+      const sisaTagihan = Number(tx[16]) || 0;
+      const nominal = (sisaTagihan > 0 && nominalBayarDP > 0) ? nominalBayarDP : totalTagihan;
+
+      const metode = String(tx[13] || "Tunai").trim();
+      if (metode === "Tunai") {
+        omzetTunaiHariIni += nominal;
+      } else {
+        omzetMerchantHariIni += nominal;
+      }
+    }
+  }
+
+  const shiftKe = todayShifts.length || 1;
+  const isGantiShift = shiftKe > 1;
+  const prevShift = isGantiShift ? todayShifts[todayShifts.length - 2] : null;
+
+  return {
+    shiftKe: shiftKe,
+    isGantiShift: isGantiShift,
+    modalAwalHariIni: modalAwalHariIni,
+    omzetTunaiHariIni: omzetTunaiHariIni,
+    omzetMerchantHariIni: omzetMerchantHariIni,
+    totalBelanjaHariIni: totalBelanjaHariIni,
+    ekspektasiKasHariIni: modalAwalHariIni + omzetTunaiHariIni - totalBelanjaHariIni,
+    prevShift: prevShift,
+    todayShifts: todayShifts
+  };
+}
+
 function getKasShiftAktif(outlet) {
   const sh = SS.getSheetByName(SHEET_KAS_SHIFT);
   if (!sh || sh.getLastRow() < 2) return null;
@@ -978,6 +1061,8 @@ function getKasShiftAktif(outlet) {
       const omzetMerchant = omzet.nonTunai;
       const kasAwal = Number(rows[i][6]) || 0;
       const saldoMerchantAwal = Number(rows[i][16]) || 0;
+      const kumulatif = calculateTodayKumulatif_(outlet, openedAt);
+
       return {
         idShift: rows[i][0],
         idOutlet: rows[i][1],
@@ -992,7 +1077,8 @@ function getKasShiftAktif(outlet) {
         status: "Buka",
         pendingVoidCount: omzet.pendingVoidCount || 0,
         pendingVoidTotal: omzet.pendingVoidTotal || 0,
-        pendingVoidList: omzet.pendingVoidList || []
+        pendingVoidList: omzet.pendingVoidList || [],
+        kumulatif: kumulatif
       };
     }
   }

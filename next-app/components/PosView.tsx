@@ -4406,6 +4406,24 @@ export default function PosView({
                         <span>Ekspektasi Uang Laci:</span>
                         <span>Rp {((shiftAktif?.kasAwal || 0) + (shiftAktif?.totalOmzetTunai || 0) - totalShiftExpense).toLocaleString('id-ID')}</span>
                       </div>
+
+                      {/* Info Kumulatif Hari Ini (Jika Ganti Shift) */}
+                      {shiftAktif?.kumulatif?.isGantiShift && (
+                        <div className="mt-2 pt-2 border-t border-teal-200/60 text-[10px] text-slate-500 space-y-0.5">
+                          <div className="font-bold text-teal-950 flex items-center justify-between">
+                            <span>📈 Kumulatif Hari Ini (Shift 1 s/d {shiftAktif.kumulatif.shiftKe}):</span>
+                            <span className="text-teal-800 font-mono">Modal Pagi: Rp {(shiftAktif.kumulatif.modalAwalHariIni || 0).toLocaleString('id-ID')}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-600">
+                            <span>• Total Tunai Kumulatif:</span>
+                            <span className="font-mono text-teal-700 font-bold">+ Rp {(shiftAktif.kumulatif.omzetTunaiHariIni || 0).toLocaleString('id-ID')}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-600">
+                            <span>• Total Belanja Kumulatif:</span>
+                            <span className="font-mono text-rose-600 font-bold">- Rp {(shiftAktif.kumulatif.totalBelanjaHariIni || 0).toLocaleString('id-ID')}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-3.5 pt-3 border-t border-teal-200/60">

@@ -103,6 +103,37 @@ export interface PipelineStep {
   catatan?: string;
 }
 
+export interface ShiftKumulatifData {
+  shiftKe: number;
+  isGantiShift: boolean;
+  modalAwalHariIni: number;
+  omzetTunaiHariIni: number;
+  omzetMerchantHariIni: number;
+  totalBelanjaHariIni: number;
+  ekspektasiKasHariIni: number;
+  prevShift?: {
+    idShift: string;
+    namaKasir: string;
+    waktuBuka: string;
+    waktuTutup: string;
+    kasAwal: number;
+    kasAkhirFisik: number;
+    selisihKas: number;
+    modeTutup?: string;
+  } | null;
+  todayShifts?: Array<{
+    idShift: string;
+    namaKasir: string;
+    waktuBuka: string;
+    waktuTutup: string;
+    kasAwal: number;
+    kasAkhirFisik: number;
+    selisihKas: number;
+    status: string;
+    totalBelanja?: number;
+  }>;
+}
+
 export interface ShiftKasir {
   idShift: string;
   idOutlet?: string;
@@ -131,6 +162,7 @@ export interface ShiftKasir {
     metodeBayar: string;
     alasan?: string;
   }>;
+  kumulatif?: ShiftKumulatifData;
 }
 
 export interface PromoVoucher {

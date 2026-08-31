@@ -24,12 +24,13 @@ import {
   Send,
   Copy,
   Check,
-  Share2
+  Share2,
+  History
 } from 'lucide-react';
 
 import { runBackend } from '@/lib/api';
 import { useDialog } from '@/components/DialogProvider';
-import { UserRole } from '@/lib/types';
+import { UserRole, ShiftKumulatifData } from '@/lib/types';
 
 
 export interface ShiftKasir {
@@ -53,6 +54,7 @@ export interface ShiftKasir {
     metodeBayar: string;
     alasan?: string;
   }>;
+  kumulatif?: ShiftKumulatifData;
 }
 
 export interface ExpenseItem {
@@ -1276,6 +1278,79 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
 
                 </div>
 
+                {/* Data Kumulatif Hari Ini (Termasuk Shift Sebelumnya) */}
+                {shiftAktif.kumulatif && (
+                  <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700 text-white rounded-2xl p-5 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-700/80">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-teal-500/20 text-teal-300 font-black">
+                          <History className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-extrabold text-sm text-white">
+                              Data Kumulatif Kasir Hari Ini
+                            </h4>
+                            <span className="text-[10px] font-black bg-teal-500/30 text-teal-200 border border-teal-400/30 px-2 py-0.5 rounded-full">
+                              Shift ke-{shiftAktif.kumulatif.shiftKe}
+                            </span>
+                            {shiftAktif.kumulatif.isGantiShift && (
+                              <span className="text-[10px] font-bold bg-amber-500/20 text-amber-200 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                                Ganti Shift
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {shiftAktif.kumulatif.isGantiShift && shiftAktif.kumulatif.prevShift
+                              ? `Meneruskan saldo serah terima kasir sebelumnya: ${shiftAktif.kumulatif.prevShift.namaKasir} (${shiftAktif.kumulatif.prevShift.waktuTutup || shiftAktif.kumulatif.prevShift.waktuBuka})`
+                              : 'Shift pertama (pagi) hari ini'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 block font-semibold">Total Uang Fisik Laci Saat Ini</span>
+                        <span className="text-base sm:text-lg font-black font-mono text-emerald-400">
+                          Rp {((shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="bg-slate-800/90 border border-slate-700/70 p-3 rounded-xl">
+                        <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Modal Awal Pagi</span>
+                        <span className="text-sm sm:text-base font-black font-mono text-white mt-1 block">
+                          Rp {(shiftAktif.kumulatif.modalAwalHariIni || 0).toLocaleString('id-ID')}
+                        </span>
+                        <span className="text-[10px] text-slate-400 mt-0.5 block">Shift 1 Pagi Hari Ini</span>
+                      </div>
+
+                      <div className="bg-slate-800/90 border border-slate-700/70 p-3 rounded-xl">
+                        <span className="text-[10px] text-teal-400 font-bold block uppercase tracking-wider">Total Tunai Hari Ini</span>
+                        <span className="text-sm sm:text-base font-black font-mono text-teal-300 mt-1 block">
+                          + Rp {(shiftAktif.kumulatif.omzetTunaiHariIni || 0).toLocaleString('id-ID')}
+                        </span>
+                        <span className="text-[10px] text-slate-400 mt-0.5 block">Kumulatif Seluruh Shift</span>
+                      </div>
+
+                      <div className="bg-slate-800/90 border border-slate-700/70 p-3 rounded-xl">
+                        <span className="text-[10px] text-rose-400 font-bold block uppercase tracking-wider">Total Belanja Hari Ini</span>
+                        <span className="text-sm sm:text-base font-black font-mono text-rose-300 mt-1 block">
+                          - Rp {(shiftAktif.kumulatif.totalBelanjaHariIni || 0).toLocaleString('id-ID')}
+                        </span>
+                        <span className="text-[10px] text-slate-400 mt-0.5 block">Kumulatif Seluruh Shift</span>
+                      </div>
+
+                      <div className="bg-slate-800/90 border border-slate-700/70 p-3 rounded-xl">
+                        <span className="text-[10px] text-indigo-400 font-bold block uppercase tracking-wider">Total QRIS Hari Ini</span>
+                        <span className="text-sm sm:text-base font-black font-mono text-indigo-300 mt-1 block">
+                          Rp {(shiftAktif.kumulatif.omzetMerchantHariIni || 0).toLocaleString('id-ID')}
+                        </span>
+                        <span className="text-[10px] text-slate-400 mt-0.5 block">Saldo Masuk Merchant</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Pengeluaran Section Widget inside Shift Saya */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
                   <div className="flex items-center justify-between">
@@ -2096,6 +2171,24 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                           Rp {((shiftAktif.kasAwal || 0) + (shiftAktif.totalOmzetTunai || 0) - totalPengeluaran).toLocaleString('id-ID')}
                         </span>
                       </div>
+
+                      {/* Info Kumulatif Hari Ini (Jika Ganti Shift / Ada Shift Sebelumnya) */}
+                      {shiftAktif.kumulatif?.isGantiShift && (
+                        <div className="mt-2 pt-2 border-t border-teal-100/80 text-[10px] text-slate-500 space-y-0.5">
+                          <div className="font-bold text-teal-950 flex items-center justify-between">
+                            <span>📈 Kumulatif Hari Ini (Shift 1 s/d {shiftAktif.kumulatif.shiftKe}):</span>
+                            <span className="text-teal-800 font-mono">Modal Pagi: Rp {(shiftAktif.kumulatif.modalAwalHariIni || 0).toLocaleString('id-ID')}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-600">
+                            <span>• Total Tunai Kumulatif:</span>
+                            <span className="font-mono text-teal-700 font-bold">+ Rp {(shiftAktif.kumulatif.omzetTunaiHariIni || 0).toLocaleString('id-ID')}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-600">
+                            <span>• Total Belanja Kumulatif:</span>
+                            <span className="font-mono text-rose-600 font-bold">- Rp {(shiftAktif.kumulatif.totalBelanjaHariIni || 0).toLocaleString('id-ID')}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Rincian Daftar Belanja yang Tercatat */}
