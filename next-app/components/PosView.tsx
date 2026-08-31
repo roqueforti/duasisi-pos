@@ -73,6 +73,7 @@ import PrinterModal from '@/components/PrinterModal';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { validateAttendanceSecurity } from '@/lib/attendanceSecurity';
 import { useDialog } from '@/components/DialogProvider';
+import { useDisplaySettings } from '@/components/DisplaySettingsContext';
 
 export interface ExpensePhotoItem {
   id: string;
@@ -160,6 +161,12 @@ export default function PosView({
 } = {}) {
 
   const { showAlert, showConfirm } = useDialog();
+  let inverseZoom = 1;
+  try {
+    const { settings } = useDisplaySettings();
+    const zoomFactor = (settings?.zoomScale || 100) / 100;
+    inverseZoom = 1 / (zoomFactor || 1);
+  } catch {}
   const [layananList, setLayananList] = useState<LayananItem[]>([]);
   const [layananLoading, setLayananLoading] = useState<boolean>(true);
   const [search, setSearch] = useState('');
@@ -2013,7 +2020,10 @@ export default function PosView({
 
       {/* STEP 1 MODAL: "Tambah Item / Edit Catatan Item" */}
       {showTambahItemModal && itemModalTarget && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4"
+          style={{ zoom: inverseZoom }}
+        >
           <div className="bg-white rounded-lg p-5 w-full max-w-sm border border-slate-100 shadow-lg">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold text-slate-600">Detail & Catatan Item</h3>
@@ -2321,7 +2331,10 @@ export default function PosView({
 
       {/* STEP 3: MODAL "Pilih Pelanggan" (Repeat Order & 4-Digit Lookup Flow) */}
       {showCustModal && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div 
+          className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+          style={{ zoom: inverseZoom }}
+        >
           <div className="bg-white rounded-lg p-5 w-full max-w-md border border-slate-100 shadow-lg flex flex-col max-h-[85vh]">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -2503,11 +2516,14 @@ export default function PosView({
 
       {/* 4. MODAL "Detail Transaksi & Pembayaran" (Full Page Terminal: Kiri Detail Order & Customer, Kanan Kasir & Pembayaran) */}
       {showDetailTransaksiModal && (
-        <div className="fixed inset-0 z-[500] bg-slate-950 flex flex-col w-full h-[100dvh] max-h-[100dvh] overflow-hidden animate-fade-in select-none">
+        <div 
+          className="fixed inset-0 z-[500] bg-slate-950/80 flex flex-col w-full h-[100dvh] max-h-[100dvh] overflow-hidden animate-fade-in backdrop-blur-xs"
+          style={{ zoom: inverseZoom }}
+        >
           <div className="relative bg-white w-full h-full max-h-[100dvh] flex flex-col lg:flex-row overflow-hidden">
             
-            {/* MOBILE TOP TAB BAR (< lg screens only) */}
-            <div className="lg:hidden shrink-0 bg-slate-900 text-white px-3 py-2.5 flex items-center justify-between border-b border-slate-800 gap-2">
+            {/* MOBILE & TABLET PORTRAIT TOP BAR (< lg screens only) */}
+            <div className="lg:hidden shrink-0 bg-slate-900 text-white px-3.5 py-2.5 flex items-center justify-between border-b border-slate-800 gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <button
                   type="button"
@@ -2525,48 +2541,31 @@ export default function PosView({
                 </div>
               </div>
 
-              {/* Segmented Switcher for Mobile */}
-              <div className="flex bg-slate-800 p-1 rounded-xl gap-1 border border-slate-700/80">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setMobileCheckoutTab('detail')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${
-                    mobileCheckoutTab === 'detail'
-                      ? 'bg-[#1E4648] text-white shadow-xs'
-                      : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  <User className="w-3.5 h-3.5" />
-                  <span>1. Pelanggan</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMobileCheckoutTab('bayar')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${
-                    mobileCheckoutTab === 'bayar'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-slate-300 hover:text-white'
-                  }`}
+                  onClick={() => {
+                    document.getElementById('pos-section-bayar')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-[#1E4648] hover:bg-teal-700 text-teal-100 border border-teal-500/40 flex items-center gap-1 cursor-pointer transition shadow-xs"
                 >
                   <CreditCard className="w-3.5 h-3.5" />
-                  <span>2. Bayar</span>
+                  <span>Pilih Bayar ↓</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowDetailTransaksiModal(false)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition shrink-0 cursor-pointer"
+                  title="Tutup (Esc)"
+                >
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setShowDetailTransaksiModal(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition shrink-0 cursor-pointer"
-                title="Tutup (Esc)"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
-            {/* LEFT PANEL: Transaction Summary & Customer Details */}
-            <div className={`flex-1 min-w-0 flex flex-col h-full max-h-full overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-200 bg-white ${
-              mobileCheckoutTab === 'detail' ? 'flex' : 'hidden lg:flex'
-            }`}>
+            {/* LEFT PANEL / MAIN SCROLLABLE CONTAINER */}
+            <div className="flex-1 min-w-0 flex flex-col h-full max-h-full overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-200 bg-white">
               {/* Header with Back Button (Visible on Desktop / lg+) */}
               <div className="hidden lg:flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-slate-50/70">
                 <div className="flex items-center gap-3">
@@ -2589,7 +2588,7 @@ export default function PosView({
                 </div>
               </div>
 
-              {/* Form Content - Spacious & Senior Friendly */}
+              {/* Form Content - Continuous, touch-friendly scroll container */}
               <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-7 space-y-5 text-sm font-semibold text-slate-700 overscroll-contain">
                 {/* Unified Customer Data Form Section */}
                 <div className="space-y-4">
@@ -3272,31 +3271,241 @@ export default function PosView({
                     )}
                   </div>
                 </div>
+
+                {/* MOBILE / TABLET PORTRAIT ONLY: SECTION 3 PEMBAYARAN (< lg) */}
+                <div id="pos-section-bayar" className="lg:hidden pt-3 space-y-4 border-t-2 border-slate-200">
+                  <div className="flex items-center gap-2 text-slate-800 font-black text-base">
+                    <div className="w-8 h-8 rounded-xl bg-teal-100 text-[#1E4648] flex items-center justify-center">
+                      <CreditCard className="w-4 h-4" />
+                    </div>
+                    <span>Metode Pembayaran</span>
+                  </div>
+
+                  {/* Payment Method Selector Grid */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { id: 'Tunai', label: 'Tunai', icon: Receipt },
+                      { id: 'QRIS', label: 'QRIS', icon: QrCode },
+                      { id: 'Transfer', label: 'Transfer', icon: Send },
+                      { id: 'Debit', label: 'Debit', icon: CreditCard },
+                    ].map((m) => {
+                      const MethodIcon = m.icon;
+                      const isSelected = metodeBayar === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setMetodeBayar(m.id as any)}
+                          className={`py-2.5 px-2 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-[#1E4648] hover:bg-white'
+                          }`}
+                        >
+                          <MethodIcon className="w-4 h-4" />
+                          <span>{m.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Tunai / Non-Tunai Calculator Card on Mobile */}
+                  <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 shadow-xs">
+                    {metodeBayar === 'Tunai' ? (
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-bold text-slate-700 text-xs">Uang Tunai Diterima:</span>
+                            {uangBayarInput && uangBayarInput !== '0' && (
+                              <button
+                                type="button"
+                                onClick={() => setUangBayarInput('0')}
+                                className="text-xs font-bold text-rose-500 hover:underline cursor-pointer"
+                              >
+                                Reset (C)
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            readOnly
+                            value={uangBayarInput ? `Rp ${Number(uangBayarInput).toLocaleString('id-ID')}` : 'Rp 0'}
+                            className="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-xl font-black text-2xl text-[#1E4648] text-right font-mono shadow-2xs"
+                          />
+                        </div>
+
+                        {/* Shortcuts */}
+                        <div className="grid grid-cols-4 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setUangBayarInput((grandTotal || 0).toString())}
+                            className="py-2 bg-white border border-slate-200 hover:bg-teal-50 hover:border-[#1E4648] text-[#1E4648] font-bold rounded-xl text-xs transition shadow-2xs cursor-pointer"
+                          >
+                            Uang Pas
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUangBayarInput('20000')}
+                            className="py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition shadow-2xs cursor-pointer"
+                          >
+                            20K
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUangBayarInput('50000')}
+                            className="py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition shadow-2xs cursor-pointer"
+                          >
+                            50K
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUangBayarInput('100000')}
+                            className="py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition shadow-2xs cursor-pointer"
+                          >
+                            100K
+                          </button>
+                        </div>
+
+                        {/* Numpad */}
+                        <div className="grid grid-cols-3 gap-2">
+                          {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((num) => (
+                            <button
+                              key={num}
+                              type="button"
+                              onClick={() =>
+                                setUangBayarInput((prev) => (prev === '0' || !prev ? num.toString() : prev + num))
+                              }
+                              className="py-2.5 sm:py-3 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-xl shadow-2xs active:scale-95 transition font-mono cursor-pointer"
+                            >
+                              {num}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '0'))}
+                            className="py-2.5 sm:py-3 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-xl shadow-2xs active:scale-95 transition font-mono cursor-pointer"
+                          >
+                            0
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '00'))}
+                            className="py-2.5 sm:py-3 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-lg shadow-2xs active:scale-95 transition font-mono cursor-pointer"
+                          >
+                            00
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUangBayarInput((prev) => (prev === '0' || !prev ? '0' : prev + '000'))}
+                            className="py-2.5 sm:py-3 bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-base shadow-2xs active:scale-95 transition font-mono cursor-pointer"
+                          >
+                            000
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUangBayarInput('0')}
+                            className="py-2.5 bg-rose-50 border-2 border-rose-200 hover:bg-rose-100 text-rose-600 font-bold rounded-xl text-sm shadow-2xs active:scale-95 transition cursor-pointer"
+                          >
+                            C
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUangBayarInput((prev) => prev.slice(0, -1) || '0')}
+                            className="col-span-2 py-2.5 bg-slate-100 border-2 border-slate-200 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs shadow-2xs active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Delete className="w-4 h-4" />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
+
+                        {/* Kembalian / Kurang */}
+                        {Number(uangBayarInput) >= grandTotal && Number(uangBayarInput) > 0 ? (
+                          <div className="bg-emerald-50 border border-emerald-300 rounded-xl py-2 px-3 flex items-center justify-between shadow-2xs">
+                            <span className="text-xs font-extrabold text-emerald-800 uppercase tracking-wider">KEMBALIAN:</span>
+                            <span className="text-lg font-black text-emerald-700 font-mono">
+                              Rp {(Number(uangBayarInput) - grandTotal).toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                        ) : Number(uangBayarInput) > 0 ? (
+                          <div className="bg-rose-50 border border-rose-300 rounded-xl py-2 px-3 flex items-center justify-between shadow-2xs">
+                            <span className="text-xs font-extrabold text-rose-800 uppercase tracking-wider">KURANG:</span>
+                            <span className="text-lg font-black text-rose-700 font-mono">
+                              Rp {(grandTotal - Number(uangBayarInput)).toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="py-1 text-center text-xs text-slate-400 font-medium">
+                            Pilih shortcut atau tekan tombol angka untuk bayar tunai
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-2.5 p-3 text-center">
+                        <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-200 text-[#1E4648] flex items-center justify-center shadow-2xs">
+                          {metodeBayar === 'QRIS' ? (
+                            <QrCode className="w-6 h-6" />
+                          ) : (
+                            <CreditCard className="w-6 h-6" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-black text-slate-800">Pembayaran {metodeBayar}</h4>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Nominal Tagihan: <span className="font-black text-[#1E4648] font-mono text-sm">Rp {grandTotal.toLocaleString('id-ID')}</span>
+                          </p>
+                        </div>
+                        <div className="text-[11px] text-slate-600 bg-white border border-slate-200 rounded-xl p-2.5 max-w-xs shadow-2xs leading-relaxed">
+                          Pastikan dana telah masuk atau struk EDC berhasil keluar sebelum konfirmasi pembayaran.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Mobile Bottom Sticky Bar when on 'detail' tab (< lg) */}
-              <div className="lg:hidden shrink-0 p-3 bg-white border-t border-slate-200 shadow-md flex items-center justify-between gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                <div className="min-w-0">
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">TOTAL TAGIHAN:</span>
-                  <span className="text-base font-black text-[#1E4648] font-mono leading-tight block">
+              {/* MOBILE / TABLET PORTRAIT STICKY BOTTOM CONFIRM BAR */}
+              <div className="lg:hidden shrink-0 sticky bottom-0 z-30 bg-white border-t-2 border-slate-200 p-3 sm:p-4 shadow-[0_-6px_24px_rgba(0,0,0,0.12)] flex items-center justify-between gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <div className="min-w-0 pr-1 shrink-0">
+                  <div className="text-[9.5px] font-black text-slate-400 uppercase tracking-widest leading-none">TOTAL TAGIHAN</div>
+                  <div className="text-lg sm:text-xl font-black text-[#1E4648] font-mono leading-tight mt-0.5">
                     Rp {(grandTotal || 0).toLocaleString('id-ID')}
-                  </span>
+                  </div>
+                  <div className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                    <span>Metode:</span>
+                    <span className="px-1.5 py-0.2 bg-teal-50 text-teal-800 rounded font-black border border-teal-200">{metodeBayar}</span>
+                  </div>
                 </div>
+
                 <button
                   type="button"
-                  onClick={() => setMobileCheckoutTab('bayar')}
-                  className="py-3 px-5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer transition active:scale-[0.98]"
+                  onClick={handleConfirmPaymentSafe}
+                  disabled={
+                    paymentSubmitting ||
+                    (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal)
+                  }
+                  className={`flex-1 font-black py-3.5 px-4 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition cursor-pointer active:scale-[0.98] ${
+                    paymentSubmitting ||
+                    (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal)
+                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                      : 'bg-gradient-to-r from-emerald-600 via-teal-700 to-[#1E4648] hover:from-emerald-500 hover:to-[#163536] text-white shadow-emerald-900/20'
+                  }`}
                 >
-                  <span>Lanjut ke Pembayaran</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <CheckCircle2 className="w-5 h-5 shrink-0" />
+                  <span className="tracking-wide">
+                    {paymentSubmitting 
+                      ? 'Memproses...' 
+                      : (metodeBayar === 'Tunai' && Number(uangBayarInput) < grandTotal
+                          ? `Kurang Rp ${(grandTotal - Number(uangBayarInput)).toLocaleString('id-ID')}`
+                          : 'Konfirmasi & Selesaikan Bayar'
+                        )
+                    }
+                  </span>
                 </button>
               </div>
             </div>
 
-            {/* RIGHT PANEL: Payment Calculator & Numpad */}
-            <div className={`w-full lg:w-[390px] xl:w-[430px] flex flex-col bg-slate-50 shrink-0 border-l border-slate-200 h-full max-h-full overflow-hidden justify-between ${
-              mobileCheckoutTab === 'bayar' ? 'flex' : 'hidden lg:flex'
-            }`}>
+            {/* RIGHT PANEL (DESKTOP & TABLET LANDSCAPE ONLY, >= lg) */}
+            <div className="hidden lg:flex w-[390px] lg:w-[420px] xl:w-[450px] flex-col bg-slate-50 shrink-0 border-l border-slate-200 h-full max-h-full overflow-hidden justify-between">
               {/* Total Banner with Close Button */}
               <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white py-3.5 sm:py-4 px-4 sm:px-5 shrink-0 shadow-md relative flex items-center justify-between">
                 <div className="min-w-0">
@@ -3515,7 +3724,7 @@ export default function PosView({
                 )}
               </div>
 
-              {/* Bottom Submit Action - ALWAYS VISIBLE STICKY FOOTER */}
+              {/* Bottom Submit Action - ALWAYS VISIBLE STICKY FOOTER ON DESKTOP */}
               <div className="p-3 sm:p-4 border-t border-slate-200 bg-white shrink-0 z-20 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 <button
                   type="button"
@@ -3550,7 +3759,10 @@ export default function PosView({
 
       {/* STEP 6 & 7: UNIFIED MODAL "Pembayaran Berhasil & Live Preview Cetakan" */}
       {showSuccessModal && completedOrderData && (
-        <div className="fixed inset-0 z-[600] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div 
+          className="fixed inset-0 z-[600] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          style={{ zoom: inverseZoom }}
+        >
           <div className="relative bg-white rounded-3xl w-full max-w-5xl border border-slate-200/90 shadow-2xl flex flex-col lg:flex-row overflow-hidden my-auto max-h-[94dvh] animate-scale-in">
             
             {/* Prominent Modal Close Button - Top Right Corner */}
@@ -4039,7 +4251,10 @@ export default function PosView({
 
       {/* Buka Shift Modal */}
       {showBukaShiftModal && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4"
+          style={{ zoom: inverseZoom }}
+        >
           <div className="bg-white rounded-2xl p-6 w-full max-w-md border border-slate-100 shadow-2xl">
             <h3 className="text-base font-bold text-slate-800 mb-1">Buka Shift Kasir Baru</h3>
             <p className="text-xs text-slate-500 mb-4">Cek dan masukkan modal fisik laci kas dan saldo aplikasi merchant sebelum mulai.</p>
@@ -4096,7 +4311,10 @@ export default function PosView({
 
       {/* Enhanced Tutup Shift Modal with Summary, Merchant Reconcile & Expense Items with Receipt Photos */}
       {showTutupShiftModal && shiftAktif && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3">
+        <div 
+          className="fixed inset-0 z-[500] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3"
+          style={{ zoom: inverseZoom }}
+        >
           <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden border border-slate-100 shadow-2xl flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
@@ -4465,7 +4683,10 @@ export default function PosView({
 
       {/* Tambah Produk Custom Modal */}
       {showCustomItemModal && (
-        <div className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 z-[500] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4"
+          style={{ zoom: inverseZoom }}
+        >
           <div className="bg-white rounded-lg p-6 w-full max-w-sm border border-slate-100 shadow-lg">
             <h3 className="text-sm font-bold text-slate-600 mb-3">Tambah Produk / Layanan Baru</h3>
             <div className="space-y-3 mb-4">
@@ -4515,7 +4736,10 @@ export default function PosView({
 
       {/* SMART RECOMMENDATION MODAL (POS) */}
       {showRekomendasiModal && (
-        <div className="fixed inset-0 z-[500] bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 z-[500] bg-black/40 backdrop-blur-xs flex items-center justify-center p-4"
+          style={{ zoom: inverseZoom }}
+        >
           <div className="bg-white rounded-xl p-5 w-full max-w-lg shadow-xl max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
               <div className="flex items-center gap-2">
@@ -4613,7 +4837,10 @@ export default function PosView({
 
       {/* Fullscreen Photo Preview Modal */}
       {previewModalPhoto && (
-        <div className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+        <div 
+          className="fixed inset-0 z-[600] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4"
+          style={{ zoom: inverseZoom }}
+        >
           <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between p-3.5 border-b border-slate-800 text-white">
               <div className="flex items-center gap-2">
