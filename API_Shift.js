@@ -1126,10 +1126,33 @@ function openKasShift(data) {
     }
     const outlet = data.idOutlet || data.outlet || "OUTLET-UTAMA";
     if (getKasShiftAktif(outlet)) return { success: false, message: "Masih ada kas shift aktif pada outlet ini." };
-    const kasAwal = Number(data.kasAwal);
-    if (!isFinite(kasAwal) || kasAwal < 0) return { success: false, message: "Kas awal laci tidak valid." };
-    const saldoMerchantAwal = Number(data.saldoMerchantAwal || 0);
-    if (!isFinite(saldoMerchantAwal) || saldoMerchantAwal < 0) return { success: false, message: "Saldo awal merchant tidak valid." };
+    
+    let kasAwal = Number(data.kasAwal);
+    let saldoMerchantAwal = Number(data.saldoMerchantAwal || 0);
+
+    // Otomatis cek apakah ada shift sebelumnya yang ditutup dengan SERAH_TERIMA
+    const rows = sh.getDataRange().getValues();
+    if (rows.length >= 2) {
+      for (let i = rows.length - 1; i >= 1; i--) {
+        if (rows[i][10] === "Ditutup" && (!outlet || rows[i][1] === outlet)) {
+          if (rows[i][11] === "SERAH_TERIMA") {
+            const lastFisik = Number(rows[i][8]);
+            const lastMerchant = Number(rows[i][17]);
+            // Jika frontend belum mengubah nilai atau kasAwal kosong/tidak valid
+            if (!data.kasAwal || isNaN(kasAwal) || (kasAwal === 100000 && lastFisik > 0 && lastFisik !== 100000)) {
+              kasAwal = lastFisik;
+            }
+            if (data.saldoMerchantAwal === undefined || (saldoMerchantAwal === 0 && lastMerchant > 0)) {
+              saldoMerchantAwal = lastMerchant;
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    if (!isFinite(kasAwal) || kasAwal < 0) kasAwal = 100000;
+    if (!isFinite(saldoMerchantAwal) || saldoMerchantAwal < 0) saldoMerchantAwal = 0;
     
     const id = generateId("KAS");
     const now = new Date();

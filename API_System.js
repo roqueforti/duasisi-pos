@@ -505,10 +505,20 @@ function getRekapKasShift() {
     const kasAwal = Number(r[6]) || 0;
     const kasAkhirSistem = Number(r[7]) || 0;
     const totalBelanja = Number(r[18]) || 0;
-    const omzetTunai = Math.max(0, kasAkhirSistem - kasAwal + totalBelanja);
     const saldoMerchantAwal = Number(r[16]) || 0;
     const saldoMerchantAkhir = Number(r[17]) || 0;
-    const omzetMerchant = Math.max(0, saldoMerchantAkhir - saldoMerchantAwal);
+    const isAktif = r[10] === "Aktif";
+
+    let omzetTunai = 0;
+    let omzetMerchant = 0;
+    if (isAktif) {
+      const activeOmz = calculateShiftOmzet_(new Date(r[4]));
+      omzetTunai = activeOmz.tunai;
+      omzetMerchant = activeOmz.nonTunai;
+    } else {
+      omzetTunai = Math.max(0, kasAkhirSistem - kasAwal + totalBelanja);
+      omzetMerchant = Math.max(0, saldoMerchantAkhir - saldoMerchantAwal);
+    }
 
     return {
       idShift: r[0],
@@ -519,9 +529,9 @@ function getRekapKasShift() {
       waktuTutup: r[5] ? fmtWib(r[5]) : "",
       kasAwal: kasAwal,
       omzetTunai: omzetTunai,
-      kasAkhirSistem: kasAkhirSistem,
-      kasAkhirFisik: Number(r[8]) || 0,
-      selisihKas: Number(r[9]) || 0,
+      kasAkhirSistem: isAktif ? (kasAwal + omzetTunai - totalBelanja) : kasAkhirSistem,
+      kasAkhirFisik: isAktif ? undefined : Number(r[8]) || 0,
+      selisihKas: isAktif ? undefined : Number(r[9]) || 0,
       status: r[10],
       modeTutup: r[11] || "",
       idPengganti: r[12] || "",
