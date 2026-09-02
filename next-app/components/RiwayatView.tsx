@@ -1467,6 +1467,21 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                 <span>Cetak</span>
               </button>
 
+              {currentRole === 'MANAGER' && (
+                <button
+                  onClick={() => {
+                    const tx = selectedTx;
+                    setSelectedTx(null);
+                    handleOpenEditKasir(tx);
+                  }}
+                  className="px-3 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-xs font-bold rounded-lg transition flex items-center gap-1.5"
+                  title="Ubah Nama Kasir pada Transaksi Ini"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Edit Kasir</span>
+                </button>
+              )}
+
               {selectedTx.status !== 'Batal' && selectedTx.status !== 'Void' && selectedTx.statusVoid !== 'Approved' && (
                 <button
                   onClick={() => {
