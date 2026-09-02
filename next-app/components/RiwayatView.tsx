@@ -137,14 +137,22 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   const loadRiwayat = async () => {
     setLoading(true);
     try {
-      const [txData, activeShiftData, rekapShiftData] = await Promise.all([
+      const [txData, activeShiftData, rekapShiftData, pegawaiData] = await Promise.all([
         runBackend<Transaksi[]>('getTransaksiList', 'Semua'),
         runBackend<any>('getKasShiftAktif').catch(() => null),
         runBackend<any[]>('getRekapKasShift').catch(() => []),
+        runBackend<any[]>('getPegawaiList').catch(() => []),
       ]);
       setTxList(Array.isArray(txData) ? txData : []);
       setActiveShift(activeShiftData || null);
       setRecordedShifts(Array.isArray(rekapShiftData) ? rekapShiftData : []);
+      if (Array.isArray(pegawaiData) && pegawaiData.length > 0) {
+        const names = pegawaiData
+          .filter((p: any) => p.status !== 'Resign' && p.status !== 'Non-Aktif')
+          .map((p: any) => (p.nama || p.name || '').trim())
+          .filter(Boolean);
+        setStaffOptions(Array.from(new Set(names)));
+      }
     } catch (err) {
       console.error('Gagal memuat riwayat:', err);
     } finally {
@@ -214,10 +222,24 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     }
   };
 
-  const handleOpenEditKasir = (tx: Transaksi) => {
+  const handleOpenEditKasir = async (tx: Transaksi) => {
     setTxToEditKasir(tx);
     setSelectedKasirName(tx.petugas || '');
     setShowEditKasirModal(true);
+    if (staffOptions.length === 0) {
+      try {
+        const pegData = await runBackend<any[]>('getPegawaiList').catch(() => []);
+        if (Array.isArray(pegData) && pegData.length > 0) {
+          const names = pegData
+            .filter((p: any) => p.status !== 'Resign' && p.status !== 'Non-Aktif')
+            .map((p: any) => (p.nama || p.name || '').trim())
+            .filter(Boolean);
+          setStaffOptions(Array.from(new Set(names)));
+        }
+      } catch (e) {
+        console.error('Gagal memuat daftar kasir:', e);
+      }
+    }
   };
 
   const handleSaveKasirEdit = async () => {
