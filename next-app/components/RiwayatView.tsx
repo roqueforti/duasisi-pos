@@ -39,7 +39,6 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   const [showEditKasirModal, setShowEditKasirModal] = useState(false);
   const [txToEditKasir, setTxToEditKasir] = useState<Transaksi | null>(null);
   const [selectedKasirName, setSelectedKasirName] = useState('');
-  const [customKasirInput, setCustomKasirInput] = useState('');
   const [savingEditKasir, setSavingEditKasir] = useState(false);
   const [staffOptions, setStaffOptions] = useState<string[]>([]);
 
@@ -218,15 +217,14 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   const handleOpenEditKasir = (tx: Transaksi) => {
     setTxToEditKasir(tx);
     setSelectedKasirName(tx.petugas || '');
-    setCustomKasirInput('');
     setShowEditKasirModal(true);
   };
 
   const handleSaveKasirEdit = async () => {
     if (!txToEditKasir || savingEditKasir) return;
-    const finalKasir = selectedKasirName === '__custom__' ? customKasirInput.trim() : selectedKasirName.trim();
+    const finalKasir = selectedKasirName.trim();
     if (!finalKasir) {
-      await showAlert('Nama kasir tidak boleh kosong!', 'warning');
+      await showAlert('Silakan pilih nama kasir terlebih dahulu!', 'warning');
       return;
     }
     setSavingEditKasir(true);
@@ -1733,7 +1731,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                 <select
                   value={selectedKasirName}
                   onChange={(e) => setSelectedKasirName(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
+                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648] cursor-pointer"
                 >
                   <option value="">-- Pilih Kasir / Petugas --</option>
                   {staffOptions.map((name) => (
@@ -1742,29 +1740,8 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                   {txToEditKasir.petugas && !staffOptions.includes(txToEditKasir.petugas) && (
                     <option value={txToEditKasir.petugas}>{txToEditKasir.petugas} (Saat Ini)</option>
                   )}
-                  <option value="__custom__">+ Tulis Manual (Nama Lain)...</option>
                 </select>
               </div>
-
-              {(selectedKasirName === '__custom__' || (!staffOptions.includes(selectedKasirName) && selectedKasirName !== '')) && (
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Tulis Nama Kasir</label>
-                  <input
-                    type="text"
-                    value={selectedKasirName === '__custom__' ? customKasirInput : selectedKasirName}
-                    onChange={(e) => {
-                      if (selectedKasirName === '__custom__') {
-                        setCustomKasirInput(e.target.value);
-                      } else {
-                        setSelectedKasirName(e.target.value);
-                      }
-                    }}
-                    placeholder="Ketik nama kasir baru..."
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
-                    autoFocus
-                  />
-                </div>
-              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
@@ -1778,7 +1755,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
               <button
                 type="button"
                 onClick={handleSaveKasirEdit}
-                disabled={savingEditKasir || (selectedKasirName === '__custom__' ? !customKasirInput.trim() : !selectedKasirName.trim())}
+                disabled={savingEditKasir || !selectedKasirName.trim()}
                 className="px-4 py-2 bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 disabled:opacity-50"
               >
                 {savingEditKasir ? (
