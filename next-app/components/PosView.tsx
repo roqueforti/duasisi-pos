@@ -275,7 +275,20 @@ export default function PosView({
   const [catatanOrderInput, setCatatanOrderInput] = useState<string>('');
 
   // Payment Form State
-  const [namaKasirInput, setNamaKasirInput] = useState('Kasir 1');
+  const [namaKasirInput, setNamaKasirInput] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('pos_active_shift_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.namaKasir && (parsed.status === 'Buka' || parsed.status === 'Aktif')) {
+            return parsed.namaKasir;
+          }
+        }
+      } catch {}
+    }
+    return 'Kasir 1';
+  });
   const [metodeBayar, setMetodeBayar] = useState<'Tunai' | 'QRIS' | 'Transfer' | 'Debit'>('Tunai');
   const [uangBayarInput, setUangBayarInput] = useState<string>('');
   const [qrisStatus, setQrisStatus] = useState<'PENDING' | 'SUCCESS'>('PENDING');
@@ -507,7 +520,9 @@ export default function PosView({
         if (Array.isArray(data)) {
           const activeStaff = data.filter((s: any) => s.status !== 'Resign' && s.status !== 'Non-Aktif');
           setStaffList(activeStaff);
-          if (activeStaff[0]?.nama) setNamaKasirInput(activeStaff[0].nama);
+          if (activeStaff[0]?.nama) {
+            setNamaKasirInput((prev: string) => (shiftAktif?.namaKasir || cachedInitialShift?.namaKasir || prev || activeStaff[0].nama));
+          }
         }
       },
       15 * 60 * 1000 // 15 menit TTL â€” pegawai sangat jarang berubah
@@ -553,6 +568,9 @@ export default function PosView({
       const data = await runBackend<ShiftKasir | null>('getKasShiftAktif', 'OUTLET-UTAMA');
       if (data && data.idShift) {
         setShiftAktif(data);
+        if (data && data.namaKasir) {
+          setNamaKasirInput(data.namaKasir);
+        }
       } else {
         setShiftAktif(null);
         runBackend<any[]>('getRekapKasShift').then(rekap => {
