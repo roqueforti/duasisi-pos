@@ -21,6 +21,7 @@ import {
   CreditCard,
   ArrowRight,
   CheckCircle2,
+  Award,
   Printer,
   QrCode,
   FileText,
@@ -148,6 +149,80 @@ interface CustomerState {
   isMember?: boolean;
   poin?: number;
   totalOrder?: number;
+  stamps75?: number;
+  stamps45?: number;
+}
+
+export function detectWasherAndDryer(items: Array<{ layanan: string; qty?: number; tipe?: string; kategori?: string }>): {
+  hasWasher: boolean;
+  hasDryer: boolean;
+  isEligible: boolean;
+  cardType: '75' | '45';
+  stampsToAdd: number;
+} {
+  if (!items || items.length === 0) {
+    return { hasWasher: false, hasDryer: false, isEligible: false, cardType: '75', stampsToAdd: 0 };
+  }
+
+  let hasWasher = false;
+  let hasDryer = false;
+  let is45 = false;
+  let comboCount = 0;
+  let washerCount = 0;
+  let dryerCount = 0;
+
+  for (const item of items) {
+    const name = (item.layanan || '').toLowerCase();
+    const tipe = (item.tipe || '').toLowerCase();
+    const kat = (item.kategori || '').toLowerCase();
+    const qty = Math.max(1, Number(item.qty) || 1);
+
+    // Capacity detection: check for 4,5 or 4.5
+    if (name.includes('4,5') || name.includes('4.5') || name.includes('45kg') || name.includes('45 kg')) {
+      is45 = true;
+    }
+
+    // 1. Combo washer + dryer: e.g. "cuci + kering", "cuci lipat", "cuci setrika", or drop off full service
+    const isCombo = (name.includes('cuci') && (name.includes('kering') || name.includes('dry'))) ||
+                    name.includes('cuci lipat') ||
+                    name.includes('cuci setrika') ||
+                    tipe === 'fullservice' ||
+                    kat.includes('drop');
+
+    if (isCombo) {
+      hasWasher = true;
+      hasDryer = true;
+      comboCount += qty;
+      continue;
+    }
+
+    // 2. Washer only
+    const isWasherItem = (name.includes('cuci') || name.includes('washer')) && !name.includes('setrika saja');
+    if (isWasherItem) {
+      hasWasher = true;
+      washerCount += qty;
+    }
+
+    // 3. Dryer only
+    const isDryerItem = name.includes('kering') || name.includes('pengering') || name.includes('dryer') || name.includes('dry');
+    if (isDryerItem) {
+      hasDryer = true;
+      dryerCount += qty;
+    }
+  }
+
+  const isEligible = (hasWasher && hasDryer) || comboCount > 0;
+  const stampsToAdd = isEligible 
+    ? Math.max(1, comboCount + Math.min(washerCount, dryerCount))
+    : 0;
+
+  return {
+    hasWasher,
+    hasDryer,
+    isEligible,
+    cardType: is45 ? '45' : '75',
+    stampsToAdd
+  };
 }
 
 import { getLayananStyleConfig, getIconComponent, KategoriItem } from '@/lib/categoryUtils';
@@ -1141,6 +1216,48 @@ export default function PosView({
       const poinEarned = isActualMember ? Math.floor(resTotal / (poinRate || 10000)) : 0;
       const saldoPoinBaru = isActualMember ? (saldoPoinLama + poinEarned) : 0;
 
+      // =========================================================================
+      // LOYALTY STAMP AUTO-DETECTION: Washer (Cuci) + Dryer (Kering)
+      // =========================================================================
+      const stampDetection = detectWasherAndDryer(cartArray);
+      let stampInfo = null;
+
+      if (stampDetection.isEligible) {
+        const targetCardType = stampDetection.cardType; // '75' | '45'
+        const oldStamps = targetCardType === '45'
+          ? Number(currCust?.stamps45 ?? (customer as any)?.stamps45 ?? 0)
+          : Number(currCust?.stamps75 ?? (customer as any)?.stamps75 ?? 0);
+        const stampsAdded = stampDetection.stampsToAdd;
+        const newTotal = Math.min(10, oldStamps + stampsAdded);
+
+        stampInfo = {
+          earned: true,
+          cardType: targetCardType,
+          cardLabel: targetCardType === '75' ? 'Kartu 7,5 KG (Sisi Depan)' : 'Kartu 4,5 KG (Sisi Belakang)',
+          stampsAdded,
+          oldStamps,
+          newTotal,
+          isRewardReady: newTotal >= 10
+        };
+
+        // If phone number is present, sync with backend & update local customer list
+        if (custHp) {
+          runBackend('updateStempelPelanggan', custHp, targetCardType, newTotal).catch(err => {
+            console.error('Failed to auto-update stamps:', err);
+          });
+          setCustomerList(prev => prev.map(c => {
+            if (c.noHp === custHp || (custName !== 'Pelanggan Umum' && c.nama === custName)) {
+              return {
+                ...c,
+                [targetCardType === '45' ? 'stamps45' : 'stamps75']: newTotal
+              };
+            }
+            return c;
+          }));
+          clearCache('getDaftarPelanggan');
+        }
+      }
+
       setCompletedOrderData({
         trxId: res.noNota,
         token: res.token || '',
@@ -1155,6 +1272,7 @@ export default function PosView({
         poinEarned,
         saldoPoinAwal: isActualMember ? saldoPoinLama : 0,
         saldoPoinAkhir: isActualMember ? saldoPoinBaru : 0,
+        stampInfo,
         total: resTotal,
         uangBayar: Number(bayar) || resTotal,
         kembalian: Math.max(0, (Number(bayar) || resTotal) - resTotal),
@@ -3958,6 +4076,66 @@ export default function PosView({
                     </div>
                   </div>
 
+                  {/* NOTIFIKASI PENAMBAHAN STEMPEL (WASHER & DRYER) */}
+                  {completedOrderData.stampInfo && completedOrderData.stampInfo.earned && (
+                    <div className="pt-2.5 border-t border-slate-100 bg-gradient-to-br from-teal-50 via-emerald-50/60 to-teal-50 -mx-1 p-3 rounded-2xl space-y-2 border-2 border-teal-300 shadow-xs animate-scale-in">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-[#1E4648] text-amber-300 flex items-center justify-center shadow-xs shrink-0">
+                            <Award className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="font-black text-slate-900 text-xs block leading-tight">
+                              +{completedOrderData.stampInfo.stampsAdded} Stempel Berhasil Didapat!
+                            </span>
+                            <span className="text-[10px] text-teal-800 font-medium">
+                              Transaksi mencakup layanan Washer (Cuci) &amp; Dryer (Kering)
+                            </span>
+                          </div>
+                        </div>
+                        <span className="px-2.5 py-0.5 bg-teal-800 text-white text-[10px] font-extrabold rounded-full shadow-2xs whitespace-nowrap">
+                          {completedOrderData.stampInfo.cardType === '75' ? 'Kartu 7,5 KG' : 'Kartu 4,5 KG'}
+                        </span>
+                      </div>
+
+                      {/* Visual 10 Stamp Circles Indicator */}
+                      <div className="bg-white/90 p-2.5 rounded-xl border border-teal-200/80 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-slate-600">Progres Stempel:</span>
+                          <span className="font-mono text-xs font-black text-teal-900">
+                            {completedOrderData.stampInfo.newTotal} / 10
+                          </span>
+                        </div>
+                        <div className="flex gap-1">
+                          {Array.from({ length: 10 }).map((_, idx) => (
+                            <div
+                              key={idx}
+                              className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black transition-all ${
+                                idx < completedOrderData.stampInfo.newTotal
+                                  ? (idx === 9 ? 'bg-amber-400 text-amber-950 ring-1 ring-amber-500 shadow-xs' : 'bg-teal-600 text-white shadow-xs')
+                                  : 'bg-slate-200 text-slate-400'
+                              }`}
+                              title={`Stempel #${idx + 1}`}
+                            >
+                              {idx < completedOrderData.stampInfo.newTotal ? '✓' : idx + 1}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {completedOrderData.stampInfo.isRewardReady ? (
+                        <div className="p-2 bg-amber-100 border border-amber-300 rounded-xl text-amber-950 font-extrabold text-[11px] text-center flex items-center justify-center gap-1.5 shadow-2xs">
+                          <Gift className="w-4 h-4 text-amber-700 animate-bounce" />
+                          <span>Target 10 Stempel Tercapai! Berhak Klaim 1x Cuci Gratis!</span>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-teal-800 text-center font-medium">
+                          Tersisa <strong>{10 - completedOrderData.stampInfo.newTotal} stempel</strong> lagi untuk klaim <strong>1x Cuci Gratis</strong>.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {completedOrderData.tipeLayanan === 'FullService' && completedOrderData.estimasiSelesai && (
                     <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-[11px]">
                       <span className="text-amber-800 font-semibold flex items-center gap-1">
@@ -4008,7 +4186,8 @@ export default function PosView({
                       isMember: Boolean(completedOrderData.isMember),
                       poinEarned: Number(completedOrderData.poinEarned) || 0,
                       saldoPoin: Number(completedOrderData.saldoPoinAkhir) || 0,
-                      token: completedOrderData.token
+                      token: completedOrderData.token,
+                      stampInfo: completedOrderData.stampInfo
                     });
                     
                     // Log Activity to Audit Trail

@@ -124,7 +124,10 @@ function cariPelangganByHp(queryStr) {
         terakhirOrder: terakhir,
         catatan: catatan,
         isRepeatOrder: totalTx > 1,
-        saldoPoin: Number(r[8]) || 0
+        saldoPoin: Number(r[8]) || 0,
+        isMember: String(r[9] || '').toUpperCase() === 'MEMBER',
+        stamps75: Number(r[11]) || 0,
+        stamps45: Number(r[12]) || 0
       });
     }
   });
@@ -274,7 +277,7 @@ function toggleStatusMember(noHp, makeMember) {
   return { success: false, message: "Pelanggan tidak ditemukan." };
 }
 
-function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan, statusMember, tglLahir) {
+function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan, statusMember, tglLahir, stamps75, stamps45) {
   const shP = SS.getSheetByName(SHEET_PELANGGAN);
   if (!shP) return { success: false, message: "Sheet Pelanggan tidak ada." };
   
@@ -293,10 +296,12 @@ function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan, statusMember, 
 
   if (targetRowIdx === -1) return { success: false, message: "Pelanggan tidak ditemukan." };
 
-  if (shP.getMaxColumns() < 11) {
-    shP.insertColumnsAfter(shP.getMaxColumns(), 11 - shP.getMaxColumns());
+  if (shP.getMaxColumns() < 13) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 13 - shP.getMaxColumns());
     shP.getRange(1, 10).setValue("Status Member");
     shP.getRange(1, 11).setValue("Tanggal Lahir");
+    shP.getRange(1, 12).setValue("Stempel 7.5KG");
+    shP.getRange(1, 13).setValue("Stempel 4.5KG");
   }
 
   // Update row
@@ -306,6 +311,12 @@ function updateDataPelanggan(oldHp, newHp, nama, alamat, catatan, statusMember, 
   if (catatan !== undefined) shP.getRange(targetRowIdx, 8).setValue(catatan.trim());
   if (statusMember !== undefined) shP.getRange(targetRowIdx, 10).setValue(statusMember ? "MEMBER" : "UMUM");
   if (tglLahir !== undefined) shP.getRange(targetRowIdx, 11).setValue(tglLahir);
+  if (stamps75 !== undefined && stamps75 !== null) {
+    shP.getRange(targetRowIdx, 12).setValue(Math.max(0, Math.min(10, Number(stamps75) || 0)));
+  }
+  if (stamps45 !== undefined && stamps45 !== null) {
+    shP.getRange(targetRowIdx, 13).setValue(Math.max(0, Math.min(10, Number(stamps45) || 0)));
+  }
 
   // Also update transaction records if phone changed
   if (cleanOld !== cleanNew) {
@@ -335,6 +346,8 @@ function tambahPelanggan(data) {
   const tglLahir = String(data.tglLahir || data.ttl || "").trim();
   const catatan = String(data.catatan || "").trim();
   const isMember = data.isMember === true || data.statusMember === "MEMBER";
+  const s75 = Math.max(0, Math.min(10, Number(data.stamps75 ?? data.stempel75 ?? 0) || 0));
+  const s45 = Math.max(0, Math.min(10, Number(data.stamps45 ?? data.stempel45 ?? 0) || 0));
 
   if (!noHp) return { success: false, message: "Nomor WhatsApp/HP wajib diisi!" };
   if (!nama) return { success: false, message: "Nama pelanggan wajib diisi!" };
@@ -350,13 +363,15 @@ function tambahPelanggan(data) {
   let shP = SS.getSheetByName(SHEET_PELANGGAN);
   if (!shP) {
     shP = SS.insertSheet(SHEET_PELANGGAN);
-    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member", "Tanggal Lahir"]);
+    shP.appendRow(["No HP", "Nama Pelanggan", "Alamat", "Tanggal Daftar Pertama", "Total Transaksi", "Total Belanja", "Terakhir Order", "Catatan Pelanggan", "Saldo Poin", "Status Member", "Tanggal Lahir", "Stempel 7.5KG", "Stempel 4.5KG"]);
   }
 
-  if (shP.getMaxColumns() < 11) {
-    shP.insertColumnsAfter(shP.getMaxColumns(), 11 - shP.getMaxColumns());
+  if (shP.getMaxColumns() < 13) {
+    shP.insertColumnsAfter(shP.getMaxColumns(), 13 - shP.getMaxColumns());
     shP.getRange(1, 10).setValue("Status Member");
     shP.getRange(1, 11).setValue("Tanggal Lahir");
+    shP.getRange(1, 12).setValue("Stempel 7.5KG");
+    shP.getRange(1, 13).setValue("Stempel 4.5KG");
   }
 
   const pData = shP.getDataRange().getValues();
@@ -378,7 +393,9 @@ function tambahPelanggan(data) {
     catatan,
     0, // saldo poin
     isMember ? "MEMBER" : "UMUM",
-    tglLahir
+    tglLahir,
+    s75,
+    s45
   ]);
 
   addAuditLog(
@@ -386,7 +403,7 @@ function tambahPelanggan(data) {
     isMember ? "Daftar Member" : "Tambah Pelanggan", 
     cleanHp, 
     "-", 
-    `Status: ${isMember ? "MEMBER" : "UMUM"}, Nama: ${nama}, HP: ${cleanHp}, Alamat: ${alamat || '-'}, TTL: ${tglLahir || '-'}`, 
+    `Status: ${isMember ? "MEMBER" : "UMUM"}, Nama: ${nama}, HP: ${cleanHp}, Alamat: ${alamat || '-'}, TTL: ${tglLahir || '-'}, Stempel 7.5KG: ${s75}, Stempel 4.5KG: ${s45}`, 
     `Pendaftaran manual ${isMember ? "Member" : "Pelanggan"} ${nama}`
   );
   return { 
@@ -397,7 +414,9 @@ function tambahPelanggan(data) {
       nama: nama,
       alamat: alamat,
       tglLahir: tglLahir,
-      statusMember: isMember ? "MEMBER" : "UMUM"
+      statusMember: isMember ? "MEMBER" : "UMUM",
+      stamps75: s75,
+      stamps45: s45
     }
   };
 }

@@ -23,6 +23,13 @@ export interface WhatsAppReceiptParams {
   poinEarned?: number;
   saldoPoin?: number;
   token?: string;
+  stampInfo?: {
+    earned?: boolean;
+    cardType?: '75' | '45';
+    stampsAdded?: number;
+    newTotal?: number;
+    isRewardReady?: boolean;
+  };
 }
 
 /**
@@ -124,6 +131,14 @@ export function generateWhatsAppReceiptMessage(params: WhatsAppReceiptParams): s
       msgLines.push(`  • *Total Saldo Poin*: ${saldoPoin} Poin`);
     }
     msgLines.push(`_(Tukarkan poin Anda dengan potongan harga/layanan gratis/produk di kasir!)_`);
+    msgLines.push(`--------------------------------`);
+  }
+
+  if (params.stampInfo?.earned) {
+    const cardLbl = params.stampInfo.cardType === '75' ? '7,5 KG' : '4,5 KG';
+    msgLines.push(`*STEMPEL LOYALTY CARD:*`);
+    msgLines.push(`  • Penambahan  : +${params.stampInfo.stampsAdded || 1} Stempel (Kartu ${cardLbl})`);
+    msgLines.push(`  • Total Stempel: *${params.stampInfo.newTotal || 0}/10 Stempel* ${params.stampInfo.isRewardReady ? '🎉 (SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - (params.stampInfo.newTotal || 0))} lagi)`}`);
     msgLines.push(`--------------------------------`);
   }
 

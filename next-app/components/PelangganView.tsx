@@ -82,6 +82,8 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [addTglLahir, setAddTglLahir] = useState<string>('');
   const [addCatatan, setAddCatatan] = useState<string>('');
   const [addStatusMember, setAddStatusMember] = useState<boolean>(false);
+  const [addStamps75, setAddStamps75] = useState<number>(0);
+  const [addStamps45, setAddStamps45] = useState<number>(0);
   const [savingAdd, setSavingAdd] = useState<boolean>(false);
 
   // Detail & Edit Modal State
@@ -93,6 +95,8 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [editTglLahir, setEditTglLahir] = useState<string>('');
   const [editCatatan, setEditCatatan] = useState<string>('');
   const [editStatusMember, setEditStatusMember] = useState<boolean>(false);
+  const [editStamps75, setEditStamps75] = useState<number>(0);
+  const [editStamps45, setEditStamps45] = useState<number>(0);
   
   // History list for selected customer
   const [historyList, setHistoryList] = useState<Transaksi[]>([]);
@@ -126,6 +130,8 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
     setEditTglLahir(cust.tglLahir || '');
     setEditCatatan(cust.catatan || '');
     setEditStatusMember(cust.isMember || cust.statusMember === 'MEMBER');
+    setEditStamps75(cust.stamps75 ?? 0);
+    setEditStamps45(cust.stamps45 ?? 0);
     setShowDetailModal(true);
 
     // Fetch customer transactions history
@@ -166,7 +172,9 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
         editAlamat.trim(),
         editCatatan.trim(),
         editStatusMember,
-        editTglLahir.trim()
+        editTglLahir.trim(),
+        editStamps75,
+        editStamps45
       );
 
       if (res && res.success) {
@@ -182,8 +190,10 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
           isMember: editStatusMember,
           statusMember: editStatusMember ? 'MEMBER' : 'UMUM',
           statusKategori: editStatusMember ? 'Member' : (prev.totalOrder > 1 ? 'Pelanggan Lama' : 'Pelanggan Baru'),
+          stamps75: editStamps75,
+          stamps45: editStamps45
         } : null);
-        await showAlert('Data pelanggan berhasil disimpan!', 'success');
+        await showAlert('Data pelanggan & stempel berhasil disimpan!', 'success');
         loadDataPelanggan();
       } else {
         await showAlert(res?.message || 'Gagal menyimpan perubahan data pelanggan.', 'error');
@@ -319,11 +329,20 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
         alamat: addStatusMember ? addAlamat.trim() : '',
         tglLahir: addStatusMember ? addTglLahir.trim() : '',
         catatan: addCatatan.trim(),
-        isMember: addStatusMember
+        isMember: addStatusMember,
+        stamps75: Number(addStamps75) || 0,
+        stamps45: Number(addStamps45) || 0
       });
       if (res && res.success) {
         clearCache('getDaftarPelanggan');
         setShowAddModal(false);
+        setAddStamps75(0);
+        setAddStamps45(0);
+        setAddNama('');
+        setAddNoHp('');
+        setAddAlamat('');
+        setAddTglLahir('');
+        setAddCatatan('');
         await loadDataPelanggan();
         await showAlert(res.message || 'Pelanggan berhasil ditambahkan!', 'success');
       } else {
@@ -564,6 +583,117 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                 />
                 <p className="text-[10px] text-slate-400 mt-1">Instruksi otomatis yang selalu muncul setiap kali pelanggan ini memesan.</p>
               </div>
+
+              {/* Form Input Stempel Awal / Koreksi Stempel */}
+              <div className="p-3.5 bg-gradient-to-br from-teal-50/80 to-emerald-50/50 border border-teal-200/80 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-teal-700" />
+                    <span className="font-extrabold text-xs text-teal-950">Jumlah Stempel Kartu Loyalty</span>
+                  </div>
+                  <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full border border-teal-200">
+                    Maks. 10
+                  </span>
+                </div>
+                <p className="text-[10px] text-teal-700 leading-tight">
+                  Atur atau sesuaikan stempel awal yang sudah dimiliki pelanggan untuk kedua sisi kartu:
+                </p>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="bg-white p-2.5 rounded-lg border border-teal-100 shadow-2xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-700 text-[11px]">Sisi Depan (7,5 KG)</label>
+                      <span className="text-[10px] font-mono font-bold text-teal-700">{editStamps75}/10</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = Math.max(0, editStamps75 - 1);
+                          setEditStamps75(val);
+                          setSelectedCust(prev => prev ? { ...prev, stamps75: val } : null);
+                        }}
+                        disabled={currentRole !== 'MANAGER' || editStamps75 <= 0}
+                        className="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition cursor-pointer disabled:opacity-40"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={editStamps75}
+                        readOnly={currentRole !== 'MANAGER'}
+                        onChange={(e) => {
+                          const parsed = parseInt(e.target.value, 10);
+                          const val = isNaN(parsed) ? 0 : Math.max(0, Math.min(10, parsed));
+                          setEditStamps75(val);
+                          setSelectedCust(prev => prev ? { ...prev, stamps75: val } : null);
+                        }}
+                        className="w-full text-center font-mono font-black text-xs py-1 border border-slate-200 rounded-md outline-none focus:border-teal-600 disabled:bg-slate-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = Math.min(10, editStamps75 + 1);
+                          setEditStamps75(val);
+                          setSelectedCust(prev => prev ? { ...prev, stamps75: val } : null);
+                        }}
+                        disabled={currentRole !== 'MANAGER' || editStamps75 >= 10}
+                        className="w-7 h-7 rounded-md bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center justify-center transition cursor-pointer disabled:opacity-40"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-lg border border-teal-100 shadow-2xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-700 text-[11px]">Sisi Belakang (4,5 KG)</label>
+                      <span className="text-[10px] font-mono font-bold text-teal-700">{editStamps45}/10</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = Math.max(0, editStamps45 - 1);
+                          setEditStamps45(val);
+                          setSelectedCust(prev => prev ? { ...prev, stamps45: val } : null);
+                        }}
+                        disabled={currentRole !== 'MANAGER' || editStamps45 <= 0}
+                        className="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition cursor-pointer disabled:opacity-40"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={editStamps45}
+                        readOnly={currentRole !== 'MANAGER'}
+                        onChange={(e) => {
+                          const parsed = parseInt(e.target.value, 10);
+                          const val = isNaN(parsed) ? 0 : Math.max(0, Math.min(10, parsed));
+                          setEditStamps45(val);
+                          setSelectedCust(prev => prev ? { ...prev, stamps45: val } : null);
+                        }}
+                        className="w-full text-center font-mono font-black text-xs py-1 border border-slate-200 rounded-md outline-none focus:border-teal-600 disabled:bg-slate-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = Math.min(10, editStamps45 + 1);
+                          setEditStamps45(val);
+                          setSelectedCust(prev => prev ? { ...prev, stamps45: val } : null);
+                        }}
+                        disabled={currentRole !== 'MANAGER' || editStamps45 >= 10}
+                        className="w-7 h-7 rounded-md bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center justify-center transition cursor-pointer disabled:opacity-40"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -574,6 +704,8 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
               canEdit={true}
               onUpdateStamps={async (type, newCount) => {
                 const key = type === '75' ? 'stamps75' : 'stamps45';
+                if (type === '75') setEditStamps75(newCount);
+                else setEditStamps45(newCount);
                 setSelectedCust(prev => prev ? { ...prev, [key]: newCount } : null);
                 setPelangganList(prevList => 
                   prevList.map(item => 
@@ -1119,6 +1251,95 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                   <span>Pelanggan umum hanya memerlukan <strong>Nama</strong> dan <strong>Nomor WhatsApp</strong>.</span>
                 </div>
               )}
+
+              {/* Fitur Input Stempel Awal (Loyalty Card) */}
+              <div className="p-3.5 bg-gradient-to-br from-teal-50/80 to-emerald-50/50 border border-teal-200/80 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-teal-700" />
+                    <span className="font-extrabold text-xs text-teal-950">Input Stempel Awal (Loyalty Card)</span>
+                  </div>
+                  <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full border border-teal-200">
+                    Opsional (Maks. 10)
+                  </span>
+                </div>
+                <p className="text-[10px] text-teal-700 leading-tight">
+                  Masukkan jumlah stempel fisik/sebelumnya yang sudah dimiliki pelanggan untuk kedua sisi kartu loyalty:
+                </p>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="bg-white p-2.5 rounded-lg border border-teal-100 shadow-2xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-700 text-[11px]">Sisi Depan (7,5 KG)</label>
+                      <span className="text-[10px] font-mono font-bold text-teal-700">{addStamps75}/10</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setAddStamps75(prev => Math.max(0, prev - 1))}
+                        disabled={addStamps75 <= 0}
+                        className="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition cursor-pointer disabled:opacity-40"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={addStamps75}
+                        onChange={(e) => {
+                          const parsed = parseInt(e.target.value, 10);
+                          setAddStamps75(isNaN(parsed) ? 0 : Math.max(0, Math.min(10, parsed)));
+                        }}
+                        className="w-full text-center font-mono font-black text-xs py-1 border border-slate-200 rounded-md outline-none focus:border-teal-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAddStamps75(prev => Math.min(10, prev + 1))}
+                        disabled={addStamps75 >= 10}
+                        className="w-7 h-7 rounded-md bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center justify-center transition cursor-pointer disabled:opacity-40"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-2.5 rounded-lg border border-teal-100 shadow-2xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-700 text-[11px]">Sisi Belakang (4,5 KG)</label>
+                      <span className="text-[10px] font-mono font-bold text-teal-700">{addStamps45}/10</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setAddStamps45(prev => Math.max(0, prev - 1))}
+                        disabled={addStamps45 <= 0}
+                        className="w-7 h-7 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition cursor-pointer disabled:opacity-40"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={addStamps45}
+                        onChange={(e) => {
+                          const parsed = parseInt(e.target.value, 10);
+                          setAddStamps45(isNaN(parsed) ? 0 : Math.max(0, Math.min(10, parsed)));
+                        }}
+                        className="w-full text-center font-mono font-black text-xs py-1 border border-slate-200 rounded-md outline-none focus:border-teal-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAddStamps45(prev => Math.min(10, prev + 1))}
+                        disabled={addStamps45 >= 10}
+                        className="w-7 h-7 rounded-md bg-teal-700 hover:bg-teal-800 text-white font-bold flex items-center justify-center transition cursor-pointer disabled:opacity-40"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Modal Footer Actions */}
               <div className="flex gap-2.5 pt-3 border-t border-slate-100 shrink-0">
