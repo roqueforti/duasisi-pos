@@ -201,6 +201,38 @@ function pelunasanDP(noNota, nominal, metode) {
   return { success: false, message: "Nota " + noNota + " tidak ditemukan." };
 }
 
+function updateKasirTransaksi(noNota, namaKasirBaru, editorName) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = SS.getSheetByName(SHEET_TRANSAKSI);
+    if (!sh) return { success: false, message: "Sheet Transaksi tidak ditemukan." };
+    const kasirBaru = String(namaKasirBaru || "").trim();
+    if (!kasirBaru) return { success: false, message: "Nama kasir baru tidak boleh kosong." };
+    
+    const rows = sh.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]).trim() === String(noNota).trim()) {
+        const kasirLama = String(rows[i][7] || "-");
+        sh.getRange(i + 1, 8).setValue(kasirBaru);
+        addAuditLog(
+          editorName || "Manager",
+          "Edit Kasir Transaksi",
+          noNota,
+          kasirLama,
+          kasirBaru,
+          "Mengubah nama kasir transaksi " + noNota + " dari " + kasirLama + " menjadi " + kasirBaru
+        );
+        SpreadsheetApp.flush();
+        return { success: true, noNota: noNota, kasirLama: kasirLama, kasirBaru: kasirBaru, message: "Nama kasir untuk nota " + noNota + " berhasil diperbarui menjadi " + kasirBaru };
+      }
+    }
+    return { success: false, message: "Nota " + noNota + " tidak ditemukan." };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // ============================================================
 // VOID TRANSAKSI & AUDIT TRAIL (SRS-LNDRY-POS-001)
 // ============================================================

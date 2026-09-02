@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, AlertTriangle, Check, Download, Upload, Calendar, ArrowRight, Coins, Smartphone, CreditCard, Banknote, CheckCircle2, Clock, History, UserCheck } from 'lucide-react';
+import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, AlertTriangle, Check, Download, Upload, Calendar, ArrowRight, Coins, Smartphone, CreditCard, Banknote, CheckCircle2, Clock, History, UserCheck, Edit3 } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
@@ -34,6 +34,14 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   const [importProgressPercent, setImportProgressPercent] = useState(0);
   const [importIsComplete, setImportIsComplete] = useState(false);
   const [importIsError, setImportIsError] = useState(false);
+
+  // Edit Cashier Name Modal State (Manager Only)
+  const [showEditKasirModal, setShowEditKasirModal] = useState(false);
+  const [txToEditKasir, setTxToEditKasir] = useState<Transaksi | null>(null);
+  const [selectedKasirName, setSelectedKasirName] = useState('');
+  const [customKasirInput, setCustomKasirInput] = useState('');
+  const [savingEditKasir, setSavingEditKasir] = useState(false);
+  const [staffOptions, setStaffOptions] = useState<string[]>([]);
 
   // Bluetooth Thermal Printer Modal State
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState<boolean>(false);
@@ -204,6 +212,43 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     } catch (error) {
       console.error(error);
       await showAlert('Pelunasan gagal dicatat. Silakan coba lagi.', 'error');
+    }
+  };
+
+  const handleOpenEditKasir = (tx: Transaksi) => {
+    setTxToEditKasir(tx);
+    setSelectedKasirName(tx.petugas || '');
+    setCustomKasirInput('');
+    setShowEditKasirModal(true);
+  };
+
+  const handleSaveKasirEdit = async () => {
+    if (!txToEditKasir || savingEditKasir) return;
+    const finalKasir = selectedKasirName === '__custom__' ? customKasirInput.trim() : selectedKasirName.trim();
+    if (!finalKasir) {
+      await showAlert('Nama kasir tidak boleh kosong!', 'warning');
+      return;
+    }
+    setSavingEditKasir(true);
+    try {
+      const res: any = await runBackend('updateKasirTransaksi', txToEditKasir.noNota, finalKasir, 'Manager');
+      if (res && res.success === false) {
+        await showAlert(res.message || 'Gagal mengubah nama kasir', 'error');
+        setSavingEditKasir(false);
+        return;
+      }
+      clearCache('getTransaksiList');
+      await showAlert(`Nama kasir untuk nota ${txToEditKasir.noNota} berhasil diubah menjadi "${finalKasir}"!`, 'success');
+      setShowEditKasirModal(false);
+      if (selectedTx && selectedTx.noNota === txToEditKasir.noNota) {
+        setSelectedTx(prev => prev ? { ...prev, petugas: finalKasir } : null);
+      }
+      loadRiwayat();
+    } catch (err: any) {
+      console.error(err);
+      await showAlert(err.message || 'Terjadi kesalahan saat mengubah nama kasir', 'error');
+    } finally {
+      setSavingEditKasir(false);
     }
   };
 
@@ -1142,6 +1187,17 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                             <Printer className="w-3.5 h-3.5" />
                           </button>
                           
+{/* Edit Kasir Button (Manager Only) */}
+                          {currentRole === 'MANAGER' && (
+                            <button
+                              onClick={() => handleOpenEditKasir(tx)}
+                              className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                              title="Edit Nama Kasir"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
                           {/* Send WA Notification */}
                           {!isVoid && (
                             <button
@@ -1637,6 +1693,111 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
           </div>
         </div>
       )}
+      {/* Modal Edit Nama Kasir (Manager Only) */}
+      {showEditKasirModal && txToEditKasir && (
+        <div className="fixed inset-0 z-[500] bg-black/50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">Edit Nama Kasir</h3>
+                  <p className="text-[11px] text-slate-500">Nota: <span className="font-mono font-semibold text-slate-700">{txToEditKasir.noNota}</span></p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEditKasirModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 text-[11px] text-amber-800 leading-relaxed">
+              <p className="font-semibold text-amber-900 mb-0.5">Khusus Manajemen / Manager</p>
+              <p>Hanya nama petugas/kasir yang akan diperbarui. Data item, harga, status pembayaran, dan total nota tidak akan berubah.</p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Kasir Sebelumnya</label>
+                <div className="px-3 py-2 bg-slate-100 rounded-xl text-xs font-medium text-slate-600 border border-slate-200">
+                  {txToEditKasir.petugas || '(Belum tercantum / kosong)'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Pilih Petugas / Kasir Baru</label>
+                <select
+                  value={selectedKasirName}
+                  onChange={(e) => setSelectedKasirName(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
+                >
+                  <option value="">-- Pilih Kasir / Petugas --</option>
+                  {staffOptions.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                  {txToEditKasir.petugas && !staffOptions.includes(txToEditKasir.petugas) && (
+                    <option value={txToEditKasir.petugas}>{txToEditKasir.petugas} (Saat Ini)</option>
+                  )}
+                  <option value="__custom__">+ Tulis Manual (Nama Lain)...</option>
+                </select>
+              </div>
+
+              {(selectedKasirName === '__custom__' || (!staffOptions.includes(selectedKasirName) && selectedKasirName !== '')) && (
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Tulis Nama Kasir</label>
+                  <input
+                    type="text"
+                    value={selectedKasirName === '__custom__' ? customKasirInput : selectedKasirName}
+                    onChange={(e) => {
+                      if (selectedKasirName === '__custom__') {
+                        setCustomKasirInput(e.target.value);
+                      } else {
+                        setSelectedKasirName(e.target.value);
+                      }
+                    }}
+                    placeholder="Ketik nama kasir baru..."
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
+                    autoFocus
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowEditKasirModal(false)}
+                className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveKasirEdit}
+                disabled={savingEditKasir || (selectedKasirName === '__custom__' ? !customKasirInput.trim() : !selectedKasirName.trim())}
+                className="px-4 py-2 bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {savingEditKasir ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Simpan Perubahan</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Printer Modal */}
       <PrinterModal
         isOpen={isPrinterModalOpen}
