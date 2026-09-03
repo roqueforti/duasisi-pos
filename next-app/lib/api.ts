@@ -221,6 +221,42 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbSaveSecuritySettings(args[0], args[1], args[2], args[3])) as any;
         case 'getLaporanRange':
           return (await sb.sbGetLaporanRange(args[0], args[1])) as any;
+        case 'getPoinConfig':
+          return (await sb.sbGetPoinConfig()) as any;
+        case 'savePoinConfig':
+          return (await sb.sbSavePoinConfig(args[0])) as any;
+        case 'getPriorityConfig':
+          return (await sb.sbGetPriorityConfig()) as any;
+        case 'savePriorityConfig':
+          return (await sb.sbSavePriorityConfig(args[0])) as any;
+        case 'getPipelineConfigData':
+          return (await sb.sbGetPipelineConfigData()) as any;
+        case 'savePipelineConfigData':
+          return (await sb.sbSavePipelineConfigData(args[0])) as any;
+        case 'getRiwayatPelangganByHp':
+          return (await sb.sbGetRiwayatPelangganByHp(args[0])) as any;
+        case 'getTransaksiByNota':
+          return (await sb.sbGetTransaksiByNota(args[0])) as any;
+        case 'pelunasanDP':
+          return (await sb.sbPelunasanDP(args[0], args[1], args[2])) as any;
+        case 'validasiVoucher':
+          return (await sb.sbValidasiVoucher(args[0], args[1], args[2], args[3])) as any;
+        case 'cekPoinPelanggan':
+          return (await sb.sbCekPoinPelanggan(args[0])) as any;
+        case 'toggleAktifLayanan':
+          return (await sb.sbToggleAktifLayanan(args[0], args[1])) as any;
+        case 'pautkanInventoryLayanan':
+          return (await sb.sbPautkanInventoryLayanan(args[0], args[1], args[2])) as any;
+        case 'getAuditLogs':
+          return (await sb.sbGetAuditLogs(args[0])) as any;
+        case 'ajukanVoidTransaksi':
+          return (await sb.sbAjukanVoidTransaksi(args[0], args[1])) as any;
+        case 'approveVoidTransaksi':
+          return (await sb.sbApproveVoidTransaksi(args[0], args[1])) as any;
+        case 'handoverCheckKasShift':
+          return (await sb.sbHandoverCheckKasShift(args[0])) as any;
+        case 'getMasterShiftList':
+          return (await sb.sbGetMasterShiftList()) as any;
       }
     } catch (sbErr: any) {
       console.warn(`[Supabase Error] Action '${action}' gagal, fallback ke Google Apps Script:`, sbErr);

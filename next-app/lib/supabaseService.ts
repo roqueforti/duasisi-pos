@@ -1361,4 +1361,445 @@ export async function sbGetLaporanRange(startDate: string, endDate: string) {
   };
 }
 
+// ============================================================
+// APP CONFIGURATIONS & SETTINGS (INSTANT)
+// ============================================================
+export async function sbGetPoinConfig(): Promise<{ rate: number }> {
+  const sb = getSupabase();
+  if (!sb) return { rate: 10000 };
+
+  try {
+    const { data } = await sb
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'poin_config')
+      .maybeSingle();
+
+    if (data?.value?.rate) return { rate: Number(data.value.rate) || 10000 };
+  } catch {}
+  return { rate: 10000 };
+}
+
+export async function sbSavePoinConfig(rate: number) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  await sb.from('app_settings').upsert({
+    key: 'poin_config',
+    value: { rate: Number(rate) || 10000 },
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'key' });
+
+  return { success: true, rate };
+}
+
+export async function sbGetPriorityConfig(): Promise<any[]> {
+  const DEFAULT_PRIORITIES = [
+    { nama: 'Reguler', durasiJam: 48, biayaTambahan: 0, deskripsi: 'Selesai dalam 48 jam' },
+    { nama: 'Express', durasiJam: 24, biayaTambahan: 5000, deskripsi: 'Selesai dalam 24 jam' },
+    { nama: 'Kilat', durasiJam: 6, biayaTambahan: 10000, deskripsi: 'Selesai dalam 6 jam' },
+  ];
+
+  const sb = getSupabase();
+  if (!sb) return DEFAULT_PRIORITIES;
+
+  try {
+    const { data } = await sb
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'priority_config')
+      .maybeSingle();
+
+    if (Array.isArray(data?.value) && data.value.length > 0) return data.value;
+  } catch {}
+  return DEFAULT_PRIORITIES;
+}
+
+export async function sbSavePriorityConfig(priorities: any[]) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  await sb.from('app_settings').upsert({
+    key: 'priority_config',
+    value: priorities,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'key' });
+
+  return { success: true };
+}
+
+export async function sbGetPipelineConfigData(): Promise<any[]> {
+  const DEFAULT_STEPS = [
+    { step: 1, nama: 'Diterima', color: 'blue', icon: 'Inbox' },
+    { step: 2, nama: 'Dicuci', color: 'teal', icon: 'Droplets' },
+    { step: 3, nama: 'Dikeringkan', color: 'amber', icon: 'Wind' },
+    { step: 4, nama: 'Disetrika', color: 'purple', icon: 'Flame' },
+    { step: 5, nama: 'Dilipat', color: 'indigo', icon: 'Fold' },
+    { step: 6, nama: 'Siap Diambil', color: 'emerald', icon: 'CheckCircle' },
+    { step: 7, nama: 'Selesai', color: 'slate', icon: 'CheckCheck' },
+  ];
+
+  const sb = getSupabase();
+  if (!sb) return DEFAULT_STEPS;
+
+  try {
+    const { data } = await sb
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'pipeline_config')
+      .maybeSingle();
+
+    if (Array.isArray(data?.value) && data.value.length > 0) return data.value;
+  } catch {}
+  return DEFAULT_STEPS;
+}
+
+export async function sbSavePipelineConfigData(steps: any[]) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  await sb.from('app_settings').upsert({
+    key: 'pipeline_config',
+    value: steps,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'key' });
+
+  return { success: true };
+}
+
+export async function sbGetRiwayatPelangganByHp(noHp: string): Promise<any[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  const { data, error } = await sb
+    .from('transaksi')
+    .select(`
+      *,
+      transaksi_items (*)
+    `)
+    .eq('no_hp', noHp)
+    .order('tanggal', { ascending: false });
+
+  if (error) return [];
+  return (data || []).map((t: any) => ({
+    noNota: t.no_nota,
+    tanggal: t.tanggal,
+    namaPelanggan: t.nama_pelanggan,
+    total: Number(t.total) || 0,
+    status: t.status,
+    statusPembayaran: t.status_pembayaran,
+    metodeBayar: t.metode_bayar,
+    tipe: t.tipe,
+    items: (t.transaksi_items || []).map((it: any) => ({
+      layanan: it.layanan,
+      qty: Number(it.qty) || 1,
+      hargaSatuan: Number(it.harga_satuan) || 0,
+      subtotal: Number(it.subtotal) || 0,
+    })),
+  }));
+}
+
+export async function sbGetTransaksiByNota(noNota: string): Promise<any | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+
+  const { data, error } = await sb
+    .from('transaksi')
+    .select(`
+      *,
+      transaksi_items (*),
+      pipeline_steps (*)
+    `)
+    .eq('no_nota', noNota)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return {
+    noNota: data.no_nota,
+    tanggal: data.tanggal,
+    namaPelanggan: data.nama_pelanggan,
+    noHp: data.no_hp,
+    alamat: data.alamat,
+    isMember: data.is_member,
+    poinEarned: data.poin_earned,
+    petugas: data.petugas,
+    tipe: data.tipe,
+    tingkatLayanan: data.tingkat_layanan,
+    subtotal: Number(data.subtotal) || 0,
+    diskon: Number(data.diskon) || 0,
+    total: Number(data.total) || 0,
+    nominalDP: Number(data.nominal_dp) || 0,
+    sisaTagihan: Number(data.sisa_tagihan) || 0,
+    nominalBayar: Number(data.nominal_bayar) || 0,
+    metodeBayar: data.metode_bayar,
+    statusPembayaran: data.status_pembayaran,
+    status: data.status,
+    catatan: data.catatan,
+    estimasiSelesai: data.estimasi_selesai,
+    items: (data.transaksi_items || []).map((it: any) => ({
+      layanan: it.layanan,
+      qty: Number(it.qty) || 1,
+      hargaSatuan: Number(it.harga_satuan) || 0,
+      subtotal: Number(it.subtotal) || 0,
+    })),
+    pipeline: (data.pipeline_steps || []).map((p: any) => ({
+      step: p.step,
+      namaStep: p.nama_step,
+      status: p.status,
+      assignedStaff: p.assigned_staff,
+    })),
+  };
+}
+
+export async function sbPelunasanDP(noNota: string, nominal: number, metode = 'Tunai') {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { data: trx, error: getErr } = await sb
+    .from('transaksi')
+    .select('nominal_bayar, sisa_tagihan, total')
+    .eq('no_nota', noNota)
+    .single();
+
+  if (getErr) throw getErr;
+
+  const curBayar = Number(trx?.nominal_bayar) || 0;
+  const curSisa = Number(trx?.sisa_tagihan) || 0;
+  const newBayar = curBayar + Number(nominal);
+  const newSisa = Math.max(0, curSisa - Number(nominal));
+  const newStatus = newSisa <= 0 ? 'Lunas' : 'DP';
+
+  const { data, error } = await sb
+    .from('transaksi')
+    .update({
+      nominal_bayar: newBayar,
+      sisa_tagihan: newSisa,
+      status_pembayaran: newStatus,
+      metode_bayar: metode,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('no_nota', noNota)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return { success: true, message: 'Pelunasan DP berhasil disimpan', data };
+}
+
+// ============================================================
+// OPERASIONAL LANJUTAN (VOUCHER, VOID, AUDIT, HANDOVER, SHIFT)
+// ============================================================
+export async function sbValidasiVoucher(kode: string, subtotal: number, noHp?: string, isMember = false) {
+  const sb = getSupabase();
+  if (!sb) return { valid: false, message: 'Database belum terhubung' };
+
+  const cleanKode = String(kode || '').trim().toUpperCase();
+  const { data: promo, error } = await sb
+    .from('promo')
+    .select('*')
+    .eq('kode_voucher', cleanKode)
+    .maybeSingle();
+
+  if (error || !promo) {
+    return { valid: false, message: 'Kode voucher tidak ditemukan.' };
+  }
+
+  if (promo.status_aktif === false) {
+    return { valid: false, message: 'Voucher sudah tidak aktif.' };
+  }
+
+  const minTrx = Number(promo.min_transaksi) || 0;
+  if (subtotal < minTrx) {
+    return { valid: false, message: `Minimal transaksi untuk voucher ini adalah Rp ${minTrx.toLocaleString('id-ID')}` };
+  }
+
+  let potongan = 0;
+  const nilai = Number(promo.nilai_diskon) || 0;
+  if (promo.jenis_diskon === 'Persen') {
+    potongan = Math.round((subtotal * nilai) / 100);
+    const maks = Number(promo.maks_potongan) || 0;
+    if (maks > 0 && potongan > maks) potongan = maks;
+  } else {
+    potongan = nilai;
+  }
+
+  return {
+    valid: true,
+    kode: cleanKode,
+    nilai: potongan,
+    jenisDiskon: promo.jenis_diskon,
+    potongan,
+    message: `Voucher berhasil digunakan! Hemat Rp ${potongan.toLocaleString('id-ID')}`,
+  };
+}
+
+export async function sbCekPoinPelanggan(noHp: string) {
+  const sb = getSupabase();
+  if (!sb) return { success: false, message: 'Database belum terhubung' };
+
+  const { data, error } = await sb
+    .from('pelanggan')
+    .select('nama, no_hp, saldo_poin, is_member, stamps_75, stamps_45, total_order')
+    .eq('no_hp', String(noHp).trim())
+    .maybeSingle();
+
+  if (error || !data) {
+    return { success: false, message: 'Nomor HP tidak ditemukan.' };
+  }
+
+  return {
+    success: true,
+    nama: data.nama,
+    noHp: data.no_hp,
+    saldoPoin: Number(data.saldo_poin) || 0,
+    isMember: Boolean(data.is_member),
+    stamps75: Number(data.stamps_75) || 0,
+    stamps45: Number(data.stamps_45) || 0,
+    totalOrder: Number(data.total_order) || 0,
+  };
+}
+
+export async function sbToggleAktifLayanan(id: string, aktif: boolean | string) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const aktifStr = (aktif === true || aktif === 'Y' || aktif === 'true') ? 'Y' : 'N';
+  const { data, error } = await sb
+    .from('layanan')
+    .update({ aktif: aktifStr })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return { success: true, data };
+}
+
+export async function sbPautkanInventoryLayanan(idLayanan: string, idInventory: string, deductionQty = 1) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { data, error } = await sb
+    .from('layanan')
+    .update({
+      id_inventory: idInventory || null,
+      inventory_deduction_qty: Number(deductionQty) || 1,
+    })
+    .eq('id', idLayanan)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return { success: true, data };
+}
+
+export async function sbGetAuditLogs(limit = 200) {
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  const { data, error } = await sb
+    .from('audit_logs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) return [];
+  return (data || []).map((l: any) => ({
+    id: l.id,
+    timestamp: l.created_at,
+    kategori: l.action || 'Sistem',
+    deskripsi: l.details ? (typeof l.details === 'string' ? l.details : JSON.stringify(l.details)) : '',
+    user: l.user_id || 'System',
+    status: 'Success',
+  }));
+}
+
+export async function sbAjukanVoidTransaksi(noNota: string, alasan: string) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { data, error } = await sb
+    .from('transaksi')
+    .update({
+      status_void: 'PendingApproval',
+      alasan_void: alasan || 'Diajukan pembatalan oleh kasir',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('no_nota', noNota)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return { success: true, data };
+}
+
+export async function sbApproveVoidTransaksi(noNota: string, statusApproval: string) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const isApproved = statusApproval === 'Approved';
+  const updates: any = {
+    status_void: isApproved ? 'Void' : 'Rejected',
+    updated_at: new Date().toISOString(),
+  };
+  if (isApproved) {
+    updates.status = 'Dibatalkan';
+  }
+
+  const { data, error } = await sb
+    .from('transaksi')
+    .update(updates)
+    .eq('no_nota', noNota)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return { success: true, data };
+}
+
+export async function sbHandoverCheckKasShift(idOutlet = 'OUTLET-UTAMA') {
+  const sb = getSupabase();
+  if (!sb) return { adaShiftAktif: false };
+
+  const { data: shift } = await sb
+    .from('kas_shift')
+    .select('*')
+    .eq('id_outlet', idOutlet)
+    .eq('status', 'Buka')
+    .order('waktu_buka', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!shift) return { adaShiftAktif: false };
+
+  return {
+    adaShiftAktif: true,
+    idShift: shift.id_shift,
+    namaKasir: shift.nama_kasir,
+    waktuBuka: shift.waktu_buka,
+    kasAwal: Number(shift.kas_awal) || 0,
+    saldoMerchantAwal: Number(shift.saldo_merchant_awal) || 0,
+    totalPenjualanTunai: Number(shift.total_penjualan_tunai) || 0,
+    totalPenjualanNonTunai: Number(shift.total_penjualan_non_tunai) || 0,
+  };
+}
+
+export async function sbGetMasterShiftList(): Promise<any[]> {
+  const sb = getSupabase();
+  const DEFAULT_SHIFTS = [
+    { id: 'SHIFT-1', nama: 'Shift Pagi', jamMasuk: '07:00', jamPulang: '15:00', status: 'Aktif' },
+    { id: 'SHIFT-2', nama: 'Shift Siang', jamMasuk: '15:00', jamPulang: '23:00', status: 'Aktif' },
+  ];
+  if (!sb) return DEFAULT_SHIFTS;
+
+  try {
+    const { data } = await sb.from('app_settings').select('value').eq('key', 'master_shifts').maybeSingle();
+    if (Array.isArray(data?.value) && data.value.length > 0) return data.value;
+  } catch {}
+  return DEFAULT_SHIFTS;
+}
+
+
+
 
