@@ -113,6 +113,9 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
   // Jika Supabase terkonfigurasi, prioritaskan eksekusi via Supabase PostgreSQL
   if (isSupabaseConfigured()) {
     try {
+      if (typeof window !== 'undefined') {
+        console.debug(`[Supabase] ⚡ Menjalankan aksi: ${action}`);
+      }
       switch (action) {
         case 'getInventoryList':
           return (await sb.sbGetInventoryList()) as any;
