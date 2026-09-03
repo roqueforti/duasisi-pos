@@ -513,6 +513,26 @@ export async function sbCloseKasShift(payload: any): Promise<any> {
     .single();
 
   if (error) throw error;
+
+  // ============================================================
+  // LAYER 1 HYBRID BACKUP: Non-blocking trigger ke Google Sheets
+  // ============================================================
+  try {
+    const gasUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
+    if (gasUrl && typeof window !== 'undefined') {
+      setTimeout(() => {
+        fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'closeKasShift',
+            args: [payload],
+          }),
+        }).catch(e => console.warn('[Backup Kas Shift ke Google Sheets background error]:', e));
+      }, 100);
+    }
+  } catch {}
+
   return { success: true, shift: data };
 }
 
