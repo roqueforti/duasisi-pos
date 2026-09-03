@@ -309,19 +309,28 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
   return data;
 }
 
-export async function sbGetTransaksiList(limit = 100): Promise<Transaksi[]> {
+export async function sbGetTransaksiList(limitOrFilter: number | string = 100): Promise<Transaksi[]> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
-  const { data: trxList, error } = await sb
+  let query = sb
     .from('transaksi')
     .select(`
       *,
       transaksi_items (*),
       pipeline_steps (*)
     `)
-    .order('tanggal', { ascending: false })
-    .limit(limit);
+    .order('tanggal', { ascending: false });
+
+  if (typeof limitOrFilter === 'number' && limitOrFilter > 0) {
+    query = query.limit(limitOrFilter);
+  } else if (limitOrFilter && limitOrFilter !== 'Semua' && !isNaN(Number(limitOrFilter))) {
+    query = query.limit(Number(limitOrFilter));
+  } else {
+    query = query.limit(200);
+  }
+
+  const { data: trxList, error } = await query;
 
   if (error) throw error;
 
@@ -1282,8 +1291,23 @@ export async function sbGetLaporanRange(startDate: string, endDate: string) {
   const { data: trxList, error } = await sb
     .from('transaksi')
     .select(`
-      *,
-      transaksi_items (*)
+      no_nota,
+      tanggal,
+      nama_pelanggan,
+      no_hp,
+      tipe,
+      subtotal,
+      diskon,
+      total,
+      metode_bayar,
+      status_pembayaran,
+      status,
+      petugas,
+      transaksi_items (
+        layanan,
+        qty,
+        subtotal
+      )
     `)
     .gte('tanggal', startIso)
     .lte('tanggal', endIso)
