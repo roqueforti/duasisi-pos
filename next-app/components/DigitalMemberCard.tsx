@@ -199,17 +199,91 @@ export default function DigitalMemberCard({
             <clipPath id={clipId}>
               <rect width="666" height="199" fill="white" transform="translate(1328 113)" />
             </clipPath>
+
+            {/* Dua SiSi Dark Teal / Emerald Luxury Gradients */}
+            <linearGradient id={`cardBg_${type}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              {type === '75' ? (
+                <>
+                  <stop offset="0%" stopColor="#081819" />
+                  <stop offset="35%" stopColor="#0F2F31" />
+                  <stop offset="70%" stopColor="#1E4648" />
+                  <stop offset="100%" stopColor="#091A1B" />
+                </>
+              ) : (
+                <>
+                  <stop offset="0%" stopColor="#141718" />
+                  <stop offset="35%" stopColor="#1D2625" />
+                  <stop offset="70%" stopColor="#2A3530" />
+                  <stop offset="100%" stopColor="#111615" />
+                </>
+              )}
+            </linearGradient>
+
+            <linearGradient id={`cardBorderGrad_${type}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              {type === '75' ? (
+                <>
+                  <stop offset="0%" stopColor="#2DD4BF" stopOpacity="0.8" />
+                  <stop offset="40%" stopColor="#14B8A6" stopOpacity="0.4" />
+                  <stop offset="70%" stopColor="#F59E0B" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#2DD4BF" stopOpacity="0.6" />
+                </>
+              ) : (
+                <>
+                  <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.8" />
+                  <stop offset="50%" stopColor="#D97706" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#2DD4BF" stopOpacity="0.7" />
+                </>
+              )}
+            </linearGradient>
+
+            <radialGradient id={`glowTopLeft_${type}`} cx="15%" cy="15%" r="50%">
+              <stop offset="0%" stopColor={type === '75' ? '#2DD4BF' : '#F59E0B'} stopOpacity="0.25" />
+              <stop offset="100%" stopColor={type === '75' ? '#2DD4BF' : '#F59E0B'} stopOpacity="0" />
+            </radialGradient>
+
+            <radialGradient id={`glowBottomRight_${type}`} cx="85%" cy="85%" r="55%">
+              <stop offset="0%" stopColor={type === '75' ? '#F59E0B' : '#2DD4BF'} stopOpacity="0.20" />
+              <stop offset="100%" stopColor={type === '75' ? '#F59E0B' : '#2DD4BF'} stopOpacity="0" />
+            </radialGradient>
+
+            {/* Metallic Gold Badge Gradient */}
+            <linearGradient id={`badgeGrad_${type}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FDE68A" />
+              <stop offset="45%" stopColor="#F59E0B" />
+              <stop offset="85%" stopColor="#D97706" />
+              <stop offset="100%" stopColor="#92400E" />
+            </linearGradient>
+
+            {/* Shadow Filter */}
+            <filter id={`cardShadow_${type}`} x="-10%" y="-10%" width="120%" height="120%">
+              <feDropShadow dx="0" dy="16" stdDeviation="24" floodColor="#000000" floodOpacity="0.5" />
+            </filter>
           </defs>
 
-          {/* 1. Luxurious Teal/Emerald Grid Background with Corner Glows */}
-          <image 
-            href="/assets/member-card/card-bg-landscape.webp" 
-            width="3322" 
-            height="2030" 
-            preserveAspectRatio="none" 
-          />
+          {/* 1. Base Luxury Card Background */}
+          <rect width="3322" height="2030" rx="80" fill={`url(#cardBg_${type})`} />
 
-          {/* 2. Top-Center Dua SiSi Official Logo & Typography (Vectors) */}
+          {/* 2. Ambient Corner Glows */}
+          <rect width="3322" height="2030" rx="80" fill={`url(#glowTopLeft_${type})`} />
+          <rect width="3322" height="2030" rx="80" fill={`url(#glowBottomRight_${type})`} />
+
+          {/* 3. Subtle Security Guilloche / Laundry Arcs & Waves */}
+          <g opacity="0.06" stroke="#FFFFFF" strokeWidth="4" fill="none">
+            <circle cx="200" cy="200" r="300" />
+            <circle cx="200" cy="200" r="450" />
+            <circle cx="200" cy="200" r="600" />
+            <circle cx="200" cy="200" r="750" />
+            <circle cx="3122" cy="1830" r="300" />
+            <circle cx="3122" cy="1830" r="500" />
+            <circle cx="3122" cy="1830" r="700" />
+            <circle cx="3122" cy="1830" r="900" />
+          </g>
+
+          {/* 4. Luxury Metallic Inset Borders */}
+          <rect x="36" y="36" width="3250" height="1958" rx="64" fill="none" stroke={`url(#cardBorderGrad_${type})`} strokeWidth="8" opacity="0.75" />
+          <rect x="68" y="68" width="3186" height="1894" rx="48" fill="none" stroke="rgba(255, 255, 255, 0.12)" strokeWidth="3" />
+
+          {/* 5. Top-Center Dua SiSi Official Logo & Typography (Vectors) */}
           <g clipPath={`url(#${clipId})`}>
             <path d="M1773.1 274.897C1773.27 274.222 1774.33 274.393 1775.05 273.895C1776.69 272.762 1777.81 270.823 1777.84 268.786V119.02C1777.72 118.057 1776.9 116.145 1776.26 115.464C1775.42 114.566 1774.1 114.593 1773.49 113.695H1989.17C1990.15 113.695 1992.95 116.427 1993.12 117.632V270.954C1992.9 272.546 1989.71 274.89 1988.38 274.89H1773.1V274.897ZM1870.3 149.758C1862.9 150.839 1859.97 160.486 1864.89 166.054C1869.31 171.051 1878.2 169.905 1881.11 163.755C1884.71 156.131 1878.52 148.559 1870.3 149.758ZM1956.97 149.758C1953.51 150.262 1949.71 153.897 1949.22 157.395C1947.44 170.305 1964.54 173.461 1968.21 162.609C1970.74 155.122 1964.65 148.638 1956.98 149.758H1956.97ZM1853.85 164.659C1854.3 164.023 1849.67 159.366 1848.94 158.731C1831.96 143.876 1801.52 153.079 1803.83 177.896C1805.18 192.449 1820.13 196.012 1830.87 200.944C1835.23 202.942 1840.1 205.45 1837.51 211.286C1833.89 219.414 1819.94 215.353 1816.03 209.085H1815.26L1802.25 218.596C1810.37 228.014 1820.12 232.861 1832.77 231.826C1855.95 229.927 1864.08 200.276 1843.33 188.447C1838.02 185.421 1823.56 182.022 1821.08 177.188C1818.77 172.702 1821.9 168.49 1826.51 167.861C1832.66 167.023 1836.57 169.46 1840.98 173.304L1853.85 164.659ZM1940.52 164.659C1927.59 142.586 1887.86 149.444 1890.49 177.896C1891.4 187.701 1899.79 193.412 1907.95 197.132C1913.55 199.693 1928.08 202.516 1924.17 211.286C1920.56 219.414 1906.61 215.353 1902.7 209.085H1901.92L1888.92 218.596C1897.04 228.014 1906.79 232.861 1919.43 231.826C1942.58 229.927 1950.78 200.4 1930 188.447C1924.72 185.408 1910.21 181.996 1907.74 177.188C1905.44 172.702 1908.57 168.49 1913.17 167.861C1919.33 167.023 1923.24 169.46 1927.65 173.304L1940.52 164.659ZM1880.64 175.335H1864.1V229.861H1880.64V175.335ZM1967.3 175.335H1950.76V229.861H1967.3V175.335Z" fill="white"/>
             <path d="M1476.39 177.43C1516.45 174.391 1524.74 217.881 1513.79 248.128C1489.43 315.439 1401 334.741 1352.57 280.831C1342.82 269.971 1331.79 250.8 1328.61 236.509C1328.44 235.736 1327.36 231.027 1328.54 231.046C1338.97 240.157 1351.65 248.128 1364.98 252.176C1392.76 260.612 1415.18 253.093 1429.65 227.752C1440.54 208.692 1450.34 179.402 1476.38 177.43H1476.39ZM1472.83 192.423C1464.31 193.674 1455.83 205.398 1453.22 213.054C1450.91 219.853 1449.73 233.719 1459.71 234.609C1471.71 235.677 1482.17 219.702 1484.17 209.327C1485.83 200.715 1483.67 190.824 1472.83 192.423Z" fill="white"/>
@@ -239,69 +313,141 @@ export default function DigitalMemberCard({
             <path d="M1974.45 285.9L1974.46 283.26C1975.8 282.612 1976.91 281.93 1978.15 283.195C1978.88 285.585 1976.52 287.098 1974.45 285.906V285.9Z" fill="white"/>
           </g>
 
-          {/* 3. "MEMBER CARD" Big Crisp Title */}
+          {/* 6. "MEMBER CARD" Big Crisp Title */}
           <path d="M974.182 355.469H1014.45L1048.61 438.762H1050.18L1084.34 355.469H1124.61V490H1092.95V407.363H1091.83L1059.51 489.146H1039.28L1006.96 406.903H1005.84V490H974.182V355.469ZM1144.89 490V355.469H1238.7V381.876H1177.41V409.465H1233.9V435.938H1177.41V463.593H1238.7V490H1144.89ZM1259.06 355.469H1299.33L1333.49 438.762H1335.06L1369.22 355.469H1409.49V490H1377.83V407.363H1376.71L1344.39 489.146H1324.16L1291.84 406.903H1290.72V490H1259.06V355.469ZM1429.77 490V355.469H1485.87C1495.94 355.469 1504.37 356.892 1511.16 359.738C1517.99 362.585 1523.11 366.57 1526.53 371.694C1529.99 376.818 1531.72 382.752 1531.72 389.496C1531.72 394.619 1530.65 399.196 1528.5 403.225C1526.35 407.21 1523.4 410.516 1519.63 413.144C1515.87 415.771 1511.51 417.611 1506.56 418.662V419.975C1511.99 420.238 1517 421.705 1521.6 424.377C1526.24 427.048 1529.97 430.77 1532.77 435.544C1535.57 440.273 1536.97 445.879 1536.97 452.36C1536.97 459.586 1535.13 466.045 1531.46 471.738C1527.78 477.388 1522.46 481.855 1515.49 485.139C1508.53 488.38 1500.08 490 1490.14 490H1429.77ZM1462.29 463.79H1482.39C1489.44 463.79 1494.63 462.454 1497.95 459.783C1501.33 457.112 1503.01 453.389 1503.01 448.616C1503.01 445.156 1502.2 442.178 1500.58 439.682C1498.96 437.142 1496.66 435.193 1493.68 433.836C1490.71 432.434 1487.14 431.734 1482.98 431.734H1462.29V463.79ZM1462.29 410.779H1480.28C1483.83 410.779 1486.98 410.188 1489.74 409.005C1492.5 407.823 1494.65 406.115 1496.18 403.882C1497.76 401.648 1498.55 398.955 1498.55 395.802C1498.55 391.291 1496.95 387.744 1493.75 385.16C1490.55 382.576 1486.24 381.284 1480.81 381.284H1462.29V410.779ZM1552.61 490V355.469H1646.41V381.876H1585.12V409.465H1641.62V435.938H1585.12V463.593H1646.41V490H1552.61ZM1666.78 490V355.469H1722.35C1732.42 355.469 1741.11 357.286 1748.43 360.921C1755.78 364.512 1761.46 369.679 1765.44 376.423C1769.43 383.124 1771.42 391.072 1771.42 400.269C1771.42 409.596 1769.38 417.523 1765.31 424.048C1761.24 430.529 1755.46 435.478 1747.97 438.894C1740.48 442.266 1731.61 443.952 1721.36 443.952H1686.22V418.333H1715.32C1720.22 418.333 1724.32 417.698 1727.6 416.428C1730.93 415.114 1733.45 413.144 1735.16 410.516C1736.87 407.845 1737.72 404.429 1737.72 400.269C1737.72 396.108 1736.87 392.671 1735.16 389.955C1733.45 387.196 1730.93 385.138 1727.6 383.781C1724.28 382.379 1720.18 381.679 1715.32 381.679H1699.29V490H1666.78ZM1742.51 428.515L1776.02 490H1740.54L1707.7 428.515H1742.51ZM1951.11 404.21H1918.27C1917.83 400.838 1916.93 397.794 1915.57 395.079C1914.22 392.364 1912.42 390.043 1910.19 388.116C1907.95 386.189 1905.3 384.722 1902.24 383.715C1899.22 382.664 1895.87 382.138 1892.19 382.138C1885.66 382.138 1880.04 383.737 1875.31 386.934C1870.62 390.131 1867.01 394.751 1864.47 400.794C1861.97 406.838 1860.72 414.151 1860.72 422.734C1860.72 431.668 1861.99 439.157 1864.53 445.2C1867.12 451.2 1870.73 455.732 1875.37 458.798C1880.06 461.819 1885.6 463.33 1891.99 463.33C1895.58 463.33 1898.84 462.87 1901.78 461.951C1904.76 461.031 1907.36 459.695 1909.6 457.944C1911.87 456.148 1913.73 453.98 1915.18 451.44C1916.67 448.857 1917.7 445.944 1918.27 442.704L1951.11 442.901C1950.54 448.857 1948.81 454.725 1945.92 460.506C1943.07 466.286 1939.16 471.563 1934.16 476.337C1929.17 481.066 1923.08 484.832 1915.9 487.635C1908.76 490.438 1900.57 491.839 1891.33 491.839C1879.16 491.839 1868.25 489.168 1858.62 483.825C1849.03 478.439 1841.45 470.6 1835.89 460.309C1830.33 450.017 1827.55 437.492 1827.55 422.734C1827.55 407.932 1830.37 395.386 1836.02 385.094C1841.67 374.803 1849.31 366.986 1858.95 361.643C1868.58 356.301 1879.38 353.629 1891.33 353.629C1899.48 353.629 1907.01 354.768 1913.93 357.045C1920.85 359.279 1926.94 362.563 1932.19 366.899C1937.45 371.19 1941.72 376.467 1945 382.73C1948.29 388.992 1950.32 396.152 1951.11 404.21ZM1995.39 490H1960.44L2005.83 355.469H2049.12L2094.51 490H2059.56L2027.97 389.364H2026.92L1995.39 490ZM1990.72 437.055H2063.77V461.754H1990.72V437.055ZM2108.99 490V355.469H2164.57C2174.64 355.469 2183.33 357.286 2190.65 360.921C2198 364.512 2203.67 369.679 2207.66 376.423C2211.65 383.124 2213.64 391.072 2213.64 400.269C2213.64 409.596 2211.6 417.523 2207.53 424.048C2203.46 430.529 2197.68 435.478 2190.19 438.894C2182.7 442.266 2173.83 443.952 2163.58 443.952H2128.44V418.333H2157.54C2162.44 418.333 2166.54 417.698 2169.82 416.428C2173.15 415.114 2175.67 413.144 2177.38 410.516C2179.09 407.845 2179.94 404.429 2179.94 400.269C2179.94 396.108 2179.09 392.671 2177.38 389.955C2175.67 387.196 2173.15 385.138 2169.82 383.781C2166.49 382.379 2162.4 381.679 2157.54 381.679H2141.51V490H2108.99ZM2184.73 428.515L2218.24 490H2182.76L2149.92 428.515H2184.73ZM2281.2 490H2231.47V355.469H2281.13C2294.84 355.469 2306.64 358.162 2316.54 363.548C2326.48 368.891 2334.14 376.599 2339.53 386.671C2344.92 396.7 2347.61 408.699 2347.61 422.669C2347.61 436.682 2344.92 448.725 2339.53 458.798C2334.19 468.87 2326.55 476.599 2316.61 481.986C2306.66 487.329 2294.86 490 2281.2 490ZM2263.99 462.279H2279.95C2287.48 462.279 2293.86 461.009 2299.07 458.469C2304.32 455.885 2308.28 451.703 2310.96 445.923C2313.67 440.098 2315.03 432.347 2315.03 422.669C2315.03 412.99 2313.67 405.283 2310.96 399.546C2308.24 393.765 2304.23 389.605 2298.93 387.065C2293.68 384.481 2287.2 383.189 2279.49 383.189H2263.99V462.279Z" fill="white"/>
 
-          {/* 4. Top-Right Weight Badge (7 KG or 4 KG) */}
-          <circle cx="2942" cy="261" r="156" fill="white" />
-          <text
-            x="2942"
-            y="300"
-            textAnchor="middle"
-            fill="#000000"
-            fontSize="140"
-            fontWeight="900"
-            fontFamily="sans-serif"
-          >
-            {type === '75' ? '7' : '4'}
-          </text>
+          {/* 7. Top-Right Luxury Weight Badge (7 KG / 4 KG) */}
+          <g filter={`url(#cardShadow_${type})`}>
+            <circle cx="2942" cy="261" r="158" fill={`url(#badgeGrad_${type})`} />
+            <circle cx="2942" cy="261" r="140" fill={type === '75' ? '#0F2F31' : '#1D2625'} stroke="#FDE68A" strokeWidth="6" />
+            <text
+              x="2942"
+              y="255"
+              textAnchor="middle"
+              fill="#FBBF24"
+              fontSize="128"
+              fontWeight="900"
+              fontFamily="sans-serif"
+            >
+              {type === '75' ? '7' : '4'}
+            </text>
+            <text
+              x="2942"
+              y="325"
+              textAnchor="middle"
+              fill="#FFFFFF"
+              fontSize="56"
+              fontWeight="900"
+              fontFamily="sans-serif"
+              letterSpacing="3"
+            >
+              KG
+            </text>
+          </g>
 
-          {/* 5. Customer Name Pill */}
-          <rect x="224" y="554" width="1450" height="248" rx="48" fill="white" />
+          {/* 8. Customer Name Pill */}
+          <rect 
+            x="224" 
+            y="554" 
+            width="1450" 
+            height="248" 
+            rx="52" 
+            fill="rgba(8, 24, 25, 0.75)" 
+            stroke="rgba(45, 212, 191, 0.4)" 
+            strokeWidth="6" 
+          />
+          <text 
+            x="300" 
+            y="612" 
+            fill="#5EEAD4" 
+            fontSize="34" 
+            fontWeight="800" 
+            fontFamily="sans-serif"
+            letterSpacing="4"
+          >
+            NAMA MEMBER
+          </text>
           <text 
             x={224 + 1450 / 2} 
-            y="708" 
+            y="722" 
             textAnchor="middle" 
-            fill="#000000" 
-            fontSize={customer.nama && customer.nama.length > 18 ? "68" : "84"} 
+            fill="#FFFFFF" 
+            fontSize={customer.nama && customer.nama.length > 18 ? "70" : "86"} 
             fontWeight="900" 
             fontFamily="sans-serif"
             letterSpacing="2"
           >
-            {`(${customer.nama ? customer.nama.toUpperCase() : 'NAMA'})`}
+            {customer.nama ? customer.nama.toUpperCase() : 'PELANGGAN UMUM'}
           </text>
 
-          {/* 6. Customer Phone Pill */}
-          <rect x="1758" y="554" width="1340" height="248" rx="48" fill="white" />
+          {/* 9. Customer Phone Pill */}
+          <rect 
+            x="1758" 
+            y="554" 
+            width="1340" 
+            height="248" 
+            rx="52" 
+            fill="rgba(8, 24, 25, 0.75)" 
+            stroke="rgba(245, 158, 11, 0.4)" 
+            strokeWidth="6" 
+          />
+          <text 
+            x="1834" 
+            y="612" 
+            fill="#FBBF24" 
+            fontSize="34" 
+            fontWeight="800" 
+            fontFamily="sans-serif"
+            letterSpacing="4"
+          >
+            NO. WHATSAPP
+          </text>
           <text 
             x={1758 + 1340 / 2} 
-            y="708" 
+            y="722" 
             textAnchor="middle" 
-            fill="#000000" 
+            fill="#FFFFFF" 
             fontSize="84" 
             fontWeight="900" 
             fontFamily="sans-serif"
-            letterSpacing="2"
+            letterSpacing="3"
           >
-            {`(${customer.maskedHp || customer.noHp || 'NO HP'})`}
+            {customer.maskedHp || customer.noHp || '-'}
           </text>
 
-          {/* 7. 10 STAMP CIRCLE SLOTS */}
+          {/* 10. 10 STAMP CIRCLE SLOTS */}
           {STAMP_COORDS.map(({ slot, cx, cy, rot }) => {
             const isStamped = stamps >= slot;
             const isReward = slot === 10;
 
             return (
               <g key={slot}>
-                {/* Clean white circle base */}
-                <circle cx={cx} cy={cy} r="230" fill="white" />
+                {/* Clean slot base matching theme */}
+                {isReward ? (
+                  /* Reward Target Slot (10) */
+                  <g>
+                    <circle cx={cx} cy={cy} r="215" fill="rgba(245, 158, 11, 0.14)" stroke="#F59E0B" strokeWidth="10" strokeDasharray="16 10" />
+                    <circle cx={cx} cy={cy} r="185" fill="rgba(120, 53, 15, 0.4)" />
+                    <text x={cx} y={cy - 24} textAnchor="middle" fill="#FBBF24" fontSize="46" fontWeight="900">★ ★ ★</text>
+                    <text x={cx} y={cy + 38} textAnchor="middle" fill="#FEF3C7" fontSize="68" fontWeight="900" fontFamily="sans-serif">FREE</text>
+                    <text x={cx} y={cy + 96} textAnchor="middle" fill="#FDE68A" fontSize="36" fontWeight="800" letterSpacing="2">1x CUCI</text>
+                  </g>
+                ) : (
+                  /* Standard Stamp Target Slot (1-9) */
+                  <g>
+                    <circle cx={cx} cy={cy} r="215" fill="rgba(8, 24, 25, 0.55)" stroke="rgba(255, 255, 255, 0.22)" strokeWidth="8" strokeDasharray="16 10" />
+                    <circle cx={cx} cy={cy} r="185" fill="rgba(255, 255, 255, 0.03)" />
+                    <text x={cx} y={cy + 32} textAnchor="middle" fill="rgba(255, 255, 255, 0.4)" fontSize="100" fontWeight="900" fontFamily="sans-serif">{slot}</text>
+                    <text x={cx} y={cy + 96} textAnchor="middle" fill="rgba(94, 234, 212, 0.55)" fontSize="32" fontWeight="800" letterSpacing="3">STAMP</text>
+                  </g>
+                )}
 
                 {/* Dynamic Digital Stamp Overlay when Stamped */}
                 {isStamped && (
                   isReward ? (
                     /* Slot 10 Celebratory Reward Seal */
                     <g transform={`rotate(${rot}, ${cx}, ${cy})`}>
-                      <circle cx={cx} cy={cy} r="215" fill="#FEF3C7" stroke="#D97706" strokeWidth="12" strokeDasharray="16 8" />
+                      <circle cx={cx} cy={cy} r="215" fill="#FEF3C7" stroke="#D97706" strokeWidth="14" strokeDasharray="16 8" />
                       <circle cx={cx} cy={cy} r="185" fill="#F59E0B" stroke="#B45309" strokeWidth="8" />
                       <circle cx={cx} cy={cy} r="150" fill="#78350F" />
                       
@@ -503,14 +649,14 @@ export default function DigitalMemberCard({
         )}
 
         {/* ========================================================================= */}
-        {/* ACTION TOOLBAR & STAMP CONTROLS */}
+        {/* ACTION TOOLBAR & STAMP CONTROLS (TIDY 2-ROW LAYOUT) */}
         {/* ========================================================================= */}
-        <div className="dmc-toolbar">
+        <div className="dmc-toolbar space-y-3">
           
-          {/* Stamp Counter & Add/Subtract Buttons */}
-          <div className="dmc-stepper-group">
+          {/* Row 1: Stamping Controls & Fast Side Flip */}
+          <div className="dmc-stepper-row">
             {canEdit && (
-              <>
+              <div className="dmc-stepper-cluster">
                 <button
                   type="button"
                   onClick={handleSubtractStamp}
@@ -523,7 +669,7 @@ export default function DigitalMemberCard({
 
                 <div className="dmc-counter-pill">
                   <span className="dmc-counter-label">
-                    {activeCardType === '75' ? '7 KG' : '4 KG'}
+                    Kartu {activeCardType === '75' ? '7 KG' : '4 KG'}
                   </span>
                   <span className="dmc-counter-val">
                     {currentStamps} / 10
@@ -540,29 +686,29 @@ export default function DigitalMemberCard({
                   <Plus className="w-4 h-4" />
                   <span>Beri Stempel (+1)</span>
                 </button>
-              </>
+              </div>
             )}
-          </div>
 
-          {/* Flip, Share & Download Buttons */}
-          <div className="dmc-actions-group">
             <button
               type="button"
               onClick={toggleCardSide}
-              className="dmc-btn-download"
+              className="dmc-btn-flip-secondary"
               title="Balik Kartu Member (3D Flip)"
             >
-              <RotateCw className={`w-3.5 h-3.5 transition-transform duration-500 ${isFlipped ? 'rotate-180 text-teal-600' : 'text-slate-500'}`} />
-              <span>{activeCardType === '75' ? 'Kartu 4 KG' : 'Kartu 7 KG'}</span>
+              <RotateCw className={`w-3.5 h-3.5 transition-transform duration-500 ${isFlipped ? 'rotate-180 text-amber-500' : 'text-teal-700'}`} />
+              <span>{activeCardType === '75' ? 'Balik ke Kartu 4 KG' : 'Balik ke Kartu 7 KG'}</span>
             </button>
+          </div>
 
+          {/* Row 2: Secondary Sharing & Download Buttons */}
+          <div className="dmc-actions-row">
             <button
               type="button"
               onClick={handleShareWhatsApp}
               className="dmc-btn-wa"
             >
               <Share2 className="w-3.5 h-3.5" />
-              <span>Kirim WA</span>
+              <span>Kirim E-Card WhatsApp</span>
             </button>
 
             <button
@@ -572,7 +718,7 @@ export default function DigitalMemberCard({
               className="dmc-btn-download"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>{downloading ? 'Mengunduh...' : `Unduh ${activeCardType === '75' ? 'Depan (7 KG)' : 'Belakang (4 KG)'}`}</span>
+              <span>{downloading ? 'Mengunduh...' : `Unduh Kartu (${activeCardType === '75' ? '7 KG' : '4 KG'})`}</span>
             </button>
           </div>
 
