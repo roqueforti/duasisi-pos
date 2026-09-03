@@ -473,3 +473,25 @@ alter publication supabase_realtime add table transaksi;
 alter publication supabase_realtime add table pipeline_steps;
 alter publication supabase_realtime add table mesin;
 alter publication supabase_realtime add table inventory;
+
+-- ============================================================
+-- 10. ROW LEVEL SECURITY (RLS) UNTUK POS TERMINAL
+-- (Akses penuh untuk aplikasi POS dengan proteksi PIN level aplikasi)
+-- ============================================================
+alter table if exists inventory disable row level security;
+alter table if exists layanan disable row level security;
+alter table if exists layanan_bahan_baku disable row level security;
+alter table if exists pelanggan disable row level security;
+alter table if exists mesin disable row level security;
+alter table if exists promo disable row level security;
+alter table if exists kas_shift disable row level security;
+alter table if exists kas_shift_pengeluaran disable row level security;
+alter table if exists pegawai disable row level security;
+alter table if exists master_kategori disable row level security;
+alter table if exists transaksi disable row level security;
+alter table if exists transaksi_items disable row level security;
+alter table if exists pipeline_steps disable row level security;
+alter table if exists loyalty_programs disable row level security;
+alter table if exists app_settings disable row level security;
+alter table if exists audit_logs disable row level security;
+
