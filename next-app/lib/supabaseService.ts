@@ -619,3 +619,63 @@ export async function sbAssignCustomerLoyalty(noHp: string, cardType: '75' | '45
   if (error) throw error;
   return { success: true };
 }
+
+// ============================================================
+// REKAP KAS SHIFT & PEGAWAI
+// ============================================================
+export async function sbGetRekapKasShift(): Promise<any[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  const { data, error } = await sb
+    .from('kas_shift')
+    .select('*')
+    .order('waktu_buka', { ascending: false });
+
+  if (error) return [];
+  return (data || []).map((s: any) => ({
+    idShift: s.id_shift,
+    idOutlet: s.id_outlet,
+    namaKasir: s.nama_kasir,
+    idUser: s.id_user,
+    waktuBuka: s.waktu_buka,
+    waktuTutup: s.waktu_tutup,
+    kasAwal: Number(s.kas_awal) || 0,
+    kasAkhirSistem: Number(s.kas_akhir_fisik) || 0,
+    kasAkhirFisik: Number(s.kas_akhir_fisik) || 0,
+    selisihKas: Number(s.selisih_kas) || 0,
+    status: s.status === 'Tutup' ? 'Ditutup' : s.status,
+    modeTutup: s.mode_tutup,
+    namaPengganti: s.nama_pengganti,
+    catatan: s.catatan,
+    saldoMerchantAwal: Number(s.saldo_merchant_awal) || 0,
+    saldoMerchantAkhir: Number(s.saldo_merchant_akhir) || 0,
+    totalBelanja: Number(s.total_pengeluaran) || 0,
+  }));
+}
+
+export async function sbGetPegawaiList(): Promise<any[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  const { data, error } = await sb
+    .from('pegawai')
+    .select('*')
+    .order('nama', { ascending: true });
+
+  if (error) return [];
+  return (data || []).map((p: any) => ({
+    id: p.id,
+    nama: p.nama,
+    noHp: p.no_hp,
+    jabatan: p.jabatan,
+    status: p.status,
+    role: p.role,
+    nik: p.nik,
+    namaPanggilan: p.nama_panggilan,
+    alamat: p.alamat,
+    shiftUtama: p.shift_utama,
+    tanggalBergabung: p.tanggal_bergabung,
+  }));
+}
+
