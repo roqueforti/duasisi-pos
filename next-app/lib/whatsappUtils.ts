@@ -135,7 +135,7 @@ export function generateWhatsAppReceiptMessage(params: WhatsAppReceiptParams): s
   }
 
   if (params.stampInfo?.earned) {
-    const cardLbl = params.stampInfo.cardType === '75' ? '7,5 KG' : '4,5 KG';
+    const cardLbl = params.stampInfo.cardType === '75' ? '7 KG' : '4 KG';
     msgLines.push(`*STEMPEL LOYALTY CARD:*`);
     msgLines.push(`  • Penambahan  : +${params.stampInfo.stampsAdded || 1} Stempel (Kartu ${cardLbl})`);
     msgLines.push(`  • Total Stempel: *${params.stampInfo.newTotal || 0}/10 Stempel* ${params.stampInfo.isRewardReady ? '🎉 (SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - (params.stampInfo.newTotal || 0))} lagi)`}`);
