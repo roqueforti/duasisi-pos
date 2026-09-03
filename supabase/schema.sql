@@ -68,7 +68,7 @@ create index if not exists idx_lbb_layanan on layanan_bahan_baku(layanan_id);
 create table if not exists pelanggan (
     id uuid primary key default gen_random_uuid(),
     nama text not null,
-    no_hp text not null,
+    no_hp text not null unique,
     alamat text,
     tgl_lahir date,
     is_member boolean not null default false,
@@ -268,8 +268,13 @@ create table if not exists pegawai (
     no_hp text,
     jabatan text default 'Kasir',
     role text not null default 'STAFF', -- 'STAFF', 'MANAGER'
-    pin_hash text,
     status text default 'Aktif',
+    nik text,
+    nama_panggilan text,
+    alamat text,
+    shift_utama text,
+    tanggal_bergabung date,
+    pin_hash text,
     created_at timestamptz default now()
 );
 
