@@ -25,10 +25,12 @@ export interface WhatsAppReceiptParams {
   token?: string;
   stampInfo?: {
     earned?: boolean;
+    isClaimed?: boolean;
     cardType?: '75' | '45';
     stampsAdded?: number;
     newTotal?: number;
     isRewardReady?: boolean;
+    rewardMessage?: string;
   };
 }
 
@@ -134,7 +136,13 @@ export function generateWhatsAppReceiptMessage(params: WhatsAppReceiptParams): s
     msgLines.push(`--------------------------------`);
   }
 
-  if (params.stampInfo?.earned) {
+  if (params.stampInfo?.isClaimed) {
+    const cardLbl = params.stampInfo.cardType === '75' ? '7 KG' : '4 KG';
+    msgLines.push(`*KLAIM REWARD MEMBER:*`);
+    msgLines.push(`  🎉 *1x Cuci Gratis ${cardLbl} Berhasil Diklaim!*`);
+    msgLines.push(`  • Stempel kartu ini telah di-reset kembali ke 0/10.`);
+    msgLines.push(`--------------------------------`);
+  } else if (params.stampInfo?.earned) {
     const cardLbl = params.stampInfo.cardType === '75' ? '7 KG' : '4 KG';
     msgLines.push(`*STEMPEL LOYALTY CARD:*`);
     msgLines.push(`  • Penambahan  : +${params.stampInfo.stampsAdded || 1} Stempel (Kartu ${cardLbl})`);

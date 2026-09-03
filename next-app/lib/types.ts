@@ -176,6 +176,28 @@ export interface PromoVoucher {
   statusAktif: boolean;
 }
 
+export type LoyaltyClaimRule = 'FREE_ON_NTH' | 'FREE_ON_NEXT_TRX';
+export type LoyaltyTargetKapasitas = '7kg' | '4kg' | 'all' | 'custom';
+export type LoyaltySyaratLayanan = 'washer_dryer' | 'washer_only' | 'all' | 'custom';
+
+export interface LoyaltyProgram {
+  id: string; // e.g. 'CARD_7KG_LEGACY', 'CARD_7KG_NEW', 'CARD_4KG'
+  nama: string;
+  deskripsi?: string;
+  kapasitas: LoyaltyTargetKapasitas;
+  syaratLayanan: LoyaltySyaratLayanan;
+  customLayananKeywords?: string[];
+  totalStamps: number; // default 10
+  claimRule: LoyaltyClaimRule; // FREE_ON_NTH vs FREE_ON_NEXT_TRX
+  rewardDeskripsi: string; // e.g. '1x Cuci Gratis'
+  rewardType: 'FREE_SERVICE' | 'DISCOUNT_PERCENT' | 'DISCOUNT_NOMINAL';
+  rewardValue?: number; // e.g. 100 for 100% discount
+  warnaTema: 'emerald' | 'teal' | 'gold' | 'sapphire' | 'slate';
+  isActive: boolean;
+  isDefault: boolean; // default untuk registrasi baru
+  urutan?: number;
+}
+
 export interface Pelanggan {
   idPelanggan: string;
   nama: string;
@@ -184,6 +206,10 @@ export interface Pelanggan {
   saldoPoin: number;
   isBlacklist: boolean;
   tanggalDaftar: string;
+  assignedCard7kgId?: string;
+  assignedCard4kgId?: string;
+  rewardReady7kg?: boolean;
+  rewardReady4kg?: boolean;
 }
 
 export interface AuditLog {
