@@ -156,6 +156,14 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbGetPromoList()) as any;
         case 'getKategoriList':
           return (await sb.sbGetKategoriList()) as any;
+        case 'getLoyaltyPrograms':
+          return (await sb.sbGetLoyaltyPrograms()) as any;
+        case 'saveLoyaltyProgram':
+          return (await sb.sbSaveLoyaltyProgram(args[0])) as any;
+        case 'deleteLoyaltyProgram':
+          return (await sb.sbDeleteLoyaltyProgram(args[0])) as any;
+        case 'assignCustomerLoyalty':
+          return (await sb.sbAssignCustomerLoyalty(args[0], args[1], args[2])) as any;
       }
     } catch (sbErr: any) {
       console.warn(`[Supabase Error] Action '${action}' gagal, fallback ke Google Apps Script:`, sbErr);

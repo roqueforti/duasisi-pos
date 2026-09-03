@@ -263,6 +263,10 @@ export async function sbGetDaftarPelanggan(): Promise<any[]> {
     totalOrder: c.total_order,
     stamps75: c.stamps_75,
     stamps45: c.stamps_45,
+    assignedCard7kgId: c.assigned_card_7kg_id || 'CARD_7KG_LEGACY',
+    assignedCard4kgId: c.assigned_card_4kg_id || 'CARD_4KG_STANDARD',
+    rewardReady7kg: Boolean(c.reward_ready_7kg),
+    rewardReady4kg: Boolean(c.reward_ready_4kg),
   }));
 }
 
@@ -533,4 +537,85 @@ export async function sbGetKategoriList(): Promise<any[]> {
     warna: k.warna,
     aktif: k.aktif,
   }));
+}
+
+// ============================================================
+// LOYALTY CARD PROGRAMS
+// ============================================================
+export async function sbGetLoyaltyPrograms(): Promise<any[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  const { data, error } = await sb
+    .from('loyalty_programs')
+    .select('*')
+    .order('urutan', { ascending: true });
+
+  if (error || !data) return [];
+  return data.map((p: any) => ({
+    id: p.id,
+    nama: p.nama,
+    deskripsi: p.deskripsi,
+    kapasitas: p.kapasitas,
+    syaratLayanan: p.syarat_layanan,
+    totalStamps: Number(p.total_stamps) || 10,
+    claimRule: p.claim_rule,
+    rewardDeskripsi: p.reward_deskripsi,
+    rewardType: p.reward_type,
+    rewardValue: Number(p.reward_value) || 100,
+    warnaTema: p.warna_tema,
+    isActive: Boolean(p.is_active),
+    isDefault: Boolean(p.is_default),
+    urutan: Number(p.urutan) || 1,
+  }));
+}
+
+export async function sbSaveLoyaltyProgram(program: any): Promise<any> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const payload = {
+    id: program.id,
+    nama: program.nama,
+    deskripsi: program.deskripsi || null,
+    kapasitas: program.kapasitas || '7kg',
+    syarat_layanan: program.syaratLayanan || 'washer_dryer',
+    total_stamps: Number(program.totalStamps) || 10,
+    claim_rule: program.claimRule || 'FREE_ON_NEXT_TRX',
+    reward_deskripsi: program.rewardDeskripsi || '1x Cuci Gratis',
+    reward_type: program.rewardType || 'FREE_SERVICE',
+    reward_value: Number(program.rewardValue) || 100,
+    warna_tema: program.warnaTema || 'teal',
+    is_active: program.isActive !== false,
+    is_default: Boolean(program.isDefault),
+    urutan: Number(program.urutan) || 1,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await sb.from('loyalty_programs').upsert(payload, { onConflict: 'id' }).select().single();
+  if (error) throw error;
+  return { success: true, data };
+}
+
+export async function sbDeleteLoyaltyProgram(id: string): Promise<any> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { error } = await sb.from('loyalty_programs').delete().eq('id', id);
+  if (error) throw error;
+  return { success: true };
+}
+
+export async function sbAssignCustomerLoyalty(noHp: string, cardType: '75' | '45', programId: string): Promise<any> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const field = cardType === '45' ? 'assigned_card_4kg_id' : 'assigned_card_7kg_id';
+  const { error } = await sb
+    .from('pelanggan')
+    .update({ [field]: programId, updated_at: new Date().toISOString() })
+    .eq('no_hp', noHp);
+
+  if (error) throw error;
+  return { success: true };
 }

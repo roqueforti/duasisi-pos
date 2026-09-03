@@ -76,12 +76,46 @@ create table if not exists pelanggan (
     total_order int not null default 0,
     stamps_75 int not null default 0,
     stamps_45 int not null default 0,
+    assigned_card_7kg_id text default 'CARD_7KG_LEGACY',
+    assigned_card_4kg_id text default 'CARD_4KG_STANDARD',
+    reward_ready_7kg boolean default false,
+    reward_ready_4kg boolean default false,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
 
 create unique index if not exists idx_pelanggan_nohp on pelanggan(no_hp);
 create index if not exists idx_pelanggan_nama on pelanggan(lower(nama));
+
+-- ============================================================
+-- 3B. MASTER PROGRAM KARTU LOYALTY (MULTI-CARD & CUSTOM CLAIM RULES)
+-- ============================================================
+create table if not exists loyalty_programs (
+    id text primary key,
+    nama text not null,
+    deskripsi text,
+    kapasitas text not null default '7kg', -- '7kg', '4kg', 'all', 'custom'
+    syarat_layanan text not null default 'washer_dryer', -- 'washer_dryer', 'washer_only', 'all', 'custom'
+    total_stamps int not null default 10,
+    claim_rule text not null default 'FREE_ON_NEXT_TRX', -- 'FREE_ON_NTH' vs 'FREE_ON_NEXT_TRX'
+    reward_deskripsi text not null default '1x Cuci Gratis',
+    reward_type text not null default 'FREE_SERVICE', -- 'FREE_SERVICE', 'DISCOUNT_PERCENT', 'DISCOUNT_NOMINAL'
+    reward_value numeric(12,2) default 100,
+    warna_tema text not null default 'teal',
+    is_active boolean not null default true,
+    is_default boolean not null default false,
+    urutan int default 1,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+);
+
+-- Seed Default Loyalty Programs
+insert into loyalty_programs (id, nama, deskripsi, kapasitas, syarat_layanan, total_stamps, claim_rule, reward_deskripsi, reward_type, reward_value, warna_tema, is_active, is_default, urutan)
+values
+  ('CARD_7KG_LEGACY', 'Kartu 7 KG Member Lama (Free ke-10)', 'Aturan member lama: langsung klaim gratis di stempel ke-10', '7kg', 'washer_dryer', 10, 'FREE_ON_NTH', '1x Cuci Gratis 7 KG', 'FREE_SERVICE', 100, 'teal', true, false, 1),
+  ('CARD_7KG_NEW', 'Kartu 7 KG Reguler Baru (10 Stamp, ke-11 Free)', 'Aturan baru: 10 stempel penuh dulu, baru transaksi ke-11 gratis', '7kg', 'washer_dryer', 10, 'FREE_ON_NEXT_TRX', '1x Cuci Gratis 7 KG', 'FREE_SERVICE', 100, 'emerald', true, true, 2),
+  ('CARD_4KG_STANDARD', 'Kartu 4 KG Standar (10 Stamp, ke-11 Free)', 'Program kartu 4 KG: 10 stempel penuh dulu, transaksi ke-11 gratis', '4kg', 'washer_dryer', 10, 'FREE_ON_NEXT_TRX', '1x Cuci Gratis 4 KG', 'FREE_SERVICE', 100, 'gold', true, true, 3)
+on conflict (id) do nothing;
 
 -- ============================================================
 -- 4. MASTER MESIN (WASHER & DRYER)

@@ -75,6 +75,7 @@ import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { validateAttendanceSecurity } from '@/lib/attendanceSecurity';
 import { useDialog } from '@/components/DialogProvider';
 import { useDisplaySettings } from '@/components/DisplaySettingsContext';
+import { resolveCustomerProgram } from '@/lib/loyaltyUtils';
 
 export interface ExpensePhotoItem {
   id: string;
@@ -151,6 +152,10 @@ interface CustomerState {
   totalOrder?: number;
   stamps75?: number;
   stamps45?: number;
+  assignedCard7kgId?: string;
+  assignedCard4kgId?: string;
+  rewardReady7kg?: boolean;
+  rewardReady4kg?: boolean;
 }
 
 export function detectWasherAndDryer(items: Array<{ layanan: string; qty?: number; tipe?: string; kategori?: string }>): {
@@ -264,6 +269,7 @@ export default function PosView({
   const [voucherInput, setVoucherInput] = useState<string>('');
   const [voucherMsg, setVoucherMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [diskonApplied, setDiskonApplied] = useState<{ kode: string; nilai: number }>({ kode: '', nilai: 0 });
+  const [claimedLoyaltyCardType, setClaimedLoyaltyCardType] = useState<'75' | '45' | null>(null);
   const [promoList, setPromoList] = useState<any[]>([]);
   const [inventoryList, setInventoryList] = useState<any[]>([]);
   const [showRekomendasiModal, setShowRekomendasiModal] = useState<boolean>(false);
@@ -695,6 +701,78 @@ export default function PosView({
   }, 0);
   
   const grandTotal = Math.max(0, subtotalCart - diskonApplied.nilai);
+
+  // Evaluasi Hak Klaim Reward Loyalty Card Dinamis
+  const claimableRewardInfo = useMemo(() => {
+    const custObj = customerList.find(c => 
+      (customer.noHp && c.noHp === customer.noHp) || 
+      (customer.nama && customer.nama !== 'Pelanggan Umum' && c.nama === customer.nama)
+    );
+    if (!custObj && !customer.noHp) return null;
+
+    const targetCust = custObj || customer;
+    const detection = detectWasherAndDryer(cartArray);
+    const targetCard = detection.isEligible ? detection.cardType : '75';
+    const prog = resolveCustomerProgram(targetCust, targetCard);
+    const targetStamps = prog.totalStamps || 10;
+    const currentStamps = targetCard === '45' 
+      ? Number(targetCust.stamps45 || 0) 
+      : Number(targetCust.stamps75 || 0);
+
+    const washItem = cartArray.find(item => 
+      (item.layanan || '').toLowerCase().includes('cuci') || 
+      (item.layanan || '').toLowerCase().includes('washer') ||
+      (item.layanan || '').toLowerCase().includes('kiloan')
+    );
+    const washPrice = washItem ? Number(washItem.hargaSatuan) || 0 : 0;
+
+    // Mode 1: FREE_ON_NTH (Free langsung di stempel ke-10)
+    if (prog.claimRule === 'FREE_ON_NTH') {
+      const willReach = (currentStamps + (detection.isEligible ? detection.stampsToAdd : 0)) >= targetStamps;
+      if ((currentStamps >= targetStamps || willReach) && washPrice > 0) {
+        return {
+          cardType: targetCard,
+          programName: prog.nama,
+          claimRule: prog.claimRule,
+          title: `Hadiah Cuci Gratis (${targetCard === '75' ? '7 KG' : '4 KG'})`,
+          ruleText: `Member Lama: Stempel ke-${targetStamps} langsung gratis!`,
+          nominal: washPrice,
+          applied: diskonApplied.kode.startsWith('REWARD-FREE-CUCI')
+        };
+      }
+    }
+
+    // Mode 2: FREE_ON_NEXT_TRX (10 stamp penuh dulu, baru transaksi ke-11 free)
+    if (prog.claimRule === 'FREE_ON_NEXT_TRX') {
+      const isReady = currentStamps >= targetStamps || (targetCard === '45' ? targetCust.rewardReady4kg : targetCust.rewardReady7kg);
+      if (isReady && washPrice > 0) {
+        return {
+          cardType: targetCard,
+          programName: prog.nama,
+          claimRule: prog.claimRule,
+          title: `Hadiah Cuci Gratis Transaksi ke-11 (${targetCard === '75' ? '7 KG' : '4 KG'})`,
+          ruleText: `10 Stempel penuh! Klaim reward cuci gratis hari ini.`,
+          nominal: washPrice,
+          applied: diskonApplied.kode.startsWith('REWARD-FREE-CUCI')
+        };
+      }
+    }
+
+    return null;
+  }, [customerList, customer, cartArray, diskonApplied]);
+
+  const handleClaimLoyaltyReward = () => {
+    if (!claimableRewardInfo) return;
+    setDiskonApplied({
+      kode: `REWARD-FREE-CUCI-${claimableRewardInfo.cardType === '75' ? '7KG' : '4KG'}`,
+      nilai: claimableRewardInfo.nominal
+    });
+    setClaimedLoyaltyCardType(claimableRewardInfo.cardType);
+    setVoucherMsg({
+      type: 'success',
+      text: `Reward 1x Cuci Gratis diterapkan (-Rp ${claimableRewardInfo.nominal.toLocaleString('id-ID')})!`
+    });
+  };
 
   // Dynamic Recommendation Engine for POS
   const rekomendasiKasir = React.useMemo(() => {
@@ -1241,44 +1319,86 @@ export default function PosView({
       const saldoPoinBaru = isActualMember ? (saldoPoinLama + poinEarned) : 0;
 
       // =========================================================================
-      // LOYALTY STAMP AUTO-DETECTION: Washer (Cuci) + Dryer (Kering)
+      // LOYALTY STAMP / REWARD CLAIM PROCESSING
       // =========================================================================
-      const stampDetection = detectWasherAndDryer(cartArray);
       let stampInfo = null;
 
-      if (stampDetection.isEligible) {
-        const targetCardType = stampDetection.cardType; // '75' | '45'
-        const oldStamps = targetCardType === '45'
-          ? Number(currCust?.stamps45 ?? (customer as any)?.stamps45 ?? 0)
-          : Number(currCust?.stamps75 ?? (customer as any)?.stamps75 ?? 0);
-        const stampsAdded = stampDetection.stampsToAdd;
-        const newTotal = Math.min(10, oldStamps + stampsAdded);
+      if (claimedLoyaltyCardType && custHp) {
+        // KASUS A: Transaksi ini adalah KLAIM REWARD CUCI GRATIS
+        // Stempel kartu terkait di-reset kembali ke 0
+        runBackend('updateStempelPelanggan', custHp, claimedLoyaltyCardType, 0).catch(err => {
+          console.error('Failed to reset stamps after reward claim:', err);
+        });
+        setCustomerList(prev => prev.map(c => {
+          if (c.noHp === custHp || (custName !== 'Pelanggan Umum' && c.nama === custName)) {
+            return {
+              ...c,
+              [claimedLoyaltyCardType === '45' ? 'stamps45' : 'stamps75']: 0,
+              [claimedLoyaltyCardType === '45' ? 'rewardReady4kg' : 'rewardReady7kg']: false
+            };
+          }
+          return c;
+        }));
+        clearCache('getDaftarPelanggan');
 
+        const prog = resolveCustomerProgram(currCust || customer, claimedLoyaltyCardType);
         stampInfo = {
-          earned: true,
-          cardType: targetCardType,
-          cardLabel: targetCardType === '75' ? 'Kartu 7 KG (Sisi Depan)' : 'Kartu 4 KG (Sisi Belakang)',
-          stampsAdded,
-          oldStamps,
-          newTotal,
-          isRewardReady: newTotal >= 10
+          earned: false,
+          isClaimed: true,
+          cardType: claimedLoyaltyCardType,
+          cardLabel: claimedLoyaltyCardType === '75' ? 'Kartu 7 KG' : 'Kartu 4 KG',
+          programName: prog.nama,
+          claimRule: prog.claimRule,
+          stampsAdded: 0,
+          oldStamps: prog.totalStamps || 10,
+          newTotal: 0,
+          isRewardReady: false,
+          rewardMessage: `Reward 1x Cuci Gratis berhasil diklaim & kartu di-reset ke 0 stempel.`
         };
+      } else {
+        // KASUS B: Transaksi Biasa -> Auto-detection Stempel Washer + Dryer
+        const stampDetection = detectWasherAndDryer(cartArray);
+        if (stampDetection.isEligible) {
+          const targetCardType = stampDetection.cardType; // '75' | '45'
+          const currentProg = resolveCustomerProgram(currCust || customer, targetCardType);
+          const targetMax = currentProg.totalStamps || 10;
+          const oldStamps = targetCardType === '45'
+            ? Number(currCust?.stamps45 ?? (customer as any)?.stamps45 ?? 0)
+            : Number(currCust?.stamps75 ?? (customer as any)?.stamps75 ?? 0);
+          const stampsAdded = stampDetection.stampsToAdd;
+          const newTotal = Math.min(targetMax, oldStamps + stampsAdded);
+          const isTargetReached = newTotal >= targetMax;
 
-        // If phone number is present, sync with backend & update local customer list
-        if (custHp) {
-          runBackend('updateStempelPelanggan', custHp, targetCardType, newTotal).catch(err => {
-            console.error('Failed to auto-update stamps:', err);
-          });
-          setCustomerList(prev => prev.map(c => {
-            if (c.noHp === custHp || (custName !== 'Pelanggan Umum' && c.nama === custName)) {
-              return {
-                ...c,
-                [targetCardType === '45' ? 'stamps45' : 'stamps75']: newTotal
-              };
-            }
-            return c;
-          }));
-          clearCache('getDaftarPelanggan');
+          stampInfo = {
+            earned: true,
+            cardType: targetCardType,
+            cardLabel: targetCardType === '75' ? 'Kartu 7 KG (Sisi Depan)' : 'Kartu 4 KG (Sisi Belakang)',
+            programName: currentProg.nama,
+            claimRule: currentProg.claimRule,
+            stampsAdded,
+            oldStamps,
+            newTotal,
+            targetStamps: targetMax,
+            isRewardReady: isTargetReached
+          };
+
+          // If phone number is present, sync with backend & update local customer list
+          if (custHp) {
+            runBackend('updateStempelPelanggan', custHp, targetCardType, newTotal).catch(err => {
+              console.error('Failed to auto-update stamps:', err);
+            });
+            setCustomerList(prev => prev.map(c => {
+              if (c.noHp === custHp || (custName !== 'Pelanggan Umum' && c.nama === custName)) {
+                return {
+                  ...c,
+                  [targetCardType === '45' ? 'stamps45' : 'stamps75']: newTotal,
+                  [targetCardType === '45' ? 'rewardReady4kg' : 'rewardReady7kg']: isTargetReached
+                };
+              }
+              return c;
+            }));
+            clearCache('getDaftarPelanggan');
+          }
         }
       }
 
@@ -2417,8 +2537,33 @@ export default function PosView({
           )}
         </div>
 
-        {/* Voucher & Promo Input Box */}
-        <div className="px-3 py-2 bg-white border-t border-slate-100 shrink-0 space-y-1">
+        {/* Voucher & Promo Input Box & Claim Reward Bar */}
+        <div className="px-3 py-2 bg-white border-t border-slate-100 shrink-0 space-y-2">
+          
+          {/* Banner Hadiah Cuci Gratis yang Siap Diklaim */}
+          {claimableRewardInfo && !claimableRewardInfo.applied && (
+            <div className="p-2.5 bg-gradient-to-r from-amber-500/15 via-amber-400/20 to-orange-500/15 border border-amber-400/60 rounded-xl flex items-center justify-between gap-2 shadow-2xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <Gift className="w-4 h-4 text-amber-600 shrink-0 animate-bounce" />
+                <div className="truncate">
+                  <span className="font-black text-amber-950 text-xs block leading-tight truncate">
+                    {claimableRewardInfo.title}
+                  </span>
+                  <span className="text-[10px] text-amber-800 block leading-tight">
+                    {claimableRewardInfo.ruleText}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleClaimLoyaltyReward}
+                className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs rounded-lg shadow-xs cursor-pointer shrink-0 transition"
+              >
+                Klaim Gratis
+              </button>
+            </div>
+          )}
+
           {diskonApplied.nilai > 0 ? (
             <div className="flex items-center justify-between p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
               <div className="flex items-center gap-1.5 min-w-0">
@@ -2433,6 +2578,7 @@ export default function PosView({
               <button
                 onClick={() => {
                   setDiskonApplied({ kode: '', nilai: 0 });
+                  setClaimedLoyaltyCardType(null);
                   setVoucherInput('');
                   setVoucherMsg(null);
                 }}
@@ -4157,6 +4303,30 @@ export default function PosView({
                           Tersisa <strong>{10 - completedOrderData.stampInfo.newTotal} stempel</strong> lagi untuk klaim <strong>1x Cuci Gratis</strong>.
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* NOTIFIKASI KLAIM REWARD SELESAI */}
+                  {completedOrderData.stampInfo && completedOrderData.stampInfo.isClaimed && (
+                    <div className="pt-2.5 border-t border-slate-100 bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 -mx-1 p-3 rounded-2xl space-y-1.5 border-2 border-amber-300 shadow-xs animate-scale-in">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs shrink-0">
+                            <Gift className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="font-black text-amber-950 text-xs block leading-tight">
+                              🎉 Reward 1x Cuci Gratis Berhasil Diklaim!
+                            </span>
+                            <span className="text-[10px] text-amber-800 font-medium">
+                              {completedOrderData.stampInfo.rewardMessage}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="px-2.5 py-0.5 bg-amber-600 text-white text-[10px] font-extrabold rounded-full shadow-2xs whitespace-nowrap">
+                          {completedOrderData.stampInfo.cardLabel}
+                        </span>
+                      </div>
                     </div>
                   )}
 

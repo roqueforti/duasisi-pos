@@ -24,7 +24,8 @@ import {
   Coins,
   UserCheck,
   WashingMachine,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Award
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { useDialog } from '@/components/DialogProvider';
@@ -82,7 +83,7 @@ export default function Sidebar({
       await showAlert('Fitur POS Kasir hanya untuk Staff/Kasir', 'warning');
       return;
     }
-    if (['pegawai', 'payroll', 'produk', 'kategori', 'shift', 'rekap', 'keamanan', 'menu', 'langkah'].includes(tabKey) && currentRole !== 'MANAGER') {
+    if (['pegawai', 'payroll', 'produk', 'kategori', 'shift', 'rekap', 'keamanan', 'menu', 'langkah', 'loyalty_card'].includes(tabKey) && currentRole !== 'MANAGER') {
       await showAlert('Akses Ditolak — Khusus Manager/Owner', 'error');
       return;
     }
@@ -124,6 +125,7 @@ export default function Sidebar({
       items: [
         { id: 'inventory', label: 'Stok Inventory', icon: Package },
         { id: 'produk', label: 'Manajemen Layanan', icon: Tag, managerOnly: true },
+        { id: 'loyalty_card', label: 'Manajemen Kartu Loyalty', icon: Award, managerOnly: true },
         { id: 'kategori', label: 'Kategori Layanan', icon: FolderOpen, managerOnly: true },
         { id: 'langkah', label: 'Pipeline Langkah', icon: GitMerge, managerOnly: true },
         { id: 'menu', label: 'Menu Digital', icon: Sparkles, managerOnly: true }

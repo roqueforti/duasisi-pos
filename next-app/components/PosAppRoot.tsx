@@ -23,6 +23,7 @@ import PayrollView from '@/components/PayrollView';
 import KeamananView from '@/components/KeamananView';
 import MesinView from '@/components/MesinView';
 import DuplicateCodesModal from '@/components/DuplicateCodesModal';
+import LoyaltyCardView from '@/components/LoyaltyCardView';
 import { UserRole, DuplicateGroup } from '@/lib/types';
 import {
   clearBackendSession,
@@ -39,12 +40,12 @@ import { useGlobalNotifications } from '@/lib/useGlobalNotifications';
 const VALID_TABS = [
   'dashboard', 'transaksi', 'riwayat', 'pesanan', 'mesin', 'absensi',
   'shift_saya', 'pengeluaran', 'riwayat_shift',
-  'pelanggan', 'inventory', 'pegawai', 'payroll', 'produk',
+  'pelanggan', 'inventory', 'pegawai', 'payroll', 'produk', 'loyalty_card',
   'kategori', 'langkah', 'shift', 'menu', 'rekap', 'keamanan'
 ];
 
 const MANAGER_ONLY_TABS = [
-  'pegawai', 'payroll', 'produk', 'kategori', 'langkah',
+  'pegawai', 'payroll', 'produk', 'loyalty_card', 'kategori', 'langkah',
   'shift', 'menu', 'rekap', 'keamanan'
 ];
 
@@ -287,6 +288,7 @@ export default function PosAppRoot() {
               {currentTab === 'pegawai' && <PegawaiView currentRole={currentRole} />}
               {currentTab === 'payroll' && <PayrollView currentRole={currentRole} />}
               {currentTab === 'produk' && <ProdukView currentRole={currentRole} />}
+              {currentTab === 'loyalty_card' && <LoyaltyCardView currentRole={currentRole} />}
               {currentTab === 'kategori' && <KategoriView currentRole={currentRole} />}
               {currentTab === 'langkah' && <LangkahView currentRole={currentRole} />}
               {currentTab === 'shift' && <ShiftView currentRole={currentRole} />}

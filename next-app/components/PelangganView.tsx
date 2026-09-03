@@ -28,12 +28,13 @@ import {
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { maskPhone, eNotaUrl, formatFriendlyErrorMessage } from '@/lib/utils';
-import { UserRole, Transaksi } from '@/lib/types';
+import { UserRole, Transaksi, LoyaltyProgram } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import DigitalMemberCard from '@/components/DigitalMemberCard';
 import ImportProgressToast from '@/components/ImportProgressToast';
+import { fetchLoyaltyPrograms, getLoyaltyProgramsLocal } from '@/lib/loyaltyUtils';
 
 export interface PelangganItem {
   noHp: string;
@@ -55,11 +56,16 @@ export interface PelangganItem {
   stamps45?: number;
   rewardClaimed75?: number;
   rewardClaimed45?: number;
+  assignedCard7kgId?: string;
+  assignedCard4kgId?: string;
+  rewardReady7kg?: boolean;
+  rewardReady4kg?: boolean;
 }
 
 export default function PelangganView({ currentRole }: { currentRole?: UserRole } = {}) {
   const { showAlert } = useDialog();
   const [pelangganList, setPelangganList] = useState<PelangganItem[]>([]);
+  const [loyaltyPrograms, setLoyaltyPrograms] = useState<LoyaltyProgram[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [poinRate, setPoinRate] = useState<number>(10000);
   const [search, setSearch] = useState<string>('');
@@ -97,6 +103,8 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const [editStatusMember, setEditStatusMember] = useState<boolean>(false);
   const [editStamps75, setEditStamps75] = useState<number>(0);
   const [editStamps45, setEditStamps45] = useState<number>(0);
+  const [editAssignedCard7kg, setEditAssignedCard7kg] = useState<string>('CARD_7KG_LEGACY');
+  const [editAssignedCard4kg, setEditAssignedCard4kg] = useState<string>('CARD_4KG_STANDARD');
   
   // History list for selected customer
   const [historyList, setHistoryList] = useState<Transaksi[]>([]);
@@ -106,11 +114,14 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   const loadDataPelanggan = async () => {
     setLoading(true);
     try {
-      const data = await runBackend<PelangganItem[]>('getDaftarPelanggan');
+      const [data, conf, progs] = await Promise.all([
+        runBackend<PelangganItem[]>('getDaftarPelanggan'),
+        runBackend<{ rate: number }>('getPoinConfig').catch(() => ({ rate: 10000 })),
+        fetchLoyaltyPrograms().catch(() => getLoyaltyProgramsLocal())
+      ]);
       if (Array.isArray(data)) setPelangganList(data);
-      
-      const conf = await runBackend<{ rate: number }>('getPoinConfig');
       if (conf && conf.rate) setPoinRate(conf.rate);
+      if (Array.isArray(progs)) setLoyaltyPrograms(progs);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -132,6 +143,8 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
     setEditStatusMember(cust.isMember || cust.statusMember === 'MEMBER');
     setEditStamps75(cust.stamps75 ?? 0);
     setEditStamps45(cust.stamps45 ?? 0);
+    setEditAssignedCard7kg(cust.assignedCard7kgId || 'CARD_7KG_LEGACY');
+    setEditAssignedCard4kg(cust.assignedCard4kgId || 'CARD_4KG_STANDARD');
     setShowDetailModal(true);
 
     // Fetch customer transactions history
@@ -191,9 +204,13 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
           statusMember: editStatusMember ? 'MEMBER' : 'UMUM',
           statusKategori: editStatusMember ? 'Member' : (prev.totalOrder > 1 ? 'Pelanggan Lama' : 'Pelanggan Baru'),
           stamps75: editStamps75,
-          stamps45: editStamps45
+          stamps45: editStamps45,
+          assignedCard7kgId: editAssignedCard7kg,
+          assignedCard4kgId: editAssignedCard4kg
         } : null);
-        await showAlert('Data pelanggan & stempel berhasil disimpan!', 'success');
+        runBackend('assignCustomerLoyalty', editNoHp.trim(), '75', editAssignedCard7kg).catch(() => null);
+        runBackend('assignCustomerLoyalty', editNoHp.trim(), '45', editAssignedCard4kg).catch(() => null);
+        await showAlert('Data pelanggan, stempel & kartu loyalty berhasil disimpan!', 'success');
         loadDataPelanggan();
       } else {
         await showAlert(res?.message || 'Gagal menyimpan perubahan data pelanggan.', 'error');
@@ -582,6 +599,80 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs outline-none focus:border-[#1E4648] focus:bg-white"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">Instruksi otomatis yang selalu muncul setiap kali pelanggan ini memesan.</p>
+              </div>
+
+              {/* Program Kartu Loyalty Ditugaskan (Multi-Program Assignment) */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-amber-600" />
+                    <span className="font-extrabold text-xs text-slate-900">Program Kartu Loyalty Ditugaskan</span>
+                  </div>
+                  <span className="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">
+                    Aturan Klaim
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Program Kartu 7 KG (Sisi Depan)
+                    </label>
+                    <select
+                      value={editAssignedCard7kg}
+                      disabled={currentRole !== 'MANAGER'}
+                      onChange={(e) => {
+                        const newId = e.target.value;
+                        setEditAssignedCard7kg(newId);
+                        setSelectedCust(prev => prev ? { ...prev, assignedCard7kgId: newId } : null);
+                        setPelangganList(prev => prev.map(c => c.noHp === selectedCust?.noHp ? { ...c, assignedCard7kgId: newId } : c));
+                        runBackend('assignCustomerLoyalty', selectedCust?.noHp, '75', newId).catch(() => null);
+                      }}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-teal-600 disabled:bg-slate-100"
+                    >
+                      {loyaltyPrograms.filter(p => p.kapasitas === '7kg' || p.kapasitas === 'all').map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.nama} ({p.claimRule === 'FREE_ON_NTH' ? 'Free di Stempel ke-10' : '10 Stamp, ke-11 Free'})
+                        </option>
+                      ))}
+                    </select>
+                    {(() => {
+                      const curProg = loyaltyPrograms.find(p => p.id === editAssignedCard7kg) || loyaltyPrograms[0];
+                      const isNth = curProg?.claimRule === 'FREE_ON_NTH';
+                      return (
+                        <span className={`text-[10px] font-semibold block mt-1 ${isNth ? 'text-teal-700' : 'text-emerald-700'}`}>
+                          {isNth 
+                            ? '🟢 Mode Member Lama: Free langsung di transaksi stempel ke-10.' 
+                            : '🔵 Mode Member Baru: 10 stamp penuh dulu, baru transaksi ke-11 free.'}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Program Kartu 4 KG (Sisi Belakang)
+                    </label>
+                    <select
+                      value={editAssignedCard4kg}
+                      disabled={currentRole !== 'MANAGER'}
+                      onChange={(e) => {
+                        const newId = e.target.value;
+                        setEditAssignedCard4kg(newId);
+                        setSelectedCust(prev => prev ? { ...prev, assignedCard4kgId: newId } : null);
+                        setPelangganList(prev => prev.map(c => c.noHp === selectedCust?.noHp ? { ...c, assignedCard4kgId: newId } : c));
+                        runBackend('assignCustomerLoyalty', selectedCust?.noHp, '45', newId).catch(() => null);
+                      }}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-teal-600 disabled:bg-slate-100"
+                    >
+                      {loyaltyPrograms.filter(p => p.kapasitas === '4kg' || p.kapasitas === 'all').map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.nama} ({p.claimRule === 'FREE_ON_NTH' ? 'Free di Stempel ke-10' : '10 Stamp, ke-11 Free'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
               {/* Form Input Stempel Awal / Koreksi Stempel */}

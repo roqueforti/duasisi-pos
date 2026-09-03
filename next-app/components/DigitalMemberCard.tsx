@@ -16,6 +16,7 @@ import {
 import { PelangganItem } from '@/components/PelangganView';
 import { useDialog } from '@/components/DialogProvider';
 import ClickSpark from '@/components/ClickSpark';
+import { resolveCustomerProgram } from '@/lib/loyaltyUtils';
 import './DigitalMemberCard.css';
 
 interface DigitalMemberCardProps {
@@ -75,8 +76,11 @@ export default function DigitalMemberCard({
 
   const isFlipped = activeCardType === '45';
   const currentStamps = activeCardType === '75' ? localStamps75 : localStamps45;
-  const isRewardReady = currentStamps >= 10;
-  const remainingStamps = Math.max(0, 10 - currentStamps);
+  const currentProg = resolveCustomerProgram(customer, activeCardType);
+  const targetStamps = currentProg.totalStamps || 10;
+  const isRewardReady = currentStamps >= targetStamps;
+  const isLegacyClaim = currentProg.claimRule === 'FREE_ON_NTH';
+  const remainingStamps = Math.max(0, targetStamps - currentStamps);
 
   const toggleCardSide = () => {
     setActiveCardType(prev => prev === '75' ? '45' : '75');
@@ -110,9 +114,12 @@ export default function DigitalMemberCard({
   };
 
   const handleClaimReward = async () => {
-    const cardTitle = activeCardType === '75' ? '7 KG (Sisi Depan)' : '4 KG (Sisi Belakang)';
+    const cardTitle = `${currentProg.nama} (${activeCardType === '75' ? '7 KG' : '4 KG'})`;
+    const claimRuleText = isLegacyClaim 
+      ? 'Klaim Gratis Langsung di Stempel ke-10 (Member Lama)' 
+      : 'Klaim Cuci Gratis Transaksi ke-11 (10 Stamp Terkumpul)';
     const confirmed = await showConfirm(
-      `Klaim Reward Cuci Gratis untuk Kartu ${cardTitle} atas nama ${customer.nama}?\n\nStempel kartu ini akan di-reset kembali ke 0.`,
+      `Klaim Reward Cuci Gratis untuk Kartu ${cardTitle} atas nama ${customer.nama}?\n\nAturan: ${claimRuleText}\n\nStempel kartu ini akan di-reset kembali ke 0.`,
       'Konfirmasi Klaim Reward'
     );
     if (!confirmed) return;
@@ -124,7 +131,7 @@ export default function DigitalMemberCard({
       setLocalStamps45(0);
       onUpdateStamps?.('45', 0);
     }
-    await showAlert(`Selamat! Reward 1x Cuci Gratis ${activeCardType === '75' ? '7 KG' : '4 KG'} berhasil diklaim dan kartu di-reset ke 0 stempel.`, 'success');
+    await showAlert(`Selamat! Reward 1x Cuci Gratis ${activeCardType === '75' ? '7 KG' : '4 KG'} (${claimRuleText}) berhasil diklaim dan kartu di-reset ke 0 stempel.`, 'success');
   };
 
   const handleDownloadPNG = async () => {
@@ -457,7 +464,7 @@ export default function DigitalMemberCard({
         </div>
 
         {/* ========================================================================= */}
-        {/* REWARD BANNER (IF 10/10 REACHED) */}
+        {/* REWARD BANNER (IF TARGET REACHED) */}
         {/* ========================================================================= */}
         {isRewardReady && (
           <div className="dmc-reward-banner">
@@ -466,9 +473,18 @@ export default function DigitalMemberCard({
                 <Gift className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-sm font-black tracking-tight">TARGET 10 STEMPEL TERCAPAI</div>
+                <div className="text-sm font-black tracking-tight flex items-center gap-2">
+                  <span>TARGET {targetStamps} STEMPEL TERCAPAI</span>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-900 text-amber-300 text-[10px] font-bold">
+                    {isLegacyClaim ? 'Free di ke-10' : 'Transaksi ke-11 Free'}
+                  </span>
+                </div>
                 <div className="text-xs font-semibold text-slate-800">
-                  Pelanggan berhak mendapatkan <strong>1x Cuci Gratis ({activeCardType === '75' ? '7 KG' : '4 KG'})</strong>.
+                  {isLegacyClaim ? (
+                    <>Pelanggan berhak <strong>langsung cuci gratis</strong> pada transaksi stempel ke-{targetStamps} ini.</>
+                  ) : (
+                    <>10 Stempel penuh! Pelanggan berhak <strong>1x Cuci Gratis</strong> pada <strong>transaksi berikutnya (kunjungan ke-11)</strong>.</>
+                  )}
                 </div>
               </div>
             </div>
