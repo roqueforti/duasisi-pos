@@ -601,7 +601,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div className="bg-white p-2.5 rounded-lg border border-teal-100 shadow-2xs">
                     <div className="flex items-center justify-between mb-1">
-                      <label className="font-bold text-slate-700 text-[11px]">Sisi Depan (7,5 KG)</label>
+                      <label className="font-bold text-slate-700 text-[11px]">Sisi Depan (7 KG)</label>
                       <span className="text-[10px] font-mono font-bold text-teal-700">{editStamps75}/10</span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -648,7 +648,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
 
                   <div className="bg-white p-2.5 rounded-lg border border-teal-100 shadow-2xs">
                     <div className="flex items-center justify-between mb-1">
-                      <label className="font-bold text-slate-700 text-[11px]">Sisi Belakang (4,5 KG)</label>
+                      <label className="font-bold text-slate-700 text-[11px]">Sisi Belakang (4 KG)</label>
                       <span className="text-[10px] font-mono font-bold text-teal-700">{editStamps45}/10</span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -1269,7 +1269,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div className="bg-white p-2.5 rounded-lg border border-teal-100 shadow-2xs">
                     <div className="flex items-center justify-between mb-1">
-                      <label className="font-bold text-slate-700 text-[11px]">Sisi Depan (7,5 KG)</label>
+                      <label className="font-bold text-slate-700 text-[11px]">Sisi Depan (7 KG)</label>
                       <span className="text-[10px] font-mono font-bold text-teal-700">{addStamps75}/10</span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -1305,7 +1305,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
 
                   <div className="bg-white p-2.5 rounded-lg border border-teal-100 shadow-2xs">
                     <div className="flex items-center justify-between mb-1">
-                      <label className="font-bold text-slate-700 text-[11px]">Sisi Belakang (4,5 KG)</label>
+                      <label className="font-bold text-slate-700 text-[11px]">Sisi Belakang (4 KG)</label>
                       <span className="text-[10px] font-mono font-bold text-teal-700">{addStamps45}/10</span>
                     </div>
                     <div className="flex items-center gap-1.5">

@@ -84,7 +84,7 @@ export default function DigitalMemberCard({
 
   const handleAddStamp = async () => {
     if (currentStamps >= 10) {
-      await showAlert(`Stempel Kartu ${activeCardType === '75' ? '7,5 KG' : '4,5 KG'} sudah penuh (10/10)! Silakan klaim reward cuci gratis terlebih dahulu.`, 'info');
+      await showAlert(`Stempel Kartu ${activeCardType === '75' ? '7 KG' : '4 KG'} sudah penuh (10/10)! Silakan klaim reward cuci gratis terlebih dahulu.`, 'info');
       return;
     }
     const nextVal = currentStamps + 1;
@@ -110,7 +110,7 @@ export default function DigitalMemberCard({
   };
 
   const handleClaimReward = async () => {
-    const cardTitle = activeCardType === '75' ? '7,5 KG (Sisi Depan)' : '4,5 KG (Sisi Belakang)';
+    const cardTitle = activeCardType === '75' ? '7 KG (Sisi Depan)' : '4 KG (Sisi Belakang)';
     const confirmed = await showConfirm(
       `Klaim Reward Cuci Gratis untuk Kartu ${cardTitle} atas nama ${customer.nama}?\n\nStempel kartu ini akan di-reset kembali ke 0.`,
       'Konfirmasi Klaim Reward'
@@ -124,7 +124,7 @@ export default function DigitalMemberCard({
       setLocalStamps45(0);
       onUpdateStamps?.('45', 0);
     }
-    await showAlert(`Selamat! Reward 1x Cuci Gratis ${activeCardType === '75' ? '7,5 KG' : '4,5 KG'} berhasil diklaim dan kartu di-reset ke 0 stempel.`, 'success');
+    await showAlert(`Selamat! Reward 1x Cuci Gratis ${activeCardType === '75' ? '7 KG' : '4 KG'} berhasil diklaim dan kartu di-reset ke 0 stempel.`, 'success');
   };
 
   const handleDownloadPNG = async () => {
@@ -141,7 +141,7 @@ export default function DigitalMemberCard({
           transformStyle: 'flat'
         }
       });
-      const sideName = activeCardType === '75' ? '7.5KG-Depan' : '4.5KG-Belakang';
+      const sideName = activeCardType === '75' ? '7KG-Depan' : '4KG-Belakang';
       const link = document.createElement('a');
       link.download = `Member-Card-${sideName}-${(customer.nama || 'member').replace(/\s+/g, '_')}.png`;
       link.href = dataUrl;
@@ -161,8 +161,8 @@ export default function DigitalMemberCard({
       `Halo Kak *${customer.nama || 'Pelanggan'}*!`,
       `Berikut adalah update *Digital Member Loyalty Stamp Card* Anda di *Dua SiSi Laundry*:`,
       ``,
-      `🧺 *Sisi Depan (Kartu 7,5 KG)*: *${localStamps75}/10 Stempel* ${localStamps75 >= 10 ? '🎉 (SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - localStamps75)} stempel lagi)`}`,
-      `🧺 *Sisi Belakang (Kartu 4,5 KG)*: *${localStamps45}/10 Stempel* ${localStamps45 >= 10 ? '🎉 (SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - localStamps45)} stempel lagi)`}`,
+      `🧺 *Sisi Depan (Kartu 7 KG)*: *${localStamps75}/10 Stempel* ${localStamps75 >= 10 ? '🎉 (SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - localStamps75)} stempel lagi)`}`,
+      `🧺 *Sisi Belakang (Kartu 4 KG)*: *${localStamps45}/10 Stempel* ${localStamps45 >= 10 ? '🎉 (SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - localStamps45)} stempel lagi)`}`,
       ``,
       `Kumpulkan 10 stempel penuh untuk mendapatkan *1x Cuci GRATIS*! Tunjukkan pesan atau kartu digital ini saat berkunjung ke outlet.`,
       ``,
@@ -235,21 +235,19 @@ export default function DigitalMemberCard({
           {/* 3. "MEMBER CARD" Big Crisp Title */}
           <path d="M974.182 355.469H1014.45L1048.61 438.762H1050.18L1084.34 355.469H1124.61V490H1092.95V407.363H1091.83L1059.51 489.146H1039.28L1006.96 406.903H1005.84V490H974.182V355.469ZM1144.89 490V355.469H1238.7V381.876H1177.41V409.465H1233.9V435.938H1177.41V463.593H1238.7V490H1144.89ZM1259.06 355.469H1299.33L1333.49 438.762H1335.06L1369.22 355.469H1409.49V490H1377.83V407.363H1376.71L1344.39 489.146H1324.16L1291.84 406.903H1290.72V490H1259.06V355.469ZM1429.77 490V355.469H1485.87C1495.94 355.469 1504.37 356.892 1511.16 359.738C1517.99 362.585 1523.11 366.57 1526.53 371.694C1529.99 376.818 1531.72 382.752 1531.72 389.496C1531.72 394.619 1530.65 399.196 1528.5 403.225C1526.35 407.21 1523.4 410.516 1519.63 413.144C1515.87 415.771 1511.51 417.611 1506.56 418.662V419.975C1511.99 420.238 1517 421.705 1521.6 424.377C1526.24 427.048 1529.97 430.77 1532.77 435.544C1535.57 440.273 1536.97 445.879 1536.97 452.36C1536.97 459.586 1535.13 466.045 1531.46 471.738C1527.78 477.388 1522.46 481.855 1515.49 485.139C1508.53 488.38 1500.08 490 1490.14 490H1429.77ZM1462.29 463.79H1482.39C1489.44 463.79 1494.63 462.454 1497.95 459.783C1501.33 457.112 1503.01 453.389 1503.01 448.616C1503.01 445.156 1502.2 442.178 1500.58 439.682C1498.96 437.142 1496.66 435.193 1493.68 433.836C1490.71 432.434 1487.14 431.734 1482.98 431.734H1462.29V463.79ZM1462.29 410.779H1480.28C1483.83 410.779 1486.98 410.188 1489.74 409.005C1492.5 407.823 1494.65 406.115 1496.18 403.882C1497.76 401.648 1498.55 398.955 1498.55 395.802C1498.55 391.291 1496.95 387.744 1493.75 385.16C1490.55 382.576 1486.24 381.284 1480.81 381.284H1462.29V410.779ZM1552.61 490V355.469H1646.41V381.876H1585.12V409.465H1641.62V435.938H1585.12V463.593H1646.41V490H1552.61ZM1666.78 490V355.469H1722.35C1732.42 355.469 1741.11 357.286 1748.43 360.921C1755.78 364.512 1761.46 369.679 1765.44 376.423C1769.43 383.124 1771.42 391.072 1771.42 400.269C1771.42 409.596 1769.38 417.523 1765.31 424.048C1761.24 430.529 1755.46 435.478 1747.97 438.894C1740.48 442.266 1731.61 443.952 1721.36 443.952H1686.22V418.333H1715.32C1720.22 418.333 1724.32 417.698 1727.6 416.428C1730.93 415.114 1733.45 413.144 1735.16 410.516C1736.87 407.845 1737.72 404.429 1737.72 400.269C1737.72 396.108 1736.87 392.671 1735.16 389.955C1733.45 387.196 1730.93 385.138 1727.6 383.781C1724.28 382.379 1720.18 381.679 1715.32 381.679H1699.29V490H1666.78ZM1742.51 428.515L1776.02 490H1740.54L1707.7 428.515H1742.51ZM1951.11 404.21H1918.27C1917.83 400.838 1916.93 397.794 1915.57 395.079C1914.22 392.364 1912.42 390.043 1910.19 388.116C1907.95 386.189 1905.3 384.722 1902.24 383.715C1899.22 382.664 1895.87 382.138 1892.19 382.138C1885.66 382.138 1880.04 383.737 1875.31 386.934C1870.62 390.131 1867.01 394.751 1864.47 400.794C1861.97 406.838 1860.72 414.151 1860.72 422.734C1860.72 431.668 1861.99 439.157 1864.53 445.2C1867.12 451.2 1870.73 455.732 1875.37 458.798C1880.06 461.819 1885.6 463.33 1891.99 463.33C1895.58 463.33 1898.84 462.87 1901.78 461.951C1904.76 461.031 1907.36 459.695 1909.6 457.944C1911.87 456.148 1913.73 453.98 1915.18 451.44C1916.67 448.857 1917.7 445.944 1918.27 442.704L1951.11 442.901C1950.54 448.857 1948.81 454.725 1945.92 460.506C1943.07 466.286 1939.16 471.563 1934.16 476.337C1929.17 481.066 1923.08 484.832 1915.9 487.635C1908.76 490.438 1900.57 491.839 1891.33 491.839C1879.16 491.839 1868.25 489.168 1858.62 483.825C1849.03 478.439 1841.45 470.6 1835.89 460.309C1830.33 450.017 1827.55 437.492 1827.55 422.734C1827.55 407.932 1830.37 395.386 1836.02 385.094C1841.67 374.803 1849.31 366.986 1858.95 361.643C1868.58 356.301 1879.38 353.629 1891.33 353.629C1899.48 353.629 1907.01 354.768 1913.93 357.045C1920.85 359.279 1926.94 362.563 1932.19 366.899C1937.45 371.19 1941.72 376.467 1945 382.73C1948.29 388.992 1950.32 396.152 1951.11 404.21ZM1995.39 490H1960.44L2005.83 355.469H2049.12L2094.51 490H2059.56L2027.97 389.364H2026.92L1995.39 490ZM1990.72 437.055H2063.77V461.754H1990.72V437.055ZM2108.99 490V355.469H2164.57C2174.64 355.469 2183.33 357.286 2190.65 360.921C2198 364.512 2203.67 369.679 2207.66 376.423C2211.65 383.124 2213.64 391.072 2213.64 400.269C2213.64 409.596 2211.6 417.523 2207.53 424.048C2203.46 430.529 2197.68 435.478 2190.19 438.894C2182.7 442.266 2173.83 443.952 2163.58 443.952H2128.44V418.333H2157.54C2162.44 418.333 2166.54 417.698 2169.82 416.428C2173.15 415.114 2175.67 413.144 2177.38 410.516C2179.09 407.845 2179.94 404.429 2179.94 400.269C2179.94 396.108 2179.09 392.671 2177.38 389.955C2175.67 387.196 2173.15 385.138 2169.82 383.781C2166.49 382.379 2162.4 381.679 2157.54 381.679H2141.51V490H2108.99ZM2184.73 428.515L2218.24 490H2182.76L2149.92 428.515H2184.73ZM2281.2 490H2231.47V355.469H2281.13C2294.84 355.469 2306.64 358.162 2316.54 363.548C2326.48 368.891 2334.14 376.599 2339.53 386.671C2344.92 396.7 2347.61 408.699 2347.61 422.669C2347.61 436.682 2344.92 448.725 2339.53 458.798C2334.19 468.87 2326.55 476.599 2316.61 481.986C2306.66 487.329 2294.86 490 2281.2 490ZM2263.99 462.279H2279.95C2287.48 462.279 2293.86 461.009 2299.07 458.469C2304.32 455.885 2308.28 451.703 2310.96 445.923C2313.67 440.098 2315.03 432.347 2315.03 422.669C2315.03 412.99 2313.67 405.283 2310.96 399.546C2308.24 393.765 2304.23 389.605 2298.93 387.065C2293.68 384.481 2287.2 383.189 2279.49 383.189H2263.99V462.279Z" fill="white"/>
 
-          {/* 4. Top-Right Weight Badge (7,5 or 4,5) */}
+          {/* 4. Top-Right Weight Badge (7 KG or 4 KG) */}
           <circle cx="2942" cy="261" r="156" fill="white" />
-          {type === '75' ? (
-            <g>
-              <path d="M2862.24 295.289L2899.06 222.365V221.785H2856V204H2921.88V221.919L2884.93 295.289H2862.24Z" fill="black"/>
-              <path d="M2940.73 282.808L2940.32 287.756C2939.97 291.857 2939.24 295.854 2938.14 299.747C2937.07 303.669 2935.93 307.191 2934.71 310.311C2933.49 313.431 2932.52 315.853 2931.81 317.577H2918.08C2918.56 315.853 2919.2 313.431 2920 310.311C2920.83 307.191 2921.6 303.669 2922.32 299.747C2923.03 295.824 2923.43 291.842 2923.52 287.801L2923.61 282.808H2940.73Z" fill="black"/>
-              <path d="M2991.86 296.537C2985.21 296.537 2979.29 295.334 2974.12 292.927C2968.95 290.52 2964.87 287.206 2961.87 282.987C2958.89 278.767 2957.35 273.923 2957.23 268.455H2978.63C2978.8 271.813 2980.17 274.517 2982.73 276.568C2985.28 278.588 2988.33 279.599 2991.86 279.599C2994.63 279.599 2997.08 278.99 2999.22 277.771C3001.36 276.553 3003.04 274.844 3004.26 272.645C3005.47 270.416 3006.07 267.861 3006.04 264.978C3006.07 262.036 3005.46 259.466 3004.21 257.267C3002.99 255.068 3001.3 253.359 2999.13 252.141C2996.99 250.893 2994.52 250.269 2991.73 250.269C2989.09 250.239 2986.57 250.818 2984.2 252.007C2981.85 253.196 2980.07 254.815 2978.85 256.866L2959.37 253.211L2963.34 204H3021.91V221.785H2981.48L2979.38 243.315H2979.92C2981.43 240.789 2983.87 238.709 2987.23 237.074C2990.62 235.41 2994.46 234.578 2998.77 234.578C3004.24 234.578 3009.11 235.856 3013.39 238.412C3017.7 240.938 3021.09 244.444 3023.56 248.931C3026.05 253.419 3027.3 258.56 3027.3 264.354C3027.3 270.624 3025.82 276.181 3022.84 281.025C3019.9 285.869 3015.77 289.673 3010.45 292.436C3005.16 295.17 2998.97 296.537 2991.86 296.537Z" fill="black"/>
-            </g>
-          ) : (
-            <g>
-              <path d="M2898 204L2856 270H2898V295H2918V270H2928V253H2918V204H2898ZM2877 253L2898 221V253H2877Z" fill="black"/>
-              <path d="M2940.73 282.808L2940.32 287.756C2939.97 291.857 2939.24 295.854 2938.14 299.747C2937.07 303.669 2935.93 307.191 2934.71 310.311C2933.49 313.431 2932.52 315.853 2931.81 317.577H2918.08C2918.56 315.853 2919.2 313.431 2920 310.311C2920.83 307.191 2921.6 303.669 2922.32 299.747C2923.03 295.824 2923.43 291.842 2923.52 287.801L2923.61 282.808H2940.73Z" fill="black"/>
-              <path d="M2991.86 296.537C2985.21 296.537 2979.29 295.334 2974.12 292.927C2968.95 290.52 2964.87 287.206 2961.87 282.987C2958.89 278.767 2957.35 273.923 2957.23 268.455H2978.63C2978.8 271.813 2980.17 274.517 2982.73 276.568C2985.28 278.588 2988.33 279.599 2991.86 279.599C2994.63 279.599 2997.08 278.99 2999.22 277.771C3001.36 276.553 3003.04 274.844 3004.26 272.645C3005.47 270.416 3006.07 267.861 3006.04 264.978C3006.07 262.036 3005.46 259.466 3004.21 257.267C3002.99 255.068 3001.3 253.359 2999.13 252.141C2996.99 250.893 2994.52 250.269 2991.73 250.269C2989.09 250.239 2986.57 250.818 2984.2 252.007C2981.85 253.196 2980.07 254.815 2978.85 256.866L2959.37 253.211L2963.34 204H3021.91V221.785H2981.48L2979.38 243.315H2979.92C2981.43 240.789 2983.87 238.709 2987.23 237.074C2990.62 235.41 2994.46 234.578 2998.77 234.578C3004.24 234.578 3009.11 235.856 3013.39 238.412C3017.7 240.938 3021.09 244.444 3023.56 248.931C3026.05 253.419 3027.3 258.56 3027.3 264.354C3027.3 270.624 3025.82 276.181 3022.84 281.025C3019.9 285.869 3015.77 289.673 3010.45 292.436C3005.16 295.17 2998.97 296.537 2991.86 296.537Z" fill="black"/>
-            </g>
-          )}
+          <text
+            x="2942"
+            y="300"
+            textAnchor="middle"
+            fill="#000000"
+            fontSize="140"
+            fontWeight="900"
+            fontFamily="sans-serif"
+          >
+            {type === '75' ? '7' : '4'}
+          </text>
 
           {/* 5. Customer Name Pill */}
           <rect x="224" y="554" width="1450" height="248" rx="48" fill="white" />
@@ -393,7 +391,7 @@ export default function DigitalMemberCard({
               onClick={() => setActiveCardType('75')}
               className={`dmc-tab-btn ${activeCardType === '75' ? 'active' : ''}`}
             >
-              <span>Kartu 7,5 KG</span>
+              <span>Kartu 7 KG</span>
               <span className="dmc-tab-count">
                 {localStamps75}/10
               </span>
@@ -405,7 +403,7 @@ export default function DigitalMemberCard({
               onClick={() => setActiveCardType('45')}
               className={`dmc-tab-btn ${activeCardType === '45' ? 'active' : ''}`}
             >
-              <span>Kartu 4,5 KG</span>
+              <span>Kartu 4 KG</span>
               <span className="dmc-tab-count">
                 {localStamps45}/10
               </span>
@@ -424,8 +422,8 @@ export default function DigitalMemberCard({
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>
                 {activeCardType === '75' 
-                  ? `Sisi Depan: Kartu 7,5 KG (${localStamps75}/10 Stempel)` 
-                  : `Sisi Belakang: Kartu 4,5 KG (${localStamps45}/10 Stempel)`}
+                  ? `Sisi Depan: Kartu 7 KG (${localStamps75}/10 Stempel)` 
+                  : `Sisi Belakang: Kartu 4 KG (${localStamps45}/10 Stempel)`}
               </span>
             </div>
             
@@ -436,7 +434,7 @@ export default function DigitalMemberCard({
               title="Balik Kartu Member (3D Flip)"
             >
               <RotateCw className={`w-3.5 h-3.5 transition-transform duration-500 ${isFlipped ? 'rotate-180 text-amber-300' : ''}`} />
-              <span>{activeCardType === '75' ? 'Balik ke Kartu 4,5 KG' : 'Balik ke Kartu 7,5 KG'}</span>
+              <span>{activeCardType === '75' ? 'Balik ke Kartu 4 KG' : 'Balik ke Kartu 7 KG'}</span>
             </button>
           </div>
 
@@ -448,10 +446,10 @@ export default function DigitalMemberCard({
           >
             <div className={`dmc-flip-inner ${isFlipped ? 'is-flipped' : ''}`}>
               
-              {/* SISI DEPAN (FRONT FACE - 7,5 KG) */}
+              {/* SISI DEPAN (FRONT FACE - 7 KG) */}
               {renderCardSvg('75', localStamps75, cardFrontRef)}
 
-              {/* SISI BELAKANG (BACK FACE - 4,5 KG) */}
+              {/* SISI BELAKANG (BACK FACE - 4 KG) */}
               {renderCardSvg('45', localStamps45, cardBackRef)}
 
             </div>
@@ -470,7 +468,7 @@ export default function DigitalMemberCard({
               <div>
                 <div className="text-sm font-black tracking-tight">TARGET 10 STEMPEL TERCAPAI</div>
                 <div className="text-xs font-semibold text-slate-800">
-                  Pelanggan berhak mendapatkan <strong>1x Cuci Gratis ({activeCardType === '75' ? '7,5 KG' : '4,5 KG'})</strong>.
+                  Pelanggan berhak mendapatkan <strong>1x Cuci Gratis ({activeCardType === '75' ? '7 KG' : '4 KG'})</strong>.
                 </div>
               </div>
             </div>
@@ -502,14 +500,14 @@ export default function DigitalMemberCard({
                   onClick={handleSubtractStamp}
                   disabled={currentStamps <= 0}
                   className="dmc-btn-stepper-minus"
-                  title={`Kurangi Stempel ${activeCardType === '75' ? '7,5 KG' : '4,5 KG'} (-1)`}
+                  title={`Kurangi Stempel ${activeCardType === '75' ? '7 KG' : '4 KG'} (-1)`}
                 >
                   <Minus className="w-4 h-4" />
                 </button>
 
                 <div className="dmc-counter-pill">
                   <span className="dmc-counter-label">
-                    {activeCardType === '75' ? '7,5 KG' : '4,5 KG'}
+                    {activeCardType === '75' ? '7 KG' : '4 KG'}
                   </span>
                   <span className="dmc-counter-val">
                     {currentStamps} / 10
@@ -521,7 +519,7 @@ export default function DigitalMemberCard({
                   onClick={handleAddStamp}
                   disabled={currentStamps >= 10}
                   className="dmc-btn-stamp-add"
-                  title={`Tambah Stempel ${activeCardType === '75' ? '7,5 KG' : '4,5 KG'} (+1)`}
+                  title={`Tambah Stempel ${activeCardType === '75' ? '7 KG' : '4 KG'} (+1)`}
                 >
                   <Plus className="w-4 h-4" />
                   <span>Beri Stempel (+1)</span>
@@ -539,7 +537,7 @@ export default function DigitalMemberCard({
               title="Balik Kartu Member (3D Flip)"
             >
               <RotateCw className={`w-3.5 h-3.5 transition-transform duration-500 ${isFlipped ? 'rotate-180 text-teal-600' : 'text-slate-500'}`} />
-              <span>{activeCardType === '75' ? 'Kartu 4,5 KG' : 'Kartu 7,5 KG'}</span>
+              <span>{activeCardType === '75' ? 'Kartu 4 KG' : 'Kartu 7 KG'}</span>
             </button>
 
             <button
@@ -558,7 +556,7 @@ export default function DigitalMemberCard({
               className="dmc-btn-download"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>{downloading ? 'Mengunduh...' : `Unduh ${activeCardType === '75' ? 'Depan (7,5 KG)' : 'Belakang (4,5 KG)'}`}</span>
+              <span>{downloading ? 'Mengunduh...' : `Unduh ${activeCardType === '75' ? 'Depan (7 KG)' : 'Belakang (4 KG)'}`}</span>
             </button>
           </div>
 

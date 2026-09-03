@@ -177,8 +177,12 @@ export function detectWasherAndDryer(items: Array<{ layanan: string; qty?: numbe
     const kat = (item.kategori || '').toLowerCase();
     const qty = Math.max(1, Number(item.qty) || 1);
 
-    // Capacity detection: check for 4,5 or 4.5
-    if (name.includes('4,5') || name.includes('4.5') || name.includes('45kg') || name.includes('45 kg')) {
+    // Capacity detection: cek variasi 4kg, 4.5kg, 4,5kg
+    // Regex mendeteksi '4kg', '4 kg', '4.5kg', '4.5 kg', '4,5kg', '4,5 kg'
+    const match4 = /\b4([.,]5)?\s*kg\b/i.test(name) || name.includes('4,5') || name.includes('4.5') || name.includes('4kg') || name.includes('4 kg');
+    const match7 = /\b7([.,]5)?\s*kg\b/i.test(name) || name.includes('7,5') || name.includes('7.5') || name.includes('7kg') || name.includes('7 kg');
+
+    if (match4) {
       is45 = true;
     }
 
@@ -1253,7 +1257,7 @@ export default function PosView({
         stampInfo = {
           earned: true,
           cardType: targetCardType,
-          cardLabel: targetCardType === '75' ? 'Kartu 7,5 KG (Sisi Depan)' : 'Kartu 4,5 KG (Sisi Belakang)',
+          cardLabel: targetCardType === '75' ? 'Kartu 7 KG (Sisi Depan)' : 'Kartu 4 KG (Sisi Belakang)',
           stampsAdded,
           oldStamps,
           newTotal,
@@ -4114,7 +4118,7 @@ export default function PosView({
                           </div>
                         </div>
                         <span className="px-2.5 py-0.5 bg-teal-800 text-white text-[10px] font-extrabold rounded-full shadow-2xs whitespace-nowrap">
-                          {completedOrderData.stampInfo.cardType === '75' ? 'Kartu 7,5 KG' : 'Kartu 4,5 KG'}
+                          {completedOrderData.stampInfo.cardType === '75' ? 'Kartu 7 KG' : 'Kartu 4 KG'}
                         </span>
                       </div>
 
