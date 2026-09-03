@@ -40,6 +40,22 @@ function runMigrations() {
       },
       function v5() {
         ensureSheetSchema_(SHEET_TRANSAKSI, ["No Nota", "Tanggal", "Nama Pelanggan", "No HP", "Total", "Status", "Estimasi Selesai", "Petugas", "Tipe", "Status Void", "Alasan Void", "Subtotal", "Diskon", "Metode Pembayaran", "Status Pembayaran", "Nominal Bayar", "Sisa Tagihan", "Referensi Pembayaran", "Catatan", "Prioritas"]);
+      },
+      function v6() {
+        // Enforce decimal number formatting on Inventory and Layanan sheets
+        const shInv = SS.getSheetByName(SHEET_INVENTORY);
+        if (shInv && shInv.getLastRow() >= 1) {
+          try {
+            shInv.getRange(2, 3, Math.max(shInv.getLastRow() - 1, 1), 1).setNumberFormat("#,##0.00##");
+            shInv.getRange(2, 5, Math.max(shInv.getLastRow() - 1, 1), 1).setNumberFormat("#,##0.00##");
+          } catch(e) {}
+        }
+        const shLay = SS.getSheetByName(SHEET_LAYANAN);
+        if (shLay && shLay.getLastRow() >= 1 && shLay.getLastColumn() >= 12) {
+          try {
+            shLay.getRange(2, 12, Math.max(shLay.getLastRow() - 1, 1), 1).setNumberFormat("#,##0.00##");
+          } catch(e) {}
+        }
       }
     ];
     for (let i = version; i < migrations.length; i++) { migrations[i](); version = i + 1; props.setProperty(MIGRATION_KEY, String(version)); }
@@ -107,6 +123,10 @@ function setupSheets() {
   shI.appendRow([generateId(), "Deterjen Cair", 20, "liter", 5, new Date()]);
   shI.appendRow([generateId(), "Pewangi Pakaian", 15, "liter", 5, new Date()]);
   shI.appendRow([generateId(), "Plastik Packing", 200, "pcs", 50, new Date()]);
+  try {
+    shI.getRange(2, 3, 3, 1).setNumberFormat("#,##0.00##");
+    shI.getRange(2, 5, 3, 1).setNumberFormat("#,##0.00##");
+  } catch(e) {}
 
   let shM = SS.getSheetByName(SHEET_MESIN);
   if (!shM) shM = SS.insertSheet(SHEET_MESIN);

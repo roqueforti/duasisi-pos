@@ -114,7 +114,7 @@ function getLayananListAll() {
 
     let bahanBakuList = [];
     let idInventorySingle = r[9] || null;
-    let deductionSingle = r[11] !== undefined && r[11] !== "" ? Number(r[11]) : 1;
+    let deductionSingle = r[11] !== undefined && r[11] !== "" ? parseDecimal_(r[11], 1) : 1;
 
     if (r[9]) {
       const rawInv = String(r[9]).trim();
@@ -122,10 +122,16 @@ function getLayananListAll() {
         try {
           const parsed = JSON.parse(rawInv);
           if (Array.isArray(parsed)) {
-            bahanBakuList = parsed;
+            bahanBakuList = parsed.map(function(b) {
+              return {
+                idInventory: String(b.idInventory || '').trim(),
+                qty: parseDecimal_(b.qty, 1),
+                tahap: b.tahap || 'Dicuci'
+              };
+            });
             if (bahanBakuList.length > 0) {
               idInventorySingle = bahanBakuList[0].idInventory;
-              deductionSingle = Number(bahanBakuList[0].qty) || 1;
+              deductionSingle = bahanBakuList[0].qty;
             }
           }
         } catch (e) {
@@ -276,7 +282,14 @@ function tambahLayanan(data) {
     let idInv = data.idInventory || "";
     
     if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
-      idInv = JSON.stringify(data.bahanBakuList);
+      const sanitizedBahan = data.bahanBakuList.map(function(b) {
+        return {
+          idInventory: String(b.idInventory || '').trim(),
+          qty: parseDecimal_(b.qty, 1),
+          tahap: b.tahap || 'Dicuci'
+        };
+      });
+      idInv = JSON.stringify(sanitizedBahan);
     } else if (idInv === "auto") {
       idInv = findOrCreateInventoryByName_(data.nama, data.satuan, 0, 0);
     } else if (idInv === "none" || idInv === "NONE" || idInv === "-") {
@@ -286,6 +299,8 @@ function tambahLayanan(data) {
     if (sh.getMaxColumns() < 13) {
       sh.insertColumnsAfter(sh.getMaxColumns(), 13 - sh.getMaxColumns());
     }
+
+    const dedQty = data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? parseDecimal_(data.inventoryDeductionQty, 1) : 1;
 
     sh.appendRow([
       id, 
@@ -299,9 +314,13 @@ function tambahLayanan(data) {
       data.kategori || "Self Service", 
       idInv, 
       data.hargaModal || 0, 
-      data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : 1,
+      dedQty,
       data.kategoriDropOff || ""
     ]);
+
+    try {
+      sh.getRange(sh.getLastRow(), 12).setNumberFormat("#,##0.00##");
+    } catch(e) {}
 
     addAuditLog(
       data.actor || "Manager", 
@@ -455,7 +474,14 @@ function updateLayanan(id, data) {
         let idInv = data.idInventory !== undefined ? data.idInventory : (rows[i][9] || "");
         
         if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
-          idInv = JSON.stringify(data.bahanBakuList);
+          const sanitizedBahan = data.bahanBakuList.map(function(b) {
+            return {
+              idInventory: String(b.idInventory || '').trim(),
+              qty: parseDecimal_(b.qty, 1),
+              tahap: b.tahap || 'Dicuci'
+            };
+          });
+          idInv = JSON.stringify(sanitizedBahan);
         } else if (idInv === "auto") {
           idInv = findOrCreateInventoryByName_(data.nama || rows[i][1], data.satuan || rows[i][3], 0, 0);
         } else if (idInv === "none" || idInv === "NONE" || idInv === "-") {
@@ -469,6 +495,8 @@ function updateLayanan(id, data) {
         const dataSebelum = `Kode: ${rows[i][0]}, Nama: ${rows[i][1]}, Harga: Rp ${Number(rows[i][2] || 0).toLocaleString('id-ID')}, Satuan: ${rows[i][3] || 'kg'}, Kategori: ${rows[i][8] || '-'}`;
         const dataSesudah = `Kode: ${newId}, Nama: ${data.nama}, Harga: Rp ${Number(data.harga || 0).toLocaleString('id-ID')}, Satuan: ${data.satuan || 'kg'}, Kategori: ${data.kategori || rows[i][8] || '-'}`;
 
+        const editDedQty = data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? parseDecimal_(data.inventoryDeductionQty, 1) : (rows[i][11] !== undefined && rows[i][11] !== "" ? parseDecimal_(rows[i][11], 1) : 1);
+
         sh.getRange(i + 1, 1, 1, 13).setValues([[
           newId, 
           data.nama, 
@@ -481,9 +509,12 @@ function updateLayanan(id, data) {
           data.kategori || rows[i][8], 
           idInv, 
           data.hargaModal !== undefined ? data.hargaModal : (Number(rows[i][10]) || 0), 
-          data.inventoryDeductionQty !== undefined && data.inventoryDeductionQty !== "" ? Number(data.inventoryDeductionQty) : (rows[i][11] !== undefined && rows[i][11] !== "" ? Number(rows[i][11]) : 1),
+          editDedQty,
           data.kategoriDropOff !== undefined ? data.kategoriDropOff : (rows[i][12] || "")
         ]]);
+        try {
+          sh.getRange(i + 1, 12).setNumberFormat("#,##0.00##");
+        } catch(e) {}
 
         addAuditLog(
           data.actor || "Manager", 
@@ -977,9 +1008,9 @@ function getInventoryList() {
   return data.map(r => ({
     id: r[0], 
     nama: r[1], 
-    stok: Number(r[2]) || 0, 
+    stok: parseDecimal_(r[2], 0), 
     satuan: r[3], 
-    stokMinimum: Number(r[4]) || 0,
+    stokMinimum: parseDecimal_(r[4], 0),
     terakhirUpdate: r[5] ? fmtWib(r[5], "dd/MM/yyyy HH:mm") : ""
   }));
 }
@@ -987,7 +1018,14 @@ function getInventoryList() {
 function tambahInventory(data) {
   const sh = SS.getSheetByName(SHEET_INVENTORY);
   const id = generateId("INV");
-  sh.appendRow([id, data.nama, data.stok, data.satuan, data.stokMinimum, new Date()]);
+  const initStok = parseDecimal_(data.stok, 0);
+  const initMin = parseDecimal_(data.stokMinimum, 0);
+  sh.appendRow([id, data.nama, initStok, data.satuan, initMin, new Date()]);
+  try {
+    const lastR = sh.getLastRow();
+    sh.getRange(lastR, 3).setNumberFormat("#,##0.00##");
+    sh.getRange(lastR, 5).setNumberFormat("#,##0.00##");
+  } catch(e) {}
   
   if (data.isDijual && data.hargaJual !== undefined) {
     tambahLayanan({
@@ -1029,9 +1067,9 @@ function importInventoryBatch(items, actor) {
       rowsToAppend.push([
         id,
         item.nama,
-        Number(item.stok) || 0,
+        parseDecimal_(item.stok, 0),
         item.satuan || "pcs",
-        Number(item.stokMinimum) || 0,
+        parseDecimal_(item.stokMinimum, 0),
         now
       ]);
     });
@@ -1039,6 +1077,10 @@ function importInventoryBatch(items, actor) {
     if (rowsToAppend.length > 0) {
       const lastRow = sh.getLastRow();
       sh.getRange(lastRow + 1, 1, rowsToAppend.length, 6).setValues(rowsToAppend);
+      try {
+        sh.getRange(lastRow + 1, 3, rowsToAppend.length, 1).setNumberFormat("#,##0.00##");
+        sh.getRange(lastRow + 1, 5, rowsToAppend.length, 1).setNumberFormat("#,##0.00##");
+      } catch(e) {}
     }
 
     addAuditLog(
@@ -1065,11 +1107,17 @@ function updateInventoryItem(id, data) {
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
+      const editStok = parseDecimal_(data.stok, 0);
+      const editMin = parseDecimal_(data.stokMinimum, 0);
       const dataSebelum = `Nama: ${rows[i][1]}, Stok: ${rows[i][2]} ${rows[i][3]}, Min: ${rows[i][4]}`;
-      const dataSesudah = `Nama: ${data.nama}, Stok: ${data.stok} ${data.satuan}, Min: ${data.stokMinimum}`;
+      const dataSesudah = `Nama: ${data.nama}, Stok: ${editStok} ${data.satuan}, Min: ${editMin}`;
       
-      sh.getRange(i + 1, 2, 1, 4).setValues([[data.nama, data.stok, data.satuan, data.stokMinimum]]);
+      sh.getRange(i + 1, 2, 1, 4).setValues([[data.nama, editStok, data.satuan, editMin]]);
       sh.getRange(i + 1, 6).setValue(new Date());
+      try {
+        sh.getRange(i + 1, 3).setNumberFormat("#,##0.00##");
+        sh.getRange(i + 1, 5).setNumberFormat("#,##0.00##");
+      } catch(e) {}
 
       addAuditLog(
         data.actor || "Manager", 
@@ -1091,18 +1139,22 @@ function updateStokInventory(id, perubahan, actor) {
   const rows = sh.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
     if (rows[i][0] === id) {
-      const stokLama = Number(rows[i][2]) || 0;
-      const stokBaru = Math.max(0, Math.round(((stokLama + Number(perubahan)) + 1e-7) * 10000) / 10000);
+      const stokLama = parseDecimal_(rows[i][2], 0);
+      const delta = parseDecimal_(perubahan, 0);
+      const stokBaru = Math.max(0, Math.round(((stokLama + delta) + 1e-7) * 10000) / 10000);
       sh.getRange(i + 1, 3).setValue(stokBaru);
+      try {
+        sh.getRange(i + 1, 3).setNumberFormat("#,##0.00##");
+      } catch(e) {}
       sh.getRange(i + 1, 6).setValue(new Date());
 
       addAuditLog(
         actor || "Staff", 
-        Number(perubahan) >= 0 ? "Restock Stok" : "Pengurangan Stok", 
+        delta >= 0 ? "Restock Stok" : "Pengurangan Stok", 
         rows[i][1], 
         `Stok: ${stokLama} ${rows[i][3]}`, 
         `Stok: ${stokBaru} ${rows[i][3]}`, 
-        `Penyesuaian stok ${Number(perubahan) >= 0 ? '+' : ''}${perubahan} ${rows[i][3]}`
+        `Penyesuaian stok ${delta >= 0 ? '+' : ''}${delta} ${rows[i][3]}`
       );
 
       return { success: true, stokBaru: stokBaru };

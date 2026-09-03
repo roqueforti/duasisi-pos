@@ -31,6 +31,7 @@ import {
 import { runBackend } from '@/lib/api';
 import { useDialog } from '@/components/DialogProvider';
 import { UserRole, ShiftKumulatifData } from '@/lib/types';
+import { parseDecimal, formatDecimal } from '@/lib/utils';
 
 
 export interface ShiftKasir {
@@ -514,8 +515,8 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
           return;
         }
 
-        const qtyNum = Number(qtyMasukInput);
-        if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
+        const qtyNum = parseDecimal(qtyMasukInput, 0);
+        if (qtyNum <= 0) {
           await showAlert(`Masukkan jumlah/qty ${invItem.nama} yang dibeli (> 0)!`, 'warning');
           setSubmitting(false);
           return;
@@ -539,7 +540,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
         // Update local inventory list
         setInventoryList(prev => prev.map(i => {
           if (i.id === invItem.id) {
-            return { ...i, stok: (updateRes?.stokBaru !== undefined) ? updateRes.stokBaru : (i.stok + qtyNum) };
+            return { ...i, stok: (updateRes?.stokBaru !== undefined) ? updateRes.stokBaru : Math.round((i.stok + qtyNum) * 10000) / 10000 };
           }
           return i;
         }));
@@ -552,14 +553,14 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
           return;
         }
 
-        const qtyNum = Number(qtyMasukInput);
-        if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
+        const qtyNum = parseDecimal(qtyMasukInput, 0);
+        if (qtyNum <= 0) {
           await showAlert('Masukkan jumlah/stok awal barang baru (> 0)!', 'warning');
           setSubmitting(false);
           return;
         }
 
-        const minStokNum = Number(stokMinBaruInput) || 5;
+        const minStokNum = parseDecimal(stokMinBaruInput, 5);
         finalNama = `Beli (Baru) ${namaBarang} (+${qtyNum} ${satuanBaruInput})`;
         finalKategori = newExpenseForm.kategori;
         namaStok = namaBarang;

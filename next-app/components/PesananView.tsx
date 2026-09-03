@@ -26,7 +26,7 @@ import {
 import { Mesin, Transaksi, LayananBahanBaku } from '@/lib/types';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { formatWaPhone } from '@/lib/utils';
+import { formatWaPhone, parseDecimal, formatDecimal } from '@/lib/utils';
 import { DropOffPriorityItem } from './ProdukView';
 
 function getWorkflowIcon(status: string) {
@@ -554,8 +554,9 @@ export default function PesananView() {
                 
                 listBahan.forEach(b => {
                   const inv = inventoryList.find(i => i.id === b.idInventory);
-                  const deductionPerUnit = Number(b.qty) || 1;
-                  mats.push(`${inv?.nama || b.idInventory}: ${(Number(it.qty) || 1) * deductionPerUnit} ${inv?.satuan || 'unit'}`);
+                  const deductionPerUnit = parseDecimal(b.qty, 1);
+                  const total = Math.round(((Number(it.qty) || 1) * deductionPerUnit + 1e-7) * 10000) / 10000;
+                  mats.push(`${inv?.nama || b.idInventory}: ${formatDecimal(total)} ${inv?.satuan || 'unit'}`);
                 });
               }
             });
@@ -832,8 +833,8 @@ export default function PesananView() {
                       const stepTarget = b.tahap || 'Dicuci';
                       if (stepTarget === targetStatus || (stepTarget === 'Dicuci' && targetStatus === 'Dicuci')) {
                         const inv = inventoryList.find(i => i.id === b.idInventory);
-                        const deductionPerUnit = Number(b.qty) || 1;
-                        const totalQty = (Number(it.qty) || 1) * deductionPerUnit;
+                        const deductionPerUnit = parseDecimal(b.qty, 1);
+                        const totalQty = Math.round(((Number(it.qty) || 1) * deductionPerUnit + 1e-7) * 10000) / 10000;
                         stageMaterials.push({
                           namaLayanan: it.layanan,
                           orderQty: it.qty,

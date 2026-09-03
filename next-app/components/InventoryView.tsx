@@ -7,7 +7,7 @@ import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
-import { formatFriendlyErrorMessage } from '@/lib/utils';
+import { formatFriendlyErrorMessage, parseDecimal, formatDecimal } from '@/lib/utils';
 import SatuanInput from '@/components/SatuanInput';
 import ImportProgressToast from '@/components/ImportProgressToast';
 
@@ -98,16 +98,16 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
       if (editId) {
         await runBackend('updateInventoryItem', editId, {
           nama: nama.trim(),
-          stok: Number(stok) || 0,
+          stok: parseDecimal(stok, 0),
           satuan: satuan.trim(),
-          stokMinimum: Number(stokMin) || 0,
+          stokMinimum: parseDecimal(stokMin, 0),
         });
       } else {
         await runBackend('tambahInventory', {
           nama: nama.trim(),
-          stok: Number(stok) || 0,
+          stok: parseDecimal(stok, 0),
           satuan: satuan.trim(),
-          stokMinimum: Number(stokMin) || 0,
+          stokMinimum: parseDecimal(stokMin, 0),
           isDijual,
           hargaJual: isDijual ? (Number(hargaJual) || 0) : undefined,
           kategoriLayanan: isDijual ? kategori : undefined
@@ -128,15 +128,12 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   };
 
   const formatStok = (val: number | string) => {
-    const num = Number(val);
-    if (isNaN(num)) return '0';
-    const rounded = Math.round((num + Number.EPSILON) * 1000) / 1000;
-    return rounded.toLocaleString('id-ID', { maximumFractionDigits: 3 });
+    return formatDecimal(val, 4);
   };
 
   const handleAdjustDelta = (item: InventoryItem, step: number) => {
     const currentDelta = pendingDeltas[item.id] || 0;
-    const newDelta = Math.round((currentDelta + step + Number.EPSILON) * 1000) / 1000;
+    const newDelta = Math.round((currentDelta + step + Number.EPSILON) * 10000) / 10000;
 
     // Cegah stok akhir kurang dari 0
     if (item.stok + newDelta < 0) return;
@@ -174,7 +171,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     setItems((prev) =>
       prev.map((i) =>
         i.id === item.id
-          ? { ...i, stok: Math.max(0, Math.round((Number(i.stok) + delta + Number.EPSILON) * 1000) / 1000) }
+          ? { ...i, stok: Math.max(0, Math.round((Number(i.stok) + delta + Number.EPSILON) * 10000) / 10000) }
           : i
       )
     );
@@ -268,9 +265,9 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
         if (!nama.trim()) { fail++; continue; }
         itemsToImport.push({
           nama: nama.trim(),
-          stok: Number(row['Stok'] || row['stok'] || row['Jumlah']) || 0,
+          stok: parseDecimal(row['Stok'] || row['stok'] || row['Jumlah'], 0),
           satuan: (row['Satuan'] || row['satuan'] || 'pcs').trim(),
-          stokMinimum: Number(row['Stok Minimum'] || row['stok_minimum'] || row['Stok Min']) || 0,
+          stokMinimum: parseDecimal(row['Stok Minimum'] || row['stok_minimum'] || row['Stok Min'], 0),
         });
       }
 
@@ -410,7 +407,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
               ) : (
                 items.map((item) => {
                   const delta = pendingDeltas[item.id] || 0;
-                  const previewStok = Math.max(0, Math.round((Number(item.stok) + delta + Number.EPSILON) * 1000) / 1000);
+                  const previewStok = Math.max(0, Math.round((Number(item.stok) + delta + Number.EPSILON) * 10000) / 10000);
                   const isMenipis = (delta ? previewStok : item.stok) <= item.stokMinimum;
                   return (
                     <tr key={item.id} className={`transition-colors ${delta ? 'bg-amber-50/40' : 'hover:bg-slate-50/80'}`}>
@@ -461,20 +458,52 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                         {(currentRole === 'STAFF' || currentRole === 'MANAGER') ? (
                           <div className="flex items-center justify-end gap-1.5 flex-wrap">
                             {delta !== 0 ? (
-                              <div className="flex items-center gap-1 bg-emerald-50/80 border border-emerald-200 p-0.5 rounded-md animate-fade-in shadow-2xs">
-                                {/* Stepper -1 / +1 */}
+                              <div className="flex items-center gap-1 bg-emerald-50/80 border border-emerald-200 p-1 rounded-md animate-fade-in shadow-2xs flex-wrap">
+                                {/* Stepper Buttons & Direct Delta Input */}
                                 <button
                                   onClick={() => handleAdjustDelta(item, -1)}
                                   disabled={item.stok + delta <= 0 || savingId === item.id}
-                                  className="px-2 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-xs font-bold border border-slate-200 transition select-none"
+                                  className="px-1.5 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-[11px] font-bold border border-slate-200 transition select-none"
                                   title="Kurangi 1 lagi"
                                 >
                                   -1
                                 </button>
                                 <button
+                                  onClick={() => handleAdjustDelta(item, -0.02)}
+                                  disabled={item.stok + delta <= 0 || savingId === item.id}
+                                  className="px-1.5 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-[11px] font-bold border border-slate-200 transition select-none"
+                                  title="Kurangi 0.02 (20 ml)"
+                                >
+                                  -0.02
+                                </button>
+                                
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={delta}
+                                  onChange={(e) => {
+                                    const val = parseDecimal(e.target.value, 0);
+                                    if (item.stok + val >= 0) {
+                                      setPendingDeltas(prev => ({ ...prev, [item.id]: Math.round(val * 10000) / 10000 }));
+                                    }
+                                  }}
+                                  className="w-16 px-1 py-0.5 text-xs text-center font-bold bg-white border border-emerald-300 rounded outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
+                                  placeholder="0"
+                                  title="Ketik jumlah perubahan stok (+ atau -)"
+                                />
+
+                                <button
+                                  onClick={() => handleAdjustDelta(item, 0.02)}
+                                  disabled={savingId === item.id}
+                                  className="px-1.5 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-[11px] font-bold border border-slate-200 transition select-none"
+                                  title="Tambah 0.02 (20 ml)"
+                                >
+                                  +0.02
+                                </button>
+                                <button
                                   onClick={() => handleAdjustDelta(item, 1)}
                                   disabled={savingId === item.id}
-                                  className="px-2 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-xs font-bold border border-slate-200 transition select-none"
+                                  className="px-1.5 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-[11px] font-bold border border-slate-200 transition select-none"
                                   title="Tambah 1 lagi"
                                 >
                                   +1
@@ -484,7 +513,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                                 <button
                                   onClick={() => handleSaveDelta(item)}
                                   disabled={savingId === item.id}
-                                  className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white rounded text-xs font-bold transition shadow-2xs select-none"
+                                  className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white rounded text-xs font-bold transition shadow-2xs select-none ml-0.5"
                                   title="Simpan Perubahan Stok"
                                 >
                                   {savingId === item.id ? (
@@ -510,17 +539,24 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                                 <button
                                   onClick={() => handleAdjustDelta(item, -1)}
                                   disabled={item.stok <= 0}
-                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 rounded text-xs font-bold transition shadow-xs select-none"
+                                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 rounded text-xs font-bold transition shadow-xs select-none"
                                   title="Kurangi Stok (-1)"
                                 >
                                   -1
                                 </button>
                                 <button
                                   onClick={() => handleAdjustDelta(item, 1)}
-                                  className="px-2.5 py-1 bg-[#1E4648] hover:bg-[#163536] active:bg-[#102728] text-white rounded text-xs font-bold transition shadow-xs select-none"
+                                  className="px-2 py-1 bg-[#1E4648] hover:bg-[#163536] active:bg-[#102728] text-white rounded text-xs font-bold transition shadow-xs select-none"
                                   title="Tambah Stok (+1)"
                                 >
                                   +1
+                                </button>
+                                <button
+                                  onClick={() => handleAdjustDelta(item, 0.02)}
+                                  className="px-2 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-xs font-bold transition shadow-xs select-none"
+                                  title="Buka panel ubah stok desimal / takaran kecil"
+                                >
+                                  ±Desimal
                                 </button>
                                 {currentRole === 'MANAGER' && (
                                   <>

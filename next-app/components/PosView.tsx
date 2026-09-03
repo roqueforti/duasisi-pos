@@ -60,7 +60,7 @@ import {
 import { LayananItem, CartItem, ShiftKasir, AbsensiConfig, UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { formatWaPhone } from '@/lib/utils';
+import { formatWaPhone, parseDecimal, formatDecimal } from '@/lib/utils';
 import { generateWhatsAppReceiptMessage } from '@/lib/whatsappUtils';
 import {
   isBluetoothSupported,
@@ -469,6 +469,8 @@ export default function PosView({
                 kategoriWarna: item.kategoriWarna,
                 kategoriIcon: item.kategoriIcon,
                 idInventory: item.idInventory || null,
+                inventoryDeductionQty: item.inventoryDeductionQty !== undefined ? parseDecimal(item.inventoryDeductionQty, 1) : 1,
+                bahanBakuList: item.bahanBakuList,
               });
             }
           }
@@ -813,14 +815,14 @@ export default function PosView({
       if (item.idInventory) {
         const inv = inventoryList.find(i => i.id === item.idInventory);
         if (inv) {
-          const deduction = (item.inventoryDeductionQty !== undefined ? Number(item.inventoryDeductionQty) : 1) * item.qty;
+          const deduction = (item.inventoryDeductionQty !== undefined ? parseDecimal(item.inventoryDeductionQty, 1) : 1) * item.qty;
           const sisaStok = inv.stok - deduction;
           if (sisaStok <= (inv.stokMinimum || 0)) {
             list.push({
               id: `stock-warn-${inv.id}`,
               tipe: 'PERINGATAN',
               judul: `Peringatan Stok: ${inv.nama}`,
-              deskripsi: `Sisa stok saat ini ${inv.stok} ${inv.satuan}. Transaksi ini akan menyisakan ${sisaStok.toFixed(1)} ${inv.satuan} (mencapai batas minimum ${inv.stokMinimum} ${inv.satuan}).`,
+              deskripsi: `Sisa stok saat ini ${formatDecimal(inv.stok)} ${inv.satuan}. Transaksi ini akan menyisakan ${formatDecimal(sisaStok)} ${inv.satuan} (mencapai batas minimum ${formatDecimal(inv.stokMinimum)} ${inv.satuan}).`,
               badge: sisaStok <= 0 ? 'Stok Habis' : 'Stok Menipis',
               badgeColor: 'bg-rose-100 text-rose-800 border-rose-200'
             });

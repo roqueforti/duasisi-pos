@@ -7,7 +7,7 @@ import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import { UserRole, LayananBahanBaku } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
-import { formatFriendlyErrorMessage } from '@/lib/utils';
+import { formatFriendlyErrorMessage, parseDecimal, formatDecimal } from '@/lib/utils';
 import SatuanInput from '@/components/SatuanInput';
 import { getIconComponent, getLayananStyleConfig, KategoriItem, PALETTE, ICON_OPTIONS } from '@/lib/categoryUtils';
 import { getStepIconComponent } from '@/components/LangkahView';
@@ -448,8 +448,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     );
     setBahanBakuList(
       Array.isArray(item.bahanBakuList) && item.bahanBakuList.length > 0
-        ? item.bahanBakuList
-        : (item.idInventory && item.idInventory !== 'none' ? [{ idInventory: item.idInventory, qty: item.inventoryDeductionQty || 1, tahap: 'Dicuci' }] : [])
+        ? item.bahanBakuList.map(b => ({ ...b, qty: parseDecimal(b.qty, 1) }))
+        : (item.idInventory && item.idInventory !== 'none' ? [{ idInventory: item.idInventory, qty: parseDecimal(item.inventoryDeductionQty, 1), tahap: 'Dicuci' }] : [])
     );
     setCustomPipelineSteps(item.pipelineSteps ? (item.pipelineSteps as CustomPipelineStep[]) : []);
     setShowModal(true);
@@ -470,6 +470,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
     const payloadPipeline = customPipelineSteps.map((s, i) => ({ ...s, step: i + 1 }));
     const filteredBahan = bahanBakuList.filter(b => b.idInventory && b.idInventory.trim());
+    const isMultiBahan = tipe === 'FullService' || (kategori || '').toLowerCase().includes('drop') || filteredBahan.length > 0;
+    const cleanDedQty = parseDecimal(inventoryDeductionQty, 1);
     const payload = {
         kode: kode.trim(),
         nama: nama.trim(),
@@ -479,9 +481,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         tipe: tipe || '',
         kategori,
         kategoriDropOff: (tipe === 'FullService' || (kategori || '').toLowerCase().includes('drop')) ? kategoriDropOff : '',
-        idInventory: tipe === 'FullService' ? (filteredBahan[0]?.idInventory || 'none') : (idInventory ? idInventory : 'none'),
-        inventoryDeductionQty: tipe === 'FullService' ? (filteredBahan[0]?.qty || undefined) : (idInventory && idInventory !== 'none' ? (isNaN(parseFloat(inventoryDeductionQty)) ? 1 : parseFloat(inventoryDeductionQty)) : undefined),
-        bahanBakuList: tipe === 'FullService' ? (filteredBahan.length > 0 ? filteredBahan : undefined) : undefined,
+        idInventory: isMultiBahan ? (filteredBahan[0]?.idInventory || 'none') : (idInventory ? idInventory : 'none'),
+        inventoryDeductionQty: isMultiBahan ? (filteredBahan[0]?.qty !== undefined ? parseDecimal(filteredBahan[0]?.qty, 1) : undefined) : (idInventory && idInventory !== 'none' ? cleanDedQty : undefined),
+        bahanBakuList: isMultiBahan ? (filteredBahan.length > 0 ? filteredBahan.map(b => ({ ...b, qty: parseDecimal(b.qty, 1) })) : undefined) : undefined,
         hargaModal: Number(hargaModal) || 0,
         pipelineSteps: tipe === 'FullService' ? customPipelineSteps : []
       };
@@ -1600,8 +1602,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                               {item.bahanBakuList.map((b, bIdx) => {
                                 const inv = inventoryList.find(i => i.id === b.idInventory);
                                 return (
-                                  <span key={bIdx} className="text-[10px] font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 truncate" title={`${inv?.nama || b.idInventory}: ${b.qty} ${inv?.satuan || 'unit'}`}>
-                                    <strong className="text-slate-800">{inv?.nama || b.idInventory}</strong>: {b.qty} {inv?.satuan || 'unit'}
+                                  <span key={bIdx} className="text-[10px] font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 truncate" title={`${inv?.nama || b.idInventory}: ${formatDecimal(b.qty)} ${inv?.satuan || 'unit'}`}>
+                                    <strong className="text-slate-800">{inv?.nama || b.idInventory}</strong>: {formatDecimal(b.qty)} {inv?.satuan || 'unit'}
                                   </span>
                                 );
                               })}
@@ -1609,7 +1611,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                           ) : (item.idInventory && item.idInventory !== 'none' && inventoryList.some(inv => inv.id === item.idInventory)) ? (
                             <div className="flex items-center gap-1">
                               <span className="font-bold text-[#1E4648] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/80 text-[11px] font-mono">
-                                {item.inventoryDeductionQty !== undefined && item.inventoryDeductionQty !== null ? item.inventoryDeductionQty : 1}
+                                {formatDecimal(item.inventoryDeductionQty !== undefined && item.inventoryDeductionQty !== null ? item.inventoryDeductionQty : 1)}
                                 <span className="text-teal-900/80 font-medium text-[9px] ml-1">
                                   {inventoryList.find(inv => inv.id === item.idInventory)?.satuan || 'unit'}
                                 </span>
@@ -2168,7 +2170,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                         value={item.qty}
                                         onChange={(e) => {
                                           const newArr = [...bahanBakuList];
-                                          newArr[idx].qty = parseFloat(e.target.value) || 0;
+                                          newArr[idx].qty = parseDecimal(e.target.value, 0);
                                           setBahanBakuList(newArr);
                                         }}
                                         min="0"

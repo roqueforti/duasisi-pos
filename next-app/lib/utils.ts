@@ -138,3 +138,30 @@ export function formatFriendlyErrorMessage(err: any): { title: string; detail: s
   };
 }
 
+/**
+ * Normalisasi dan parse angka desimal secara aman.
+ * Mendukung format string Indonesia (koma) maupun standar internasional (titik).
+ * Contoh: "0,02" -> 0.02, "0.02" -> 0.02, 0.02 -> 0.02, null/undefined -> defaultVal
+ */
+export function parseDecimal(val: any, defaultVal = 0): number {
+  if (val === undefined || val === null || val === '') return defaultVal;
+  if (typeof val === 'number') return isNaN(val) ? defaultVal : val;
+  const str = String(val).trim().replace(',', '.');
+  const n = parseFloat(str);
+  return isNaN(n) ? defaultVal : n;
+}
+
+/**
+ * Format angka desimal untuk tampilan UI dengan batas maksimal digit desimal
+ * dan membersihkan floating-point rounding issue (misal 19.980000000000004 -> "19,98").
+ */
+export function formatDecimal(val: number | string | undefined | null, maxDigits = 4): string {
+  if (val === undefined || val === null || val === '') return '0';
+  const num = typeof val === 'number' ? val : parseDecimal(val, 0);
+  if (isNaN(num)) return '0';
+  const factor = Math.pow(10, maxDigits);
+  const rounded = Math.round((num + Number.EPSILON) * factor) / factor;
+  return rounded.toLocaleString('id-ID', { maximumFractionDigits: maxDigits });
+}
+
+

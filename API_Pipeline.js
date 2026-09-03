@@ -305,18 +305,20 @@ function updateDropoffStatus(data) {
         for (let i = 1; i < detailRows.length; i++) {
           if (String(detailRows[i][0]) === noNota) {
             const namaItem = detailRows[i][1];
-            const qtyItem = Number(detailRows[i][2]) || 1;
-            const lay = allLayanan.find(l => l.nama === namaItem);
+            const qtyItem = parseDecimal_(detailRows[i][2], 1);
+            const lay = allLayanan.find(function(l) {
+              return String(l.nama || '').trim().toLowerCase() === String(namaItem || '').trim().toLowerCase();
+            });
             if (lay) {
               const listBahan = Array.isArray(lay.bahanBakuList) && lay.bahanBakuList.length > 0
                 ? lay.bahanBakuList
-                : (lay.idInventory ? [{ idInventory: lay.idInventory, qty: lay.inventoryDeductionQty || 1, tahap: 'Dicuci' }] : []);
+                : (lay.idInventory ? [{ idInventory: lay.idInventory, qty: lay.inventoryDeductionQty !== undefined ? parseDecimal_(lay.inventoryDeductionQty, 1) : 1, tahap: 'Dicuci' }] : []);
               
               listBahan.forEach(function(b) {
                 const stepTarget = b.tahap || 'Dicuci';
                 if (stepTarget === statusBaru || (stepTarget === 'Dicuci' && statusBaru === 'Dicuci')) {
-                  const deductionPerUnit = Number(b.qty) || 1;
-                  const totalDeduction = qtyItem * deductionPerUnit;
+                  const deductionPerUnit = parseDecimal_(b.qty, 1);
+                  const totalDeduction = Math.round((qtyItem * deductionPerUnit + 1e-7) * 10000) / 10000;
                   updateStokInventory(b.idInventory, -totalDeduction);
                   deductedLogs.push(b.idInventory + " (-" + totalDeduction + ")");
                 }

@@ -2,6 +2,20 @@
 function getWibTimeZone() { return TIMEZONE_WIB; }
 
 /**
+ * Normalisasi dan parse angka desimal secara aman.
+ * Mendukung format string Indonesia (koma) maupun standar internasional (titik).
+ * Contoh: "0,02" -> 0.02, "0.02" -> 0.02, 0.02 -> 0.02, null -> defaultVal
+ */
+function parseDecimal_(val, defaultVal) {
+  if (defaultVal === undefined) defaultVal = 0;
+  if (val === undefined || val === null || val === "") return defaultVal;
+  if (typeof val === "number") return isNaN(val) ? defaultVal : val;
+  var str = String(val).trim().replace(",", ".");
+  var n = parseFloat(str);
+  return isNaN(n) ? defaultVal : n;
+}
+
+/**
  * ID terurut dan mudah dibaca: ID-YYYYMMDD-NNNN.
  * Counter disimpan di Script Properties agar tetap unik antar request.
  */

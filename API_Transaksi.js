@@ -66,8 +66,9 @@ function simpanTransaksi(data) {
       // Untuk Retail / FnB / Addon non-DropOff, potong langsung saat kasir checkout
       // Untuk Drop Off FullService, stok bahan baku akan dipotong saat tahap Dicuci (Washer)
       if (tipe !== "FullService" && item.idInventory) {
-        const deductionMultiplier = item.inventoryDeductionQty !== undefined ? Number(item.inventoryDeductionQty) : 1;
-        updateStokInventory(item.idInventory, -(Number(item.qty) * deductionMultiplier));
+        const deductionMultiplier = item.inventoryDeductionQty !== undefined ? parseDecimal_(item.inventoryDeductionQty, 1) : 1;
+        const totalDeduct = Math.round((Number(item.qty) * deductionMultiplier + 1e-7) * 10000) / 10000;
+        updateStokInventory(item.idInventory, -totalDeduct);
       }
     });
 
@@ -375,14 +376,16 @@ function approveVoidTransaksi(noNota, isApproved, managerName, managerId, catata
             for (let d = 1; d < detailRows.length; d++) {
               if (String(detailRows[d][0]) === noNota) {
                 const namaItem = detailRows[d][1];
-                const qtyItem = Number(detailRows[d][2]) || 1;
-                const lay = allLayanan.find(function(l) { return l.nama === namaItem; });
+                const qtyItem = parseDecimal_(detailRows[d][2], 1);
+                const lay = allLayanan.find(function(l) { 
+                  return String(l.nama || '').trim().toLowerCase() === String(namaItem || '').trim().toLowerCase(); 
+                });
                 
                 if (lay) {
                   // Kasus 1: Retail / Addon / Non-DropOff (dipotong saat checkout)
                   if (tipeTx !== "FullService" && lay.idInventory) {
-                    const mult = lay.inventoryDeductionQty !== undefined ? Number(lay.inventoryDeductionQty) : 1;
-                    const returnQty = qtyItem * mult;
+                    const mult = lay.inventoryDeductionQty !== undefined ? parseDecimal_(lay.inventoryDeductionQty, 1) : 1;
+                    const returnQty = Math.round((qtyItem * mult + 1e-7) * 10000) / 10000;
                     if (typeof updateStokInventory === 'function') {
                       updateStokInventory(lay.idInventory, returnQty, managerName || "Void System");
                     }
@@ -393,12 +396,12 @@ function approveVoidTransaksi(noNota, isApproved, managerName, managerId, catata
                   if (tipeTx === "FullService") {
                     const listBahan = Array.isArray(lay.bahanBakuList) && lay.bahanBakuList.length > 0
                       ? lay.bahanBakuList
-                      : (lay.idInventory ? [{ idInventory: lay.idInventory, qty: lay.inventoryDeductionQty || 1, tahap: 'Dicuci' }] : []);
+                      : (lay.idInventory ? [{ idInventory: lay.idInventory, qty: lay.inventoryDeductionQty !== undefined ? parseDecimal_(lay.inventoryDeductionQty, 1) : 1, tahap: 'Dicuci' }] : []);
                     
                     const tahapTerlewati = ["Dicuci", "Dikeringkan", "Disetrika", "Selesai", "Diambil"].indexOf(statusTerakhir) !== -1;
                     if (tahapTerlewati) {
                       listBahan.forEach(function(b) {
-                        const returnQty = qtyItem * (Number(b.qty) || 1);
+                        const returnQty = Math.round((qtyItem * parseDecimal_(b.qty, 1) + 1e-7) * 10000) / 10000;
                         if (typeof updateStokInventory === 'function') {
                           updateStokInventory(b.idInventory, returnQty, managerName || "Void System");
                         }

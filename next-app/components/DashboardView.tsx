@@ -33,6 +33,7 @@ import RupiahIcon from '@/components/RupiahIcon';
 import { UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { useDialog } from '@/components/DialogProvider';
+import { parseDecimal, formatDecimal } from '@/lib/utils';
 
 interface DashboardViewProps {
   currentRole: UserRole;
@@ -219,7 +220,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   // Inventory Quick Restock Submit
   const handleRestockSubmit = async () => {
     if (!selectedRestockItem) return;
-    const delta = Number(restockQty) || 0;
+    const delta = parseDecimal(restockQty, 0);
     if (delta <= 0) {
       await showAlert('Masukkan jumlah stok valid!', 'warning');
       return;
@@ -642,7 +643,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
                 <div className="flex justify-between items-end">
                   <div>
-                    <span className="text-base font-bold text-slate-700">{i.stok}</span>
+                    <span className="text-base font-bold text-slate-700">{formatDecimal(i.stok)}</span>
                     <span className="text-slate-500 font-semibold text-[11px] ml-1">{i.satuan}</span>
                   </div>
                   
@@ -792,7 +793,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-500 font-semibold">
-                        Sisa: <span className="text-slate-800 font-bold">{item.stok} {item.satuan}</span> | Batas Min: <span className="text-slate-800 font-bold">{item.stokMinimum} {item.satuan}</span>
+                        Sisa: <span className="text-slate-800 font-bold">{formatDecimal(item.stok)} {item.satuan}</span> | Batas Min: <span className="text-slate-800 font-bold">{formatDecimal(item.stokMinimum)} {item.satuan}</span>
                       </div>
                     </div>
 
