@@ -106,7 +106,61 @@ export function notifySessionExpired(message = 'Sesi Anda telah kedaluwarsa kare
   });
 }
 
+import { isSupabaseConfigured } from './supabaseClient';
+import * as sb from './supabaseService';
+
 export async function runBackend<T = any>(action: string, ...args: any[]): Promise<T> {
+  // Jika Supabase terkonfigurasi, prioritaskan eksekusi via Supabase PostgreSQL
+  if (isSupabaseConfigured()) {
+    try {
+      switch (action) {
+        case 'getInventoryList':
+          return (await sb.sbGetInventoryList()) as any;
+        case 'updateStokInventory':
+          return (await sb.sbUpdateStokInventory(args[0], args[1])) as any;
+        case 'tambahInventory':
+          return (await sb.sbTambahInventory(args[0])) as any;
+        case 'updateInventoryItem':
+          return (await sb.sbUpdateInventoryItem(args[0], args[1])) as any;
+        case 'hapusInventory':
+          return (await sb.sbHapusInventory(args[0])) as any;
+        case 'getLayananListAll':
+        case 'getLayananList':
+          return (await sb.sbGetLayananListAll()) as any;
+        case 'tambahLayanan':
+          return (await sb.sbTambahLayanan(args[0])) as any;
+        case 'updateLayanan':
+          return (await sb.sbUpdateLayanan(args[0], args[1])) as any;
+        case 'hapusLayanan':
+          return (await sb.sbHapusLayanan(args[0])) as any;
+        case 'getDaftarPelanggan':
+          return (await sb.sbGetDaftarPelanggan()) as any;
+        case 'simpanPelangganJikaBaru':
+          return (await sb.sbSimpanPelangganJikaBaru(args[0], args[1], args[2])) as any;
+        case 'simpanTransaksi':
+          return (await sb.sbSimpanTransaksi(args[0])) as any;
+        case 'getTransaksiList':
+        case 'getTransaksiListAll':
+          return (await sb.sbGetTransaksiList(args[0])) as any;
+        case 'updateDropoffStatus':
+          return (await sb.sbUpdateDropoffStatus(args[0], args[1], args[2])) as any;
+        case 'getMesinList':
+          return (await sb.sbGetMesinList()) as any;
+        case 'getKasShiftAktif':
+          return (await sb.sbGetKasShiftAktif(args[0])) as any;
+        case 'openKasShift':
+          return (await sb.sbOpenKasShift(args[0])) as any;
+        case 'closeKasShift':
+          return (await sb.sbCloseKasShift(args[0])) as any;
+        case 'getPromoList':
+          return (await sb.sbGetPromoList()) as any;
+        case 'getKategoriList':
+          return (await sb.sbGetKategoriList()) as any;
+      }
+    } catch (sbErr: any) {
+      console.warn(`[Supabase Error] Action '${action}' gagal, fallback ke Google Apps Script:`, sbErr);
+    }
+  }
   const isPublicAction =
     action === 'verifikasiPin' ||
     action === 'recoverPin' ||
