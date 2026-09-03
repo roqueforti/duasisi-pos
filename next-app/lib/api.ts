@@ -168,6 +168,56 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbGetRekapKasShift()) as any;
         case 'getPegawaiList':
           return (await sb.sbGetPegawaiList()) as any;
+        case 'tambahPelanggan':
+          return (await sb.sbTambahPelanggan(args[0])) as any;
+        case 'updateDataPelanggan':
+          return (await sb.sbUpdateDataPelanggan(args[0], args[1])) as any;
+        case 'updateStempelPelanggan':
+          return (await sb.sbUpdateStempelPelanggan(args[0], args[1], args[2])) as any;
+        case 'daftarMember':
+          return (await sb.sbDaftarMember(args[0])) as any;
+        case 'tambahMesin':
+          return (await sb.sbTambahMesin(args[0])) as any;
+        case 'mulaiPakaiMesin':
+          return (await sb.sbMulaiPakaiMesin(args[0], args[1], args[2])) as any;
+        case 'selesaiMesin':
+          return (await sb.sbSelesaiMesin(args[0])) as any;
+        case 'setMaintenanceMesin':
+          return (await sb.sbSetMaintenanceMesin(args[0], args[1])) as any;
+        case 'hapusMesin':
+          return (await sb.sbHapusMesin(args[0])) as any;
+        case 'tambahPromo':
+          return (await sb.sbTambahPromo(args[0])) as any;
+        case 'editPromo':
+          return (await sb.sbEditPromo(args[0], args[1])) as any;
+        case 'hapusPromo':
+          return (await sb.sbHapusPromo(args[0])) as any;
+        case 'tambahKategori':
+          return (await sb.sbTambahKategori(args[0])) as any;
+        case 'updateKategori':
+          return (await sb.sbUpdateKategori(args[0], args[1])) as any;
+        case 'toggleAktifKategori':
+          return (await sb.sbToggleAktifKategori(args[0], args[1])) as any;
+        case 'hapusKategori':
+          return (await sb.sbHapusKategori(args[0])) as any;
+        case 'tambahPegawai':
+          return (await sb.sbTambahPegawai(args[0])) as any;
+        case 'updatePegawai':
+          return (await sb.sbUpdatePegawai(args[0], args[1])) as any;
+        case 'hapusPegawai':
+          return (await sb.sbHapusPegawai(args[0])) as any;
+        case 'updateKasirTransaksi':
+          return (await sb.sbUpdateKasirTransaksi(args[0], args[1])) as any;
+        case 'getTransaksiByPipeline':
+          return (await sb.sbGetTransaksiByPipeline(args[0])) as any;
+        case 'verifikasiPin':
+          return (await sb.sbVerifikasiPin(args[0])) as any;
+        case 'getSecuritySettings':
+          return (await sb.sbGetSecuritySettings()) as any;
+        case 'saveSecuritySettings':
+          return (await sb.sbSaveSecuritySettings(args[0], args[1], args[2], args[3])) as any;
+        case 'getLaporanRange':
+          return (await sb.sbGetLaporanRange(args[0], args[1])) as any;
       }
     } catch (sbErr: any) {
       console.warn(`[Supabase Error] Action '${action}' gagal, fallback ke Google Apps Script:`, sbErr);
