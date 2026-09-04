@@ -1,5 +1,5 @@
 import { getSupabase } from './supabaseClient';
-import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin } from './types';
+import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin, AuditLog } from './types';
 import { formatDateTime, parseIndonesianDateTime } from './utils';
 
 // ============================================================
@@ -831,6 +831,20 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
     }
   }
 
+  try {
+    const totalStr = `Rp ${(Number(total) || 0).toLocaleString('id-ID')}`;
+    await sbLogClientActivity(
+      normalizedPayload.petugas || 'Kasir',
+      'Transaksi Baru',
+      noNota,
+      '-',
+      `Status: ${normalizedPayload.status || 'Selesai'}, Total: ${totalStr}`,
+      `Transaksi baru ${normalizedPayload.tipe || 'SelfService'} - ${normalizedPayload.namaPelanggan || 'Pelanggan'} (${normalizedPayload.metodeBayar || 'Tunai'}, ${statusPembayaran})`
+    );
+  } catch (e) {
+    console.warn('[sbSimpanTransaksi] Gagal catat audit log:', e);
+  }
+
   return {
     success: true,
     noNota,
@@ -1021,6 +1035,17 @@ export async function sbUpdateDropoffStatus(noNota: string | any, newStatus?: st
       }
     }
   }
+
+  try {
+    await sbLogClientActivity(
+      targetPetugas || 'Kasir',
+      'Update Pipeline Cucian',
+      String(targetNota),
+      '-',
+      `Status: ${targetStatus}`,
+      `Perubahan status pengerjaan ${targetNota} menjadi ${targetStatus} oleh ${targetPetugas || 'Kasir'}`
+    );
+  } catch (e) {}
 
   return { success: true, newStatus: targetStatus };
 }
@@ -1287,6 +1312,19 @@ export async function sbOpenKasShift(payload: any): Promise<any> {
   }).select().single();
 
   if (error) throw error;
+
+  try {
+    const kasAwalStr = `Rp ${(Number(payload.kasAwal) || 0).toLocaleString('id-ID')}`;
+    await sbLogClientActivity(
+      payload.namaKasir || 'Kasir',
+      'Buka Kas Shift',
+      idShift,
+      '-',
+      `Kas Awal: ${kasAwalStr}`,
+      `Buka kas shift laci ${outletId} - Kas awal ${kasAwalStr}`
+    );
+  } catch {}
+
   return { success: true, shift: data };
 }
 
@@ -1375,6 +1413,20 @@ export async function sbCloseKasShift(payload: any): Promise<any> {
     .single();
 
   if (error) throw error;
+
+  try {
+    const kasAwalStr = `Rp ${(Number(shiftRow?.kas_awal) || 0).toLocaleString('id-ID')}`;
+    const kasAkhirStr = `Rp ${kasAkhirFisik.toLocaleString('id-ID')}`;
+    const selisihStr = `Rp ${(Number(selisihKas) || 0).toLocaleString('id-ID')}`;
+    await sbLogClientActivity(
+      shiftRow?.nama_kasir || payload.namaKasir || 'Kasir',
+      'Tutup Kas Shift',
+      idShift,
+      `Kas Awal: ${kasAwalStr}`,
+      `Kas Fisik: ${kasAkhirStr}, Selisih: ${selisihStr}`,
+      `Tutup kas shift ${idShift} (${modeTutup}) - Kas fisik ${kasAkhirStr}`
+    );
+  } catch {}
 
   // Simpan rincian pengeluaran ke kas_shift_pengeluaran jika ada
   if (Array.isArray(payload.expenses) && payload.expenses.length > 0) {
@@ -1702,6 +1754,18 @@ export async function sbDaftarMember(noHp: string) {
     .single();
 
   if (error) throw error;
+
+  try {
+    await sbLogClientActivity(
+      'Kasir',
+      'Daftar Member',
+      noHp,
+      '-',
+      `Member Aktif (Poin: ${data?.poin || 0})`,
+      `Registrasi membership loyalitas untuk ${data?.nama || noHp}`
+    );
+  } catch {}
+
   return { success: true, data };
 }
 
@@ -2676,6 +2740,18 @@ export async function sbPelunasanDP(noNota: string, nominal: number, metode = 'T
     .single();
 
   if (error) throw error;
+
+  try {
+    await sbLogClientActivity(
+      'Kasir',
+      'Pelunasan Nota',
+      noNota,
+      `Sisa Tagihan: Rp ${curSisa.toLocaleString('id-ID')}`,
+      `Bayar: Rp ${Number(nominal).toLocaleString('id-ID')} (${metode}), Sisa: Rp ${newSisa.toLocaleString('id-ID')}`,
+      `Pelunasan tagihan nota ${noNota} sebesar Rp ${Number(nominal).toLocaleString('id-ID')} via ${metode} (Status: ${newStatus})`
+    );
+  } catch (e) {}
+
   return { success: true, message: 'Pelunasan DP berhasil disimpan', data };
 }
 
@@ -2786,7 +2862,205 @@ export async function sbPautkanInventoryLayanan(idLayanan: string, idInventory: 
   return { success: true, data };
 }
 
-export async function sbGetAuditLogs(limit = 200) {
+function sbFormatWib(dateInput: string | Date | undefined): string {
+  if (!dateInput) return '-';
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return String(dateInput);
+    const wib = new Date(d.getTime() + 7 * 3600000);
+    const yyyy = wib.getUTCFullYear();
+    const mm = String(wib.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(wib.getUTCDate()).padStart(2, '0');
+    const hh = String(wib.getUTCHours()).padStart(2, '0');
+    const min = String(wib.getUTCMinutes()).padStart(2, '0');
+    const ss = String(wib.getUTCSeconds()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+  } catch {
+    return String(dateInput);
+  }
+}
+
+export function mapAuditRow(l: any): AuditLog {
+  const p = (l.payload && typeof l.payload === 'object') ? l.payload : {};
+  const idStr = l.id ? String(l.id) : '';
+  const shortId = idStr.length > 18 ? `LOG-${idStr.substring(0, 8).toUpperCase()}` : (idStr || `LOG-${Date.now()}`);
+
+  return {
+    idLog: shortId,
+    idUser: p.idUser || l.user_id,
+    namaUser: l.user_name || p.namaUser || 'System',
+    jenisAktivitas: l.action || p.jenisAktivitas || 'Aktivitas',
+    referensi: p.referensi || l.referensi || '-',
+    detail: l.detail || p.detail || '-',
+    dataSebelum: p.dataSebelum || '-',
+    dataSesudah: p.dataSesudah || '-',
+    waktu: sbFormatWib(l.created_at),
+  };
+}
+
+export async function sbLogClientActivity(
+  namaUser: string,
+  jenisAktivitas: string,
+  referensi?: string,
+  dataSebelum?: string,
+  dataSesudah?: string,
+  detail?: string
+): Promise<{ success: boolean; data?: any; message?: string }> {
+  const sb = getSupabase();
+  if (!sb) return { success: false, message: 'Supabase belum dikonfigurasi' };
+
+  try {
+    const payloadData: Record<string, any> = {
+      referensi: referensi || '-',
+      dataSebelum: dataSebelum || '-',
+      dataSesudah: dataSesudah || '-',
+      detail: detail || `${jenisAktivitas || 'Aktivitas'} pada ${referensi || 'sistem'}`,
+      namaUser: namaUser || 'System',
+    };
+
+    const { data, error } = await sb.from('audit_logs').insert([
+      {
+        action: jenisAktivitas || 'Aktivitas',
+        user_name: namaUser || 'System',
+        detail: detail || `${jenisAktivitas || 'Aktivitas'} pada ${referensi || 'sistem'}`,
+        payload: payloadData,
+      },
+    ]).select();
+
+    if (error) {
+      console.warn('Gagal mencatat audit log ke Supabase:', error);
+      return { success: false, message: error.message };
+    }
+
+    return { success: true, data };
+  } catch (err: any) {
+    console.warn('Error saat sbLogClientActivity:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function sbBackfillAuditLogs(): Promise<number> {
+  const sb = getSupabase();
+  if (!sb) return 0;
+
+  try {
+    const { data: txList } = await sb
+      .from('transaksi')
+      .select('*')
+      .order('tanggal', { ascending: true });
+
+    const { data: shiftList } = await sb
+      .from('kas_shift')
+      .select('*')
+      .order('waktu_buka', { ascending: true });
+
+    const { data: memberList } = await sb
+      .from('pelanggan')
+      .select('*')
+      .eq('is_member', true)
+      .limit(50);
+
+    const generatedLogs: any[] = [];
+
+    // Map shifts
+    for (const s of shiftList || []) {
+      const kasAwalStr = `Rp ${(Number(s.kas_awal) || 0).toLocaleString('id-ID')}`;
+      const kasAkhirStr = `Rp ${(Number(s.kas_akhir_fisik) || 0).toLocaleString('id-ID')}`;
+      const openTime = s.waktu_buka || s.created_at;
+
+      generatedLogs.push({
+        action: 'Buka Kas Shift',
+        user_name: s.nama_kasir || 'Kasir',
+        detail: `Buka kas shift laci - Kas awal ${kasAwalStr}`,
+        payload: {
+          referensi: s.id_shift,
+          dataSebelum: '-',
+          dataSesudah: `Kas Awal: ${kasAwalStr}`,
+          detail: `Buka kas shift laci - Kas awal ${kasAwalStr}`,
+          namaUser: s.nama_kasir || 'Kasir',
+        },
+        created_at: openTime,
+      });
+
+      if (s.status === 'Tutup' || s.waktu_tutup) {
+        const closeTime = s.waktu_tutup || s.created_at;
+        const selisihStr = `Rp ${(Number(s.selisih_kas) || 0).toLocaleString('id-ID')}`;
+        generatedLogs.push({
+          action: 'Tutup Kas Shift',
+          user_name: s.nama_kasir || 'Kasir',
+          detail: `Tutup kas shift - Kas fisik ${kasAkhirStr}, Selisih ${selisihStr}`,
+          payload: {
+            referensi: s.id_shift,
+            dataSebelum: `Kas Awal: ${kasAwalStr}`,
+            dataSesudah: `Kas Fisik: ${kasAkhirStr}`,
+            detail: `Tutup kas shift (${s.mode_tutup || 'Tutup Harian'}) - Kas fisik ${kasAkhirStr}`,
+            namaUser: s.nama_kasir || 'Kasir',
+          },
+          created_at: closeTime,
+        });
+      }
+    }
+
+    // Map members
+    for (const m of memberList || []) {
+      generatedLogs.push({
+        action: 'Daftar Member',
+        user_name: 'Kasir',
+        detail: `Registrasi membership loyalitas - ${m.nama} (${m.no_hp || '-'})`,
+        payload: {
+          referensi: m.no_hp || m.id || '-',
+          dataSebelum: '-',
+          dataSesudah: `Member Aktif (Poin: ${m.poin || 0})`,
+          detail: `Registrasi membership loyalitas - ${m.nama}`,
+          namaUser: 'Kasir',
+        },
+        created_at: m.created_at || new Date().toISOString(),
+      });
+    }
+
+    // Map transactions
+    for (const t of txList || []) {
+      const totalStr = `Rp ${(Number(t.total) || 0).toLocaleString('id-ID')}`;
+      const act = 
+        t.status_void === 'PendingApproval' ? 'Pengajuan Void' :
+        (t.status_void === 'Approved' || t.status === 'Dibatalkan') ? 'Void Transaksi' :
+        'Transaksi Baru';
+
+      generatedLogs.push({
+        action: act,
+        user_name: t.petugas || 'Kasir',
+        detail: `Transaksi ${t.tipe || 'SelfService'} - ${t.nama_pelanggan || 'Pelanggan'} (${t.status_pembayaran || 'Lunas'}, ${totalStr})`,
+        payload: {
+          referensi: t.no_nota,
+          dataSebelum: '-',
+          dataSesudah: `Status: ${t.status || 'Selesai'}, Total: ${totalStr}`,
+          detail: `Transaksi ${t.tipe || 'SelfService'} - ${t.nama_pelanggan || 'Pelanggan'} (${t.metode_bayar || 'Tunai'}, ${t.status_pembayaran || 'Lunas'})`,
+          namaUser: t.petugas || 'Kasir',
+        },
+        created_at: t.tanggal || t.created_at || new Date().toISOString(),
+      });
+    }
+
+    if (generatedLogs.length === 0) return 0;
+
+    // Sort by created_at asc so insertion maintains chronological order
+    generatedLogs.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    // Insert in batches of 50
+    const chunkSize = 50;
+    for (let i = 0; i < generatedLogs.length; i += chunkSize) {
+      const chunk = generatedLogs.slice(i, i + chunkSize);
+      await sb.from('audit_logs').insert(chunk);
+    }
+
+    return generatedLogs.length;
+  } catch (e) {
+    console.error('Backfill audit logs gagal:', e);
+    return 0;
+  }
+}
+
+export async function sbGetAuditLogs(limit = 500): Promise<AuditLog[]> {
   const sb = getSupabase();
   if (!sb) return [];
 
@@ -2796,18 +3070,26 @@ export async function sbGetAuditLogs(limit = 200) {
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (error) return [];
-  return (data || []).map((l: any) => ({
-    id: l.id,
-    timestamp: l.created_at,
-    kategori: l.action || 'Sistem',
-    deskripsi: l.details ? (typeof l.details === 'string' ? l.details : JSON.stringify(l.details)) : '',
-    user: l.user_id || 'System',
-    status: 'Success',
-  }));
+  if (error) {
+    console.error('[sbGetAuditLogs] Error:', error);
+    return [];
+  }
+
+  // Jika tabel masih kosong, lakukan auto-backfill dari data transaksi, shift, dan member
+  if (!data || data.length === 0) {
+    await sbBackfillAuditLogs();
+    const { data: refetched } = await sb
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    return (refetched || []).map(mapAuditRow);
+  }
+
+  return data.map(mapAuditRow);
 }
 
-export async function sbAjukanVoidTransaksi(noNota: string, alasan: string) {
+export async function sbAjukanVoidTransaksi(noNota: string, alasan: string, petugas = 'Kasir') {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
@@ -2823,16 +3105,34 @@ export async function sbAjukanVoidTransaksi(noNota: string, alasan: string) {
     .single();
 
   if (error) throw error;
+
+  try {
+    await sbLogClientActivity(
+      petugas || 'Kasir',
+      'Pengajuan Void',
+      noNota,
+      'Status: Aktif',
+      'Status Void: PendingApproval',
+      `Permohonan void nota ${noNota}. Alasan: ${alasan || '-'}`
+    );
+  } catch (e) {}
+
   return { success: true, data };
 }
 
-export async function sbApproveVoidTransaksi(noNota: string, statusApproval: string) {
+export async function sbApproveVoidTransaksi(
+  noNota: string, 
+  statusApproval: string | boolean,
+  managerName = 'Manager / Owner',
+  managerId = 'MANAGER',
+  catatan = ''
+) {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
-  const isApproved = statusApproval === 'Approved';
+  const isApproved = statusApproval === true || statusApproval === 'Approved';
   const updates: any = {
-    status_void: isApproved ? 'Void' : 'Rejected',
+    status_void: isApproved ? 'Approved' : 'Rejected',
     updated_at: new Date().toISOString(),
   };
   if (isApproved) {
@@ -2847,6 +3147,18 @@ export async function sbApproveVoidTransaksi(noNota: string, statusApproval: str
     .single();
 
   if (error) throw error;
+
+  try {
+    await sbLogClientActivity(
+      managerName || 'Manager',
+      isApproved ? 'Approve Void' : 'Reject Void',
+      noNota,
+      'Status Void: PendingApproval',
+      isApproved ? 'Void Disetujui (Dibatalkan)' : 'Void Ditolak',
+      `${isApproved ? 'Persetujuan' : 'Penolakan'} permohonan void nota ${noNota} oleh ${managerName}. Catatan: ${catatan || '-'}`
+    );
+  } catch (e) {}
+
   return { success: true, data };
 }
 

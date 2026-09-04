@@ -255,10 +255,14 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbPautkanInventoryLayanan(args[0], args[1], args[2])) as any;
         case 'getAuditLogs':
           return (await sb.sbGetAuditLogs(args[0])) as any;
+        case 'logClientActivity':
+          return (await sb.sbLogClientActivity(args[0], args[1], args[2], args[3], args[4], args[5])) as any;
+        case 'backfillAuditLogs':
+          return (await sb.sbBackfillAuditLogs()) as any;
         case 'ajukanVoidTransaksi':
-          return (await sb.sbAjukanVoidTransaksi(args[0], args[1])) as any;
+          return (await sb.sbAjukanVoidTransaksi(args[0], args[1], args[2])) as any;
         case 'approveVoidTransaksi':
-          return (await sb.sbApproveVoidTransaksi(args[0], args[1])) as any;
+          return (await sb.sbApproveVoidTransaksi(args[0], args[1], args[2], args[3], args[4])) as any;
         case 'handoverCheckKasShift':
           return (await sb.sbHandoverCheckKasShift(args[0])) as any;
         case 'getMasterShiftList':
