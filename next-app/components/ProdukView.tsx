@@ -451,7 +451,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         ? item.bahanBakuList.map(b => ({ ...b, qty: parseDecimal(b.qty, 1) }))
         : (item.idInventory && item.idInventory !== 'none' ? [{ idInventory: item.idInventory, qty: parseDecimal(item.inventoryDeductionQty, 1), tahap: 'Dicuci' }] : [])
     );
-    setCustomPipelineSteps(item.pipelineSteps ? (item.pipelineSteps as CustomPipelineStep[]) : []);
+    let pSteps: CustomPipelineStep[] = [];
+    if (Array.isArray(item.pipelineSteps) && item.pipelineSteps.length > 0) {
+      pSteps = item.pipelineSteps as CustomPipelineStep[];
+    } else if (typeof item.pipelineSteps === 'string' && (item.pipelineSteps as string).trim()) {
+      try {
+        pSteps = JSON.parse(item.pipelineSteps as string);
+      } catch {}
+    }
+    setCustomPipelineSteps(pSteps);
     setShowModal(true);
   };
 
@@ -472,6 +480,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     const filteredBahan = bahanBakuList.filter(b => b.idInventory && b.idInventory.trim());
     const isMultiBahan = tipe === 'FullService' || (kategori || '').toLowerCase().includes('drop') || filteredBahan.length > 0;
     const cleanDedQty = parseDecimal(inventoryDeductionQty, 1);
+    const isFullServiceOrDrop = tipe === 'FullService' || (kategori || '').toLowerCase().includes('drop');
     const payload = {
         kode: kode.trim(),
         nama: nama.trim(),
@@ -480,12 +489,12 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         icon,
         tipe: tipe || '',
         kategori,
-        kategoriDropOff: (tipe === 'FullService' || (kategori || '').toLowerCase().includes('drop')) ? kategoriDropOff : '',
+        kategoriDropOff: isFullServiceOrDrop ? kategoriDropOff : '',
         idInventory: isMultiBahan ? (filteredBahan[0]?.idInventory || 'none') : (idInventory ? idInventory : 'none'),
         inventoryDeductionQty: isMultiBahan ? (filteredBahan[0]?.qty !== undefined ? parseDecimal(filteredBahan[0]?.qty, 1) : undefined) : (idInventory && idInventory !== 'none' ? cleanDedQty : undefined),
         bahanBakuList: isMultiBahan ? (filteredBahan.length > 0 ? filteredBahan.map(b => ({ ...b, qty: parseDecimal(b.qty, 1) })) : undefined) : undefined,
         hargaModal: Number(hargaModal) || 0,
-        pipelineSteps: tipe === 'FullService' ? customPipelineSteps : []
+        pipelineSteps: isFullServiceOrDrop ? payloadPipeline : []
       };
     setLoading(true);
     try {

@@ -246,6 +246,19 @@ export async function sbGetLayananListAll(): Promise<any[]> {
     bomMap.set(b.layanan_id, list);
   });
 
+  // Ambil data custom pipeline steps per layanan dari app_settings
+  let pipelineMap: Record<string, any[]> = {};
+  try {
+    const { data: pipeSetting } = await sb
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'layanan_pipeline_steps')
+      .maybeSingle();
+    if (pipeSetting?.value && typeof pipeSetting.value === 'object') {
+      pipelineMap = pipeSetting.value;
+    }
+  } catch {}
+
   return (layananList || []).map((row: any) => ({
     id: row.id,
     kode: row.id,
@@ -263,6 +276,7 @@ export async function sbGetLayananListAll(): Promise<any[]> {
     hargaModal: Number(row.harga_modal) || 0,
     aktif: row.aktif || 'Y',
     bahanBakuList: bomMap.get(row.id) || [],
+    pipelineSteps: pipelineMap[row.id] || [],
   }));
 }
 
@@ -304,6 +318,40 @@ export async function sbTambahLayanan(payload: any) {
       await sb.from('layanan_bahan_baku').insert(bomRows);
     }
   }
+
+  // Simpan custom pipeline steps jika ada
+  if (Array.isArray(payload.pipelineSteps)) {
+    try {
+      const { data: cur } = await sb.from('app_settings').select('value').eq('key', 'layanan_pipeline_steps').maybeSingle();
+      const map = (cur?.value && typeof cur.value === 'object') ? { ...cur.value } : {};
+      map[id] = payload.pipelineSteps;
+      await sb.from('app_settings').upsert({
+        key: 'layanan_pipeline_steps',
+        value: map,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    } catch (e) {
+      console.warn('[sbTambahLayanan] Gagal simpan pipelineSteps ke app_settings:', e);
+    }
+  }
+
+  // LAYER 1 HYBRID BACKUP: Non-blocking trigger ke Google Sheets
+  try {
+    const gasUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
+    if (gasUrl && typeof window !== 'undefined') {
+      setTimeout(() => {
+        fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'tambahLayanan',
+            args: [payload],
+            sessionToken: typeof window !== 'undefined' ? localStorage.getItem('gas_session_token') : undefined,
+          }),
+        }).catch(e => console.warn('[Backup Tambah Layanan ke Google Sheets error]:', e));
+      }, 100);
+    }
+  } catch {}
 
   return { success: true, id };
 }
@@ -350,6 +398,40 @@ export async function sbUpdateLayanan(id: string, payload: any) {
     }
   }
 
+  // Simpan custom pipeline steps jika ada
+  if (Array.isArray(payload.pipelineSteps)) {
+    try {
+      const { data: cur } = await sb.from('app_settings').select('value').eq('key', 'layanan_pipeline_steps').maybeSingle();
+      const map = (cur?.value && typeof cur.value === 'object') ? { ...cur.value } : {};
+      map[id] = payload.pipelineSteps;
+      await sb.from('app_settings').upsert({
+        key: 'layanan_pipeline_steps',
+        value: map,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    } catch (e) {
+      console.warn('[sbUpdateLayanan] Gagal simpan pipelineSteps ke app_settings:', e);
+    }
+  }
+
+  // LAYER 1 HYBRID BACKUP: Non-blocking trigger ke Google Sheets
+  try {
+    const gasUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
+    if (gasUrl && typeof window !== 'undefined') {
+      setTimeout(() => {
+        fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'updateLayanan',
+            args: [id, payload],
+            sessionToken: typeof window !== 'undefined' ? localStorage.getItem('gas_session_token') : undefined,
+          }),
+        }).catch(e => console.warn('[Backup Update Layanan ke Google Sheets error]:', e));
+      }, 100);
+    }
+  } catch {}
+
   return { success: true, id };
 }
 
@@ -359,6 +441,38 @@ export async function sbHapusLayanan(id: string) {
 
   const { error } = await sb.from('layanan').delete().eq('id', id);
   if (error) throw error;
+
+  try {
+    const { data: cur } = await sb.from('app_settings').select('value').eq('key', 'layanan_pipeline_steps').maybeSingle();
+    if (cur?.value && typeof cur.value === 'object' && cur.value[id]) {
+      const map = { ...cur.value };
+      delete map[id];
+      await sb.from('app_settings').upsert({
+        key: 'layanan_pipeline_steps',
+        value: map,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+  } catch (e) {}
+
+  // LAYER 1 HYBRID BACKUP: Non-blocking trigger ke Google Sheets
+  try {
+    const gasUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
+    if (gasUrl && typeof window !== 'undefined') {
+      setTimeout(() => {
+        fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'hapusLayanan',
+            args: [id],
+            sessionToken: typeof window !== 'undefined' ? localStorage.getItem('gas_session_token') : undefined,
+          }),
+        }).catch(e => console.warn('[Backup Hapus Layanan ke Google Sheets error]:', e));
+      }, 100);
+    }
+  } catch {}
+
   return { success: true };
 }
 
@@ -632,6 +746,33 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
 
   // Create pipeline for FullService
   if (tipe === 'FullService') {
+    let customStepsToUse: any[] | null = null;
+    try {
+      const { data: pipeSetting } = await sb
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'layanan_pipeline_steps')
+        .maybeSingle();
+      const pipeMap = (pipeSetting?.value && typeof pipeSetting.value === 'object') ? pipeSetting.value : {};
+
+      for (const it of normalizedPayload.items) {
+        if (it.layanan && pipeMap[it.layanan] && pipeMap[it.layanan].length > 0) {
+          customStepsToUse = pipeMap[it.layanan];
+          break;
+        }
+      }
+      if (!customStepsToUse) {
+        const { data: allLay } = await sb.from('layanan').select('id, nama').eq('tipe', 'FullService');
+        for (const it of normalizedPayload.items) {
+          const match = allLay?.find(l => l.nama === it.layanan || l.id === it.layanan);
+          if (match && pipeMap[match.id] && pipeMap[match.id].length > 0) {
+            customStepsToUse = pipeMap[match.id];
+            break;
+          }
+        }
+      }
+    } catch {}
+
     const defaultSteps = [
       { no_nota: noNota, step: 1, nama_step: 'Diterima', status: 'Selesai', waktu_selesai: new Date().toISOString() },
       { no_nota: noNota, step: 2, nama_step: 'Dicuci', status: 'Aktif', waktu_mulai: new Date().toISOString() },
@@ -639,8 +780,21 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
       { no_nota: noNota, step: 4, nama_step: 'Disetrika / Packing', status: 'Pending' },
       { no_nota: noNota, step: 5, nama_step: 'Siap Diambil', status: 'Pending' },
     ];
+
+    let stepsToInsert: any[] = defaultSteps;
+    if (Array.isArray(customStepsToUse) && customStepsToUse.length > 0) {
+      stepsToInsert = customStepsToUse.map((cs, idx) => ({
+        no_nota: noNota,
+        step: idx + 1,
+        nama_step: cs.nama || `Langkah ${idx + 1}`,
+        status: idx === 0 ? 'Selesai' : idx === 1 ? 'Aktif' : 'Pending',
+        waktu_selesai: idx === 0 ? new Date().toISOString() : null,
+        waktu_mulai: idx === 1 ? new Date().toISOString() : null,
+      }));
+    }
+
     try {
-      await sb.from('pipeline_steps').insert(defaultSteps);
+      await sb.from('pipeline_steps').insert(stepsToInsert);
     } catch (e) {
       console.error('Error insert pipeline steps:', e);
     }
