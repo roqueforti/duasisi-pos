@@ -294,6 +294,13 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
     return cols;
   }, [masterSteps, orders]);
 
+  const displayedKanbanColumns = useMemo(() => {
+    if (filterTab === 'Diproses') {
+      return kanbanColumns.filter(c => c.toLowerCase() !== 'siap diambil');
+    }
+    return kanbanColumns;
+  }, [kanbanColumns, filterTab]);
+
   // Determine the next step tailored specifically to each order's pipeline
   const getNextStatusForOrder = useCallback((order: Transaksi): string | null => {
     const curStatus = (order.status || 'Diterima').trim().toLowerCase();
@@ -956,6 +963,34 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
 
       {error && !selected && <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-700"><AlertCircle className="h-4 w-4" />{error}</div>}
 
+      {/* Contextual Status Banners */}
+      {filterTab === 'SiapDiambil' && filteredOrders.length > 0 && (
+        <div className="flex items-center justify-between bg-teal-50/80 border border-teal-200/80 rounded-xl px-4 py-2.5 text-xs text-teal-900">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
+            <span className="font-semibold">
+              Menampilkan <strong>{filteredOrders.length} cucian</strong> yang sudah selesai diproses dan siap diambil di rak outlet.
+            </span>
+          </div>
+          <span className="text-[11px] font-bold text-teal-800 bg-teal-100/80 px-2.5 py-0.5 rounded-full">
+            Siap Diambil di Rak
+          </span>
+        </div>
+      )}
+      {filterTab === 'BelumWA' && filteredOrders.length > 0 && (
+        <div className="flex items-center justify-between bg-amber-50/80 border border-amber-200/80 rounded-xl px-4 py-2.5 text-xs text-amber-950">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span className="font-semibold">
+              Menampilkan <strong>{filteredOrders.length} cucian di rak</strong> yang belum dikirimi pesan WhatsApp hari ini.
+            </span>
+          </div>
+          <span className="text-[11px] font-bold text-amber-800 bg-amber-100/80 px-2.5 py-0.5 rounded-full">
+            Belum di-WA Hari Ini
+          </span>
+        </div>
+      )}
+
       {loading ? (
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-44 animate-pulse rounded-2xl border border-slate-200 bg-white" />)}</div>
       ) : filterTab === 'SudahDiambil' ? (
@@ -970,12 +1005,19 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
           </div>
         )
       ) : filteredOrders.length === 0 ? (
-        <div className="glass-panel rounded-2xl border border-dashed border-slate-300 p-16 text-center text-xs text-slate-500"><CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" />Tidak ada pesanan aktif pada filter ini.</div>
-      ) : view === 'list' ? (
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3">{filteredOrders.map(renderCard)}</div>
+        <div className="glass-panel rounded-2xl border border-dashed border-slate-300 p-16 text-center text-xs text-slate-500">
+          <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
+          {filterTab === 'SiapDiambil'
+            ? 'Tidak ada cucian di rak yang siap diambil saat ini.'
+            : filterTab === 'BelumWA'
+            ? 'Semua cucian di rak sudah dikirimi notifikasi WhatsApp hari ini.'
+            : 'Tidak ada pesanan aktif pada filter ini.'}
+        </div>
+      ) : filterTab === 'SiapDiambil' || filterTab === 'BelumWA' || view === 'list' ? (
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">{filteredOrders.map(renderCard)}</div>
       ) : (
         <div className="flex snap-x gap-3.5 overflow-x-auto pb-4">
-          {kanbanColumns.map((status) => {
+          {displayedKanbanColumns.map((status) => {
             const statusOrders = filteredOrders.filter((order) => {
               const curStatus = (order.status || 'Diterima').trim().toLowerCase();
               const colName = status.trim().toLowerCase();
