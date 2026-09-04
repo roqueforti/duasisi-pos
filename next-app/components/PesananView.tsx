@@ -205,28 +205,39 @@ export default function PesananView() {
       });
     }
 
-    orders.forEach((o) => {
+    const activeOrders = orders.filter(o => {
+      const s = (o.status || '').trim().toLowerCase();
+      return s !== 'selesai' && s !== 'void' && s !== 'batal';
+    });
+
+    activeOrders.forEach((o) => {
       if (Array.isArray(o.pipeline)) {
         o.pipeline.forEach((p) => {
           const name = String(p.namaStep || '').trim();
+          const nameLower = name.toLowerCase();
           if (
             name &&
-            !cols.some(c => c.toLowerCase() === name.toLowerCase()) &&
-            name !== 'Selesai' &&
-            name.toLowerCase() !== 'pesanan diterima' &&
-            name.toLowerCase() !== 'diterima'
+            !cols.some(c => c.toLowerCase() === nameLower) &&
+            nameLower !== 'selesai' &&
+            nameLower !== 'void' &&
+            nameLower !== 'batal' &&
+            nameLower !== 'pesanan diterima' &&
+            nameLower !== 'diterima'
           ) {
             cols.push(name);
           }
         });
       }
       const statusStr = String(o.status || '').trim();
+      const statusLower = statusStr.toLowerCase();
       if (
         statusStr &&
-        !cols.some(c => c.toLowerCase() === statusStr.toLowerCase()) &&
-        statusStr !== 'Selesai' &&
-        statusStr.toLowerCase() !== 'pesanan diterima' &&
-        statusStr.toLowerCase() !== 'diterima'
+        !cols.some(c => c.toLowerCase() === statusLower) &&
+        statusLower !== 'selesai' &&
+        statusLower !== 'void' &&
+        statusLower !== 'batal' &&
+        statusLower !== 'pesanan diterima' &&
+        statusLower !== 'diterima'
       ) {
         cols.push(statusStr);
       }
@@ -287,7 +298,12 @@ export default function PesananView() {
     let diprosesCount = 0;
     const todayDateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
-    orders.forEach(o => {
+    const activeOrders = orders.filter(o => {
+      const s = (o.status || '').trim().toLowerCase();
+      return s !== 'selesai' && s !== 'void' && s !== 'batal';
+    });
+
+    activeOrders.forEach(o => {
       const isSiap = o.status === 'Siap Diambil' || (o.pipeline && o.pipeline.some(p => p.namaStep === 'Siap Diambil' && p.status === 'Aktif'));
       if (isSiap) {
         siapCount++;
@@ -301,7 +317,7 @@ export default function PesananView() {
       }
     });
 
-    return { siapCount, belumWaCount, diprosesCount, total: orders.length };
+    return { siapCount, belumWaCount, diprosesCount, total: activeOrders.length };
   }, [orders, waReminders]);
 
   const filteredOrders = useMemo(() => {
@@ -309,6 +325,11 @@ export default function PesananView() {
     const todayDateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
     return orders.filter((order) => {
+      const curStatus = (order.status || '').trim().toLowerCase();
+      if (curStatus === 'selesai' || curStatus === 'void' || curStatus === 'batal') {
+        return false;
+      }
+
       const orderPriority = order.tingkatLayanan || 'Reguler';
       const priorityMatch = priority === 'Semua' || orderPriority.toLowerCase() === priority.toLowerCase();
       const searchMatch = !keyword
@@ -747,32 +768,23 @@ export default function PesananView() {
               const curStatus = (order.status || 'Diterima').trim().toLowerCase();
               const colName = status.trim().toLowerCase();
 
+              // Active pipeline step if any
+              const activeStep = order.pipeline?.find((p) => p.status === 'Aktif')?.namaStep?.trim().toLowerCase();
+
               // 1. Column Diterima (Pesanan Baru Masuk)
               if (colName === 'diterima' || colName === 'pesanan diterima') {
-                if (curStatus === 'diterima' || curStatus === 'pesanan diterima') {
-                  return true;
+                if (activeStep) {
+                  return activeStep === 'diterima' || activeStep === 'pesanan diterima';
                 }
-                const activeStep = order.pipeline?.find((p) => p.status === 'Aktif')?.namaStep?.trim().toLowerCase();
-                if (activeStep === 'diterima' || activeStep === 'pesanan diterima') {
-                  return true;
-                }
-                const hasStartedProcessing = order.pipeline?.some(
-                  (p) => p.namaStep.toLowerCase() !== 'pesanan diterima' && p.namaStep.toLowerCase() !== 'diterima' && (p.status === 'Aktif' || p.status === 'Selesai')
-                );
-                return !hasStartedProcessing && curStatus !== 'selesai' && curStatus !== 'void' && curStatus !== 'batal';
+                return curStatus === 'diterima' || curStatus === 'pesanan diterima' || curStatus === 'pending' || curStatus === 'baru';
               }
 
               // 2. Processing Columns (Dicuci, Dikeringkan, Disetrika, Dilipat, Siap Diambil, etc.)
-              if (curStatus === colName && curStatus !== 'diterima') {
-                return true;
+              if (activeStep) {
+                return activeStep === colName;
               }
 
-              const activeStep = order.pipeline?.find((p) => p.status === 'Aktif')?.namaStep?.trim().toLowerCase();
-              if (activeStep === colName && curStatus !== 'diterima') {
-                return true;
-              }
-
-              return false;
+              return curStatus === colName;
             });
             const StatusIcon = getWorkflowIcon(status);
             return (

@@ -593,23 +593,80 @@ export async function sbGetTransaksiList(limitOrFilter: number | string = 100): 
   }));
 }
 
-export async function sbUpdateDropoffStatus(noNota: string, newStatus: string, petugas = 'Kasir'): Promise<any> {
+export async function sbUpdateDropoffStatus(noNota: string | any, newStatus?: string, petugas = 'Kasir'): Promise<any> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
+  let targetNota = noNota;
+  let targetStatus = newStatus;
+  let targetPetugas = petugas;
+  let washerId = '';
+  let dryerId = '';
+  let catatan = '';
+
+  if (typeof noNota === 'object' && noNota !== null) {
+    targetNota = noNota.noNota || noNota.no_nota || noNota.id;
+    targetStatus = noNota.status || noNota.statusBaru;
+    targetPetugas = noNota.assignedStaff || noNota.userName || noNota.petugas || 'Kasir';
+    washerId = noNota.washerId || '';
+    dryerId = noNota.dryerId || '';
+    catatan = noNota.catatan || '';
+  }
+
+  if (!targetNota || !targetStatus) {
+    throw new Error('Nomor nota atau status baru tidak valid.');
+  }
+
   const { error: trxErr } = await sb
     .from('transaksi')
-    .update({ status: newStatus, updated_at: new Date().toISOString() })
-    .eq('no_nota', noNota);
+    .update({ status: targetStatus, updated_at: new Date().toISOString() })
+    .eq('no_nota', targetNota);
 
   if (trxErr) throw trxErr;
 
+  // Update pipeline_steps if existing
+  try {
+    const { data: steps } = await sb
+      .from('pipeline_steps')
+      .select('*')
+      .eq('no_nota', targetNota);
+
+    if (steps && steps.length > 0) {
+      const nowIso = new Date().toISOString();
+      if (targetStatus === 'Selesai') {
+        await sb
+          .from('pipeline_steps')
+          .update({ status: 'Selesai', waktu_selesai: nowIso })
+          .eq('no_nota', targetNota);
+      } else {
+        await sb
+          .from('pipeline_steps')
+          .update({ status: 'Selesai', waktu_selesai: nowIso })
+          .eq('no_nota', targetNota)
+          .eq('status', 'Aktif');
+
+        await sb
+          .from('pipeline_steps')
+          .update({
+            status: 'Aktif',
+            waktu_mulai: nowIso,
+            assigned_staff: targetPetugas,
+            mesin_id: washerId || dryerId || null,
+          })
+          .eq('no_nota', targetNota)
+          .ilike('nama_step', targetStatus);
+      }
+    }
+  } catch (pipeErr) {
+    console.warn('Error updating pipeline steps:', pipeErr);
+  }
+
   // Jika masuk ke status 'Dicuci', otomatis potong stok bahan baku layanan
-  if (newStatus === 'Dicuci') {
+  if (targetStatus === 'Dicuci') {
     const { data: items } = await sb
       .from('transaksi_items')
       .select('layanan, qty, id_inventory, inventory_deduction_qty')
-      .eq('no_nota', noNota);
+      .eq('no_nota', targetNota);
 
     if (items && items.length > 0) {
       for (const it of items) {
@@ -628,7 +685,7 @@ export async function sbUpdateDropoffStatus(noNota: string, newStatus: string, p
     }
   }
 
-  return { success: true, newStatus };
+  return { success: true, newStatus: targetStatus };
 }
 
 // ============================================================
@@ -1351,10 +1408,13 @@ export async function sbGetTransaksiByPipeline(statusFilter = 'Semua'): Promise<
       transaksi_items (*),
       pipeline_steps (*)
     `)
+    .eq('tipe', 'FullService')
     .order('tanggal', { ascending: false });
 
   if (statusFilter && statusFilter !== 'Semua') {
     query = query.eq('status', statusFilter);
+  } else {
+    query = query.not('status', 'in', '(Selesai,Void,Batal)');
   }
 
   const { data, error } = await query.limit(200);
