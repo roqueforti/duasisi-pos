@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload, Check, X, Loader2 } from 'lucide-react';
+import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload, X, Loader2 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
@@ -29,10 +29,6 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Pending quick adjustment per item: { [itemId]: delta }
-  const [pendingDeltas, setPendingDeltas] = useState<Record<string, number>>({});
-  const [savingId, setSavingId] = useState<string | null>(null);
-
   // Add/Edit Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -40,6 +36,8 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   const [stok, setStok] = useState('');
   const [satuan, setSatuan] = useState('pcs');
   const [stokMin, setStokMin] = useState('5');
+  const [originalStok, setOriginalStok] = useState<number | null>(null);
+  const [showDecimalOptions, setShowDecimalOptions] = useState(false);
 
   // Bi-directional Sync States
   const [isDijual, setIsDijual] = useState(false);
@@ -73,14 +71,35 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     loadKategori();
   }, []);
 
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setEditId(null);
+    setNama('');
+    setStok('');
+    setSatuan('pcs');
+    setStokMin('5');
+    setOriginalStok(null);
+    setShowDecimalOptions(false);
+    setHargaJual('');
+    setIsDijual(false);
+  };
+
   const handleEditClick = (item: InventoryItem) => {
     setEditId(item.id);
     setNama(item.nama);
     setStok(item.stok.toString());
     setSatuan(item.satuan);
     setStokMin(item.stokMinimum.toString());
+    setOriginalStok(item.stok);
+    setShowDecimalOptions(false);
     setIsDijual(false);
     setShowAddModal(true);
+  };
+
+  const handleQuickAdjustStok = (step: number) => {
+    const current = parseDecimal(stok, 0);
+    const next = Math.max(0, Math.round((current + step + Number.EPSILON) * 10000) / 10000);
+    setStok(next.toString());
   };
 
   const handleSave = async () => {
@@ -115,9 +134,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
         clearCache('getLayananListAll'); // Clear catalog cache as well
       }
       clearCache('getInventoryList');
-      setShowAddModal(false);
-      setEditId(null);
-      setNama(''); setStok(''); setSatuan(''); setStokMin(''); setHargaJual(''); setIsDijual(false);
+      handleCloseModal();
       loadInventory();
       await showAlert(`Berhasil ${editId ? 'mengubah' : 'menambah'} barang!`, 'success');
     } catch (err: any) {
@@ -129,74 +146,6 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
 
   const formatStok = (val: number | string) => {
     return formatDecimal(val, 4);
-  };
-
-  const handleAdjustDelta = (item: InventoryItem, step: number) => {
-    const currentDelta = pendingDeltas[item.id] || 0;
-    const newDelta = Math.round((currentDelta + step + Number.EPSILON) * 10000) / 10000;
-
-    // Cegah stok akhir kurang dari 0
-    if (item.stok + newDelta < 0) return;
-
-    if (newDelta === 0) {
-      setPendingDeltas((prev) => {
-        const next = { ...prev };
-        delete next[item.id];
-        return next;
-      });
-    } else {
-      setPendingDeltas((prev) => ({
-        ...prev,
-        [item.id]: newDelta,
-      }));
-    }
-  };
-
-  const handleCancelDelta = (id: string) => {
-    setPendingDeltas((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  };
-
-  const handleSaveDelta = async (item: InventoryItem) => {
-    const delta = pendingDeltas[item.id];
-    if (!delta) return;
-
-    setSavingId(item.id);
-    const previousItems = [...items];
-
-    // Optimistic UI update
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === item.id
-          ? { ...i, stok: Math.max(0, Math.round((Number(i.stok) + delta + Number.EPSILON) * 10000) / 10000) }
-          : i
-      )
-    );
-
-    clearCache('getInventoryList');
-
-    try {
-      const res = await runBackend<{ success: boolean; stokBaru?: number; message?: string }>(
-        'updateStokInventory',
-        item.id,
-        delta
-      );
-      if (res && res.success && res.stokBaru !== undefined) {
-        setItems((prev) =>
-          prev.map((i) => (i.id === item.id ? { ...i, stok: res.stokBaru! } : i))
-        );
-      }
-      handleCancelDelta(item.id);
-    } catch (err: any) {
-      // Rollback jika request gagal
-      setItems(previousItems);
-      await showAlert(`Gagal mengubah stok: ${err?.message || String(err)}`, 'error');
-    } finally {
-      setSavingId(null);
-    }
   };
 
   const handleDelete = async (id: string, namaBarang: string) => {
@@ -361,9 +310,9 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
             </>
           )}
           
-          {/* Tambah barang - STAFF dan MANAGER */}
+              {/* Tambah barang - STAFF dan MANAGER */}
           {(currentRole === 'STAFF' || currentRole === 'MANAGER') && (
-              <button onClick={() => { setEditId(null); setNama(''); setStok(''); setSatuan(''); setStokMin(''); setIsDijual(false); setShowAddModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-md text-xs font-semibold transition shadow-sm">
+              <button onClick={() => { handleCloseModal(); setShowAddModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-md text-xs font-semibold transition shadow-sm">
                 <Plus className="w-4 h-4" /> Tambah Bahan
               </button>
           )}
@@ -406,11 +355,9 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                 </tr>
               ) : (
                 items.map((item) => {
-                  const delta = pendingDeltas[item.id] || 0;
-                  const previewStok = Math.max(0, Math.round((Number(item.stok) + delta + Number.EPSILON) * 10000) / 10000);
-                  const isMenipis = (delta ? previewStok : item.stok) <= item.stokMinimum;
+                  const isMenipis = item.stok <= item.stokMinimum;
                   return (
-                    <tr key={item.id} className={`transition-colors ${delta ? 'bg-amber-50/40' : 'hover:bg-slate-50/80'}`}>
+                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3 px-3">
                         <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                           {item.id}
@@ -418,28 +365,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                       </td>
                       <td className="py-3 px-4 font-semibold text-slate-600">{item.nama}</td>
                       <td className="py-3 px-4 font-bold text-slate-700">
-                        {delta !== 0 ? (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-slate-400 line-through text-[11px]">{formatStok(item.stok)}</span>
-                            <span className="text-slate-400 font-normal text-xs">➔</span>
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-xs font-bold border ${
-                                delta > 0
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                                  : 'bg-rose-50 text-rose-700 border-rose-300'
-                              }`}
-                            >
-                              {formatStok(previewStok)} {item.satuan}
-                              <span className="text-[10px] ml-1 font-semibold opacity-80">
-                                ({delta > 0 ? `+${formatStok(delta)}` : formatStok(delta)})
-                              </span>
-                            </span>
-                          </div>
-                        ) : (
-                          <>
-                            {formatStok(item.stok)} <span className="text-slate-400 font-normal text-[11px]">{item.satuan}</span>
-                          </>
-                        )}
+                        {formatStok(item.stok)} <span className="text-slate-400 font-normal text-[11px]">{item.satuan}</span>
                       </td>
                       <td className="py-3 px-4 text-slate-500">{formatStok(item.stokMinimum)} {item.satuan}</td>
                       <td className="py-3 px-4">
@@ -455,128 +381,23 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                       </td>
                       <td className="py-3 px-4 text-slate-400">{item.terakhirUpdate || '-'}</td>
                       <td className="py-3 px-4 text-right">
-                        {(currentRole === 'STAFF' || currentRole === 'MANAGER') ? (
-                          <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                            {delta !== 0 ? (
-                              <div className="flex items-center gap-1 bg-emerald-50/80 border border-emerald-200 p-1 rounded-md animate-fade-in shadow-2xs flex-wrap">
-                                {/* Stepper Buttons & Direct Delta Input */}
-                                <button
-                                  onClick={() => handleAdjustDelta(item, -1)}
-                                  disabled={item.stok + delta <= 0 || savingId === item.id}
-                                  className="px-1.5 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-[11px] font-bold border border-slate-200 transition select-none"
-                                  title="Kurangi 1 lagi"
-                                >
-                                  -1
-                                </button>
-                                <button
-                                  onClick={() => handleAdjustDelta(item, -0.02)}
-                                  disabled={item.stok + delta <= 0 || savingId === item.id}
-                                  className="px-1.5 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-[11px] font-bold border border-slate-200 transition select-none"
-                                  title="Kurangi 0.02 (20 ml)"
-                                >
-                                  -0.02
-                                </button>
-                                
-                                <input
-                                  type="number"
-                                  step="any"
-                                  value={delta}
-                                  onChange={(e) => {
-                                    const val = parseDecimal(e.target.value, 0);
-                                    if (item.stok + val >= 0) {
-                                      setPendingDeltas(prev => ({ ...prev, [item.id]: Math.round(val * 10000) / 10000 }));
-                                    }
-                                  }}
-                                  className="w-16 px-1 py-0.5 text-xs text-center font-bold bg-white border border-emerald-300 rounded outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800"
-                                  placeholder="0"
-                                  title="Ketik jumlah perubahan stok (+ atau -)"
-                                />
-
-                                <button
-                                  onClick={() => handleAdjustDelta(item, 0.02)}
-                                  disabled={savingId === item.id}
-                                  className="px-1.5 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-[11px] font-bold border border-slate-200 transition select-none"
-                                  title="Tambah 0.02 (20 ml)"
-                                >
-                                  +0.02
-                                </button>
-                                <button
-                                  onClick={() => handleAdjustDelta(item, 1)}
-                                  disabled={savingId === item.id}
-                                  className="px-1.5 py-0.5 bg-white hover:bg-slate-100 disabled:opacity-40 text-slate-700 rounded text-[11px] font-bold border border-slate-200 transition select-none"
-                                  title="Tambah 1 lagi"
-                                >
-                                  +1
-                                </button>
-
-                                {/* Tombol Simpan */}
-                                <button
-                                  onClick={() => handleSaveDelta(item)}
-                                  disabled={savingId === item.id}
-                                  className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white rounded text-xs font-bold transition shadow-2xs select-none ml-0.5"
-                                  title="Simpan Perubahan Stok"
-                                >
-                                  {savingId === item.id ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  ) : (
-                                    <Check className="w-3.5 h-3.5" />
-                                  )}
-                                  <span>Simpan</span>
-                                </button>
-
-                                {/* Tombol Batal */}
-                                <button
-                                  onClick={() => handleCancelDelta(item.id)}
-                                  disabled={savingId === item.id}
-                                  className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-white transition"
-                                  title="Batal"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => handleAdjustDelta(item, -1)}
-                                  disabled={item.stok <= 0}
-                                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 rounded text-xs font-bold transition shadow-xs select-none"
-                                  title="Kurangi Stok (-1)"
-                                >
-                                  -1
-                                </button>
-                                <button
-                                  onClick={() => handleAdjustDelta(item, 1)}
-                                  className="px-2 py-1 bg-[#1E4648] hover:bg-[#163536] active:bg-[#102728] text-white rounded text-xs font-bold transition shadow-xs select-none"
-                                  title="Tambah Stok (+1)"
-                                >
-                                  +1
-                                </button>
-                                <button
-                                  onClick={() => handleAdjustDelta(item, 0.02)}
-                                  className="px-2 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded text-xs font-bold transition shadow-xs select-none"
-                                  title="Buka panel ubah stok desimal / takaran kecil"
-                                >
-                                  ±Desimal
-                                </button>
-                                {currentRole === 'MANAGER' && (
-                                  <>
-                                    <button
-                                      onClick={() => handleEditClick(item)}
-                                      className="p-1.5 text-slate-400 hover:text-blue-500 rounded transition"
-                                      title="Edit"
-                                    >
-                                      <Edit3 className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(item.id, item.nama)}
-                                      className="p-1.5 text-slate-400 hover:text-red-500 rounded transition"
-                                      title="Hapus"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </>
-                                )}
-                              </>
+                        {(currentRole === 'STAFF' || currentRole === 'MANAGER' || !currentRole) ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleEditClick(item)}
+                              className="p-1.5 text-slate-500 hover:text-[#1E4648] hover:bg-slate-100 rounded transition"
+                              title="Edit & Sesuaikan Stok"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            {currentRole === 'MANAGER' && (
+                              <button
+                                onClick={() => handleDelete(item.id, item.nama)}
+                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition"
+                                title="Hapus Barang"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             )}
                           </div>
                         ) : (
@@ -595,9 +416,29 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
       {/* Add/Edit Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-[500] bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-5 w-full max-w-sm">
-            <h3 className="text-sm font-semibold text-slate-600 mb-4">{editId ? 'Edit Stok Bahan' : 'Tambah Stok Bahan Baru'}</h3>
-            <div className="space-y-3 mb-4">
+          <div className="bg-white rounded-lg p-5 w-full max-w-md shadow-xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-700">
+                {editId ? 'Edit Stok Bahan' : 'Tambah Stok Bahan Baru'}
+              </h3>
+              <div className="flex items-center gap-2">
+                {editId && (
+                  <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                    {editId}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-md transition"
+                  title="Tutup"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 mb-5">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Nama Barang</label>
                 <input
@@ -609,7 +450,8 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                 />
                 <p className="text-[10px] text-slate-400 mt-1">Nama bahan baku, produk, atau perlengkapan.</p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+
+              <div className="grid grid-cols-2 gap-2.5 items-start">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Jumlah Stok</label>
                   <input
@@ -618,7 +460,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                     value={stok}
                     onChange={(e) => setStok(e.target.value)}
                     placeholder="0"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648]"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-[#1E4648] font-bold text-slate-700"
                   />
                 </div>
                 <SatuanInput
@@ -628,6 +470,143 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                   helperText="Contoh: liter, pcs, botol, kg, atau ketik kustom."
                 />
               </div>
+
+              {/* Panel Penyesuaian Stok Cepat (+ / - / Desimal) */}
+              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-slate-600">Penyesuaian Stok Cepat:</span>
+                  {editId && originalStok !== null && (
+                    <span className="text-[10px] text-slate-400">
+                      Stok Awal: <strong className="text-slate-600">{formatStok(originalStok)} {satuan}</strong>
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAdjustStok(-1)}
+                    disabled={parseDecimal(stok, 0) <= 0}
+                    className="px-2.5 py-1 bg-white hover:bg-slate-100 active:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 rounded text-xs font-bold transition border border-slate-300 shadow-2xs select-none"
+                    title="Kurangi Stok (-1)"
+                  >
+                    -1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAdjustStok(1)}
+                    className="px-2.5 py-1 bg-[#1E4648] hover:bg-[#163536] active:bg-[#102728] text-white rounded text-xs font-bold transition shadow-2xs select-none"
+                    title="Tambah Stok (+1)"
+                  >
+                    +1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDecimalOptions(!showDecimalOptions)}
+                    className={`px-2.5 py-1 rounded text-xs font-bold transition shadow-2xs select-none border ${
+                      showDecimalOptions
+                        ? 'bg-teal-700 text-white border-teal-800'
+                        : 'bg-teal-50 hover:bg-teal-100 text-teal-800 border-teal-300'
+                    }`}
+                    title="Buka panel ubah stok desimal / takaran kecil"
+                  >
+                    ±Desimal
+                  </button>
+                </div>
+
+                {/* Sub-panel opsi desimal */}
+                {showDecimalOptions && (
+                  <div className="pt-2 border-t border-slate-200/80 animate-in fade-in duration-100">
+                    <div className="flex items-center justify-between text-[10px] text-teal-800 font-medium mb-1.5">
+                      <span>Takaran Kecil / Desimal:</span>
+                      <span className="text-[9px] text-teal-600 font-normal">Contoh: 0.02 L = 20 ml</span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAdjustStok(-0.5)}
+                        disabled={parseDecimal(stok, 0) <= 0}
+                        className="px-2 py-0.5 bg-white hover:bg-teal-50 disabled:opacity-40 text-teal-900 rounded text-[11px] font-bold border border-teal-200 transition"
+                      >
+                        -0.5
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAdjustStok(-0.1)}
+                        disabled={parseDecimal(stok, 0) <= 0}
+                        className="px-2 py-0.5 bg-white hover:bg-teal-50 disabled:opacity-40 text-teal-900 rounded text-[11px] font-bold border border-teal-200 transition"
+                      >
+                        -0.1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAdjustStok(-0.02)}
+                        disabled={parseDecimal(stok, 0) <= 0}
+                        className="px-2 py-0.5 bg-white hover:bg-teal-50 disabled:opacity-40 text-teal-900 rounded text-[11px] font-bold border border-teal-200 transition"
+                      >
+                        -0.02
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAdjustStok(0.02)}
+                        className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-900 rounded text-[11px] font-bold border border-teal-200 transition"
+                      >
+                        +0.02
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAdjustStok(0.1)}
+                        className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-900 rounded text-[11px] font-bold border border-teal-200 transition"
+                      >
+                        +0.1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAdjustStok(0.5)}
+                        className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-900 rounded text-[11px] font-bold border border-teal-200 transition"
+                      >
+                        +0.5
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Selisih stok yang diedit */}
+                {editId && originalStok !== null && (
+                  (() => {
+                    const curStokNum = parseDecimal(stok, 0);
+                    const diff = Math.round((curStokNum - originalStok + Number.EPSILON) * 10000) / 10000;
+                    if (diff === 0) return null;
+                    return (
+                      <div className="pt-1.5 border-t border-slate-200/60 text-[11px] flex items-center justify-between flex-wrap gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 font-medium">Perubahan:</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded font-bold text-[11px] ${
+                              diff > 0
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-rose-100 text-rose-800 border border-rose-300'
+                            }`}
+                          >
+                            {diff > 0 ? `+${formatStok(diff)}` : formatStok(diff)} {satuan}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            ({formatStok(originalStok)} ➔ {formatStok(curStokNum)})
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setStok(originalStok.toString())}
+                          className="text-[10px] text-slate-400 hover:text-rose-600 underline transition cursor-pointer"
+                        >
+                          Reset ke awal
+                        </button>
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
+
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Stok Minimum Peringatan</label>
                 <input
@@ -679,11 +658,21 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
               )}
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => { setShowAddModal(false); setEditId(null); setNama(''); setStok(''); setSatuan(''); setStokMin(''); setIsDijual(false); }} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-md text-xs">
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-md text-xs transition cursor-pointer"
+              >
                 Batal
               </button>
-              <button onClick={handleSave} className="bg-[#1E4648] hover:bg-[#163536] text-white font-medium px-4 py-2 rounded-md text-xs">
-                Simpan
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={loading}
+                className="bg-[#1E4648] hover:bg-[#163536] disabled:opacity-50 text-white font-medium px-4 py-2 rounded-md text-xs transition flex items-center gap-1.5 cursor-pointer"
+              >
+                {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>Simpan</span>
               </button>
             </div>
           </div>
