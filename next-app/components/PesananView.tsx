@@ -23,14 +23,60 @@ import {
   Timer,
   Hourglass,
   Printer,
-  ExternalLink
+  ExternalLink,
+  Workflow,
+  User,
+  Phone
 } from 'lucide-react';
-import { Mesin, Transaksi, LayananBahanBaku } from '@/lib/types';
+import { Mesin, Transaksi, LayananBahanBaku, PipelineStep } from '@/lib/types';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { formatWaPhone, parseDecimal, formatDecimal, eNotaUrl } from '@/lib/utils';
 import { DropOffPriorityItem } from './ProdukView';
 import PrinterModal from '@/components/PrinterModal';
+
+function getFormattedDuration(startStr?: string | null, endStr?: string | null): string {
+  if (!startStr) return '-';
+  const parseD = (s: string) => {
+    if (s.includes('/')) {
+      const parts = s.split(' ')[0].split('/');
+      const timePart = s.split(' ')[1] || '00:00';
+      const [hh, mm, ss] = timePart.split(':');
+      return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), Number(hh) || 0, Number(mm) || 0, Number(ss) || 0);
+    }
+    return new Date(s);
+  };
+  const start = parseD(startStr);
+  const end = endStr ? parseD(endStr) : new Date();
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return '-';
+  const diffMs = Math.max(0, end.getTime() - start.getTime());
+  const totalMins = Math.floor(diffMs / 60000);
+  if (totalMins < 1) return '< 1 Menit';
+  if (totalMins < 60) return `${totalMins} Menit`;
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  if (hours < 24) return `${hours} Jam ${mins > 0 ? `${mins} Mnt` : ''}`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return `${days} Hari ${remHours > 0 ? `${remHours} Jam` : ''}`;
+}
+
+function formatWibDate(dateStr?: string | null): string {
+  if (!dateStr) return '-';
+  let d: Date;
+  if (typeof dateStr === 'string' && dateStr.includes('/')) {
+    const parts = dateStr.split(' ')[0].split('/');
+    const timePart = dateStr.split(' ')[1] || '00:00';
+    const [hh, mm, ss] = timePart.split(':');
+    d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), Number(hh) || 0, Number(mm) || 0, Number(ss) || 0);
+  } else {
+    d = new Date(dateStr);
+  }
+  if (isNaN(d.getTime())) return String(dateStr);
+  const dateFormatted = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  const timeFormatted = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+  return `${dateFormatted}, ${timeFormatted}`;
+}
 
 function getWorkflowIcon(status: string) {
   const s = (status || '').toLowerCase();
@@ -78,6 +124,7 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
   const [filterTab, setFilterTab] = useState<'Semua' | 'Diproses' | 'SiapDiambil' | 'BelumWA' | 'SudahDiambil'>(initialFilterTab || 'Semua');
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
   const [selected, setSelected] = useState<Transaksi | null>(null);
+  const [detailModalOrder, setDetailModalOrder] = useState<Transaksi | null>(null);
   const [machineId, setMachineId] = useState('');
   const [staffName, setStaffName] = useState('');
   const [note, setNote] = useState('');
@@ -488,6 +535,52 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
     return cleanId;
   }, [machines]);
 
+  const getEffectivePipelineSteps = useCallback((order: Transaksi): PipelineStep[] => {
+    if (Array.isArray(order.pipeline) && order.pipeline.length > 0) {
+      return [...order.pipeline].sort((a, b) => (a.step || 0) - (b.step || 0));
+    }
+
+    // Fallback generation for older completed or existing orders
+    let customSteps: any[] = [];
+    for (const item of order.items || []) {
+      const lay = layananList.find(l => (l.nama || '').toLowerCase() === (item.layanan || '').toLowerCase());
+      if (lay && Array.isArray(lay.pipelineSteps) && lay.pipelineSteps.length > 0) {
+        customSteps = lay.pipelineSteps;
+        break;
+      }
+    }
+
+    const stepNames = customSteps.length > 0
+      ? customSteps.map(s => s.nama)
+      : ['Diterima', 'Dicuci', 'Dikeringkan', 'Siap Diambil'];
+
+    const isOrderCompleted = (order.status || '').toLowerCase() === 'selesai';
+    const waktuMasuk = order.tanggal || '';
+    const waktuSelesai = (order as any).updated_at || order.tanggal || '';
+
+    return stepNames.map((nama, idx) => {
+      const isFirst = idx === 0;
+      const isLast = idx === stepNames.length - 1;
+      const stepStatus: 'Pending' | 'Aktif' | 'Selesai' = isOrderCompleted ? 'Selesai' : (isFirst ? 'Selesai' : (idx === 1 ? 'Aktif' : 'Pending'));
+
+      let staff = order.petugas || 'Kasir';
+      if (!isOrderCompleted && !isFirst) {
+        staff = idx === 1 ? (order.petugas || 'Staff Outlet') : '-';
+      }
+
+      return {
+        id: `fallback-${order.noNota}-${idx}`,
+        noNota: order.noNota,
+        step: idx + 1,
+        namaStep: nama,
+        status: stepStatus,
+        assignedStaff: staff,
+        waktuMulai: isFirst ? waktuMasuk : (isOrderCompleted ? waktuMasuk : undefined),
+        waktuSelesai: (isOrderCompleted || isFirst) ? (isLast ? waktuSelesai : waktuMasuk) : undefined,
+      };
+    });
+  }, [layananList]);
+
   const renderCard = (order: Transaksi) => {
     const next = getNextStatusForOrder(order);
     const rawMachine = activeMachine(order);
@@ -582,7 +675,11 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
     })();
 
     return (
-      <article key={order.noNota} className="glass-card card-hover-lift p-3.5 space-y-3">
+      <article 
+        key={order.noNota} 
+        onClick={() => setDetailModalOrder(order)}
+        className="glass-card card-hover-lift p-3.5 space-y-3 cursor-pointer transition hover:shadow-md hover:border-teal-300"
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -595,9 +692,11 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
             </div>
             <p className="mt-0.5 truncate text-[11px] font-bold text-slate-500">{order.namaPelanggan}</p>
           </div>
-          <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border shadow-2xs ${badgeWarna}`}>
-            {orderPriority}
-          </span>
+          <div className="flex items-center gap-1">
+            <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border shadow-2xs ${badgeWarna}`}>
+              {orderPriority}
+            </span>
+          </div>
         </div>
 
         <div className="space-y-2 text-[11px] text-slate-500">
@@ -689,7 +788,10 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
 
             {/* Tombol Kirim WA Reminder */}
             <button
-              onClick={(e) => handleSendSiapWA(order, e)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSendSiapWA(order, e);
+              }}
               className="tactile-btn btn-glow-emerald flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-bold shadow-xs cursor-pointer"
             >
               <MessageCircle className="h-3.5 w-3.5" />
@@ -702,7 +804,10 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
 
             {/* Tombol Serahkan / Selesai */}
             <button
-              onClick={() => openProgress(order)}
+              onClick={(e) => {
+                e.stopPropagation();
+                openProgress(order);
+              }}
               className="tactile-btn flex w-full items-center justify-between rounded-xl bg-[#1E4648] hover:bg-[#163536] px-3.5 py-2 text-[11px] font-bold text-white transition shadow-xs cursor-pointer"
             >
               <div className="flex items-center gap-1.5">
@@ -717,7 +822,10 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
             const NextIcon = getWorkflowIcon(next);
             return (
               <button
-                onClick={() => openProgress(order)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openProgress(order);
+                }}
                 className="tactile-btn mt-3 flex w-full items-center justify-between rounded-xl bg-[#1E4648] hover:bg-[#163536] px-3.5 py-2 text-[11px] font-bold text-white transition shadow-2xs cursor-pointer"
               >
                 <div className="flex items-center gap-1.5">
@@ -756,7 +864,11 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
     const isLunas = sisaTagihan <= 0;
 
     return (
-      <article key={order.noNota} className="glass-card card-hover-lift p-4 space-y-3 border-emerald-200/80">
+      <article 
+        key={order.noNota} 
+        onClick={() => setDetailModalOrder(order)}
+        className="glass-card card-hover-lift p-4 space-y-3 border-emerald-200/80 cursor-pointer transition hover:shadow-md hover:border-emerald-300 relative group"
+      >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -811,10 +923,22 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
           </div>
         </div>
 
+        {/* Tombol Aksi Langsung ke Detail Riwayat Pipeline */}
+        <div className="pt-0.5">
+          <div className="w-full py-1.5 px-2.5 rounded-xl bg-slate-50 group-hover:bg-teal-50/80 text-[#1E4648] border border-slate-200/80 group-hover:border-teal-300 text-[11px] font-bold flex items-center justify-between transition">
+            <span className="flex items-center gap-1.5">
+              <Workflow className="w-3.5 h-3.5 text-teal-700" />
+              <span>Detail Riwayat Pipeline & Petugas</span>
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </div>
+
         {/* Quick Actions: Cetak Struk, e-Nota, WhatsApp */}
-        <div className="pt-2 border-t border-slate-100 grid grid-cols-3 gap-1.5">
+        <div className="pt-2 border-t border-slate-100 grid grid-cols-3 gap-1.5" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setTxToPrint(order);
               setIsPrinterModalOpen(true);
             }}
@@ -829,6 +953,7 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
             href={eNotaUrl(order.noNota)}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className="tactile-btn flex items-center justify-center gap-1 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 py-2 px-2 text-[10px] font-bold transition cursor-pointer"
             title="Lihat e-Nota Digital"
           >
@@ -837,7 +962,10 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
           </a>
 
           <button
-            onClick={(e) => handleSendTerimaKasihWA(order, e)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSendTerimaKasihWA(order, e);
+            }}
             className="tactile-btn flex items-center justify-center gap-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-2 px-2 text-[10px] font-bold transition cursor-pointer"
             title="Kirim WA Terima Kasih"
           >
@@ -1162,6 +1290,298 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
           </div>
         </div>
       )}
+
+      {/* Modal Detail Riwayat Pengerjaan Per Pipeline */}
+      {detailModalOrder && (() => {
+        const order = detailModalOrder;
+        const steps = getEffectivePipelineSteps(order);
+        const orderPriority = order.tingkatLayanan || 'Reguler';
+        const priConfig = dropOffPriorities.find((p) => p.nama.toLowerCase() === orderPriority.toLowerCase());
+        const badgeWarna = priConfig?.warna || 'bg-teal-100 text-teal-800 border-teal-300';
+        const sisaTagihan = Number(order.sisaTagihan) || 0;
+        const isLunas = sisaTagihan <= 0;
+        const waktuMasukStr = formatWibDate(order.tanggal);
+        const waktuSelesaiRaw = (order as any).updated_at || order.tanggal;
+        const waktuSelesaiStr = formatWibDate(waktuSelesaiRaw);
+        const totalDurasi = getFormattedDuration(order.tanggal, (order.status || '').toLowerCase() === 'selesai' ? waktuSelesaiRaw : undefined);
+
+        return (
+          <div className="fixed inset-0 z-[650] flex items-center justify-center bg-slate-900/60 p-3 sm:p-4 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="glass-modal max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl p-5 sm:p-6 shadow-2xl space-y-4 border border-slate-200 animate-scale-in">
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#1E4648] border border-teal-200 flex items-center justify-center shrink-0 shadow-xs">
+                    <Workflow className="w-5 h-5 text-teal-800" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base font-black text-slate-800 tracking-tight">Riwayat Pengerjaan Pipeline</h3>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border shadow-2xs ${badgeWarna}`}>
+                        {orderPriority}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        (order.status || '').toLowerCase() === 'selesai'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : 'bg-teal-100 text-[#1E4648] border border-teal-300'
+                      }`}>
+                        {(order.status || '').toLowerCase() === 'selesai' ? '✓ Sudah Diambil' : order.status}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-slate-500 font-medium">
+                      No. Nota: <span className="font-mono font-bold text-slate-800">{order.noNota}</span> · Pelanggan: <strong className="text-slate-700">{order.namaPelanggan}</strong> {order.noHp && `(${order.noHp})`}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setDetailModalOrder(null)} 
+                  className="tactile-btn rounded-xl p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                  title="Tutup"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Ringkasan Pesanan Card */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-50/90 border border-slate-200/90 rounded-xl p-3 text-xs">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Waktu & Durasi</span>
+                  <div className="font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Clock3 className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                    <span>Masuk: {waktuMasukStr}</span>
+                  </div>
+                  {(order.status || '').toLowerCase() === 'selesai' && (
+                    <div className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>Selesai: {waktuSelesaiStr}</span>
+                    </div>
+                  )}
+                  <div className="text-[11px] font-extrabold text-[#1E4648] bg-teal-100/70 border border-teal-200 px-2 py-0.5 rounded-md inline-block font-mono">
+                    Total: {totalDurasi}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Petugas Penyerah & Kasir</span>
+                  <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                    <span>{order.petugas || 'Kasir'}</span>
+                  </div>
+                  <div className="text-slate-500 font-medium">
+                    Bayar: <span className="font-bold text-slate-700">{order.metodeBayar || 'Tunai'}</span>
+                  </div>
+                  <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${isLunas ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                    {isLunas ? 'Lunas' : `Sisa: Rp ${sisaTagihan.toLocaleString('id-ID')}`}
+                  </span>
+                </div>
+
+                <div className="space-y-1 sm:border-l sm:border-slate-200 sm:pl-3">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Layanan & Total Biaya</span>
+                  <p className="line-clamp-2 text-slate-700 font-semibold text-[11px]">
+                    {order.items && order.items.length > 0
+                      ? order.items.map((it) => `${it.layanan} ×${it.qty}`).join(', ')
+                      : 'Drop Off Service'}
+                  </p>
+                  <div className="font-black text-slate-900 text-sm font-mono pt-0.5">
+                    Rp {(Number(order.total) || 0).toLocaleString('id-ID')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline / Stepper Per Pipeline Step */}
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>Tahapan Pengerjaan Fisik ({steps.length} Langkah)</span>
+                  </h4>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    Lengkap dengan petugas & mesin per proses
+                  </span>
+                </div>
+
+                <div className="relative pl-6 space-y-4 before:absolute before:left-3 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200">
+                  {steps.map((step, idx) => {
+                    const isStepSelesai = step.status === 'Selesai';
+                    const isStepAktif = step.status === 'Aktif';
+                    const StepIcon = getWorkflowIcon(step.namaStep);
+                    const machineName = getMachineDisplayName(step.mesinId || step.washerId || step.dryerId || '');
+                    const durationStr = getFormattedDuration(step.waktuMulai, step.waktuSelesai);
+                    const startTimeStr = step.waktuMulai ? formatWibDate(step.waktuMulai) : null;
+                    const endTimeStr = step.waktuSelesai ? formatWibDate(step.waktuSelesai) : null;
+
+                    // Petugas pengerja resolution
+                    const staffName = step.assignedStaff || (isStepSelesai ? (order.petugas || 'Staff Outlet') : '-');
+
+                    return (
+                      <div key={idx} className="relative group">
+                        {/* Step Marker Indicator */}
+                        <div className={`absolute -left-6 top-1.5 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition shadow-xs z-10 ${
+                          isStepSelesai
+                            ? 'bg-emerald-600 text-white ring-4 ring-emerald-50'
+                            : isStepAktif
+                            ? 'bg-[#1E4648] text-white ring-4 ring-teal-100 animate-pulse'
+                            : 'bg-slate-200 text-slate-600 ring-4 ring-slate-50'
+                        }`}>
+                          {isStepSelesai ? (
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          ) : (
+                            <span>{idx + 1}</span>
+                          )}
+                        </div>
+
+                        {/* Step Card Box */}
+                        <div className={`rounded-xl border p-3 transition space-y-2.5 ${
+                          isStepAktif
+                            ? 'bg-white border-teal-500 shadow-sm ring-1 ring-teal-200'
+                            : isStepSelesai
+                            ? 'bg-white border-slate-200 hover:border-slate-300'
+                            : 'bg-slate-50/70 border-slate-200/60 opacity-70'
+                        }`}>
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <div className={`p-1.5 rounded-lg ${
+                                isStepSelesai ? 'bg-emerald-50 text-emerald-700' : isStepAktif ? 'bg-teal-50 text-[#1E4648]' : 'bg-slate-100 text-slate-500'
+                              }`}>
+                                <StepIcon className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-xs font-black text-slate-800">
+                                  Langkah {idx + 1}: {step.namaStep}
+                                </span>
+                              </div>
+                            </div>
+
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              isStepSelesai
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                : isStepAktif
+                                ? 'bg-teal-100 text-[#1E4648] border border-teal-300 font-black animate-pulse'
+                                : 'bg-slate-100 text-slate-500 border border-slate-200'
+                            }`}>
+                              {isStepSelesai ? '✓ Selesai' : isStepAktif ? '⚡ Sedang Dikerjakan' : '⏳ Menunggu Antrean'}
+                            </span>
+                          </div>
+
+                          {/* Detail Grid: Petugas, Mesin, Waktu */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-100">
+                            {/* Petugas Pengerja */}
+                            <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200/70">
+                              <div className="w-6 h-6 rounded-md bg-teal-100/70 text-teal-800 flex items-center justify-center shrink-0">
+                                <User className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-[10px] text-slate-400 block font-medium">Petugas Pengerja</span>
+                                <span className="font-bold text-slate-800 truncate block">
+                                  {staffName !== '-' ? staffName : 'Belum Ditugaskan'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Mesin Digunakan */}
+                            {machineName ? (
+                              <div className="flex items-center gap-2 bg-teal-50/70 p-2 rounded-lg border border-teal-200/80">
+                                <div className="w-6 h-6 rounded-md bg-teal-200/70 text-teal-900 flex items-center justify-center shrink-0">
+                                  <WashingMachine className="w-3.5 h-3.5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-[10px] text-teal-700 block font-medium">Mesin / Washer-Dryer</span>
+                                  <span className="font-bold text-teal-950 truncate block">
+                                    {machineName}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200/70">
+                                <div className="w-6 h-6 rounded-md bg-slate-200/60 text-slate-600 flex items-center justify-center shrink-0">
+                                  <Clock3 className="w-3.5 h-3.5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-[10px] text-slate-400 block font-medium">Estimasi Durasi</span>
+                                  <span className="font-bold text-slate-700 font-mono text-[11px] block">
+                                    {durationStr !== '-' ? durationStr : 'Proses Manual / Rak'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Timestamp Mulai & Selesai */}
+                          {(startTimeStr || endTimeStr) && (
+                            <div className="flex items-center justify-between flex-wrap gap-2 text-[10px] text-slate-500 pt-1 font-mono">
+                              {startTimeStr && (
+                                <span>Mulai: <strong className="text-slate-700">{startTimeStr}</strong></span>
+                              )}
+                              {endTimeStr && (
+                                <span>Selesai: <strong className="text-slate-700">{endTimeStr}</strong></span>
+                              )}
+                              {durationStr !== '-' && (
+                                <span className="text-teal-800 font-bold bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">
+                                  ⏱ {durationStr}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {step.catatan && (
+                            <div className="text-[10.5px] italic text-slate-600 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                              Catatan: "{step.catatan}"
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-between flex-wrap gap-2 pt-4 border-t border-slate-100 mt-4">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => {
+                      setTxToPrint(order);
+                      setIsPrinterModalOpen(true);
+                    }}
+                    className="tactile-btn flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 py-2 px-3 text-xs font-bold text-slate-700 transition cursor-pointer"
+                    title="Cetak Struk Thermal"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Cetak Struk</span>
+                  </button>
+
+                  <a
+                    href={eNotaUrl(order.noNota)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="tactile-btn flex items-center gap-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 py-2 px-3 text-xs font-bold transition cursor-pointer"
+                    title="Buka e-Nota Digital"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-teal-700" />
+                    <span>e-Nota</span>
+                  </a>
+
+                  <button
+                    onClick={(e) => handleSendTerimaKasihWA(order, e)}
+                    className="tactile-btn flex items-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-2 px-3 text-xs font-bold transition cursor-pointer"
+                    title="Kirim Pesan WhatsApp"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>WhatsApp</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setDetailModalOrder(null)}
+                  className="tactile-btn px-5 py-2 rounded-xl bg-[#1E4648] hover:bg-[#163536] text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Printer Modal untuk Cetak Struk Drop-off */}
       <PrinterModal

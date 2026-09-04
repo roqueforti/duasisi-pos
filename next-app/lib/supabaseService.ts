@@ -817,6 +817,7 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
           step: idx + 1,
           nama_step: cs.nama || `Langkah ${idx + 1}`,
           status,
+          assigned_staff: (startsWithDiterima && idx === 0) ? (petugas || 'Kasir') : null,
           waktu_selesai,
           waktu_mulai,
         };
@@ -902,7 +903,7 @@ export async function sbGetTransaksiList(limitOrFilter: number | string = 100): 
       idInventory: it.id_inventory,
       inventoryDeductionQty: Number(it.inventory_deduction_qty) || 1,
     })),
-    pipeline: (t.pipeline_steps || []).map((p: any) => ({
+    pipeline: (t.pipeline_steps || []).sort((a: any, b: any) => (a.step || 0) - (b.step || 0)).map((p: any) => ({
       id: p.id,
       noNota: p.no_nota,
       step: p.step,
@@ -957,10 +958,23 @@ export async function sbUpdateDropoffStatus(noNota: string | any, newStatus?: st
     if (steps && steps.length > 0) {
       const nowIso = new Date().toISOString();
       if (targetStatus === 'Selesai') {
+        // Tandai step aktif yang diselesaikan oleh petugas penyerah
+        await sb
+          .from('pipeline_steps')
+          .update({ 
+            status: 'Selesai', 
+            waktu_selesai: nowIso,
+            assigned_staff: targetPetugas || 'Kasir'
+          })
+          .eq('no_nota', targetNota)
+          .eq('status', 'Aktif');
+
+        // Pastikan semua step lainnya juga berstatus Selesai
         await sb
           .from('pipeline_steps')
           .update({ status: 'Selesai', waktu_selesai: nowIso })
-          .eq('no_nota', targetNota);
+          .eq('no_nota', targetNota)
+          .neq('status', 'Selesai');
       } else {
         await sb
           .from('pipeline_steps')
@@ -2066,7 +2080,7 @@ export async function sbGetTransaksiByPipeline(statusFilter = 'Semua'): Promise<
       hargaSatuan: Number(it.harga_satuan) || 0,
       subtotal: Number(it.subtotal) || 0,
     })),
-    pipeline: (t.pipeline_steps || []).map((p: any) => ({
+    pipeline: (t.pipeline_steps || []).sort((a: any, b: any) => (a.step || 0) - (b.step || 0)).map((p: any) => ({
       id: p.id,
       noNota: p.no_nota,
       step: p.step,
