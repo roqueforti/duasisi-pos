@@ -762,9 +762,13 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
         }
       }
       if (!customStepsToUse) {
-        const { data: allLay } = await sb.from('layanan').select('id, nama').eq('tipe', 'FullService');
+        const { data: allLay } = await sb.from('layanan').select('id, nama');
         for (const it of normalizedPayload.items) {
-          const match = allLay?.find(l => l.nama === it.layanan || l.id === it.layanan);
+          const itName = String(it.layanan || '').trim().toLowerCase();
+          const match = allLay?.find(l =>
+            String(l.nama || '').trim().toLowerCase() === itName ||
+            String(l.id || '').trim().toLowerCase() === itName
+          );
           if (match && pipeMap[match.id] && pipeMap[match.id].length > 0) {
             customStepsToUse = pipeMap[match.id];
             break;
@@ -783,14 +787,40 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
 
     let stepsToInsert: any[] = defaultSteps;
     if (Array.isArray(customStepsToUse) && customStepsToUse.length > 0) {
-      stepsToInsert = customStepsToUse.map((cs, idx) => ({
-        no_nota: noNota,
-        step: idx + 1,
-        nama_step: cs.nama || `Langkah ${idx + 1}`,
-        status: idx === 0 ? 'Selesai' : idx === 1 ? 'Aktif' : 'Pending',
-        waktu_selesai: idx === 0 ? new Date().toISOString() : null,
-        waktu_mulai: idx === 1 ? new Date().toISOString() : null,
-      }));
+      const firstStepName = String(customStepsToUse[0]?.nama || '').trim().toLowerCase();
+      const startsWithDiterima = firstStepName.includes('terima');
+
+      stepsToInsert = customStepsToUse.map((cs, idx) => {
+        let status = 'Pending';
+        let waktu_mulai = null;
+        let waktu_selesai = null;
+
+        if (startsWithDiterima) {
+          // Jika langkah 1 adalah Diterima, langsung Selesai saat nota dibuat dan langkah 2 menjadi Aktif
+          if (idx === 0) {
+            status = 'Selesai';
+            waktu_selesai = new Date().toISOString();
+          } else if (idx === 1) {
+            status = 'Aktif';
+            waktu_mulai = new Date().toISOString();
+          }
+        } else {
+          // Jika langkah 1 langsung proses kerja (cth Dicuci), langkah 1 menjadi Aktif
+          if (idx === 0) {
+            status = 'Aktif';
+            waktu_mulai = new Date().toISOString();
+          }
+        }
+
+        return {
+          no_nota: noNota,
+          step: idx + 1,
+          nama_step: cs.nama || `Langkah ${idx + 1}`,
+          status,
+          waktu_selesai,
+          waktu_mulai,
+        };
+      });
     }
 
     try {
