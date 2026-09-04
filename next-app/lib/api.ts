@@ -271,6 +271,10 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbCheckDuplicateItemCodes()) as any;
         case 'getRekapKinerjaPegawai':
           return (await sb.sbGetRekapKinerjaPegawai(args[0], args[1])) as any;
+        case 'getDropoffIncentiveConfig':
+          return (await sb.sbGetDropoffIncentiveConfig()) as any;
+        case 'saveDropoffIncentiveConfig':
+          return (await sb.sbSaveDropoffIncentiveConfig(args[0])) as any;
       }
     } catch (sbErr: any) {
       console.warn(`[Supabase Error] Action '${action}' gagal, fallback ke Google Apps Script:`, sbErr);

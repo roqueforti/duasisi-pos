@@ -369,7 +369,11 @@ export interface PayrollItem {
   bonusKomisi: number;
   insentifDropOff?: number;
   totalTahapDropOff?: number;
+  totalTahapKhusus?: number;
   dropoffBreakdown?: Record<string, number>;
+  dropoffKhususBreakdown?: Record<string, { count: number; rate: number; subtotal: number }>;
+  dropoffUmumBreakdown?: Record<string, number>;
+  dropoffDetailedTasks?: DropoffDetailedTask[];
   potongan: number;
   potonganRutin?: number;
   dendaTelat?: number;
@@ -399,6 +403,31 @@ export interface PayrollSummary {
   belumDibayarCount: number;
   allDropoffSteps?: string[];
   items: PayrollItem[];
+}
+
+export interface DropoffDetailedTask {
+  id?: string;
+  noNota?: string;
+  orderId?: string;
+  step?: number | string;
+  namaStep?: string;
+  stepName?: string;
+  waktuSelesai?: string;
+  completedAt?: string;
+  isKhusus?: boolean;
+  stepCategory?: 'khusus' | 'umum' | string;
+  tarif?: number;
+  incentiveRate?: number;
+  namaPelanggan?: string;
+  customerName?: string;
+  layanan?: string;
+  catatan?: string;
+}
+
+export interface DropoffIncentiveConfig {
+  rates: Record<string, number>;
+  umumSteps: string[];
+  customSteps?: string[];
 }
 
 export interface Mesin {

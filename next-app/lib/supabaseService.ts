@@ -1,5 +1,5 @@
 import { getSupabase } from './supabaseClient';
-import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin, AuditLog } from './types';
+import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin, AuditLog, DropoffIncentiveConfig } from './types';
 import { formatDateTime, parseIndonesianDateTime } from './utils';
 
 // ============================================================
@@ -3202,6 +3202,65 @@ export async function sbGetMasterShiftList(): Promise<any[]> {
     if (Array.isArray(data?.value) && data.value.length > 0) return data.value;
   } catch {}
   return DEFAULT_SHIFTS;
+}
+
+export const DEFAULT_DROPOFF_INCENTIVE_CONFIG: DropoffIncentiveConfig = {
+  rates: {
+    'Dicuci': 1500,
+    'Dikeringkan': 1500,
+    'Disetrika': 2500,
+    'Lipat & Packing': 1000,
+    'Packing': 1000,
+    'Spotting Noda': 2000,
+    'Treatment Khusus': 3000,
+  },
+  umumSteps: ['Pesanan Diterima', 'Diterima', 'Siap Diambil', 'Selesai'],
+  customSteps: ['Dicuci', 'Dikeringkan', 'Disetrika', 'Lipat & Packing', 'Packing', 'Spotting Noda', 'Treatment Khusus'],
+};
+
+export async function sbGetDropoffIncentiveConfig(): Promise<DropoffIncentiveConfig> {
+  const sb = getSupabase();
+  if (!sb) return DEFAULT_DROPOFF_INCENTIVE_CONFIG;
+
+  try {
+    const { data } = await sb.from('app_settings').select('value').eq('key', 'dropoff_incentive_config').maybeSingle();
+    if (data?.value && typeof data.value === 'object') {
+      return {
+        rates: { ...DEFAULT_DROPOFF_INCENTIVE_CONFIG.rates, ...(data.value.rates || {}) },
+        umumSteps: Array.isArray(data.value.umumSteps) ? data.value.umumSteps : DEFAULT_DROPOFF_INCENTIVE_CONFIG.umumSteps,
+        customSteps: Array.isArray(data.value.customSteps) ? data.value.customSteps : DEFAULT_DROPOFF_INCENTIVE_CONFIG.customSteps,
+      };
+    }
+  } catch (e) {
+    console.warn('[sbGetDropoffIncentiveConfig] Error:', e);
+  }
+  return DEFAULT_DROPOFF_INCENTIVE_CONFIG;
+}
+
+export async function sbSaveDropoffIncentiveConfig(config: DropoffIncentiveConfig): Promise<{ success: boolean; data?: any; message?: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { data, error } = await sb.from('app_settings').upsert({
+    key: 'dropoff_incentive_config',
+    value: config,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'key' }).select();
+
+  if (error) throw error;
+
+  try {
+    await sbLogClientActivity(
+      'Manager',
+      'Pengaturan Tarif Insentif',
+      'Drop Off Pipeline',
+      '-',
+      JSON.stringify(config.rates),
+      'Pembaruan tarif insentif pengerjaan drop off per pipeline khusus'
+    );
+  } catch {}
+
+  return { success: true, data };
 }
 
 

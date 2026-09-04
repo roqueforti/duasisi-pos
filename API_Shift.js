@@ -210,10 +210,11 @@ const SHEET_HARI_LIBUR = "MasterHariLibur";
 
 function getDropoffContributionsMap_(startDateStr, endDateStr) {
   const sh = SS.getSheetByName(SHEET_PIPELINE);
-  if (!sh) return { totalMap: {}, breakdownMap: {}, allSteps: [] };
+  if (!sh) return { totalMap: {}, breakdownMap: {}, allSteps: [], detailedTasks: {} };
   const data = sh.getDataRange().getValues();
   const totalMap = {}; // staffName/staffId -> count
   const breakdownMap = {}; // staffName/staffId -> { [stepName]: count }
+  const detailedTasks = {}; // staffName/staffId -> array of task items
   const stepSet = {};
 
   for (let i = 1; i < data.length; i++) {
@@ -234,12 +235,23 @@ function getDropoffContributionsMap_(startDateStr, endDateStr) {
       if (!breakdownMap[staff]) breakdownMap[staff] = {};
       breakdownMap[staff][stepName] = (breakdownMap[staff][stepName] || 0) + 1;
       stepSet[stepName] = true;
+
+      if (!detailedTasks[staff]) detailedTasks[staff] = [];
+      detailedTasks[staff].push({
+        id: row[0],
+        noNota: String(row[1] || "-"),
+        step: row[2] || "-",
+        namaStep: stepName,
+        waktuSelesai: waktuSelesai ? (waktuSelesai instanceof Date ? fmtWib(waktuSelesai, "yyyy-MM-dd HH:mm") : String(waktuSelesai)) : "-",
+        catatan: row[9] || "-"
+      });
     }
   }
   return {
     totalMap: totalMap,
     breakdownMap: breakdownMap,
-    allSteps: Object.keys(stepSet)
+    allSteps: Object.keys(stepSet),
+    detailedTasks: detailedTasks
   };
 }
 
@@ -328,10 +340,54 @@ function getPayrollSummary(periodeStr) {
     const totalOmzet = empKin ? empKin.totalOmzet : 0;
     const totalTransaksi = empKin ? empKin.totalTransaksi : 0;
 
-    // Kontribusi drop off per tahap
+    // Kontribusi drop off per tahap khusus (mengecualikan pipeline umum)
+    const UMUM_STEPS = ["Pesanan Diterima", "Diterima", "Siap Diambil", "Selesai"];
     const totalTahapDropOff = (dropoffData.totalMap[peg.nama] || 0) + (dropoffData.totalMap[peg.id] || 0);
     const dropoffBreakdown = dropoffData.breakdownMap[peg.nama] || dropoffData.breakdownMap[peg.id] || {};
-    const insentifDropOff = totalTahapDropOff * (config.insentifDropOffPerTahap || 1500);
+    const empTasks = (dropoffData.detailedTasks && (dropoffData.detailedTasks[peg.nama] || dropoffData.detailedTasks[peg.id])) || [];
+
+    const stepRates = (config && config.dropoffRates) || {
+      "Dicuci": 1500,
+      "Dikeringkan": 1500,
+      "Disetrika": 2500,
+      "Lipat & Packing": 1000,
+      "Packing": 1000,
+      "Spotting Noda": 2000,
+      "Treatment Khusus": 3000
+    };
+
+    let totalTahapKhusus = 0;
+    let insentifDropOff = 0;
+    const dropoffKhususBreakdown = {};
+    const dropoffUmumBreakdown = {};
+
+    Object.keys(dropoffBreakdown).forEach(function(st) {
+      const cnt = dropoffBreakdown[st] || 0;
+      const isUmum = UMUM_STEPS.indexOf(st) !== -1;
+      if (isUmum) {
+        dropoffUmumBreakdown[st] = cnt;
+      } else {
+        const rate = Number(stepRates[st]) || 1500;
+        totalTahapKhusus += cnt;
+        insentifDropOff += (cnt * rate);
+        dropoffKhususBreakdown[st] = { count: cnt, rate: rate, subtotal: cnt * rate };
+      }
+    });
+
+    const dropoffDetailedTasks = empTasks.map(function(t) {
+      const isUmum = UMUM_STEPS.indexOf(t.namaStep) !== -1;
+      const tarif = isUmum ? 0 : (Number(stepRates[t.namaStep]) || 1500);
+      return {
+        id: t.id,
+        noNota: t.noNota,
+        step: t.step,
+        namaStep: t.namaStep,
+        waktuSelesai: t.waktuSelesai,
+        isKhusus: !isUmum,
+        tarif: tarif,
+        catatan: t.catatan
+      };
+    });
 
     // Tunjangan kehadiran otomatis (bila belum diatur khusus)
     const tunjanganKehadiranOtomatis = jumlahHadir * (config.tunjanganKehadiranPerHari || 15000);
@@ -369,7 +425,11 @@ function getPayrollSummary(periodeStr) {
       bonusKomisi: bonusKomisi,
       insentifDropOff: insentifDropOff,
       totalTahapDropOff: totalTahapDropOff,
+      totalTahapKhusus: totalTahapKhusus,
       dropoffBreakdown: dropoffBreakdown,
+      dropoffKhususBreakdown: dropoffKhususBreakdown,
+      dropoffUmumBreakdown: dropoffUmumBreakdown,
+      dropoffDetailedTasks: dropoffDetailedTasks,
       potongan: finalPotongan,
       potonganRutin: potonganRutin,
       dendaTelat: dendaTelat,
