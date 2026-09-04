@@ -126,7 +126,13 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
         case 'updateInventoryItem':
           return (await sb.sbUpdateInventoryItem(args[0], args[1])) as any;
         case 'hapusInventory':
-          return (await sb.sbHapusInventory(args[0])) as any;
+          return (await sb.sbHapusInventory(args[0], args[1])) as any;
+        case 'getTrashInventory':
+          return (await sb.sbGetTrashInventory()) as any;
+        case 'restoreInventory':
+          return (await sb.sbRestoreInventory(args[0], args[1])) as any;
+        case 'permanentDeleteInventory':
+          return (await sb.sbPermanentDeleteInventory(args[0])) as any;
         case 'getLayananListAll':
         case 'getLayananList':
           return (await sb.sbGetLayananListAll()) as any;

@@ -85,12 +85,133 @@ export async function sbUpdateInventoryItem(id: string, item: Partial<InventoryI
   return { success: true, data };
 }
 
-export async function sbHapusInventory(id: string) {
+export async function sbHapusInventory(id: string, actor?: string) {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
-  const { error } = await sb.from('inventory').delete().eq('id', id);
-  if (error) throw error;
+  // 1. Ambil data item sebelum dihapus untuk diarsipkan (Soft Delete)
+  const { data: item, error: fetchErr } = await sb
+    .from('inventory')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (fetchErr) throw fetchErr;
+  if (!item) return { success: false, message: 'Item tidak ditemukan' };
+
+  // 2. Simpan ke arsip sampah di app_settings
+  const { data: curTrash } = await sb
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'inventory_trash')
+    .maybeSingle();
+
+  const trashList: any[] = Array.isArray(curTrash?.value) ? curTrash.value : [];
+  const softDeletedItem = {
+    id: item.id,
+    nama: item.nama,
+    stok: Number(item.stok) || 0,
+    satuan: item.satuan,
+    stokMinimum: Number(item.stok_minimum) || 0,
+    isDijual: item.is_dijual,
+    hargaJual: Number(item.harga_jual) || 0,
+    kategoriLayanan: item.kategori_layanan,
+    deletedAt: new Date().toISOString(),
+    deletedBy: actor || 'Manager / Owner',
+  };
+
+  const nextTrash = [softDeletedItem, ...trashList.filter((t: any) => t.id !== id)];
+  await sb.from('app_settings').upsert({ key: 'inventory_trash', value: nextTrash }, { onConflict: 'key' });
+
+  // 3. Hapus dari tabel aktif inventory
+  const { error: delErr } = await sb.from('inventory').delete().eq('id', id);
+  if (delErr) throw delErr;
+
+  // 4. Catat ke audit_logs
+  try {
+    await sb.from('audit_logs').insert({
+      nama_user: actor || 'Manager',
+      jenis_aktivitas: 'Soft Delete Inventory',
+      referensi: id,
+      detail: `Bahan ${item.nama} (Stok: ${item.stok} ${item.satuan}) diarsipkan ke sampah`,
+    });
+  } catch (logErr) {
+    console.warn('Gagal mencatat audit log soft delete:', logErr);
+  }
+
+  return { success: true };
+}
+
+export async function sbGetTrashInventory(): Promise<any[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'inventory_trash')
+    .maybeSingle();
+
+  return Array.isArray(data?.value) ? data.value : [];
+}
+
+export async function sbRestoreInventory(id: string, actor?: string) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { data: curTrash } = await sb
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'inventory_trash')
+    .maybeSingle();
+
+  const trashList: any[] = Array.isArray(curTrash?.value) ? curTrash.value : [];
+  const itemToRestore = trashList.find((t: any) => t.id === id);
+  if (!itemToRestore) throw new Error('Item tidak ditemukan di arsip sampah');
+
+  // Masukkan kembali ke tabel inventory
+  await sbTambahInventory({
+    id: itemToRestore.id,
+    nama: itemToRestore.nama,
+    stok: itemToRestore.stok,
+    satuan: itemToRestore.satuan,
+    stokMinimum: itemToRestore.stokMinimum,
+    isDijual: itemToRestore.isDijual,
+    hargaJual: itemToRestore.hargaJual,
+    kategoriLayanan: itemToRestore.kategoriLayanan,
+  });
+
+  // Hapus dari list sampah
+  const nextTrash = trashList.filter((t: any) => t.id !== id);
+  await sb.from('app_settings').upsert({ key: 'inventory_trash', value: nextTrash }, { onConflict: 'key' });
+
+  // Catat ke audit_logs
+  try {
+    await sb.from('audit_logs').insert({
+      nama_user: actor || 'Manager',
+      jenis_aktivitas: 'Restore Inventory',
+      referensi: id,
+      detail: `Bahan ${itemToRestore.nama} dipulihkan kembali ke inventaris`,
+    });
+  } catch (logErr) {
+    console.warn('Gagal mencatat audit log restore:', logErr);
+  }
+
+  return { success: true };
+}
+
+export async function sbPermanentDeleteInventory(id: string) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { data: curTrash } = await sb
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'inventory_trash')
+    .maybeSingle();
+
+  const trashList: any[] = Array.isArray(curTrash?.value) ? curTrash.value : [];
+  const nextTrash = trashList.filter((t: any) => t.id !== id);
+  await sb.from('app_settings').upsert({ key: 'inventory_trash', value: nextTrash }, { onConflict: 'key' });
   return { success: true };
 }
 

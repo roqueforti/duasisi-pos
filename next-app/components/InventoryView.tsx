@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload, X, Loader2 } from 'lucide-react';
+import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload, X, Loader2, ShieldAlert, Archive, RotateCcw } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
@@ -39,6 +39,18 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   const [originalStok, setOriginalStok] = useState<number | null>(null);
   const [showDecimalOptions, setShowDecimalOptions] = useState(false);
 
+  // Soft Delete & Protection Modal states
+  const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+  const [confirmCheckbox, setConfirmCheckbox] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Trash / Arsip Modal states
+  const [showTrashModal, setShowTrashModal] = useState(false);
+  const [trashList, setTrashList] = useState<any[]>([]);
+  const [trashCount, setTrashCount] = useState(0);
+  const [loadingTrash, setLoadingTrash] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
   // Bi-directional Sync States
   const [isDijual, setIsDijual] = useState(false);
   const [hargaJual, setHargaJual] = useState('');
@@ -57,6 +69,17 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     );
   };
 
+  const loadTrashCount = async () => {
+    try {
+      const data = await runBackend<any[]>('getTrashInventory');
+      if (Array.isArray(data)) {
+        setTrashCount(data.length);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   const loadKategori = async () => {
     try {
       const data = await runBackend<{id: string, nama: string, aktif: string}[]>('getKategoriList');
@@ -69,6 +92,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   useEffect(() => {
     loadInventory();
     loadKategori();
+    loadTrashCount();
   }, []);
 
   const handleCloseModal = () => {
@@ -148,15 +172,61 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     return formatDecimal(val, 4);
   };
 
-  const handleDelete = async (id: string, namaBarang: string) => {
-    const isConfirmed = await showConfirm(`Hapus barang ${namaBarang}?`);
-    if (!isConfirmed) return;
+  const handleOpenDeleteModal = (item: InventoryItem) => {
+    setItemToDelete(item);
+    setConfirmCheckbox(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    if (itemToDelete.stok > 0 && !confirmCheckbox) {
+      await showAlert('Harap centang kotak persetujuan karena bahan masih memiliki sisa stok!', 'warning');
+      return;
+    }
+
+    setIsDeleting(true);
     try {
       clearCache('getInventoryList');
-      await runBackend('hapusInventory', id);
+      await runBackend('hapusInventory', itemToDelete.id, currentRole || 'Manager / Owner');
+      setItemToDelete(null);
       loadInventory();
+      loadTrashCount();
+      await showAlert(`Bahan "${itemToDelete.nama}" berhasil diarsipkan (Soft Delete). Riwayat transaksi dan resep tetap aman!`, 'success');
     } catch (err: any) {
-      await showAlert(`Gagal menghapus barang: ${err?.message || String(err)}`, 'error');
+      await showAlert(`Gagal mengarsipkan barang: ${err?.message || String(err)}`, 'error');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleOpenTrashModal = async () => {
+    setShowTrashModal(true);
+    setLoadingTrash(true);
+    try {
+      const data = await runBackend<any[]>('getTrashInventory');
+      setTrashList(Array.isArray(data) ? data : []);
+      setTrashCount(Array.isArray(data) ? data.length : 0);
+    } catch (err: any) {
+      await showAlert(`Gagal memuat arsip terhapus: ${err?.message || String(err)}`, 'error');
+    } finally {
+      setLoadingTrash(false);
+    }
+  };
+
+  const handleRestoreItem = async (item: any) => {
+    setRestoringId(item.id);
+    try {
+      await runBackend('restoreInventory', item.id, currentRole || 'Manager / Owner');
+      clearCache('getInventoryList');
+      loadInventory();
+      const data = await runBackend<any[]>('getTrashInventory');
+      setTrashList(Array.isArray(data) ? data : []);
+      setTrashCount(Array.isArray(data) ? data.length : 0);
+      await showAlert(`Bahan "${item.nama}" berhasil dipulihkan kembali ke inventaris!`, 'success');
+    } catch (err: any) {
+      await showAlert(`Gagal memulihkan bahan: ${err?.message || String(err)}`, 'error');
+    } finally {
+      setRestoringId(null);
     }
   };
 
@@ -307,6 +377,21 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                 <span>Import</span>
                 <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
               </label>
+
+              {/* Arsip Terhapus (Soft Delete Trash) */}
+              <button
+                onClick={handleOpenTrashModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-md text-xs font-medium transition cursor-pointer"
+                title="Lihat Bahan yang Dihapus / Diarsipkan (Soft Delete)"
+              >
+                <Archive className="w-3.5 h-3.5 text-slate-500" />
+                <span>Arsip Terhapus</span>
+                {trashCount > 0 && (
+                  <span className="px-1.5 py-0.2 bg-rose-100 text-rose-700 text-[10px] font-bold rounded-full">
+                    {trashCount}
+                  </span>
+                )}
+              </button>
             </>
           )}
           
@@ -392,9 +477,9 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                             </button>
                             {currentRole === 'MANAGER' && (
                               <button
-                                onClick={() => handleDelete(item.id, item.nama)}
-                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition"
-                                title="Hapus Barang"
+                                onClick={() => handleOpenDeleteModal(item)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                                title="Hapus / Arsipkan Bahan (Soft Delete)"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -673,6 +758,197 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
               >
                 {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>Simpan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi & Proteksi Hapus Bahan (Soft Delete) */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-[550] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-5 w-full max-w-md shadow-2xl border border-rose-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between gap-3 mb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center shrink-0 border border-rose-100">
+                  <ShieldAlert className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Konfirmasi Hapus Bahan</h3>
+                  <p className="text-[11px] text-slate-400">Proteksi Keamanan & Soft Delete</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setItemToDelete(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Item Details */}
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/80 mb-3 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Nama Bahan:</span>
+                <span className="font-bold text-slate-800">{itemToDelete.nama}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Kode Item:</span>
+                <span className="font-mono text-[11px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">{itemToDelete.id}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Sisa Stok:</span>
+                <span className={`font-bold ${itemToDelete.stok > 0 ? 'text-amber-600' : 'text-slate-600'}`}>
+                  {formatStok(itemToDelete.stok)} {itemToDelete.satuan}
+                </span>
+              </div>
+            </div>
+
+            {/* Sisa Stok Warning & Checkbox Protection */}
+            {itemToDelete.stok > 0 ? (
+              <div className="bg-amber-50/90 border border-amber-200 rounded-lg p-3 mb-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-[11px] text-amber-900 leading-relaxed">
+                    <strong>Peringatan Proteksi:</strong> Bahan ini masih memiliki sisa stok sebanyak <strong>{formatStok(itemToDelete.stok)} {itemToDelete.satuan}</strong>.
+                  </div>
+                </div>
+                <label className="flex items-start gap-2 pt-2 border-t border-amber-200/70 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={confirmCheckbox}
+                    onChange={(e) => setConfirmCheckbox(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded text-rose-600 border-amber-300 focus:ring-rose-500 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-semibold text-amber-950">
+                    Saya menyadari masih ada sisa stok dan setuju untuk mengarsipkan bahan ini
+                  </span>
+                </label>
+              </div>
+            ) : null}
+
+            {/* Soft Delete Information */}
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-2.5 mb-4 flex items-start gap-2 text-[11px] text-emerald-800">
+              <span className="text-base shrink-0">🛡️</span>
+              <div className="leading-relaxed">
+                <strong>Proteksi Soft Delete Aktif:</strong> Bahan ini tidak akan dihapus permanen, melainkan dipindahkan ke <strong>Arsip Terhapus</strong>. Riwayat transaksi, penjualan, dan resep terdahulu tetap terjaga aman dan dapat dipulihkan sewaktu-waktu.
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setItemToDelete(null)}
+                disabled={isDeleting}
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-md text-xs transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting || (itemToDelete.stok > 0 && !confirmCheckbox)}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-md text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>Hapus (Pindahkan ke Arsip)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Daftar Bahan Terhapus (Arsip Soft Delete) */}
+      {showTrashModal && (
+        <div className="fixed inset-0 z-[500] bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-5 w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center">
+                  <Archive className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Arsip Bahan Terhapus (Soft Delete)</h3>
+                  <p className="text-[10px] text-slate-400">Bahan yang dihapus disimpan di sini dan dapat dipulihkan sewaktu-waktu</p>
+                </div>
+                <span className="ml-2 px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold">
+                  {trashList.length} Bahan
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTrashModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto py-3 flex-1">
+              {loadingTrash ? (
+                <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#1E4648]" />
+                  <span className="text-xs">Memuat arsip bahan terhapus...</span>
+                </div>
+              ) : trashList.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 text-xs flex flex-col items-center gap-2">
+                  <Archive className="w-8 h-8 text-slate-300 stroke-[1.5]" />
+                  <span>Tidak ada bahan di arsip terhapus.</span>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {trashList.map((t) => (
+                    <div key={t.id} className="py-3 px-2 flex items-center justify-between gap-3 hover:bg-slate-50/70 rounded-lg transition">
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                            {t.id}
+                          </span>
+                          <span className="font-semibold text-slate-800 text-xs">{t.nama}</span>
+                          <span className="text-[11px] text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                            Sisa stok: <strong>{formatStok(t.stok)} {t.satuan}</strong>
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 flex items-center gap-2 flex-wrap">
+                          <span>Dihapus: {t.deletedAt ? new Date(t.deletedAt).toLocaleString('id-ID') : '-'}</span>
+                          <span>•</span>
+                          <span>Oleh: {t.deletedBy || 'Manager'}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleRestoreItem(t)}
+                          disabled={restoringId === t.id}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 active:bg-teal-200 text-teal-800 border border-teal-200 rounded-md text-xs font-semibold transition cursor-pointer"
+                          title="Pulihkan kembali ke inventaris aktif"
+                        >
+                          {restoringId === t.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          )}
+                          <span>Pulihkan</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs flex-wrap gap-2">
+              <span className="text-[11px] text-slate-400">
+                Data bahan di sini aman dari hard-delete dan tidak mengganggu performa kasir.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowTrashModal(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-md text-xs transition cursor-pointer"
+              >
+                Tutup
               </button>
             </div>
           </div>
