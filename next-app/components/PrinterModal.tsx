@@ -18,7 +18,6 @@ import {
   Scissors
 } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
-import { formatWaPhone } from '@/lib/utils';
 import { generateWhatsAppReceiptFromTx } from '@/lib/whatsappUtils';
 import {
   isBluetoothSupported,
@@ -31,8 +30,8 @@ import {
   generateTestPrintEscPos,
   BluetoothDeviceInfo,
 } from '@/lib/bluetoothPrinter';
+import { maskPhone, formatWaPhone, formatDateTime } from '@/lib/utils';
 import { runBackend } from '@/lib/api';
-import { maskPhone } from '@/lib/utils';
 
 export type PrintType = 'struk' | 'label';
 
@@ -347,7 +346,7 @@ export default function PrinterModal({
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Waktu</span>
-                        <span className="text-slate-700">{activeTx.tanggal}</span>
+                        <span className="text-slate-700">{formatDateTime(activeTx.tanggal)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Pelanggan</span>
@@ -471,7 +470,7 @@ export default function PrinterModal({
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Waktu Masuk:</span>
-                        <span className="text-slate-700">{activeTx.tanggal}</span>
+                        <span className="text-slate-700">{formatDateTime(activeTx.tanggal)}</span>
                       </div>
                     </div>
 

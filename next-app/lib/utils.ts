@@ -60,6 +60,101 @@ export function formatTime(timeStr: string | undefined | null): string {
 }
 
 /**
+ * Format string tanggal & waktu (ISO, timestamps, dd/MM/yyyy dsb) menjadi tampilan
+ * yang rapi, mudah dibaca, dan selalu disesuaikan ke zona waktu Indonesia (WIB).
+ *
+ * Contoh hasil:
+ * - "2026-09-03T14:39:00+00:00" -> "03 Sep 2026, 21:39 WIB"
+ * - "2026-09-03T21:39:00"       -> "03 Sep 2026, 21:39 WIB"
+ * - "03/09/2026 21:39:00"       -> "03 Sep 2026, 21:39 WIB"
+ */
+export function formatDateTime(
+  val: string | Date | undefined | null,
+  options?: { showWib?: boolean; showTime?: boolean; dateOnly?: boolean; timeOnly?: boolean }
+): string {
+  if (!val) return '-';
+  try {
+    let d: Date | null = null;
+    if (val instanceof Date) {
+      d = val;
+    } else {
+      const str = String(val).trim();
+      if (!str || str === '-') return '-';
+
+      // Tangani format "DD/MM/YYYY HH:mm[:ss]" atau "DD/MM/YYYY"
+      if (str.includes('/')) {
+        const cleanStr = str.replace(/\s*WIB|\s*WITA|\s*WIT/gi, '').trim();
+        const spaceParts = cleanStr.split(' ');
+        const dateParts = spaceParts[0].split('/');
+        if (dateParts.length === 3) {
+          const day = parseInt(dateParts[0], 10);
+          const month = parseInt(dateParts[1], 10) - 1;
+          const year = parseInt(dateParts[2], 10);
+          let hh = 0, mm = 0, ss = 0;
+          const hasTime = Boolean(spaceParts[1]);
+          if (hasTime) {
+            const timeParts = spaceParts[1].split(':');
+            hh = parseInt(timeParts[0], 10) || 0;
+            mm = parseInt(timeParts[1], 10) || 0;
+            ss = parseInt(timeParts[2], 10) || 0;
+          }
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+          const monthStr = months[month] || String(month + 1);
+          const dayStr = String(day).padStart(2, '0');
+          const hhStr = String(hh).padStart(2, '0');
+          const mmStr = String(mm).padStart(2, '0');
+          const wibSuffix = options?.showWib !== false ? ' WIB' : '';
+
+          if (options?.dateOnly || !hasTime) {
+            return `${dayStr} ${monthStr} ${year}`;
+          }
+          if (options?.timeOnly) {
+            return `${hhStr}:${mmStr}${wibSuffix}`;
+          }
+          return `${dayStr} ${monthStr} ${year}, ${hhStr}:${mmStr}${wibSuffix}`;
+        }
+      }
+
+      d = new Date(str);
+    }
+
+    if (!d || isNaN(d.getTime())) return String(val);
+
+    const formatter = new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+
+    const parts = formatter.formatToParts(d);
+    let day = '', month = '', year = '', hour = '', minute = '';
+    for (const part of parts) {
+      if (part.type === 'day') day = part.value;
+      if (part.type === 'month') month = part.value;
+      if (part.type === 'year') year = part.value;
+      if (part.type === 'hour') hour = part.value;
+      if (part.type === 'minute') minute = part.value;
+    }
+
+    const wibSuffix = options?.showWib !== false ? ' WIB' : '';
+    if (options?.dateOnly) {
+      return `${day} ${month} ${year}`;
+    }
+    if (options?.timeOnly) {
+      return `${hour}:${minute}${wibSuffix}`;
+    }
+
+    return `${day} ${month} ${year}, ${hour}:${minute}${wibSuffix}`;
+  } catch {
+    return String(val || '-');
+  }
+}
+
+/**
  * Normalisasi nomor HP ke format WhatsApp internasional (62xxxx).
  * Menangani input:
  * - "089682020699" -> "6289682020699"

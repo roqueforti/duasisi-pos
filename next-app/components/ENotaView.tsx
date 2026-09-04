@@ -16,7 +16,7 @@ import {
 import { toPng } from 'html-to-image';
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
-import { maskPhone } from '@/lib/utils';
+import { maskPhone, formatDateTime } from '@/lib/utils';
 import { generateWhatsAppReceiptFromTx } from '@/lib/whatsappUtils';
 import { useDialog } from '@/components/DialogProvider';
 import GradientWaves from '@/components/GradientWaves';
@@ -259,7 +259,7 @@ export default function ENotaView({ noNota, token, last4Phone, initialData }: EN
               </div>
               <div className="flex justify-between">
                 <span>TANGGAL:</span>
-                <span>{tx.tanggal}</span>
+                <span>{formatDateTime(tx.tanggal)}</span>
               </div>
               <div className="flex justify-between">
                 <span>PELANGGAN:</span>

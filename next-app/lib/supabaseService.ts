@@ -1,5 +1,6 @@
 import { getSupabase } from './supabaseClient';
 import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin } from './types';
+import { formatDateTime } from './utils';
 
 // ============================================================
 // INVENTORY
@@ -336,7 +337,7 @@ export async function sbGetTransaksiList(limitOrFilter: number | string = 100): 
 
   return (trxList || []).map((t: any) => ({
     noNota: t.no_nota,
-    tanggal: t.tanggal,
+    tanggal: formatDateTime(t.tanggal),
     namaPelanggan: t.nama_pelanggan,
     noHp: t.no_hp,
     alamat: t.alamat,
@@ -1674,7 +1675,7 @@ export async function sbGetRiwayatPelangganByHp(noHp: string): Promise<any[]> {
   if (error) return [];
   return (data || []).map((t: any) => ({
     noNota: t.no_nota,
-    tanggal: t.tanggal,
+    tanggal: formatDateTime(t.tanggal),
     namaPelanggan: t.nama_pelanggan,
     total: Number(t.total) || 0,
     status: t.status,
@@ -1708,7 +1709,7 @@ export async function sbGetTransaksiByNota(noNota: string): Promise<any | null> 
 
   return {
     noNota: data.no_nota,
-    tanggal: data.tanggal,
+    tanggal: formatDateTime(data.tanggal),
     namaPelanggan: data.nama_pelanggan,
     noHp: data.no_hp,
     alamat: data.alamat,

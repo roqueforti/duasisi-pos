@@ -1,4 +1,5 @@
 import { Transaksi } from './types';
+import { formatDateTime } from './utils';
 
 // Helper Web Bluetooth Thermal Printer & ESC/POS Command Encoder
 
@@ -270,7 +271,7 @@ export function generateReceiptEscPos(tx: Transaksi, poinRate: number = 10000): 
     .dashedLine(32)
     .align('left')
     .twoColumn('No Nota:', tx.noNota, 32)
-    .twoColumn('Tanggal:', tx.tanggal, 32)
+    .twoColumn('Tanggal:', formatDateTime(tx.tanggal, { showWib: false }), 32)
     .twoColumn('Pelanggan:', tx.namaPelanggan.substring(0, 16), 32)
     .twoColumn('Kasir:', kasir.substring(0, 16), 32);
 
@@ -334,7 +335,7 @@ export function generateTagEscPos(tx: Transaksi): Uint8Array {
   const builder = new EscPosBuilder();
   const kasir = (tx as any).petugas || (tx as any).kasir || 'Kasir';
   const proses = tx.tipe === 'FullService' ? 'Drop Off' : 'Self Service';
-  const tgl = tx.tanggal ? tx.tanggal.substring(0, 16) : '';
+  const tgl = tx.tanggal ? formatDateTime(tx.tanggal, { showWib: false }) : '';
 
   builder
     .align('center')

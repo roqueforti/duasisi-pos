@@ -5,7 +5,7 @@ import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, 
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { maskPhone, eNotaUrl as buildENotaUrl, formatWaPhone, formatFriendlyErrorMessage } from '@/lib/utils';
+import { maskPhone, eNotaUrl as buildENotaUrl, formatWaPhone, formatFriendlyErrorMessage, formatDateTime } from '@/lib/utils';
 import { generateWhatsAppReceiptFromTx } from '@/lib/whatsappUtils';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import PrinterModal from '@/components/PrinterModal';
@@ -296,7 +296,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
       ``,
       `- No. Nota      : ${tx.noNota}`,
       `- Layanan       : ${itemsSummary || 'Drop Off'}`,
-      ...(tx.tanggal ? [`- Waktu Masuk   : ${tx.tanggal}`] : []),
+      ...(tx.tanggal ? [`- Waktu Masuk   : ${formatDateTime(tx.tanggal)}`] : []),
       `- Waktu Selesai : ${waktuSelesaiStr}`,
       `- Status Bayar  : ${statusBayar}`,
       ``,
@@ -484,7 +484,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     ];
     const rows = filteredTx.map(t => [
       t.noNota,
-      t.tanggal,
+      formatDateTime(t.tanggal),
       t.namaPelanggan,
       t.noHp || '',
       t.tipe || 'SelfService',
@@ -1072,7 +1072,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
 
                       {/* 2. Tanggal & Kasir */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div className="font-medium text-slate-700 text-[11px]">{tx.tanggal}</div>
+                        <div className="font-medium text-slate-700 text-[11px]">{formatDateTime(tx.tanggal)}</div>
                         <div className="text-[10px] text-slate-400">Kasir: {tx.petugas || 'Kasir'}</div>
                       </td>
 
@@ -1376,7 +1376,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-slate-700">Detail Nota {selectedTx.noNota}</h3>
-                <p className="text-[11px] text-slate-400">{selectedTx.tanggal}</p>
+                <p className="text-[11px] text-slate-400">{formatDateTime(selectedTx.tanggal)}</p>
               </div>
               <button onClick={() => setSelectedTx(null)} className="p-1 rounded hover:bg-slate-100">
                 <X className="w-4 h-4 text-slate-400" />

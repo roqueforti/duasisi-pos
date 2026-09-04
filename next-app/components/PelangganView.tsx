@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { maskPhone, eNotaUrl, formatFriendlyErrorMessage } from '@/lib/utils';
+import { maskPhone, eNotaUrl, formatFriendlyErrorMessage, formatDateTime } from '@/lib/utils';
 import { UserRole, Transaksi, LoyaltyProgram } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
@@ -872,7 +872,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
 
                         {/* Tanggal & Waktu */}
                         <td className="py-3 px-4 text-slate-600 font-medium whitespace-nowrap">
-                          {(tx as any).waktuTransaksi || tx.tanggal || '-'}
+                          {formatDateTime((tx as any).waktuTransaksi || tx.tanggal)}
                         </td>
 
                         {/* Tipe Layanan */}

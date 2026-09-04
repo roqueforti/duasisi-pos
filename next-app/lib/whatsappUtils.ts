@@ -1,5 +1,5 @@
 import { Transaksi } from './types';
-import { formatWaPhone, eNotaUrl as buildENotaUrl } from './utils';
+import { formatWaPhone, eNotaUrl as buildENotaUrl, formatDateTime } from './utils';
 
 export interface WhatsAppReceiptParams {
   noNota: string;
@@ -40,7 +40,7 @@ export interface WhatsAppReceiptParams {
 export function generateWhatsAppReceiptMessage(params: WhatsAppReceiptParams): string {
   const nama = params.namaPelanggan || 'Pelanggan';
   const noNota = params.noNota || '';
-  const tanggal = params.tanggal || '';
+  const tanggal = formatDateTime(params.tanggal);
   const kasir = params.kasir || 'Kasir';
   const totalNum = Number(params.total) || 0;
   const total = totalNum.toLocaleString('id-ID');
@@ -182,7 +182,7 @@ export function generateWhatsAppReceiptFromTx(
     noNota: tx.noNota,
     namaPelanggan: tx.namaPelanggan,
     noHp: tx.noHp,
-    tanggal: tx.tanggal,
+    tanggal: formatDateTime(tx.tanggal),
     kasir: tx.petugas,
     tipeLayanan: tx.tipe,
     tingkatLayanan: tx.tingkatLayanan,
