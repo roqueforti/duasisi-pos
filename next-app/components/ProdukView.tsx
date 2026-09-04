@@ -57,6 +57,15 @@ export interface CustomPipelineStep {
   icon?: string;
 }
 
+export const DEFAULT_MASTER_PIPELINE: CustomPipelineStep[] = [
+  { step: 1, nama: 'Diterima', needStaff: false, needMesin: false, icon: 'Inbox' },
+  { step: 2, nama: 'Dicuci', needStaff: true, needMesin: true, icon: 'WashingMachine' },
+  { step: 3, nama: 'Dikeringkan', needStaff: true, needMesin: true, icon: 'Wind' },
+  { step: 4, nama: 'Disetrika', needStaff: true, needMesin: false, icon: 'Sparkles' },
+  { step: 5, nama: 'Dilipat', needStaff: true, needMesin: false, icon: 'Package' },
+  { step: 6, nama: 'Siap Diambil', needStaff: false, needMesin: false, icon: 'CheckCircle2' },
+];
+
 interface PromoVoucher {
   idPromo: string;
   kodeVoucher: string;
@@ -161,8 +170,33 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   
   // Pipeline Steps selection
   const [customPipelineSteps, setCustomPipelineSteps] = useState<CustomPipelineStep[]>([]);
-  const [masterPipelineSteps, setMasterPipelineSteps] = useState<CustomPipelineStep[]>([]);
+  const [masterPipelineSteps, setMasterPipelineSteps] = useState<CustomPipelineStep[]>(DEFAULT_MASTER_PIPELINE);
   const [showMasterStepModal, setShowMasterStepModal] = useState(false);
+
+  const buildStepsFromNames = useCallback((stepNames: string[]): CustomPipelineStep[] => {
+    const source = masterPipelineSteps.length > 0 ? masterPipelineSteps : DEFAULT_MASTER_PIPELINE;
+    return stepNames.map((nama, idx) => {
+      const found = source.find(m => m.nama.toLowerCase() === nama.toLowerCase());
+      if (found) {
+        return {
+          step: idx + 1,
+          nama: found.nama,
+          needStaff: found.needStaff ?? false,
+          needMesin: found.needMesin ?? false,
+          icon: found.icon,
+        };
+      }
+      const n = nama.toLowerCase();
+      const needMesin = n.includes('cuci') || n.includes('kering');
+      const needStaff = n.includes('cuci') || n.includes('kering') || n.includes('setrika') || n.includes('gosok') || n.includes('lipat');
+      return {
+        step: idx + 1,
+        nama,
+        needStaff,
+        needMesin,
+      };
+    });
+  }, [masterPipelineSteps]);
 
   // Add Promo Modal State
   const [showPromoModal, setShowPromoModal] = useState(false);
@@ -256,7 +290,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         })));
       }
       if (Array.isArray(pipeData)) {
-        setMasterPipelineSteps(pipeData);
+        setMasterPipelineSteps(pipeData.length > 0 ? pipeData : DEFAULT_MASTER_PIPELINE);
       }
     } catch (err) {
       console.error('Gagal memuat master data:', err);
@@ -458,6 +492,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
       try {
         pSteps = JSON.parse(item.pipelineSteps as string);
       } catch {}
+    }
+    // Auto-prefill alur standar jika layanan Drop Off belum disetel pipelinenya
+    if (validTipe === 'FullService' && pSteps.length === 0) {
+      const isSetrikaOnly = (item.nama || '').toLowerCase().includes('setrika') || (item.nama || '').toLowerCase().includes('gosok');
+      pSteps = buildStepsFromNames(
+        isSetrikaOnly 
+          ? ['Diterima', 'Disetrika', 'Dilipat', 'Siap Diambil']
+          : ['Diterima', 'Dicuci', 'Dikeringkan', 'Siap Diambil']
+      );
     }
     setCustomPipelineSteps(pSteps);
     setShowModal(true);
@@ -2015,7 +2058,25 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Kategori *</label>
-                    <select value={kategori} onChange={(e) => setKategori(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                    <select 
+                      value={kategori} 
+                      onChange={(e) => {
+                        const newKat = e.target.value;
+                        setKategori(newKat);
+                        if (newKat.toLowerCase().includes('drop') && tipe !== 'FullService') {
+                          setTipe('FullService');
+                          if (customPipelineSteps.length === 0) {
+                            const isSetrikaOnly = (nama || '').toLowerCase().includes('setrika') || (nama || '').toLowerCase().includes('gosok');
+                            setCustomPipelineSteps(buildStepsFromNames(
+                              isSetrikaOnly 
+                                ? ['Diterima', 'Disetrika', 'Dilipat', 'Siap Diambil']
+                                : ['Diterima', 'Dicuci', 'Dikeringkan', 'Siap Diambil']
+                            ));
+                          }
+                        }
+                      }} 
+                      className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                    >
                       {kategoriList.map(kat => (
                         <option key={kat.id} value={kat.nama}>{kat.nama}</option>
                       ))}
@@ -2026,7 +2087,22 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Tipe Layanan (Opsional)</label>
-                    <select value={tipe} onChange={(e) => setTipe(e.target.value as 'SelfService' | 'FullService' | '')} className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]">
+                    <select 
+                      value={tipe} 
+                      onChange={(e) => {
+                        const newTipe = e.target.value as 'SelfService' | 'FullService' | '';
+                        setTipe(newTipe);
+                        if (newTipe === 'FullService' && customPipelineSteps.length === 0) {
+                          const isSetrikaOnly = (nama || '').toLowerCase().includes('setrika') || (nama || '').toLowerCase().includes('gosok');
+                          setCustomPipelineSteps(buildStepsFromNames(
+                            isSetrikaOnly 
+                              ? ['Diterima', 'Disetrika', 'Dilipat', 'Siap Diambil']
+                              : ['Diterima', 'Dicuci', 'Dikeringkan', 'Siap Diambil']
+                          ));
+                        }
+                      }} 
+                      className="w-full px-3 py-2 border border-slate-200 rounded-md outline-none focus:border-[#1E4648]"
+                    >
                       <option value="">Bukan Layanan / Kosong</option>
                       <option value="SelfService">Self Service</option>
                       <option value="FullService">Drop Off</option>
@@ -2287,21 +2363,85 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
 
               {tipe === 'FullService' && (
                 <div className="pt-3 border-t border-slate-100 mt-2">
-                  <label className="block font-semibold text-slate-700 mb-1">Langkah Pengerjaan (Pipeline)</label>
-                  <div className="space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-md">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div>
+                      <label className="block font-semibold text-slate-700">Langkah Pengerjaan (Pipeline)</label>
+                      <p className="text-[10px] text-slate-400">Urutan alur kerja pesanan Drop Off ini di antrean & Kanban.</p>
+                    </div>
+                    <div className="text-[10px] font-bold text-[#1E4648] bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md">
+                      {customPipelineSteps.length} Langkah Aktif
+                    </div>
+                  </div>
+
+                  {/* Template Cepat Preset */}
+                  <div className="mb-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                      <span className="text-[11px] font-bold text-slate-700">Pilih Cepat Alur Standar:</span>
+                      {customPipelineSteps.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomPipelineSteps([])}
+                          className="text-[10px] font-bold text-rose-500 hover:text-rose-700 hover:underline cursor-pointer"
+                        >
+                          Kosongkan
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCustomPipelineSteps(buildStepsFromNames(['Diterima', 'Dicuci', 'Dikeringkan', 'Siap Diambil']))}
+                        className="px-2.5 py-1 text-xs font-bold bg-white hover:bg-teal-50 text-slate-700 hover:text-[#1E4648] border border-slate-200 hover:border-teal-300 rounded-lg transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                        title="Alur: Diterima ➔ Dicuci ➔ Dikeringkan ➔ Siap Diambil"
+                      >
+                        <span>🧺</span>
+                        <span>Cuci Kering</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomPipelineSteps(buildStepsFromNames(['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika', 'Dilipat', 'Siap Diambil']))}
+                        className="px-2.5 py-1 text-xs font-bold bg-white hover:bg-teal-50 text-slate-700 hover:text-[#1E4648] border border-slate-200 hover:border-teal-300 rounded-lg transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                        title="Alur: Diterima ➔ Dicuci ➔ Dikeringkan ➔ Disetrika ➔ Dilipat ➔ Siap Diambil"
+                      >
+                        <span>👔</span>
+                        <span>Cuci Komplit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomPipelineSteps(buildStepsFromNames(['Diterima', 'Disetrika', 'Dilipat', 'Siap Diambil']))}
+                        className="px-2.5 py-1 text-xs font-bold bg-white hover:bg-teal-50 text-slate-700 hover:text-[#1E4648] border border-slate-200 hover:border-teal-300 rounded-lg transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                        title="Alur: Diterima ➔ Disetrika ➔ Dilipat ➔ Siap Diambil"
+                      >
+                        <span>⚡</span>
+                        <span>Setrika Saja</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
                     {customPipelineSteps.length === 0 ? (
-                      <p className="text-xs text-slate-500 italic">Belum ada langkah pipeline.</p>
+                      <div className="text-center py-4 text-xs text-slate-500 italic bg-white border border-dashed border-slate-300 rounded-xl">
+                        <p className="font-semibold text-slate-600 mb-0.5">Belum ada langkah pipeline yang dipilih</p>
+                        <p className="text-[10px] text-slate-400">Pilih dari tombol template cepat di atas atau centang master langkah di bawah.</p>
+                      </div>
                     ) : (
                       customPipelineSteps.map((step, idx) => {
                         const StepIcon = getStepIconComponent(step.icon, step.nama);
+                        const isAwal = (step.nama || '').toLowerCase().includes('diterima');
+                        const isSiap = (step.nama || '').toLowerCase().includes('siap');
+
                         return (
                           <div key={idx} className="flex flex-col gap-2 p-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs">
                             <div className="flex justify-between items-center">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-lg bg-[#1E4648] text-white flex items-center justify-center">
+                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isAwal ? 'bg-sky-600 text-white' : (isSiap ? 'bg-emerald-600 text-white' : 'bg-[#1E4648] text-white')}`}>
                                   <StepIcon className="w-3.5 h-3.5" />
                                 </div>
-                                <span className="text-xs font-bold text-slate-800">Langkah {idx + 1}: {step.nama}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-slate-800">Langkah {idx + 1}: {step.nama}</span>
+                                  {isAwal && <span className="text-[9px] bg-sky-100 text-sky-800 font-bold px-1.5 py-0.5 rounded">Awal Masuk</span>}
+                                  {isSiap && <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">Siap Diambil / WA</span>}
+                                </div>
                               </div>
                               <div className="flex gap-1">
                                 <button onClick={() => {
@@ -2310,17 +2450,17 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                     [newArr[idx - 1], newArr[idx]] = [newArr[idx], newArr[idx - 1]];
                                     setCustomPipelineSteps(newArr);
                                   }
-                                }} className="p-1 text-slate-400 hover:text-slate-600 rounded" title="Naik"><ArrowUp className="w-3.5 h-3.5" /></button>
+                                }} className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer" title="Naik"><ArrowUp className="w-3.5 h-3.5" /></button>
                                 <button onClick={() => {
                                   if (idx < customPipelineSteps.length - 1) {
                                     const newArr = [...customPipelineSteps];
                                     [newArr[idx + 1], newArr[idx]] = [newArr[idx], newArr[idx + 1]];
                                     setCustomPipelineSteps(newArr);
                                   }
-                                }} className="p-1 text-slate-400 hover:text-slate-600 rounded" title="Turun"><ArrowDown className="w-3.5 h-3.5" /></button>
+                                }} className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer" title="Turun"><ArrowDown className="w-3.5 h-3.5" /></button>
                                 <button onClick={() => {
                                   setCustomPipelineSteps(customPipelineSteps.filter((_, i) => i !== idx));
-                                }} className="p-1 text-rose-400 hover:text-rose-600 rounded" title="Hapus"><Trash2 className="w-3.5 h-3.5" /></button>
+                                }} className="p-1 text-rose-400 hover:text-rose-600 rounded cursor-pointer" title="Hapus"><Trash2 className="w-3.5 h-3.5" /></button>
                               </div>
                             </div>
                             <div className="flex gap-4 text-[10px] text-slate-500 font-semibold pl-8">
@@ -2346,13 +2486,19 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                       })
                     )}
                     <div className="mt-3 pt-3 border-t border-slate-200">
-                      <p className="text-[11px] font-bold text-slate-600 mb-2">Pilih dari Master Langkah:</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[11px] font-bold text-slate-700">Pilih dari Master Langkah:</p>
+                        <span className="text-[10px] text-slate-400">Klik untuk tambah/lepas alur</span>
+                      </div>
                       <div className="flex flex-wrap gap-2">
-                        {masterPipelineSteps.map((mst, i) => {
-                          const isSelected = customPipelineSteps.some(c => c.nama === mst.nama);
+                        {(masterPipelineSteps.length > 0 ? masterPipelineSteps : DEFAULT_MASTER_PIPELINE).map((mst, i) => {
+                          const isSelected = customPipelineSteps.some(c => c.nama.toLowerCase() === mst.nama.toLowerCase());
                           const MasterIcon = getStepIconComponent(mst.icon, mst.nama);
+                          const isAwal = mst.nama.toLowerCase().includes('diterima');
+                          const isSiap = mst.nama.toLowerCase().includes('siap');
+
                           return (
-                            <label key={i} className={`flex items-center gap-1.5 px-2.5 py-1.5 border rounded-xl cursor-pointer transition select-none ${isSelected ? 'bg-[#1E4648]/10 border-[#1E4648] text-[#1E4648]' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                            <label key={i} className={`flex items-center gap-1.5 px-2.5 py-1.5 border rounded-xl cursor-pointer transition select-none ${isSelected ? 'bg-[#1E4648]/10 border-[#1E4648] text-[#1E4648] font-bold' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                               <input 
                                 type="checkbox" 
                                 className="hidden"
@@ -2361,7 +2507,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                   if (e.target.checked) {
                                     setCustomPipelineSteps(prev => [...prev, { step: prev.length + 1, nama: mst.nama, needStaff: mst.needStaff, needMesin: mst.needMesin, icon: mst.icon }]);
                                   } else {
-                                    setCustomPipelineSteps(prev => prev.filter(c => c.nama !== mst.nama));
+                                    setCustomPipelineSteps(prev => prev.filter(c => c.nama.toLowerCase() !== mst.nama.toLowerCase()));
                                   }
                                 }} 
                               />
@@ -2369,7 +2515,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                 {isSelected && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                               </div>
                               <MasterIcon className="w-3.5 h-3.5 text-slate-500" />
-                              <span className="text-[11px] font-bold">{mst.nama}</span>
+                              <span className="text-[11px]">{mst.nama}</span>
+                              {isAwal && <span className="text-[9px] bg-sky-100 text-sky-700 px-1 py-0.5 rounded font-bold ml-0.5">Awal</span>}
+                              {isSiap && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded font-bold ml-0.5">Siap/WA</span>}
                             </label>
                           );
                         })}
@@ -2380,12 +2528,12 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         if (namaLangkah) {
                           setCustomPipelineSteps(prev => [...prev, { step: prev.length + 1, nama: namaLangkah.trim(), needStaff: false, needMesin: false }]);
                         }
-                      }} className="mt-3 text-[10px] font-bold text-slate-500 hover:text-[#1E4648] hover:underline flex items-center gap-1">
+                      }} className="mt-3 text-[10px] font-bold text-slate-500 hover:text-[#1E4648] hover:underline flex items-center gap-1 cursor-pointer">
                         <Plus className="w-3 h-3" /> Tambah Manual
                       </button>
                     </div>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">Atur urutan proses spesifik untuk produk ini.</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Gunakan tombol panah untuk mengatur urutan langkah pengerjaan produk ini.</p>
                 </div>
               )}
             </div>
