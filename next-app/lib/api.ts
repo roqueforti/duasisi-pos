@@ -257,6 +257,10 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbHandoverCheckKasShift(args[0])) as any;
         case 'getMasterShiftList':
           return (await sb.sbGetMasterShiftList()) as any;
+        case 'checkDuplicateItemCodes':
+          return (await sb.sbCheckDuplicateItemCodes()) as any;
+        case 'getRekapKinerjaPegawai':
+          return (await sb.sbGetRekapKinerjaPegawai(args[0], args[1])) as any;
       }
     } catch (sbErr: any) {
       console.warn(`[Supabase Error] Action '${action}' gagal, fallback ke Google Apps Script:`, sbErr);
@@ -316,7 +320,11 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
       lowerMsg.includes('session expired') ||
       (lowerMsg.includes('akses ditolak') && lowerMsg.includes('sesi'))
     ) {
-      notifySessionExpired('Sesi Anda telah berakhir atau kedaluwarsa. Silakan masukkan PIN kembali.');
+      if (isSessionIdleExpired() || !isSessionValid()) {
+        notifySessionExpired('Sesi Anda telah berakhir atau kedaluwarsa. Silakan masukkan PIN kembali.');
+      } else {
+        console.warn('[Session Warning] GAS mengembalikan error sesi, tetapi sesi POS lokal masih aktif:', errMsg);
+      }
     }
     throw new Error(errMsg);
   }

@@ -1233,25 +1233,171 @@ export async function sbVerifikasiPin(pin: string) {
     }
   }
 
+  let matchedRole: 'MANAGER' | 'STAFF' | null = null;
+  let matchedLabel = '';
+
   if (cleanPin === managerPin) {
-    return {
-      success: true,
-      role: 'MANAGER' as const,
-      label: 'Manager / Owner',
-      sessionToken: createSessionToken('MANAGER', 'Manager / Owner'),
-    };
+    matchedRole = 'MANAGER';
+    matchedLabel = 'Manager / Owner';
+  } else if (cleanPin === staffPin) {
+    matchedRole = 'STAFF';
+    matchedLabel = 'Staff / Kasir';
+  } else {
+    return { success: false, message: 'PIN Salah! Akses Ditolak.' };
   }
 
-  if (cleanPin === staffPin) {
-    return {
-      success: true,
-      role: 'STAFF' as const,
-      label: 'Staff / Kasir',
-      sessionToken: createSessionToken('STAFF', 'Staff / Kasir'),
-    };
+  // Dapatkan token resmi bertanda tangan HMAC-SHA256 dari Google Apps Script
+  // agar setiap request hybrid ke Sheets/Drive tidak ditolak oleh backend GAS
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const gasUrl = process.env.NEXT_PUBLIC_GAS_API_URL || 'https://script.google.com/macros/s/AKfycbwhy6jhKdsCJSOrDzVO1Av1NXwK1mgJ5u-_7PsefOihNwhsSnTO1C26RfRHrvqHDyWEMA/exec';
+    const gasRes = await fetch(gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'verifikasiPin', args: [cleanPin] }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (gasRes.ok) {
+      const gasData = await gasRes.json();
+      if (gasData && gasData.success && gasData.sessionToken) {
+        return {
+          success: true,
+          role: matchedRole,
+          label: matchedLabel,
+          sessionToken: gasData.sessionToken,
+        };
+      }
+    }
+  } catch (gasErr) {
+    console.warn('[sbVerifikasiPin] GAS token fetch timeout/fallback:', gasErr);
   }
 
-  return { success: false, message: 'PIN Salah! Akses Ditolak.' };
+  // Fallback ke token sesi Supabase jika GAS lambat atau offline
+  return {
+    success: true,
+    role: matchedRole,
+    label: matchedLabel,
+    sessionToken: createSessionToken(matchedRole, matchedLabel),
+  };
+}
+
+export async function sbCheckDuplicateItemCodes() {
+  const sb = getSupabase();
+  if (!sb) return { hasDuplicates: false, totalDuplicateGroups: 0, totalDuplicateRows: 0, duplicateGroups: [] };
+
+  try {
+    const { data, error } = await sb
+      .from('layanan')
+      .select('id, nama, harga, satuan, icon, tipe, kategori');
+
+    if (error || !data || data.length === 0) {
+      return { hasDuplicates: false, totalDuplicateGroups: 0, totalDuplicateRows: 0, duplicateGroups: [] };
+    }
+
+    const codeMap: Record<string, any[]> = {};
+    data.forEach((item: any) => {
+      const code = String(item.id || '').trim();
+      if (!code) return;
+      const upper = code.toUpperCase();
+      if (!codeMap[upper]) codeMap[upper] = [];
+      codeMap[upper].push(item);
+    });
+
+    const duplicateGroups: any[] = [];
+    let totalDuplicateRows = 0;
+
+    for (const [code, items] of Object.entries(codeMap)) {
+      if (items.length > 1) {
+        totalDuplicateRows += items.length;
+        duplicateGroups.push({
+          originalCode: code,
+          totalItems: items.length,
+          items: items.map((it: any, idx: number) => ({
+            id: it.id,
+            nama: it.nama,
+            tipe: it.tipe,
+            kategori: it.kategori,
+            harga: Number(it.harga) || 0,
+            suggestedCode: idx === 0 ? it.id : `${it.id}-${idx + 1}`,
+          })),
+        });
+      }
+    }
+
+    return {
+      hasDuplicates: duplicateGroups.length > 0,
+      totalDuplicateGroups: duplicateGroups.length,
+      totalDuplicateRows,
+      duplicateGroups,
+    };
+  } catch (err) {
+    console.error('[sbCheckDuplicateItemCodes] Error:', err);
+    return { hasDuplicates: false, totalDuplicateGroups: 0, totalDuplicateRows: 0, duplicateGroups: [] };
+  }
+}
+
+export async function sbGetRekapKinerjaPegawai(startDateStr?: string, endDateStr?: string) {
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  try {
+    // 1. Ambil daftar pegawai
+    const { data: pegawaiList } = await sb
+      .from('pegawai')
+      .select('id, nama, jabatan')
+      .order('nama', { ascending: true });
+
+    const pegawaiMap: Record<string, { id: string; nama: string; jabatan: string; totalTransaksi: number; totalOmzet: number }> = {};
+    (pegawaiList || []).forEach((p: any) => {
+      pegawaiMap[p.nama] = {
+        id: p.id || '-',
+        nama: p.nama,
+        jabatan: p.jabatan || 'Kasir',
+        totalTransaksi: 0,
+        totalOmzet: 0,
+      };
+    });
+
+    // 2. Ambil transaksi non-batal & non-void
+    let query = sb
+      .from('transaksi')
+      .select('petugas, total, status, status_void, tanggal')
+      .neq('status', 'Batal')
+      .neq('status', 'Void')
+      .neq('status_void', 'Approved');
+
+    if (startDateStr) {
+      query = query.gte('tanggal', startDateStr);
+    }
+    if (endDateStr) {
+      query = query.lte('tanggal', `${endDateStr}T23:59:59`);
+    }
+
+    const { data: trxList } = await query;
+
+    (trxList || []).forEach((t: any) => {
+      const namaPetugas = t.petugas || 'Kasir';
+      const total = Number(t.total) || 0;
+      if (!pegawaiMap[namaPetugas]) {
+        pegawaiMap[namaPetugas] = {
+          id: '-',
+          nama: namaPetugas,
+          jabatan: 'Kasir/Petugas',
+          totalTransaksi: 0,
+          totalOmzet: 0,
+        };
+      }
+      pegawaiMap[namaPetugas].totalTransaksi += 1;
+      pegawaiMap[namaPetugas].totalOmzet += total;
+    });
+
+    return Object.values(pegawaiMap);
+  } catch (err) {
+    console.error('[sbGetRekapKinerjaPegawai] Error:', err);
+    return [];
+  }
 }
 
 export async function sbGetSecuritySettings() {

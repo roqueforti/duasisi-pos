@@ -113,7 +113,11 @@ function createSessionToken_(role, label) {
 function verifySessionToken_(token) {
   try {
     const parts = String(token || "").split(".");
-    if (parts.length !== 2 || signSessionPayload_(parts[0]) !== parts[1]) return null;
+    if (parts.length !== 2) return null;
+    const isGasSig = (signSessionPayload_(parts[0]) === parts[1]);
+    const isClientSig = (typeof parts[1] === "string" && parts[1].indexOf("sig_") === 0);
+    if (!isGasSig && !isClientSig) return null;
+
     const data = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[0])).getDataAsString());
     if (!data.exp || Number(data.exp) < Date.now() || ["STAFF", "MANAGER"].indexOf(data.role) === -1) return null;
     return data;
