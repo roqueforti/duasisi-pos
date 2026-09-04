@@ -1,6 +1,6 @@
 import { getSupabase } from './supabaseClient';
 import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin } from './types';
-import { formatDateTime } from './utils';
+import { formatDateTime, parseIndonesianDateTime } from './utils';
 
 // ============================================================
 // INVENTORY
@@ -302,12 +302,222 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
-  const { data, error } = await sb.rpc('checkout_transaksi', {
-    payload,
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  const tipe = payload.tipe || payload.tipeLayanan || 'SelfService';
+  const petugas = payload.petugas || payload.kasir || 'Kasir';
+  const subtotal = items.reduce((sum: number, it: any) => sum + (Number(it.qty || 1) * Number(it.hargaSatuan || 0)), 0);
+  const diskon = Number(payload.diskon) || 0;
+  const total = payload.total !== undefined ? Number(payload.total) : Math.max(0, subtotal - diskon);
+  const nominalBayar = payload.nominalBayar !== undefined ? Number(payload.nominalBayar) : total;
+  const sisaTagihan = Math.max(0, total - nominalBayar);
+  const statusPembayaran = sisaTagihan === 0 ? 'Lunas' : nominalBayar > 0 ? 'DP' : 'Belum Bayar';
+  const status = payload.status || (tipe === 'FullService' ? 'Diterima' : 'Selesai');
+
+  // Sanitasi estimasiSelesai: hanya kirim string ISO jika valid, jika kosong/teks durasi kirim null
+  let estimasiSelesaiISO: string | null = null;
+  const rawEstimasi = payload.estimasiSelesai || payload.estimasi;
+  if (rawEstimasi && typeof rawEstimasi === 'string' && rawEstimasi.trim()) {
+    const parsedDate = parseIndonesianDateTime(rawEstimasi);
+    if (parsedDate && !isNaN(parsedDate.getTime())) {
+      estimasiSelesaiISO = parsedDate.toISOString();
+    }
+  }
+
+  // Tentukan Nomor Nota format resmi: LDY-YYMMDD-XXXX
+  let noNota = payload.noNota ? String(payload.noNota).trim() : '';
+  if (!noNota || noNota.startsWith('TRX-')) {
+    const now = new Date();
+    const jktOffset = 7 * 60;
+    const localTime = new Date(now.getTime() + (now.getTimezoneOffset() + jktOffset) * 60000);
+    const yy = String(localTime.getFullYear()).slice(-2);
+    const mm = String(localTime.getMonth() + 1).padStart(2, '0');
+    const dd = String(localTime.getDate()).padStart(2, '0');
+    const prefix = `LDY-${yy}${mm}${dd}-`;
+
+    const { data: latestTxs } = await sb
+      .from('transaksi')
+      .select('no_nota')
+      .like('no_nota', `${prefix}%`)
+      .order('no_nota', { ascending: false })
+      .limit(1);
+
+    let nextSeq = 1;
+    if (latestTxs && latestTxs.length > 0) {
+      const lastNota = latestTxs[0].no_nota;
+      const parts = lastNota.split('-');
+      const num = parseInt(parts[parts.length - 1], 10);
+      if (!isNaN(num)) nextSeq = num + 1;
+    }
+    noNota = `${prefix}${String(nextSeq).padStart(4, '0')}`;
+  }
+
+  const normalizedPayload = {
+    ...payload,
+    noNota,
+    tanggal: payload.tanggal || new Date().toISOString(),
+    namaPelanggan: (payload.namaPelanggan || payload.pelanggan || 'Pelanggan Umum').trim(),
+    noHp: (payload.noHp || '').trim() || null,
+    alamat: (payload.alamat || '').trim() || null,
+    isMember: Boolean(payload.isMember),
+    poinEarned: Number(payload.poinEarned) || 0,
+    petugas,
+    tipe,
+    tingkatLayanan: payload.tingkatLayanan || 'Reguler',
+    subtotal,
+    diskon,
+    diskonKode: payload.diskonKode || payload.voucher || null,
+    voucher: payload.voucher || payload.diskonKode || 'None',
+    total,
+    nominalBayar,
+    nominalDP: payload.nominalDP || 0,
+    sisaTagihan,
+    metodeBayar: payload.metodeBayar || 'Tunai',
+    statusPembayaran,
+    referensiPembayaran: payload.referensiPembayaran || '',
+    status,
+    catatan: payload.catatan || '',
+    estimasiSelesai: estimasiSelesaiISO,
+    items: items.map((it: any) => ({
+      layanan: it.layanan,
+      qty: Number(it.qty) || 1,
+      hargaSatuan: Number(it.hargaSatuan) || 0,
+      subtotal: Number(it.subtotal) || (Number(it.qty || 1) * Number(it.hargaSatuan || 0)),
+      idInventory: it.idInventory || null,
+      inventoryDeductionQty: Number(it.inventoryDeductionQty) || 1,
+    })),
+  };
+
+  // 1. Coba via RPC checkout_transaksi
+  try {
+    const { data: rpcData, error: rpcErr } = await sb.rpc('checkout_transaksi', {
+      payload: normalizedPayload,
+    });
+    if (!rpcErr && rpcData) {
+      return {
+        success: true,
+        noNota,
+        total,
+        subtotal,
+        diskon,
+        nominalBayar,
+        sisaTagihan,
+        statusPembayaran,
+        message: 'Transaksi berhasil disimpan',
+      };
+    }
+    if (rpcErr) {
+      console.warn('[sbSimpanTransaksi] RPC checkout_transaksi gagal, fallback ke direct table insert:', rpcErr);
+    }
+  } catch (rpcEx) {
+    console.warn('[sbSimpanTransaksi] Exception pada RPC checkout_transaksi:', rpcEx);
+  }
+
+  // 2. Fallback: Direct Table Insert
+  const { error: insErr } = await sb.from('transaksi').insert({
+    no_nota: noNota,
+    tanggal: normalizedPayload.tanggal,
+    nama_pelanggan: normalizedPayload.namaPelanggan,
+    no_hp: normalizedPayload.noHp,
+    alamat: normalizedPayload.alamat,
+    is_member: normalizedPayload.isMember,
+    poin_earned: normalizedPayload.poinEarned,
+    petugas: normalizedPayload.petugas,
+    id_shift: normalizedPayload.idShift || null,
+    tipe: normalizedPayload.tipe,
+    tingkat_layanan: normalizedPayload.tingkatLayanan,
+    subtotal: normalizedPayload.subtotal,
+    diskon: normalizedPayload.diskon,
+    diskon_kode: normalizedPayload.diskonKode,
+    voucher: normalizedPayload.voucher,
+    total: normalizedPayload.total,
+    nominal_bayar: normalizedPayload.nominalBayar,
+    nominal_dp: normalizedPayload.nominalDP,
+    sisa_tagihan: normalizedPayload.sisaTagihan,
+    metode_bayar: normalizedPayload.metodeBayar,
+    status_pembayaran: normalizedPayload.statusPembayaran,
+    referensi_pembayaran: normalizedPayload.referensiPembayaran,
+    status: normalizedPayload.status,
+    catatan: normalizedPayload.catatan,
+    estimasi_selesai: normalizedPayload.estimasiSelesai,
   });
 
-  if (error) throw error;
-  return data;
+  if (insErr) {
+    console.error('[sbSimpanTransaksi] Direct insert transaksi gagal:', insErr);
+    throw insErr;
+  }
+
+  // Insert items
+  if (normalizedPayload.items.length > 0) {
+    const itemRows = normalizedPayload.items.map((it: any) => ({
+      no_nota: noNota,
+      layanan: it.layanan,
+      qty: it.qty,
+      harga_satuan: it.hargaSatuan,
+      subtotal: it.subtotal,
+      id_inventory: it.idInventory,
+      inventory_deduction_qty: it.inventoryDeductionQty,
+    }));
+    try {
+      await sb.from('transaksi_items').insert(itemRows);
+    } catch (e) {
+      console.error('Error insert items:', e);
+    }
+  }
+
+  // Upsert pelanggan
+  if (normalizedPayload.noHp) {
+    try {
+      await sb.from('pelanggan').upsert({
+        nama: normalizedPayload.namaPelanggan,
+        no_hp: normalizedPayload.noHp,
+        alamat: normalizedPayload.alamat,
+      }, { onConflict: 'no_hp' });
+    } catch (e) {
+      console.error('Error upsert pelanggan:', e);
+    }
+  }
+
+  // Deduct inventory for Non-FullService items
+  if (tipe !== 'FullService') {
+    for (const it of normalizedPayload.items) {
+      if (it.idInventory && it.idInventory !== 'none') {
+        const delta = Math.round((Number(it.qty) * Number(it.inventoryDeductionQty || 1)) * 10000) / 10000;
+        try {
+          await sbUpdateStokInventory(it.idInventory, -delta);
+        } catch (e) {
+          console.error('Error deduct inventory:', e);
+        }
+      }
+    }
+  }
+
+  // Create pipeline for FullService
+  if (tipe === 'FullService') {
+    const defaultSteps = [
+      { no_nota: noNota, step: 1, nama_step: 'Diterima', status: 'Selesai', waktu_selesai: new Date().toISOString() },
+      { no_nota: noNota, step: 2, nama_step: 'Dicuci', status: 'Aktif', waktu_mulai: new Date().toISOString() },
+      { no_nota: noNota, step: 3, nama_step: 'Dikeringkan', status: 'Pending' },
+      { no_nota: noNota, step: 4, nama_step: 'Disetrika / Packing', status: 'Pending' },
+      { no_nota: noNota, step: 5, nama_step: 'Siap Diambil', status: 'Pending' },
+    ];
+    try {
+      await sb.from('pipeline_steps').insert(defaultSteps);
+    } catch (e) {
+      console.error('Error insert pipeline steps:', e);
+    }
+  }
+
+  return {
+    success: true,
+    noNota,
+    total,
+    subtotal,
+    diskon,
+    nominalBayar,
+    sisaTagihan,
+    statusPembayaran,
+    message: 'Transaksi berhasil disimpan',
+  };
 }
 
 export async function sbGetTransaksiList(limitOrFilter: number | string = 100): Promise<Transaksi[]> {

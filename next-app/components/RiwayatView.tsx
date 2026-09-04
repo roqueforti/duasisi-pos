@@ -5,7 +5,7 @@ import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, 
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { maskPhone, eNotaUrl as buildENotaUrl, formatWaPhone, formatFriendlyErrorMessage, formatDateTime } from '@/lib/utils';
+import { maskPhone, eNotaUrl as buildENotaUrl, formatWaPhone, formatFriendlyErrorMessage, formatDateTime, parseIndonesianDateTime } from '@/lib/utils';
 import { generateWhatsAppReceiptFromTx } from '@/lib/whatsappUtils';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import PrinterModal from '@/components/PrinterModal';
@@ -335,38 +335,15 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     setIsPrinterModalOpen(true);
   };
 
-  // Helper Parsing Timestamp
+  // Helper Parsing Timestamp (Menggunakan parser tanggal Indonesia yang tangguh)
   const parseTimestamp = (ts: string | Date | undefined | null): Date | null => {
-    if (!ts) return null;
-    if (ts instanceof Date) return isNaN(ts.getTime()) ? null : ts;
-    let str = String(ts).trim();
-    str = str.replace(' WIB', '').replace(' WITA', '').replace(' WIT', '').trim();
-    if (str.includes('/')) {
-      const spaceParts = str.split(' ');
-      const dateParts = spaceParts[0].split('/');
-      if (dateParts.length === 3) {
-        const day = Number(dateParts[0]);
-        const month = Number(dateParts[1]) - 1;
-        const year = Number(dateParts[2]);
-        let hours = 0, minutes = 0, seconds = 0;
-        if (spaceParts[1]) {
-          const timeParts = spaceParts[1].split(':');
-          hours = Number(timeParts[0]) || 0;
-          minutes = Number(timeParts[1]) || 0;
-          seconds = Number(timeParts[2]) || 0;
-        }
-        const d = new Date(year, month, day, hours, minutes, seconds);
-        if (!isNaN(d.getTime())) return d;
-      }
-    }
-    const d = new Date(str);
-    return isNaN(d.getTime()) ? null : d;
+    return parseIndonesianDateTime(ts);
   };
 
   const isTxInSelectedShift = (txTanggal: string | undefined): boolean => {
     if (selectedShiftId === 'all') return true;
     const txDate = parseTimestamp(txTanggal);
-    if (!txDate) return true;
+    if (!txDate) return false;
 
     if (selectedShiftId === 'active') {
       if (!activeShift?.waktuBuka) return true;
@@ -392,7 +369,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     if (!tglStr) return false;
     
     const d = parseTimestamp(tglStr);
-    if (!d) return true;
+    if (!d) return false;
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());

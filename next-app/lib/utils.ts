@@ -60,6 +60,76 @@ export function formatTime(timeStr: string | undefined | null): string {
 }
 
 /**
+ * Parse string tanggal Indonesia, format DD/MM/YYYY, ISO, timestamp, dsb.
+ * Menangani nama & singkatan bulan Indonesia (Agu, Mei, Okt, Des dsb) yang gagal di-parse oleh new Date() standar.
+ */
+export function parseIndonesianDateTime(val: string | Date | undefined | null): Date | null {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+
+  let str = String(val).trim();
+  if (!str || str === '-') return null;
+
+  // Hapus teks zona waktu umum
+  str = str.replace(/\s*WIB|\s*WITA|\s*WIT/gi, '').trim();
+
+  // 1. Coba format DD/MM/YYYY [HH:mm[:ss]]
+  if (str.includes('/')) {
+    const spaceParts = str.split(' ');
+    const dateParts = spaceParts[0].split('/');
+    if (dateParts.length === 3) {
+      const day = parseInt(dateParts[0], 10);
+      const month = parseInt(dateParts[1], 10) - 1;
+      const year = parseInt(dateParts[2], 10);
+      let hh = 0, mm = 0, ss = 0;
+      if (spaceParts[1]) {
+        const timeParts = spaceParts[1].split(':');
+        hh = parseInt(timeParts[0], 10) || 0;
+        mm = parseInt(timeParts[1], 10) || 0;
+        ss = parseInt(timeParts[2], 10) || 0;
+      }
+      const d = new Date(year, month, day, hh, mm, ss);
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+
+  // 2. Coba format tanggal dengan nama/singkatan bulan Indonesia atau Inggris
+  const indoMonths: Record<string, number> = {
+    jan: 0, januari: 0, january: 0,
+    feb: 1, februari: 1, february: 1,
+    mar: 2, maret: 2, march: 2,
+    apr: 3, april: 3,
+    mei: 4, may: 4,
+    jun: 5, juni: 5, june: 5,
+    jul: 6, juli: 6, july: 6,
+    agu: 7, ags: 7, agustus: 7, aug: 7, august: 7,
+    sep: 8, september: 8,
+    okt: 9, oktober: 9, oct: 9, october: 9,
+    nov: 10, november: 10,
+    des: 11, desember: 11, dec: 11, december: 11,
+  };
+
+  const textMatch = str.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})(?:[,\s]+(\d{1,2})[:.](\d{1,2})(?:[:.](\d{1,2}))?)?/);
+  if (textMatch) {
+    const day = parseInt(textMatch[1], 10);
+    const mKey = textMatch[2].toLowerCase();
+    const month = indoMonths[mKey];
+    const year = parseInt(textMatch[3], 10);
+    const hh = parseInt(textMatch[4] || '0', 10);
+    const mm = parseInt(textMatch[5] || '0', 10);
+    const ss = parseInt(textMatch[6] || '0', 10);
+    if (month !== undefined && !isNaN(day) && !isNaN(year)) {
+      const d = new Date(year, month, day, hh, mm, ss);
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+
+  // 3. Fallback standard JavaScript Date parse (ISO string dsb.)
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
  * Format string tanggal & waktu (ISO, timestamps, dd/MM/yyyy dsb) menjadi tampilan
  * yang rapi, mudah dibaca, dan selalu disesuaikan ke zona waktu Indonesia (WIB).
  *

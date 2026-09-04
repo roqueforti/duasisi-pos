@@ -1290,16 +1290,26 @@ export default function PosView({
       const hasSelfService = cartArray.some((i) => i.tipe === 'SelfService' || (i as any).kategori === 'Self Service');
       const autoTipeLayanan = hasDropOff ? 'FullService' : (hasSelfService ? 'SelfService' : 'Retail');
       const estimasi = hasDropOff ? calculateEstimasiSelesai(tingkatLayanan) : '';
+      let estimasiISO: string | null = null;
+      if (hasDropOff) {
+        const priority = dropOffPriorities.find(p => p.nama.toLowerCase() === tingkatLayanan.toLowerCase()) || { durasiJam: 48 };
+        const durasi = Number(priority.durasiJam) || 48;
+        estimasiISO = new Date(Date.now() + durasi * 3600 * 1000).toISOString();
+      }
 
       const res = await runBackend<{ success: boolean; noNota: string; total: number; token?: string }>('simpanTransaksi', {
         namaPelanggan: custName,
         noHp: custHp,
         kasir,
+        petugas: kasir,
+        tipe: autoTipeLayanan,
         tipeLayanan: autoTipeLayanan,
         tingkatLayanan: hasDropOff ? tingkatLayanan : 'Reguler',
-        estimasiSelesai: estimasi,
+        estimasiSelesai: estimasiISO,
         estimasi: estimasi,
         metodeBayar,
+        total,
+        subtotal: subtotalCart,
         nominalBayar: metodeBayar === 'Tunai' ? bayar : total,
         referensiPembayaran: refNoInput.trim(),
         voucher: diskonApplied.kode || 'None',
