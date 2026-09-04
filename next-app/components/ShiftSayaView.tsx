@@ -790,14 +790,24 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
 
       const payload: any = {
         shiftId: shiftAktif.idShift,
+        idShift: shiftAktif.idShift,
         idOutlet: 'OUTLET-UTAMA',
         mode: closeMode,
         kasAkhir: kasFisik,
+        kasAkhirFisik: kasFisik,
         saldoMerchantAkhir: saldoMerchantAkhir,
         catatan: closingCatatan.trim(),
         expenseAmount: totalPengeluaran,
+        totalPengeluaran: totalPengeluaran,
+        totalOmzetTunai: shiftAktif.totalOmzetTunai || 0,
+        totalOmzetMerchant: shiftAktif.totalOmzetMerchant || 0,
+        omzetTunai: shiftAktif.totalOmzetTunai || 0,
+        omzetMerchant: shiftAktif.totalOmzetMerchant || 0,
+        selisihKas: selisihKas,
+        selisihMerchant: selisihMerchant,
         expenseDesc: expenseDesc,
-        expensePhotos: photoUrls
+        expensePhotos: photoUrls,
+        expenses: expenseList
       };
 
       if (closeMode === 'SERAH_TERIMA') {

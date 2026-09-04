@@ -472,9 +472,27 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
     noNota = `${prefix}${String(nextSeq).padStart(4, '0')}`;
   }
 
+  // Resolusi id_shift: gunakan dari payload jika ada, jika tidak otomatis kaitkan ke kas shift aktif yang berstatus Buka
+  let activeShiftId = payload.idShift || payload.shiftId || null;
+  if (!activeShiftId) {
+    try {
+      const { data: curShift } = await sb
+        .from('kas_shift')
+        .select('id_shift')
+        .eq('status', 'Buka')
+        .order('waktu_buka', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (curShift?.id_shift) {
+        activeShiftId = curShift.id_shift;
+      }
+    } catch {}
+  }
+
   const normalizedPayload = {
     ...payload,
     noNota,
+    idShift: activeShiftId,
     tanggal: payload.tanggal || new Date().toISOString(),
     namaPelanggan: (payload.namaPelanggan || payload.pelanggan || 'Pelanggan Umum').trim(),
     noHp: (payload.noHp || '').trim() || null,
@@ -831,6 +849,16 @@ export async function sbGetMesinList(): Promise<Mesin[]> {
   }));
 }
 
+function getStartOfTodayWIB(): Date {
+  const now = new Date();
+  const jktOffset = 7 * 60;
+  const jktTime = new Date(now.getTime() + (now.getTimezoneOffset() + jktOffset) * 60000);
+  const y = jktTime.getFullYear();
+  const m = jktTime.getMonth();
+  const d = jktTime.getDate();
+  return new Date(Date.UTC(y, m, d, 0 - 7, 0, 0, 0));
+}
+
 export async function sbGetKasShiftAktif(outletId = 'OUTLET-UTAMA'): Promise<ShiftKasir | null> {
   const sb = getSupabase();
   if (!sb) return null;
@@ -846,20 +874,188 @@ export async function sbGetKasShiftAktif(outletId = 'OUTLET-UTAMA'): Promise<Shi
 
   if (error || !data) return null;
 
+  // 1. Hitung omzet transaksi real-time selama shift ini berjalan
+  let omzetTunai = 0;
+  let omzetMerchant = 0;
+  let pendingVoidCount = 0;
+  let pendingVoidTotal = 0;
+  const pendingVoidList: Array<{
+    noNota: string;
+    namaPelanggan: string;
+    nominal: number;
+    metodeBayar: string;
+    alasan?: string;
+  }> = [];
+
+  try {
+    const { data: txList } = await sb
+      .from('transaksi')
+      .select('no_nota, tanggal, nama_pelanggan, total, nominal_bayar, nominal_dp, sisa_tagihan, metode_bayar, status, status_pembayaran, status_void, alasan_void, id_shift')
+      .or(`id_shift.eq.${data.id_shift},tanggal.gte.${data.waktu_buka}`);
+
+    for (const tx of txList || []) {
+      // Abaikan transaksi yang berstatus batal / void disetujui
+      if (
+        tx.status === 'Void' ||
+        tx.status === 'Batal' ||
+        tx.status_void === 'Approved'
+      ) {
+        continue;
+      }
+
+      const totalTagihan = Number(tx.total) || 0;
+      const nominalDP = Number(tx.nominal_dp) || 0;
+      const sisaTagihan = Number(tx.sisa_tagihan) || 0;
+      let nominal = 0;
+
+      if (tx.status_pembayaran === 'Belum Bayar') {
+        nominal = 0;
+      } else if (sisaTagihan > 0 && nominalDP > 0) {
+        nominal = nominalDP;
+      } else {
+        nominal = totalTagihan;
+      }
+
+      // Deteksi transaksi pending approval void
+      if (tx.status_void === 'PendingApproval') {
+        pendingVoidCount++;
+        pendingVoidTotal += nominal;
+        pendingVoidList.push({
+          noNota: tx.no_nota || '',
+          namaPelanggan: tx.nama_pelanggan || 'Pelanggan',
+          nominal: nominal,
+          metodeBayar: tx.metode_bayar || 'Tunai',
+          alasan: tx.alasan_void || '-',
+        });
+        continue;
+      }
+
+      const metode = String(tx.metode_bayar || 'Tunai').trim().toLowerCase();
+      if (metode === 'tunai') {
+        omzetTunai += nominal;
+      } else {
+        omzetMerchant += nominal;
+      }
+    }
+  } catch (txErr) {
+    console.warn('[sbGetKasShiftAktif] Gagal hitung omzet transaksi:', txErr);
+  }
+
+  // 2. Hitung total belanja operasional tercatat pada shift ini
+  let nominalBelanjaShift = Number(data.total_pengeluaran) || 0;
+  try {
+    const { data: expList } = await sb
+      .from('kas_shift_pengeluaran')
+      .select('nominal')
+      .eq('id_shift', data.id_shift);
+    if (expList && expList.length > 0) {
+      const sumExp = expList.reduce((sum: number, e: any) => sum + (Number(e.nominal) || 0), 0);
+      nominalBelanjaShift = Math.max(nominalBelanjaShift, sumExp);
+    }
+  } catch {}
+
+  // 3. Hitung Data Kumulatif Hari Ini (Seluruh shift sejak 00:00 WIB hari ini)
+  let kumulatifData = undefined;
+  try {
+    const startOfTodayWIB = getStartOfTodayWIB();
+    const startIso = startOfTodayWIB.toISOString();
+
+    const [shiftsTodayRes, txsTodayRes] = await Promise.all([
+      sb
+        .from('kas_shift')
+        .select('*')
+        .eq('id_outlet', outletId)
+        .gte('waktu_buka', startIso)
+        .order('waktu_buka', { ascending: true }),
+      sb
+        .from('transaksi')
+        .select('total, nominal_dp, sisa_tagihan, metode_bayar, status, status_pembayaran, status_void')
+        .gte('tanggal', startIso),
+    ]);
+
+    const todayShifts = shiftsTodayRes.data || [];
+    const todayTxs = txsTodayRes.data || [];
+
+    let omzetTunaiHariIni = 0;
+    let omzetMerchantHariIni = 0;
+    for (const tx of todayTxs) {
+      if (tx.status === 'Void' || tx.status === 'Batal' || tx.status_void === 'Approved' || tx.status_void === 'PendingApproval') continue;
+      const totalTagihan = Number(tx.total) || 0;
+      const nominalDP = Number(tx.nominal_dp) || 0;
+      const sisaTagihan = Number(tx.sisa_tagihan) || 0;
+      let nominal = 0;
+      if (tx.status_pembayaran === 'Belum Bayar') nominal = 0;
+      else if (sisaTagihan > 0 && nominalDP > 0) nominal = nominalDP;
+      else nominal = totalTagihan;
+
+      if (String(tx.metode_bayar || 'Tunai').trim().toLowerCase() === 'tunai') {
+        omzetTunaiHariIni += nominal;
+      } else {
+        omzetMerchantHariIni += nominal;
+      }
+    }
+
+    const modalAwalHariIni = todayShifts.length > 0 ? (Number(todayShifts[0].kas_awal) || 0) : (Number(data.kas_awal) || 0);
+    const totalBelanjaHariIni = todayShifts.reduce((sum: number, s: any) => sum + (Number(s.total_pengeluaran) || 0), 0) + nominalBelanjaShift;
+
+    const shiftKe = todayShifts.length || 1;
+    const isGantiShift = shiftKe > 1;
+    const prevShift = isGantiShift ? todayShifts[todayShifts.length - 2] : null;
+
+    kumulatifData = {
+      shiftKe,
+      isGantiShift,
+      modalAwalHariIni,
+      omzetTunaiHariIni,
+      omzetMerchantHariIni,
+      totalBelanjaHariIni,
+      ekspektasiKasHariIni: modalAwalHariIni + omzetTunaiHariIni - totalBelanjaHariIni,
+      prevShift: prevShift ? {
+        idShift: prevShift.id_shift,
+        namaKasir: prevShift.nama_kasir,
+        waktuBuka: prevShift.waktu_buka,
+        waktuTutup: prevShift.waktu_tutup,
+        kasAwal: Number(prevShift.kas_awal) || 0,
+        kasAkhirFisik: Number(prevShift.kas_akhir_fisik) || 0,
+        selisihKas: Number(prevShift.selisih_kas) || 0,
+        modeTutup: prevShift.mode_tutup,
+      } : null,
+      todayShifts: todayShifts.map((s: any) => ({
+        idShift: s.id_shift,
+        namaKasir: s.nama_kasir,
+        waktuBuka: s.waktu_buka,
+        waktuTutup: s.waktu_tutup,
+        kasAwal: Number(s.kas_awal) || 0,
+        kasAkhirFisik: Number(s.kas_akhir_fisik) || 0,
+        selisihKas: Number(s.selisih_kas) || 0,
+        status: s.status,
+        totalBelanja: Number(s.total_pengeluaran) || 0,
+      })),
+    };
+  } catch (kErr) {
+    console.warn('[sbGetKasShiftAktif] Gagal hitung data kumulatif shift:', kErr);
+  }
+
+  const kasAwal = Number(data.kas_awal) || 0;
+
   return {
     idShift: data.id_shift,
     idOutlet: data.id_outlet,
     namaKasir: data.nama_kasir,
     idUser: data.id_user || 'USER-1',
     waktuBuka: data.waktu_buka,
-    kasAwal: Number(data.kas_awal) || 0,
+    kasAwal,
     saldoMerchantAwal: Number(data.saldo_merchant_awal) || 0,
     kasAkhir: Number(data.kas_akhir_fisik) || 0,
-    totalOmzetTunai: Number(data.total_penjualan_tunai) || 0,
-    totalOmzetMerchant: Number(data.total_penjualan_non_tunai) || 0,
-    nominalBelanja: Number(data.total_pengeluaran) || 0,
+    totalOmzetTunai: omzetTunai,
+    totalOmzetMerchant: omzetMerchant,
+    nominalBelanja: nominalBelanjaShift,
     selisihKas: Number(data.selisih_kas) || 0,
     status: data.status,
+    pendingVoidCount,
+    pendingVoidTotal,
+    pendingVoidList,
+    kumulatif: kumulatifData,
   };
 }
 
@@ -867,9 +1063,25 @@ export async function sbOpenKasShift(payload: any): Promise<any> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
+  const outletId = payload.idOutlet || payload.outlet || 'OUTLET-UTAMA';
+  // Cek apakah sudah ada shift aktif yang masih berstatus Buka
+  const { data: existingActive } = await sb
+    .from('kas_shift')
+    .select('*')
+    .eq('id_outlet', outletId)
+    .eq('status', 'Buka')
+    .order('waktu_buka', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingActive) {
+    return { success: true, shift: existingActive, message: 'Kas shift aktif sudah berjalan.' };
+  }
+
   const idShift = payload.idShift || `SHIFT-${Date.now()}`;
   const { data, error } = await sb.from('kas_shift').insert({
     id_shift: idShift,
+    id_outlet: outletId,
     nama_kasir: payload.namaKasir || 'Kasir',
     kas_awal: Number(payload.kasAwal) || 0,
     saldo_merchant_awal: Number(payload.saldoMerchantAwal) || 0,
@@ -884,24 +1096,103 @@ export async function sbCloseKasShift(payload: any): Promise<any> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
+  const idShift = payload.idShift || payload.shiftId;
+  if (!idShift) throw new Error('ID Shift tidak ditemukan.');
+
+  // Ambil data shift untuk dasar kalkulasi selisih yang presisi
+  const { data: shiftRow } = await sb
+    .from('kas_shift')
+    .select('*')
+    .eq('id_shift', idShift)
+    .maybeSingle();
+
+  const kasAkhirFisik = Number(payload.kasAkhirFisik ?? payload.kasAkhir) || 0;
+  const saldoMerchantAkhir = Number(payload.saldoMerchantAkhir ?? payload.merchantAkhir) || 0;
+  const totalPengeluaran = Number(payload.totalPengeluaran ?? payload.expenseAmount) || 0;
+  const namaPengganti = payload.namaPengganti || payload.replacementName || null;
+  const modeTutup = payload.mode || payload.modeTutup || 'TUTUP_HARIAN';
+  const catatan = payload.catatan || null;
+
+  let totalOmzetTunai = Number(payload.totalOmzetTunai ?? payload.omzetTunai);
+  let totalOmzetMerchant = Number(payload.totalOmzetMerchant ?? payload.omzetMerchant);
+
+  // Jika omzet tidak disertakan, hitung langsung dari transaksi
+  if (isNaN(totalOmzetTunai) || isNaN(totalOmzetMerchant)) {
+    const waktuBuka = shiftRow?.waktu_buka;
+    totalOmzetTunai = 0;
+    totalOmzetMerchant = 0;
+    if (waktuBuka) {
+      try {
+        const { data: txList } = await sb
+          .from('transaksi')
+          .select('total, nominal_dp, sisa_tagihan, metode_bayar, status, status_pembayaran, status_void')
+          .or(`id_shift.eq.${idShift},tanggal.gte.${waktuBuka}`);
+
+        for (const tx of txList || []) {
+          if (tx.status === 'Void' || tx.status === 'Batal' || tx.status_void === 'Approved' || tx.status_void === 'PendingApproval') continue;
+          const totalTagihan = Number(tx.total) || 0;
+          const nominalDP = Number(tx.nominal_dp) || 0;
+          const sisaTagihan = Number(tx.sisa_tagihan) || 0;
+          let nominal = 0;
+          if (tx.status_pembayaran === 'Belum Bayar') nominal = 0;
+          else if (sisaTagihan > 0 && nominalDP > 0) nominal = nominalDP;
+          else nominal = totalTagihan;
+
+          if (String(tx.metode_bayar || 'Tunai').trim().toLowerCase() === 'tunai') {
+            totalOmzetTunai += nominal;
+          } else {
+            totalOmzetMerchant += nominal;
+          }
+        }
+      } catch {}
+    }
+  }
+
+  const kasAwal = Number(shiftRow?.kas_awal) || 0;
+  const saldoMerchantAwal = Number(shiftRow?.saldo_merchant_awal) || 0;
+
+  const expectedKas = kasAwal + totalOmzetTunai - totalPengeluaran;
+  const selisihKas = payload.selisihKas !== undefined ? Number(payload.selisihKas) : (kasAkhirFisik - expectedKas);
+
+  const expectedMerchant = saldoMerchantAwal + totalOmzetMerchant;
+  const selisihMerchant = payload.selisihMerchant !== undefined ? Number(payload.selisihMerchant) : (saldoMerchantAkhir - expectedMerchant);
+
   const { data, error } = await sb
     .from('kas_shift')
     .update({
       waktu_tutup: new Date().toISOString(),
-      kas_akhir_fisik: Number(payload.kasAkhirFisik) || 0,
-      saldo_merchant_akhir: Number(payload.saldoMerchantAkhir) || 0,
-      total_pengeluaran: Number(payload.totalPengeluaran) || 0,
-      selisih_kas: Number(payload.selisihKas) || 0,
+      kas_akhir_fisik: kasAkhirFisik,
+      saldo_merchant_akhir: saldoMerchantAkhir,
+      total_penjualan_tunai: totalOmzetTunai,
+      total_penjualan_non_tunai: totalOmzetMerchant,
+      total_pengeluaran: totalPengeluaran,
+      selisih_kas: selisihKas,
       status: 'Tutup',
-      catatan: payload.catatan || null,
-      mode_tutup: payload.mode || 'TUTUP_HARIAN',
-      nama_pengganti: payload.namaPengganti || null,
+      catatan: catatan,
+      mode_tutup: modeTutup,
+      nama_pengganti: namaPengganti,
     })
-    .eq('id_shift', payload.idShift)
+    .eq('id_shift', idShift)
     .select()
     .single();
 
   if (error) throw error;
+
+  // Simpan rincian pengeluaran ke kas_shift_pengeluaran jika ada
+  if (Array.isArray(payload.expenses) && payload.expenses.length > 0) {
+    const expenseRows = payload.expenses.map((e: any) => ({
+      id_shift: idShift,
+      nama_pengeluaran: e.nama || e.nama_pengeluaran || 'Pengeluaran Kasir',
+      nominal: Number(e.nominal) || 0,
+      kategori: e.kategori || 'Operasional Lainnya',
+      foto_url: e.fotoUrl || e.foto_url || null,
+    }));
+    try {
+      await sb.from('kas_shift_pengeluaran').insert(expenseRows);
+    } catch (expErr) {
+      console.warn('[sbCloseKasShift] Gagal simpan rincian pengeluaran:', expErr);
+    }
+  }
 
   // ============================================================
   // LAYER 1 HYBRID BACKUP: Non-blocking trigger ke Google Sheets
@@ -915,7 +1206,17 @@ export async function sbCloseKasShift(payload: any): Promise<any> {
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             action: 'closeKasShift',
-            args: [payload],
+            args: [{
+              ...payload,
+              idShift,
+              kasAkhirFisik,
+              saldoMerchantAkhir,
+              totalPengeluaran,
+              totalOmzetTunai,
+              totalOmzetMerchant,
+              selisihKas,
+              selisihMerchant,
+            }],
             sessionToken: typeof window !== 'undefined' ? localStorage.getItem('gas_session_token') : undefined,
           }),
         }).catch(e => console.warn('[Backup Kas Shift ke Google Sheets background error]:', e));
@@ -923,7 +1224,7 @@ export async function sbCloseKasShift(payload: any): Promise<any> {
     }
   } catch {}
 
-  return { success: true, shift: data };
+  return { success: true, shift: data, selisihKas, selisihMerchant };
 }
 
 export async function sbGetPromoList(): Promise<any[]> {
@@ -1052,25 +1353,35 @@ export async function sbGetRekapKasShift(): Promise<any[]> {
     .order('waktu_buka', { ascending: false });
 
   if (error) return [];
-  return (data || []).map((s: any) => ({
-    idShift: s.id_shift,
-    idOutlet: s.id_outlet,
-    namaKasir: s.nama_kasir,
-    idUser: s.id_user,
-    waktuBuka: s.waktu_buka,
-    waktuTutup: s.waktu_tutup,
-    kasAwal: Number(s.kas_awal) || 0,
-    kasAkhirSistem: Number(s.kas_akhir_fisik) || 0,
-    kasAkhirFisik: Number(s.kas_akhir_fisik) || 0,
-    selisihKas: Number(s.selisih_kas) || 0,
-    status: s.status === 'Tutup' ? 'Ditutup' : s.status,
-    modeTutup: s.mode_tutup,
-    namaPengganti: s.nama_pengganti,
-    catatan: s.catatan,
-    saldoMerchantAwal: Number(s.saldo_merchant_awal) || 0,
-    saldoMerchantAkhir: Number(s.saldo_merchant_akhir) || 0,
-    totalBelanja: Number(s.total_pengeluaran) || 0,
-  }));
+  return (data || []).map((s: any) => {
+    const kasAwal = Number(s.kas_awal) || 0;
+    const omzetTunai = Number(s.total_penjualan_tunai) || 0;
+    const omzetMerchant = Number(s.total_penjualan_non_tunai) || 0;
+    const totalBelanja = Number(s.total_pengeluaran) || 0;
+    const kasAkhirSistem = kasAwal + omzetTunai - totalBelanja;
+
+    return {
+      idShift: s.id_shift,
+      idOutlet: s.id_outlet,
+      namaKasir: s.nama_kasir,
+      idUser: s.id_user,
+      waktuBuka: s.waktu_buka,
+      waktuTutup: s.waktu_tutup,
+      kasAwal,
+      omzetTunai,
+      omzetMerchant,
+      kasAkhirSistem,
+      kasAkhirFisik: Number(s.kas_akhir_fisik) || 0,
+      selisihKas: Number(s.selisih_kas) || 0,
+      status: s.status === 'Tutup' ? 'Ditutup' : s.status,
+      modeTutup: s.mode_tutup,
+      namaPengganti: s.nama_pengganti,
+      catatan: s.catatan,
+      saldoMerchantAwal: Number(s.saldo_merchant_awal) || 0,
+      saldoMerchantAkhir: Number(s.saldo_merchant_akhir) || 0,
+      totalBelanja,
+    };
+  });
 }
 
 export async function sbGetPegawaiList(): Promise<any[]> {

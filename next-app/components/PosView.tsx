@@ -1298,6 +1298,7 @@ export default function PosView({
       }
 
       const res = await runBackend<{ success: boolean; noNota: string; total: number; token?: string }>('simpanTransaksi', {
+        idShift: shiftAktif?.idShift || undefined,
         namaPelanggan: custName,
         noHp: custHp,
         kasir,
