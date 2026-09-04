@@ -275,10 +275,25 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbGetDropoffIncentiveConfig()) as any;
         case 'saveDropoffIncentiveConfig':
           return (await sb.sbSaveDropoffIncentiveConfig(args[0])) as any;
+        case 'getPendingVoidList':
+          return (await sb.sbGetPendingVoidList()) as any;
       }
     } catch (sbErr: any) {
       console.warn(`[Supabase Error] Action '${action}' gagal, fallback ke Google Apps Script:`, sbErr);
     }
+  }
+
+  // Fallback untuk getPendingVoidList jika via Google Apps Script
+  if (action === 'getPendingVoidList') {
+    try {
+      const allTx = await runBackend<any[]>('getTransaksiList', 'Semua');
+      if (Array.isArray(allTx)) {
+        return allTx.filter((t: any) => t.statusVoid === 'PendingApproval') as any;
+      }
+    } catch (e) {
+      console.warn('Fallback getTransaksiList for pending void failed:', e);
+    }
+    return [] as any;
   }
   const isPublicAction =
     action === 'verifikasiPin' ||

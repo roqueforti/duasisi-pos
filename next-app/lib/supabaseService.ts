@@ -2434,6 +2434,8 @@ export async function sbGetLaporanRange(startDate: string, endDate: string) {
       metode_bayar,
       status_pembayaran,
       status,
+      status_void,
+      alasan_void,
       petugas,
       transaksi_items (
         layanan,
@@ -2450,10 +2452,16 @@ export async function sbGetLaporanRange(startDate: string, endDate: string) {
   let totalOmzet = 0;
   let selfCount = 0;
   let fullCount = 0;
+  let activeTrxCount = 0;
   const omzetHarianMap = new Map<string, { omzet: number; count: number }>();
   const layananMap = new Map<string, { qty: number; omzet: number }>();
 
   for (const t of trxList || []) {
+    // Abaikan transaksi yang berstatus Void/Batal atau Approved Void dalam hitungan omzet
+    const isVoidApproved = t.status_void === 'Approved' || t.status === 'Void' || t.status === 'Batal' || t.status === 'Dibatalkan';
+    if (isVoidApproved) continue;
+
+    activeTrxCount++;
     const total = Number(t.total) || 0;
     totalOmzet += total;
     if (t.tipe === 'FullService') fullCount++;
@@ -2478,7 +2486,7 @@ export async function sbGetLaporanRange(startDate: string, endDate: string) {
     }
   }
 
-  const jumlahTransaksi = (trxList || []).length;
+  const jumlahTransaksi = activeTrxCount;
   const rataRata = jumlahTransaksi > 0 ? Math.round(totalOmzet / jumlahTransaksi) : 0;
 
   const omzetHarian = Array.from(omzetHarianMap.entries())
@@ -2512,9 +2520,69 @@ export async function sbGetLaporanRange(startDate: string, endDate: string) {
       metodeBayar: t.metode_bayar,
       statusPembayaran: t.status_pembayaran,
       status: t.status,
+      statusVoid: t.status_void,
+      alasanVoid: t.alasan_void,
       petugas: t.petugas,
+      items: Array.isArray(t.transaksi_items) ? t.transaksi_items.map((it: any) => ({
+        layanan: it.layanan,
+        qty: Number(it.qty) || 1,
+        subtotal: Number(it.subtotal) || 0,
+      })) : [],
     })),
   };
+}
+
+export async function sbGetPendingVoidList(): Promise<Transaksi[]> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { data: trxList, error } = await sb
+    .from('transaksi')
+    .select(`
+      *,
+      transaksi_items (*),
+      pipeline_steps (*)
+    `)
+    .eq('status_void', 'PendingApproval')
+    .order('tanggal', { ascending: false });
+
+  if (error) throw error;
+
+  return (trxList || []).map((t: any) => ({
+    noNota: t.no_nota,
+    tanggal: formatDateTime(t.tanggal),
+    namaPelanggan: t.nama_pelanggan,
+    noHp: t.no_hp,
+    alamat: t.alamat,
+    isMember: t.is_member,
+    poinEarned: t.poin_earned,
+    petugas: t.petugas,
+    tipe: t.tipe,
+    tingkatLayanan: t.tingkat_layanan,
+    subtotal: Number(t.subtotal) || 0,
+    diskon: Number(t.diskon) || 0,
+    diskonKode: t.diskon_kode,
+    voucher: t.voucher,
+    total: Number(t.total) || 0,
+    nominalDP: Number(t.nominal_dp) || 0,
+    sisaTagihan: Number(t.sisa_tagihan) || 0,
+    metodeBayar: t.metode_bayar,
+    statusPembayaran: t.status_pembayaran,
+    referensiPembayaran: t.referensi_pembayaran,
+    status: t.status,
+    statusVoid: t.status_void,
+    alasanVoid: t.alasan_void,
+    catatan: t.catatan,
+    estimasiSelesai: t.estimasi_selesai,
+    items: (t.transaksi_items || []).map((it: any) => ({
+      layanan: it.layanan,
+      qty: Number(it.qty) || 1,
+      hargaSatuan: Number(it.harga_satuan) || 0,
+      subtotal: Number(it.subtotal) || 0,
+      idInventory: it.id_inventory,
+      inventoryDeductionQty: Number(it.inventory_deduction_qty) || 1,
+    })),
+  }));
 }
 
 // ============================================================
@@ -2691,6 +2759,8 @@ export async function sbGetTransaksiByNota(noNota: string): Promise<any | null> 
     metodeBayar: data.metode_bayar,
     statusPembayaran: data.status_pembayaran,
     status: data.status,
+    statusVoid: data.status_void,
+    alasanVoid: data.alasan_void,
     catatan: data.catatan,
     estimasiSelesai: data.estimasi_selesai,
     items: (data.transaksi_items || []).map((it: any) => ({
@@ -3147,6 +3217,26 @@ export async function sbApproveVoidTransaksi(
     .single();
 
   if (error) throw error;
+
+  // Kembalikan stok inventory yang sempat terpotong jika void disetujui
+  if (isApproved) {
+    try {
+      const { data: items } = await sb
+        .from('transaksi_items')
+        .select('*')
+        .eq('no_nota', noNota);
+
+      for (const it of items || []) {
+        if (it.id_inventory) {
+          const mult = Number(it.inventory_deduction_qty) || 1;
+          const returnQty = (Number(it.qty) || 1) * mult;
+          await sbUpdateStokInventory(it.id_inventory, returnQty);
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal kembalikan stok inventory void:', e);
+    }
+  }
 
   try {
     await sbLogClientActivity(

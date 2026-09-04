@@ -184,6 +184,8 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
         setTxToVoid(null);
         clearCache('getTransaksiList');
         clearCache('getKasShiftAktif');
+        clearCache('getLaporanRange');
+        clearCache('getPendingVoidList');
         await loadRiwayat();
         await showAlert(`Permohonan void nota ${noNota} berhasil dikirim ke Manager/Owner.`, 'success');
       } else {
@@ -197,6 +199,8 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
         setTxToVoid(null);
         clearCache('getTransaksiList');
         clearCache('getKasShiftAktif');
+        clearCache('getLaporanRange');
+        clearCache('getPendingVoidList');
         await loadRiwayat();
         await showAlert(`Permohonan void nota ${noNota} sudah terkirim dan menunggu approval Manager.`, 'info');
       } else {
