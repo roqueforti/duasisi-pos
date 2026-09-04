@@ -527,6 +527,7 @@ export async function sbCloseKasShift(payload: any): Promise<any> {
           body: JSON.stringify({
             action: 'closeKasShift',
             args: [payload],
+            sessionToken: typeof window !== 'undefined' ? localStorage.getItem('gas_session_token') : undefined,
           }),
         }).catch(e => console.warn('[Backup Kas Shift ke Google Sheets background error]:', e));
       }, 100);
