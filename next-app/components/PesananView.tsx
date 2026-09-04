@@ -21,13 +21,16 @@ import {
   Check,
   Inbox,
   Timer,
-  Hourglass
+  Hourglass,
+  Printer,
+  ExternalLink
 } from 'lucide-react';
 import { Mesin, Transaksi, LayananBahanBaku } from '@/lib/types';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { formatWaPhone, parseDecimal, formatDecimal } from '@/lib/utils';
+import { formatWaPhone, parseDecimal, formatDecimal, eNotaUrl } from '@/lib/utils';
 import { DropOffPriorityItem } from './ProdukView';
+import PrinterModal from '@/components/PrinterModal';
 
 function getWorkflowIcon(status: string) {
   const s = (status || '').toLowerCase();
@@ -51,8 +54,13 @@ function activeMachine(order: Transaksi) {
   return active?.mesinId || active?.washerId || active?.dryerId || '';
 }
 
-export default function PesananView() {
+interface PesananViewProps {
+  initialFilterTab?: 'Semua' | 'Diproses' | 'SiapDiambil' | 'BelumWA' | 'SudahDiambil';
+}
+
+export default function PesananView({ initialFilterTab }: PesananViewProps = {}) {
   const [orders, setOrders] = useState<Transaksi[]>([]);
+  const [completedOrders, setCompletedOrders] = useState<Transaksi[]>([]);
   const [machines, setMachines] = useState<Mesin[]>([]);
   const [staff, setStaff] = useState<StaffItem[]>([]);
   const [layananList, setLayananList] = useState<any[]>([]);
@@ -67,7 +75,7 @@ export default function PesananView() {
   const [submitting, setSubmitting] = useState(false);
   const [query, setQuery] = useState('');
   const [priority, setPriority] = useState<string>('Semua');
-  const [filterTab, setFilterTab] = useState<'Semua' | 'Diproses' | 'SiapDiambil' | 'BelumWA'>('Semua');
+  const [filterTab, setFilterTab] = useState<'Semua' | 'Diproses' | 'SiapDiambil' | 'BelumWA' | 'SudahDiambil'>(initialFilterTab || 'Semua');
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
   const [selected, setSelected] = useState<Transaksi | null>(null);
   const [machineId, setMachineId] = useState('');
@@ -75,13 +83,22 @@ export default function PesananView() {
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [waReminders, setWaReminders] = useState<Record<string, string>>({});
+  const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
+  const [txToPrint, setTxToPrint] = useState<Transaksi | null>(null);
+
+  useEffect(() => {
+    if (initialFilterTab) {
+      setFilterTab(initialFilterTab);
+    }
+  }, [initialFilterTab]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [orderData, machineData, staffData, priorityData, layData, invData, pipeData] = await Promise.all([
+      const [orderData, completedData, machineData, staffData, priorityData, layData, invData, pipeData] = await Promise.all([
         runBackend<Transaksi[]>('getTransaksiByPipeline', 'Semua').catch(() => []),
+        runBackend<Transaksi[]>('getTransaksiByPipeline', 'Selesai').catch(() => []),
         runBackend<Mesin[]>('getMesinList').catch(() => []),
         runBackend<StaffItem[]>('getPegawaiList').catch(() => []),
         runBackend<DropOffPriorityItem[]>('getPriorityConfig').catch(() => null),
@@ -91,7 +108,9 @@ export default function PesananView() {
       ]);
 
       const validOrders = Array.isArray(orderData) ? orderData : [];
+      const validCompleted = Array.isArray(completedData) ? completedData : [];
       setOrders(validOrders);
+      setCompletedOrders(validCompleted);
       setMachines(Array.isArray(machineData) ? machineData : []);
       setLayananList(Array.isArray(layData) ? layData : []);
       setInventoryList(Array.isArray(invData) ? invData : []);
@@ -178,6 +197,35 @@ export default function PesananView() {
       `No WhatsApp: ${rawPhone}, Status: ${order.status}`, 
       `Kirim notifikasi pesan reminder cucian selesai ke ${order.namaPelanggan} (${order.noNota})`
     ).catch(() => {});
+
+    window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  // Handle WhatsApp message for picked-up / completed orders
+  const handleSendTerimaKasihWA = (order: Transaksi, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const rawPhone = formatWaPhone(order.noHp);
+    if (!rawPhone) {
+      alert('Nomor WhatsApp pelanggan tidak valid atau belum diisi.');
+      return;
+    }
+
+    const itemsSummary = (order.items || []).map(it => `${it.qty}x ${it.layanan}`).join(', ');
+    const notaLink = eNotaUrl(order.noNota);
+
+    const msg = [
+      `*TERIMA KASIH TELAH MENCUCI DI DUA SISI LAUNDRY* 🙏`,
+      `*Dua SiSi Laundry Express & Coin*`,
+      ``,
+      `Halo Kak *${order.namaPelanggan || 'Pelanggan'}*,`,
+      `Terima kasih telah mempercayakan cucian Anda kepada kami. Cucian untuk nota *${order.noNota}* telah diserahkan/diambil.`,
+      ``,
+      `- Layanan : ${itemsSummary || 'Drop Off'}`,
+      `- Total   : Rp ${(Number(order.total) || 0).toLocaleString('id-ID')}`,
+      `- e-Nota  : ${notaLink}`,
+      ``,
+      `Semoga Anda puas dengan layanan kami! Sampai jumpa pada cucian berikutnya. 😊`
+    ].join('\n');
 
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
@@ -317,8 +365,14 @@ export default function PesananView() {
       }
     });
 
-    return { siapCount, belumWaCount, diprosesCount, total: activeOrders.length };
-  }, [orders, waReminders]);
+    return { 
+      siapCount, 
+      belumWaCount, 
+      diprosesCount, 
+      selesaiCount: completedOrders.length, 
+      total: activeOrders.length 
+    };
+  }, [orders, completedOrders, waReminders]);
 
   const filteredOrders = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -351,6 +405,22 @@ export default function PesananView() {
       return true;
     });
   }, [orders, priority, query, filterTab, waReminders]);
+
+  // Filtered orders for completed / picked-up drop-off orders
+  const filteredCompletedOrders = useMemo(() => {
+    const keyword = query.trim().toLowerCase();
+
+    return completedOrders.filter((order) => {
+      const orderPriority = order.tingkatLayanan || 'Reguler';
+      const priorityMatch = priority === 'Semua' || orderPriority.toLowerCase() === priority.toLowerCase();
+      const searchMatch = !keyword
+        || order.noNota.toLowerCase().includes(keyword)
+        || order.namaPelanggan.toLowerCase().includes(keyword)
+        || (order.noHp || '').includes(keyword);
+
+      return priorityMatch && searchMatch;
+    });
+  }, [completedOrders, priority, query]);
 
   const targetStatus = selected ? getNextStatusForOrder(selected) : null;
   const isTargetWasher = targetStatus?.toLowerCase().includes('cuci');
@@ -656,6 +726,122 @@ export default function PesananView() {
     );
   };
 
+  const renderCompletedCard = (order: Transaksi) => {
+    const orderPriority = order.tingkatLayanan || 'Reguler';
+    const priConfig = dropOffPriorities.find((p) => p.nama.toLowerCase() === orderPriority.toLowerCase());
+    const badgeWarna = priConfig?.warna || (
+      orderPriority.toLowerCase().includes('kilat') ? 'bg-rose-100 text-rose-700 border-rose-300' :
+      orderPriority.toLowerCase().includes('express') ? 'bg-amber-100 text-amber-800 border-amber-300' :
+      'bg-teal-100 text-teal-800 border-teal-300'
+    );
+
+    const waktuSelesaiStr = (() => {
+      const raw = (order as any).updated_at || order.tanggal || '';
+      if (!raw) return '-';
+      const d = new Date(raw);
+      if (isNaN(d.getTime())) return String(raw);
+      const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      return `${dateStr}, ${timeStr}`;
+    })();
+
+    const sisaTagihan = Number(order.sisaTagihan) || 0;
+    const isLunas = sisaTagihan <= 0;
+
+    return (
+      <article key={order.noNota} className="glass-card card-hover-lift p-4 space-y-3 border-emerald-200/80">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="truncate text-xs font-black text-slate-800 font-mono tracking-tight">{order.noNota}</p>
+              <span className="badge-glow-emerald flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full">
+                <Check className="w-3 h-3 stroke-[3]" /> Sudah Diambil
+              </span>
+            </div>
+            <p className="mt-1 truncate text-xs font-bold text-slate-700">{order.namaPelanggan}</p>
+            {order.noHp && (
+              <p className="text-[10px] font-mono text-slate-400">{order.noHp}</p>
+            )}
+          </div>
+          <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border shadow-2xs ${badgeWarna}`}>
+            {orderPriority}
+          </span>
+        </div>
+
+        <div className="space-y-2 text-[11px] text-slate-500">
+          <div className="bg-slate-50/90 rounded-lg p-2.5 border border-slate-200/80 space-y-1.5">
+            <div className="flex items-center justify-between text-[10.5px]">
+              <span className="text-slate-500 font-medium flex items-center gap-1">
+                <Clock3 className="h-3 w-3 text-emerald-600" />
+                <span>Waktu Selesai / Diambil:</span>
+              </span>
+              <span className="font-bold text-slate-700 font-mono text-[10.5px]">{waktuSelesaiStr}</span>
+            </div>
+            {order.petugas && (
+              <div className="flex items-center justify-between text-[10.5px] pt-1 border-t border-slate-200/60">
+                <span className="text-slate-500 font-medium">Petugas Penyerah:</span>
+                <span className="font-bold text-slate-700">{order.petugas}</span>
+              </div>
+            )}
+          </div>
+
+          <p className="line-clamp-2 text-slate-600 font-medium pt-0.5 text-xs">
+            {order.items && order.items.length > 0
+              ? order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')
+              : 'Drop Off Service'}
+          </p>
+
+          <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
+            <span className="font-medium text-slate-500">Total Biaya:</span>
+            <div className="text-right">
+              <span className="font-black text-slate-900 text-xs font-mono">
+                Rp {(Number(order.total) || 0).toLocaleString('id-ID')}
+              </span>
+              <span className={`block text-[10px] font-bold ${isLunas ? 'text-emerald-600' : 'text-amber-600'}`}>
+                {isLunas ? '• Lunas' : `• Sisa: Rp ${sisaTagihan.toLocaleString('id-ID')}`}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions: Cetak Struk, e-Nota, WhatsApp */}
+        <div className="pt-2 border-t border-slate-100 grid grid-cols-3 gap-1.5">
+          <button
+            onClick={() => {
+              setTxToPrint(order);
+              setIsPrinterModalOpen(true);
+            }}
+            className="tactile-btn flex items-center justify-center gap-1 rounded-xl bg-slate-100 hover:bg-slate-200 py-2 px-2 text-[10px] font-bold text-slate-700 transition cursor-pointer"
+            title="Cetak Struk Thermal"
+          >
+            <Printer className="w-3.5 h-3.5 text-slate-600" />
+            <span>Struk</span>
+          </button>
+
+          <a
+            href={eNotaUrl(order.noNota)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tactile-btn flex items-center justify-center gap-1 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 py-2 px-2 text-[10px] font-bold transition cursor-pointer"
+            title="Lihat e-Nota Digital"
+          >
+            <ExternalLink className="w-3.5 h-3.5 text-teal-700" />
+            <span>e-Nota</span>
+          </a>
+
+          <button
+            onClick={(e) => handleSendTerimaKasihWA(order, e)}
+            className="tactile-btn flex items-center justify-center gap-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-2 px-2 text-[10px] font-bold transition cursor-pointer"
+            title="Kirim WA Terima Kasih"
+          >
+            <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+            <span>WA</span>
+          </button>
+        </div>
+      </article>
+    );
+  };
+
   return (
     <div className="w-full space-y-4 p-3 sm:p-5">
       <section className="glass-panel p-4 sm:p-5 rounded-2xl space-y-3.5">
@@ -728,6 +914,21 @@ export default function PesananView() {
               {summaryCounts.belumWaCount}
             </span>
           </button>
+
+          <button
+            onClick={() => setFilterTab('SudahDiambil')}
+            className={`tactile-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+              filterTab === 'SudahDiambil'
+                ? 'bg-emerald-800 text-white shadow-xs'
+                : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Sudah Diambil (Riwayat)</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${filterTab === 'SudahDiambil' ? 'bg-white/20 text-white' : 'bg-emerald-200 text-emerald-900'}`}>
+              {summaryCounts.selesaiCount}
+            </span>
+          </button>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -757,6 +958,17 @@ export default function PesananView() {
 
       {loading ? (
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-44 animate-pulse rounded-2xl border border-slate-200 bg-white" />)}</div>
+      ) : filterTab === 'SudahDiambil' ? (
+        filteredCompletedOrders.length === 0 ? (
+          <div className="glass-panel rounded-2xl border border-dashed border-slate-300 p-16 text-center text-xs text-slate-500">
+            <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
+            Tidak ada riwayat pesanan drop-off yang sudah diambil pada filter ini.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+            {filteredCompletedOrders.map(renderCompletedCard)}
+          </div>
+        )
       ) : filteredOrders.length === 0 ? (
         <div className="glass-panel rounded-2xl border border-dashed border-slate-300 p-16 text-center text-xs text-slate-500"><CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" />Tidak ada pesanan aktif pada filter ini.</div>
       ) : view === 'list' ? (
@@ -908,6 +1120,16 @@ export default function PesananView() {
           </div>
         </div>
       )}
+
+      {/* Printer Modal untuk Cetak Struk Drop-off */}
+      <PrinterModal
+        isOpen={isPrinterModalOpen}
+        onClose={() => {
+          setIsPrinterModalOpen(false);
+          setTxToPrint(null);
+        }}
+        tx={txToPrint}
+      />
     </div>
   );
 }

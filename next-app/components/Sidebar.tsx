@@ -25,7 +25,8 @@ import {
   UserCheck,
   WashingMachine,
   SlidersHorizontal,
-  Award
+  Award,
+  CheckCheck
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { useDialog } from '@/components/DialogProvider';
@@ -107,6 +108,7 @@ export default function Sidebar({
         { id: 'dashboard', label: 'Dashboard Utama', icon: LayoutDashboard },
         { id: 'transaksi', label: 'POS Kasir', icon: ShoppingCart, staffOnly: true, requiresShift: true },
         { id: 'pesanan', label: 'Pesanan Drop-off', icon: ClipboardList, requiresShift: true },
+        { id: 'riwayat_dropoff', label: 'Riwayat Drop-off', icon: CheckCheck, requiresShift: true },
         { id: 'mesin', label: 'Daftar & Status Mesin', icon: WashingMachine, requiresShift: true },
         { id: 'riwayat', label: 'Riwayat Transaksi', icon: History },
         { id: 'pelanggan', label: 'Data Pelanggan', icon: Users }

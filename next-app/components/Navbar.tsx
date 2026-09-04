@@ -44,6 +44,7 @@ const tabTitles: Record<string, string> = {
   transaksi: 'Point of Sale (POS Kasir)',
   riwayat: 'Riwayat Transaksi',
   pesanan: 'Manajemen Pesanan Drop-off',
+  riwayat_dropoff: 'Riwayat Drop-off (Sudah Diambil)',
   mesin: 'Daftar & Status Mesin Operasional',
   absensi: 'Presensi & Cuti',
   shift_saya: 'Shift Saya & Kas Laci',

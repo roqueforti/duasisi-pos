@@ -38,7 +38,7 @@ import { clearCache } from '@/lib/cache';
 import { useGlobalNotifications } from '@/lib/useGlobalNotifications';
 
 const VALID_TABS = [
-  'dashboard', 'transaksi', 'riwayat', 'pesanan', 'mesin', 'absensi',
+  'dashboard', 'transaksi', 'riwayat', 'pesanan', 'riwayat_dropoff', 'mesin', 'absensi',
   'shift_saya', 'pengeluaran', 'riwayat_shift',
   'pelanggan', 'inventory', 'pegawai', 'payroll', 'produk', 'loyalty_card',
   'kategori', 'langkah', 'shift', 'menu', 'rekap', 'keamanan'
@@ -251,7 +251,8 @@ export default function PosAppRoot() {
             <main key={refreshKey} className="flex-1 overflow-y-auto bg-slate-50">
               {currentTab === 'dashboard' && <DashboardView currentRole={currentRole} />}
               {currentTab === 'transaksi' && <PosView currentRole={currentRole} onNavigateTab={handleTabChange} />}
-              {currentTab === 'pesanan' && <PesananView />}
+              {currentTab === 'pesanan' && <PesananView initialFilterTab="Semua" />}
+              {currentTab === 'riwayat_dropoff' && <PesananView initialFilterTab="SudahDiambil" />}
 
               {currentTab === 'mesin' && <MesinView currentRole={currentRole} />}
               {currentTab === 'riwayat' && <RiwayatView currentRole={currentRole} />}
