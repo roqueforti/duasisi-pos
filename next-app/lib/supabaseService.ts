@@ -2175,6 +2175,12 @@ function createSessionToken(role: 'MANAGER' | 'STAFF', label: string): string {
   return `${b64url}.sig_${Date.now()}`;
 }
 
+let cachedSecuritySettings: { pinManager: string; pinStaff: string; emailManager: string; fetchedAt: number } | null = null;
+
+export function invalidateSecurityCache() {
+  cachedSecuritySettings = null;
+}
+
 export async function sbVerifikasiPin(pin: string) {
   const cleanPin = String(pin).trim();
   const sb = getSupabase();
@@ -2182,7 +2188,11 @@ export async function sbVerifikasiPin(pin: string) {
   let managerPin = '888888';
   let staffPin = '1234';
 
-  if (sb) {
+  const now = Date.now();
+  if (cachedSecuritySettings && (now - cachedSecuritySettings.fetchedAt < 60000)) {
+    managerPin = cachedSecuritySettings.pinManager;
+    staffPin = cachedSecuritySettings.pinStaff;
+  } else if (sb) {
     try {
       const { data: secSetting } = await sb
         .from('app_settings')
@@ -2193,6 +2203,12 @@ export async function sbVerifikasiPin(pin: string) {
       if (secSetting?.value) {
         if (secSetting.value.pinManager) managerPin = String(secSetting.value.pinManager);
         if (secSetting.value.pinStaff) staffPin = String(secSetting.value.pinStaff);
+        cachedSecuritySettings = {
+          pinManager: managerPin,
+          pinStaff: staffPin,
+          emailManager: secSetting.value.emailManager || '',
+          fetchedAt: now,
+        };
       }
     } catch {
       // fallback
@@ -2212,40 +2228,36 @@ export async function sbVerifikasiPin(pin: string) {
     return { success: false, message: 'PIN Salah! Akses Ditolak.' };
   }
 
-  // Dapatkan token resmi bertanda tangan HMAC-SHA256 dari Google Apps Script
-  // agar setiap request hybrid ke Sheets/Drive tidak ditolak oleh backend GAS
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-    const gasUrl = process.env.NEXT_PUBLIC_GAS_API_URL || 'https://script.google.com/macros/s/AKfycbwhy6jhKdsCJSOrDzVO1Av1NXwK1mgJ5u-_7PsefOihNwhsSnTO1C26RfRHrvqHDyWEMA/exec';
-    const gasRes = await fetch(gasUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'verifikasiPin', args: [cleanPin] }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    if (gasRes.ok) {
-      const gasData = await gasRes.json();
-      if (gasData && gasData.success && gasData.sessionToken) {
-        return {
-          success: true,
-          role: matchedRole,
-          label: matchedLabel,
-          sessionToken: gasData.sessionToken,
-        };
-      }
-    }
-  } catch (gasErr) {
-    console.warn('[sbVerifikasiPin] GAS token fetch timeout/fallback:', gasErr);
+  // Generate Supabase session token secara instan (<5ms)
+  const sessionToken = createSessionToken(matchedRole, matchedLabel);
+
+  // Jalankan fetch token GAS secara asinkron di background (fire-and-forget)
+  // tanpa memblokir respon login pengguna
+  const gasUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
+  if (gasUrl && typeof window !== 'undefined') {
+    setTimeout(() => {
+      fetch(gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'verifikasiPin', args: [cleanPin] }),
+      })
+        .then((res) => res.json())
+        .then((gasData) => {
+          if (gasData && gasData.success && gasData.sessionToken) {
+            try {
+              localStorage.setItem('gas_session_token', gasData.sessionToken);
+            } catch {}
+          }
+        })
+        .catch(() => {});
+    }, 50);
   }
 
-  // Fallback ke token sesi Supabase jika GAS lambat atau offline
   return {
     success: true,
     role: matchedRole,
     label: matchedLabel,
-    sessionToken: createSessionToken(matchedRole, matchedLabel),
+    sessionToken,
   };
 }
 
@@ -2406,6 +2418,8 @@ export async function sbSaveSecuritySettings(role: string, oldPin: string, newPi
     value: currentVal,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'key' });
+
+  invalidateSecurityCache();
 
   return { success: true, message: 'Pengaturan keamanan berhasil disimpan.' };
 }
