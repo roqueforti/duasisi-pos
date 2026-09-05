@@ -62,6 +62,7 @@ const tabTitles: Record<string, string> = {
   shift: 'Master Jadwal Shift',
   payroll: 'Gaji & Payroll Karyawan',
   rekap: 'Laporan Rekap & Analytics',
+  arsip_laporan: 'Arsip & Riwayat Laporan Bulanan',
   keamanan: 'Keamanan & Hak Akses PIN',
   tampilan: 'Pengaturan Tampilan & Font'
 };

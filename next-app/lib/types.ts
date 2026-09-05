@@ -596,3 +596,25 @@ export interface CustomerRetentionMetrics {
   churnedList: any[];
 }
 
+export interface SavedMonthlyReport {
+  periodKey: string; // "2026-09"
+  periodeLabel: string; // "September 2026"
+  startDateStr: string;
+  endDateStr: string;
+  status: 'FINAL' | 'BERJALAN';
+  createdAt: string;
+  updatedAt: string;
+  summary: {
+    revenue: number;
+    orders: number;
+    customers: number;
+    repeatRatio: number;
+    labaBersih: number;
+    marginKotor: number;
+    onTimeRate: number;
+    hasAiAnalysis: boolean;
+  };
+  payload: any; // ReportDataPayload
+}
+
+

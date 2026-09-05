@@ -360,6 +360,12 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbImportTransaksiBatch(args[0])) as any;
         case 'getPipelineSteps':
           return (await sb.sbGetPipelineSteps(args[0])) as any;
+        case 'getSavedMonthlyReports':
+          return (await sb.sbGetSavedMonthlyReports()) as any;
+        case 'saveMonthlyReport':
+          return (await sb.sbSaveMonthlyReport(args[0])) as any;
+        case 'deleteMonthlyReport':
+          return (await sb.sbDeleteMonthlyReport(args[0])) as any;
       }
     } catch (sbErr: any) {
       console.warn(`[Supabase Error] Action '${action}' gagal, fallback ke Google Apps Script:`, sbErr);

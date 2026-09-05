@@ -24,6 +24,7 @@ import KeamananView from '@/components/KeamananView';
 import MesinView from '@/components/MesinView';
 import DuplicateCodesModal from '@/components/DuplicateCodesModal';
 import LoyaltyCardView from '@/components/LoyaltyCardView';
+import MonthlyReportsArchiveView from '@/components/MonthlyReportsArchiveView';
 import { UserRole, DuplicateGroup } from '@/lib/types';
 import {
   clearBackendSession,
@@ -41,12 +42,12 @@ const VALID_TABS = [
   'dashboard', 'transaksi', 'riwayat', 'pesanan', 'riwayat_dropoff', 'mesin', 'absensi',
   'shift_saya', 'pengeluaran', 'riwayat_shift',
   'pelanggan', 'inventory', 'pegawai', 'payroll', 'produk', 'loyalty_card',
-  'kategori', 'langkah', 'shift', 'menu', 'rekap', 'keamanan'
+  'kategori', 'langkah', 'shift', 'menu', 'rekap', 'arsip_laporan', 'keamanan'
 ];
 
 const MANAGER_ONLY_TABS = [
   'pegawai', 'payroll', 'produk', 'loyalty_card', 'kategori', 'langkah',
-  'shift', 'menu', 'rekap', 'keamanan'
+  'shift', 'menu', 'rekap', 'arsip_laporan', 'keamanan'
 ];
 
 function getValidInitialTab(savedTab: string | null, role: UserRole): string {
@@ -296,6 +297,7 @@ export default function PosAppRoot() {
 
               {currentTab === 'menu' && <MenuGeneratorView />}
               {currentTab === 'rekap' && <RekapView />}
+              {currentTab === 'arsip_laporan' && <MonthlyReportsArchiveView currentRole={currentRole} />}
               {currentTab === 'keamanan' && <KeamananView currentRole={currentRole} />}
             </main>
           </div>

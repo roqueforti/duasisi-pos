@@ -1,5 +1,5 @@
 import { getSupabase } from './supabaseClient';
-import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin, AuditLog, DropoffIncentiveConfig, InventoryUsageStats, StockValidationResult, InsufficientStockItem, MonthlyTargets, ProcurementSummary } from './types';
+import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin, AuditLog, DropoffIncentiveConfig, InventoryUsageStats, StockValidationResult, InsufficientStockItem, MonthlyTargets, ProcurementSummary, SavedMonthlyReport } from './types';
 import { formatDateTime, parseIndonesianDateTime, normalizePhone, maskPhone, maskName, decodeNotaToken } from './utils';
 
 // ============================================================
@@ -5777,4 +5777,89 @@ export async function sbGetProcurementStats(startDate?: string, endDate?: string
     return { totalBelanja: 0, supplierCount: 0, purchaseItemsCount: 0, ratioToRevenue: 0 };
   }
 }
+
+// ============================================================
+// ARSIP LAPORAN BULANAN (MONTHLY BUSINESS REPORTS ARCHIVE)
+// ============================================================
+export async function sbGetSavedMonthlyReports(): Promise<SavedMonthlyReport[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+
+  try {
+    const { data, error } = await sb
+      .from('app_settings')
+      .select('*')
+      .like('key', 'monthly_report:%')
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.warn('[sbGetSavedMonthlyReports] Error fetching saved reports:', error);
+      return [];
+    }
+
+    const reports: SavedMonthlyReport[] = (data || [])
+      .map((row: any) => {
+        try {
+          const val = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+          return val as SavedMonthlyReport;
+        } catch {
+          return null;
+        }
+      })
+      .filter((r): r is SavedMonthlyReport => Boolean(r && r.periodKey))
+      .sort((a, b) => b.periodKey.localeCompare(a.periodKey));
+
+    return reports;
+  } catch (err) {
+    console.warn('[sbGetSavedMonthlyReports] Unexpected error:', err);
+    return [];
+  }
+}
+
+export async function sbSaveMonthlyReport(report: SavedMonthlyReport): Promise<{ success: boolean; report: SavedMonthlyReport }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  if (!report.periodKey) {
+    throw new Error('Period key wajib diisi (misal 2026-09)');
+  }
+
+  const now = new Date().toISOString();
+  const recordToSave: SavedMonthlyReport = {
+    ...report,
+    updatedAt: now,
+    createdAt: report.createdAt || now,
+  };
+
+  const { error } = await sb.from('app_settings').upsert({
+    key: `monthly_report:${report.periodKey}`,
+    value: recordToSave,
+    updated_at: now,
+  });
+
+  if (error) {
+    console.error('[sbSaveMonthlyReport] Error upserting monthly report:', error);
+    throw error;
+  }
+
+  return { success: true, report: recordToSave };
+}
+
+export async function sbDeleteMonthlyReport(periodKey: string): Promise<{ success: boolean }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { error } = await sb
+    .from('app_settings')
+    .delete()
+    .eq('key', `monthly_report:${periodKey}`);
+
+  if (error) {
+    console.error('[sbDeleteMonthlyReport] Error deleting monthly report:', error);
+    throw error;
+  }
+
+  return { success: true };
+}
+
 

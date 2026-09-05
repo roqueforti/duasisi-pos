@@ -21,6 +21,7 @@ import {
   GitMerge,
   ShieldCheck,
   FolderOpen,
+  FolderArchive,
   Sparkles,
   Coins,
   UserCheck,
@@ -107,7 +108,7 @@ export default function Sidebar({
       await showAlert('Fitur POS Kasir hanya untuk Staff/Kasir', 'warning');
       return;
     }
-    if (['pegawai', 'payroll', 'produk', 'kategori', 'shift', 'rekap', 'keamanan', 'menu', 'langkah', 'loyalty_card'].includes(tabKey) && currentRole !== 'MANAGER') {
+    if (['pegawai', 'payroll', 'produk', 'kategori', 'shift', 'rekap', 'arsip_laporan', 'keamanan', 'menu', 'langkah', 'loyalty_card'].includes(tabKey) && currentRole !== 'MANAGER') {
       await showAlert('Akses Ditolak — Khusus Manager/Owner', 'error');
       return;
     }
@@ -178,6 +179,7 @@ export default function Sidebar({
       icon: BarChart3,
       items: [
         { id: 'rekap', label: 'Laporan Rekap', icon: BarChart3, managerOnly: true },
+        { id: 'arsip_laporan', label: 'Arsip Laporan Bulanan', icon: FolderArchive, managerOnly: true },
         { id: 'keamanan', label: 'Keamanan & Hak Akses', icon: ShieldCheck, managerOnly: true },
         { id: 'tampilan', label: 'Pengaturan Tampilan', icon: SlidersHorizontal }
       ]
