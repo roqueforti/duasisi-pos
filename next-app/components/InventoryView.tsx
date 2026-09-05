@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload, X, Loader2, ShieldAlert, Archive, RotateCcw } from 'lucide-react';
+import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload, X, Loader2, ShieldAlert, Archive, RotateCcw, ShieldCheck } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
@@ -676,7 +676,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                             {diff > 0 ? `+${formatStok(diff)}` : formatStok(diff)} {satuan}
                           </span>
                           <span className="text-[10px] text-slate-400">
-                            ({formatStok(originalStok)} ➔ {formatStok(curStokNum)})
+                            ({formatStok(originalStok)} → {formatStok(curStokNum)})
                           </span>
                         </div>
                         <button
@@ -830,7 +830,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
 
             {/* Soft Delete Information */}
             <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-2.5 mb-4 flex items-start gap-2 text-[11px] text-emerald-800">
-              <span className="text-base shrink-0">🛡️</span>
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <div className="leading-relaxed">
                 <strong>Proteksi Soft Delete Aktif:</strong> Bahan ini tidak akan dihapus permanen, melainkan dipindahkan ke <strong>Arsip Terhapus</strong>. Riwayat transaksi, penjualan, dan resep terdahulu tetap terjaga aman dan dapat dipulihkan sewaktu-waktu.
               </div>

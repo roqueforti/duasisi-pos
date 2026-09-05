@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { AlertTriangle, CheckCircle2, Info, XCircle, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, XCircle, X, Lightbulb } from 'lucide-react';
 
 type DialogType = 'info' | 'success' | 'warning' | 'error';
 
@@ -110,7 +110,10 @@ export const DialogProvider = ({ children }: { children: ReactNode }) => {
                 <p className="text-xs text-slate-600 mt-2 leading-relaxed font-medium">{options.message}</p>
                 {options.suggestion && (
                   <div className="mt-3.5 p-3 bg-amber-50/90 border border-amber-200/80 rounded-xl text-left text-[11px] text-amber-900 leading-snug flex items-start gap-2 shadow-2xs">
-                    <span className="text-amber-600 font-bold shrink-0">💡 Solusi:</span>
+                    <span className="text-amber-600 font-bold shrink-0 inline-flex items-center gap-1">
+                      <Lightbulb className="w-3.5 h-3.5" />
+                      <span>Solusi:</span>
+                    </span>
                     <span className="font-medium text-amber-950">{options.suggestion}</span>
                   </div>
                 )}

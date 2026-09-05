@@ -26,7 +26,11 @@ import {
   ExternalLink,
   Workflow,
   User,
-  Phone
+  Phone,
+  Target,
+  FlaskConical,
+  Clock,
+  Play
 } from 'lucide-react';
 import { Mesin, Transaksi, LayananBahanBaku, PipelineStep } from '@/lib/types';
 import { runBackend } from '@/lib/api';
@@ -261,7 +265,7 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
     const notaLink = eNotaUrl(order.noNota);
 
     const msg = [
-      `*TERIMA KASIH TELAH MENCUCI DI DUA SISI LAUNDRY* 🙏`,
+      `*TERIMA KASIH TELAH MENCUCI DI DUA SISI LAUNDRY*`,
       `*Dua SiSi Laundry Express & Coin*`,
       ``,
       `Halo Kak *${order.namaPelanggan || 'Pelanggan'}*,`,
@@ -271,7 +275,7 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
       `- Total   : Rp ${(Number(order.total) || 0).toLocaleString('id-ID')}`,
       `- e-Nota  : ${notaLink}`,
       ``,
-      `Semoga Anda puas dengan layanan kami! Sampai jumpa pada cucian berikutnya. 😊`
+      `Semoga Anda puas dengan layanan kami! Sampai jumpa pada cucian berikutnya.`
     ].join('\n');
 
     window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -761,8 +765,9 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
 
           {/* 2. Estimasi Target Selesai Order */}
           <div className="flex items-center justify-between text-[10.5px] px-0.5 text-slate-500 font-medium">
-            <span className="flex items-center gap-1">
-              <span>🎯 Target Selesai:</span>
+            <span className="flex items-center gap-1.5">
+              <Target className="h-3 w-3 text-rose-500 shrink-0" />
+              <span>Target Selesai:</span>
             </span>
             <span className="font-bold text-slate-700">{order.estimasiSelesai || order.estimasi || '-'}</span>
           </div>
@@ -800,7 +805,10 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
             if (mats.length === 0) return null;
             return (
               <div className="pt-1 flex items-center gap-1 text-[10px] text-amber-800 font-semibold truncate">
-                <span className="shrink-0">🧪 Bahan:</span>
+                <span className="shrink-0 flex items-center gap-1">
+                  <FlaskConical className="h-3 w-3 text-amber-600 shrink-0" />
+                  <span>Bahan:</span>
+                </span>
                 <span className="truncate bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">{mats.join(', ')}</span>
               </div>
             );
@@ -1287,7 +1295,7 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
                   <div className="bg-amber-50/80 border border-amber-200/90 p-3 rounded-xl space-y-1.5 text-xs">
                     <div className="font-bold text-amber-950 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
-                        <span>🧪</span>
+                        <FlaskConical className="h-3.5 w-3.5 text-amber-700 shrink-0" />
                         <span>Pemakaian Bahan Baku ({targetStatus}):</span>
                       </span>
                       <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full">
@@ -1359,12 +1367,19 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border shadow-2xs ${badgeWarna}`}>
                         {orderPriority}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
                         (order.status || '').toLowerCase() === 'selesai'
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                           : 'bg-teal-100 text-[#1E4648] border border-teal-300'
                       }`}>
-                        {(order.status || '').toLowerCase() === 'selesai' ? '✓ Sudah Diambil' : order.status}
+                        {(order.status || '').toLowerCase() === 'selesai' ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-700" />
+                            <span>Sudah Diambil</span>
+                          </>
+                        ) : (
+                          order.status
+                        )}
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs text-slate-500 font-medium">
@@ -1490,14 +1505,29 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
                               </div>
                             </div>
 
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
                               isStepSelesai
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                 : isStepAktif
                                 ? 'bg-teal-100 text-[#1E4648] border border-teal-300 font-black animate-pulse'
                                 : 'bg-slate-100 text-slate-500 border border-slate-200'
                             }`}>
-                              {isStepSelesai ? '✓ Selesai' : isStepAktif ? '⚡ Sedang Dikerjakan' : '⏳ Menunggu Antrean'}
+                              {isStepSelesai ? (
+                                <>
+                                  <Check className="w-3 h-3" />
+                                  <span>Selesai</span>
+                                </>
+                              ) : isStepAktif ? (
+                                <>
+                                  <Play className="w-3 h-3 fill-current" />
+                                  <span>Sedang Dikerjakan</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Clock3 className="w-3 h-3" />
+                                  <span>Menunggu Antrean</span>
+                                </>
+                              )}
                             </span>
                           </div>
 
@@ -1554,8 +1584,9 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
                                 <span>Selesai: <strong className="text-slate-700">{endTimeStr}</strong></span>
                               )}
                               {durationStr !== '-' && (
-                                <span className="text-teal-800 font-bold bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">
-                                  ⏱ {durationStr}
+                                <span className="text-teal-800 font-bold bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200 flex items-center gap-1">
+                                  <Clock3 className="w-3 h-3 text-teal-600" />
+                                  <span>{durationStr}</span>
                                 </span>
                               )}
                             </div>

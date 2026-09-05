@@ -24,8 +24,18 @@ import {
   Send,
   Copy,
   Check,
-  Share2,
-  History
+  History,
+  Play,
+  PackagePlus,
+  Sparkles,
+  Building2,
+  Users,
+  LogOut,
+  BarChart3,
+  TrendingUp,
+  Zap,
+  ArrowRight,
+  Share2
 } from 'lucide-react';
 
 import { runBackend } from '@/lib/api';
@@ -273,28 +283,28 @@ export default function ShiftSayaView({
     pendingVoidTotal?: number;
   }) => {
     const isHandover = data.mode === 'SERAH_TERIMA';
-    const selisihKasText = data.selisihKas === 0 ? 'Rp 0 (SESUAI ✅)' : data.selisihKas > 0 ? `+Rp ${data.selisihKas.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(data.selisihKas).toLocaleString('id-ID')} (KURANG ⚠️)`;
-    const selisihMerchText = data.selisihMerchant === 0 ? 'Rp 0 (SESUAI ✅)' : data.selisihMerchant > 0 ? `+Rp ${data.selisihMerchant.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(data.selisihMerchant).toLocaleString('id-ID')} (KURANG ⚠️)`;
+    const selisihKasText = data.selisihKas === 0 ? 'Rp 0 (SESUAI)' : data.selisihKas > 0 ? `+Rp ${data.selisihKas.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(data.selisihKas).toLocaleString('id-ID')} (KURANG)`;
+    const selisihMerchText = data.selisihMerchant === 0 ? 'Rp 0 (SESUAI)' : data.selisihMerchant > 0 ? `+Rp ${data.selisihMerchant.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(data.selisihMerchant).toLocaleString('id-ID')} (KURANG)`;
 
     const expenseLines = (data.expensesList && data.expensesList.length > 0)
       ? data.expensesList.map((e, idx) => `  ${idx + 1}. ${e.nama}: Rp ${(e.nominal || 0).toLocaleString('id-ID')}`).join('\n')
       : (data.totalBelanja > 0 ? `  • Total Pengeluaran: Rp ${data.totalBelanja.toLocaleString('id-ID')}` : '  - Tidak ada pengeluaran belanja');
 
     const pendingVoidLine = (data.pendingVoidCount && data.pendingVoidCount > 0)
-      ? `\n⚠️ *PERHATIAN VOID PENDING*:\n• Ada *${data.pendingVoidCount} transaksi* menunggu persetujuan Void oleh Manager.\n• Total Tertahan: Rp ${(data.pendingVoidTotal || 0).toLocaleString('id-ID')}\n`
+      ? `\n*PERHATIAN VOID PENDING*:\n• Ada *${data.pendingVoidCount} transaksi* menunggu persetujuan Void oleh Manager.\n• Total Tertahan: Rp ${(data.pendingVoidTotal || 0).toLocaleString('id-ID')}\n`
       : '';
 
-    return `📊 *LAPORAN PENUTUPAN KAS SHIFT*
+    return `*LAPORAN PENUTUPAN KAS SHIFT*
 *DUA SISI LAUNDRY EXPRESS & COIN*
 ══════════════════════
-📅 *Waktu*: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-🔖 *Shift ID*: #${data.idShift}
-🏢 *Outlet*: OUTLET UTAMA
-🔄 *Mode*: ${isHandover ? 'SERAH TERIMA SHIFT (HANDOVER)' : 'TUTUP HARIAN (CLOSING OUTLET)'}
-👤 *Kasir Bertugas*: ${data.namaKasir}
-${isHandover && data.namaPengganti ? `➡️ *Kasir Pengganti*: ${data.namaPengganti}\n` : ''}⏱️ *Jam Kerja*: ${data.waktuBuka} - ${data.waktuTutup}
+• Waktu: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+• Shift ID: #${data.idShift}
+• Outlet: OUTLET UTAMA
+• Mode: ${isHandover ? 'SERAH TERIMA SHIFT (HANDOVER)' : 'TUTUP HARIAN (CLOSING OUTLET)'}
+• Kasir Bertugas: ${data.namaKasir}
+${isHandover && data.namaPengganti ? `• Kasir Pengganti: ${data.namaPengganti}\n` : ''}• Jam Kerja: ${data.waktuBuka} - ${data.waktuTutup}
 ${pendingVoidLine}
-💵 *REKONSILIASI KAS LACI (TUNAI)*
+*REKONSILIASI KAS LACI (TUNAI)*
 • Modal Awal Laci : Rp ${(data.kasAwal || 0).toLocaleString('id-ID')}
 • Pemasukan POS   : + Rp ${(data.omzetTunai || 0).toLocaleString('id-ID')}
 • Total Belanja   : - Rp ${(data.totalBelanja || 0).toLocaleString('id-ID')}
@@ -303,7 +313,7 @@ ${pendingVoidLine}
 • *Fisik Kas Laci*: Rp ${(data.kasAkhirFisik || 0).toLocaleString('id-ID')}
 • *Selisih Fisik* : *${selisihKasText}*
 
-💳 *REKONSILIASI MERCHANT (QRIS/EDC)*
+*REKONSILIASI MERCHANT (QRIS/EDC)*
 • Saldo Awal      : Rp ${(data.saldoMerchantAwal || 0).toLocaleString('id-ID')}
 • Pemasukan QRIS  : + Rp ${(data.omzetMerchant || 0).toLocaleString('id-ID')}
 ──────────────────────
@@ -311,10 +321,10 @@ ${pendingVoidLine}
 • *Saldo Akhir*   : Rp ${(data.saldoMerchantAkhir || 0).toLocaleString('id-ID')}
 • *Selisih Saldo* : *${selisihMerchText}*
 
-🛒 *RINCIAN PENGELUARAN BELANJA SHIFT*:
+*RINCIAN PENGELUARAN BELANJA SHIFT*:
 ${expenseLines}
 
-📝 *Catatan / Kondisi*:
+*Catatan / Kondisi*:
 "${data.catatan || 'Operasional berjalan lancar.'}"
 ══════════════════════
 _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
@@ -477,7 +487,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
 
       setShiftAktif(result.data);
       if (onShiftStateChange) onShiftStateChange(true);
-      await showAlert(`✅ Shift kasir #${result.data.idShift} berhasil dibuka atas nama ${result.data.namaKasir}!`, 'success');
+      await showAlert(`Shift kasir #${result.data.idShift} berhasil dibuka atas nama ${result.data.namaKasir}!`, 'success');
       loadShiftData();
     } catch (err: any) {
       console.error(err);
@@ -627,11 +637,11 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
       setShowAddExpenseModal(false);
 
       if (expenseTipe === 'STOK_TERDAFTAR') {
-        await showAlert(`✅ Pengeluaran Rp ${nominal.toLocaleString('id-ID')} dicatat & Stok ${namaStok} otomatis bertambah +${qty} ${sat}!`, 'success');
+        await showAlert(`Pengeluaran Rp ${nominal.toLocaleString('id-ID')} dicatat & Stok ${namaStok} otomatis bertambah +${qty} ${sat}!`, 'success');
       } else if (expenseTipe === 'STOK_BARU') {
-        await showAlert(`✅ Pengeluaran Rp ${nominal.toLocaleString('id-ID')} dicatat & Barang baru "${namaStok}" (+${qty} ${sat}) berhasil ditambahkan ke Stok Inventory!`, 'success');
+        await showAlert(`Pengeluaran Rp ${nominal.toLocaleString('id-ID')} dicatat & Barang baru "${namaStok}" (+${qty} ${sat}) berhasil ditambahkan ke Stok Inventory!`, 'success');
       } else {
-        await showAlert(`✅ Pengeluaran "${item.nama}" (Rp ${nominal.toLocaleString('id-ID')}) berhasil dicatat!`, 'success');
+        await showAlert(`Pengeluaran "${item.nama}" (Rp ${nominal.toLocaleString('id-ID')}) berhasil dicatat!`, 'success');
       }
     } catch (err: any) {
       console.error(err);
@@ -690,7 +700,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
 
     if (shiftAktif.pendingVoidCount && shiftAktif.pendingVoidCount > 0) {
       const confirmProceed = await showConfirm(
-        `⚠️ Terdapat ${shiftAktif.pendingVoidCount} transaksi void yang masih MENUNGGU PERSETUJUAN Manager (Total Rp ${(shiftAktif.pendingVoidTotal || 0).toLocaleString('id-ID')}).\n\nUang transaksi ini sementara masih tercatat di kas laci.\n\nTetap lanjutkan penutupan kas shift sekarang?`
+        `Terdapat ${shiftAktif.pendingVoidCount} transaksi void yang masih MENUNGGU PERSETUJUAN Manager (Total Rp ${(shiftAktif.pendingVoidTotal || 0).toLocaleString('id-ID')}).\n\nUang transaksi ini sementara masih tercatat di kas laci.\n\nTetap lanjutkan penutupan kas shift sekarang?`
       );
       if (!confirmProceed) return;
     }
@@ -722,7 +732,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
     // ATURAN: Jika ada selisih (kurang atau lebih), proses TETAP BISA DILANJUTKAN asalkan WAJIB mengisi catatan
     if (hasSelisih && !closingCatatan.trim()) {
       await showAlert(
-        `⚠️ Terdapat SELISIH antara uang riil dan catatan sistem:\n` +
+        `Terdapat SELISIH antara uang riil dan catatan sistem:\n` +
         (selisihKas !== 0 ? `• Selisih Kas Laci : ${selisihKas > 0 ? '+' : ''}Rp ${selisihKas.toLocaleString('id-ID')} (${selisihKas > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
         (selisihMerchant !== 0 ? `• Selisih Merchant : ${selisihMerchant > 0 ? '+' : ''}Rp ${selisihMerchant.toLocaleString('id-ID')} (${selisihMerchant > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
         `\nAnda WAJIB mengisi kolom Catatan/Keterangan alasan selisih sebelum melanjutkan ganti/tutup shift.`,
@@ -734,7 +744,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
     // Jika ada selisih dan catatan sudah diisi, tampilkan konfirmasi ringkasan selisih
     if (hasSelisih) {
       const confirmProceedWithDiff = await showConfirm(
-        `⚠️ Konfirmasi Rekonsiliasi Kas dengan SELISIH:\n\n` +
+        `Konfirmasi Rekonsiliasi Kas dengan SELISIH:\n\n` +
         (selisihKas !== 0 ? `• Kas Laci: ${selisihKas > 0 ? '+' : ''}Rp ${selisihKas.toLocaleString('id-ID')} (${selisihKas > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
         (selisihMerchant !== 0 ? `• Merchant: ${selisihMerchant > 0 ? '+' : ''}Rp ${selisihMerchant.toLocaleString('id-ID')} (${selisihMerchant > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
         `• Catatan: "${closingCatatan.trim()}"\n\n` +
@@ -874,25 +884,25 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
   const handleShareHistoricalReport = (item: RekapShiftItem) => {
     const isHandover = item.modeTutup === 'SERAH_TERIMA';
     const selKas = item.selisihKas !== undefined ? item.selisihKas : 0;
-    const selisihKasText = selKas === 0 ? 'Rp 0 (SESUAI ✅)' : selKas > 0 ? `+Rp ${selKas.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(selKas).toLocaleString('id-ID')} (KURANG ⚠️)`;
+    const selisihKasText = selKas === 0 ? 'Rp 0 (SESUAI)' : selKas > 0 ? `+Rp ${selKas.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(selKas).toLocaleString('id-ID')} (KURANG)`;
 
-    const msg = `📊 *LAPORAN REKAP KAS SHIFT*
+    const msg = `*LAPORAN REKAP KAS SHIFT*
 *DUA SISI LAUNDRY EXPRESS & COIN*
 ══════════════════════
-🔖 *Shift ID*: #${item.idShift}
-🏢 *Outlet*: ${item.idOutlet || 'OUTLET UTAMA'}
-🔄 *Mode*: ${isHandover ? 'SERAH TERIMA SHIFT (HANDOVER)' : 'TUTUP HARIAN (CLOSING OUTLET)'}
-👤 *Kasir Bertugas*: ${item.namaKasir}
-${isHandover && item.namaPengganti ? `➡️ *Kasir Pengganti*: ${item.namaPengganti}\n` : ''}⏱️ *Waktu*: ${item.waktuBuka} - ${item.waktuTutup || 'Ditutup'}
+• Shift ID: #${item.idShift}
+• Outlet: ${item.idOutlet || 'OUTLET UTAMA'}
+• Mode: ${isHandover ? 'SERAH TERIMA SHIFT (HANDOVER)' : 'TUTUP HARIAN (CLOSING OUTLET)'}
+• Kasir Bertugas: ${item.namaKasir}
+${isHandover && item.namaPengganti ? `• Kasir Pengganti: ${item.namaPengganti}\n` : ''}• Waktu: ${item.waktuBuka} - ${item.waktuTutup || 'Ditutup'}
 
-💵 *REKONSILIASI KAS LACI (TUNAI)*
+*REKONSILIASI KAS LACI (TUNAI)*
 • Modal Awal Laci : Rp ${(item.kasAwal || 0).toLocaleString('id-ID')}
 • Pemasukan POS   : + Rp ${(item.omzetTunai || 0).toLocaleString('id-ID')}
 • Pengeluaran     : - Rp ${(item.totalBelanja || 0).toLocaleString('id-ID')}
 • *Fisik Kas Laci*: Rp ${(item.kasAkhirFisik || 0).toLocaleString('id-ID')}
 • *Selisih Fisik* : *${selisihKasText}*
 
-${item.catatan ? `📝 *Catatan*: "${item.catatan}"\n` : ''}══════════════════════
+${item.catatan ? `*Catatan*: "${item.catatan}"\n` : ''}══════════════════════
 _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
 
     setWaReportText(msg);
@@ -1146,7 +1156,9 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                     {handoverPrefillInfo && (
                       <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between text-xs text-teal-900 flex-wrap gap-2">
                         <div className="flex items-center gap-2.5">
-                          <span className="p-1.5 bg-teal-100 rounded-lg text-teal-800 font-black">🤝</span>
+                          <span className="p-1.5 bg-teal-100 rounded-lg text-teal-800 flex items-center justify-center">
+                            <Users className="w-4 h-4" />
+                          </span>
                           <div>
                             <span className="font-bold">Meneruskan Kas Serah Terima Shift Sebelumnya:</span>
                             <div className="text-[11px] text-teal-700">
@@ -1264,7 +1276,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                     ) : (
                       <>
                         <Unlock className="w-5 h-5 text-teal-300" />
-                        <span>🚀 Buka Shift Kasir Sekarang & Mulai Operasional Toko</span>
+                        <span>Buka Shift Kasir Sekarang & Mulai Operasional Toko</span>
                       </>
                     )}
                   </button>
@@ -1511,17 +1523,20 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                               <div className="text-[10px] text-slate-400 flex flex-wrap items-center gap-1.5 mt-0.5">
                                 {exp.tipePengeluaran === 'STOK_TERDAFTAR' && (
                                   <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold text-[9px] flex items-center gap-1">
-                                    <span>📦 Restock +{exp.qtyMasuk} {exp.satuan}</span>
+                                    <PackagePlus className="w-3 h-3 text-emerald-700" />
+                                    <span>Restock +{exp.qtyMasuk} {exp.satuan}</span>
                                   </span>
                                 )}
                                 {exp.tipePengeluaran === 'STOK_BARU' && (
                                   <span className="bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-bold text-[9px] flex items-center gap-1">
-                                    <span>✨ Stok Baru +{exp.qtyMasuk} {exp.satuan}</span>
+                                    <Sparkles className="w-3 h-3 text-blue-600" />
+                                    <span>Stok Baru +{exp.qtyMasuk} {exp.satuan}</span>
                                   </span>
                                 )}
                                 {exp.tipePengeluaran === 'NON_STOK' && (
-                                  <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold text-[9px]">
-                                    🏢 Beban Umum
+                                  <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold text-[9px] flex items-center gap-1">
+                                    <Building2 className="w-3 h-3 text-slate-500" />
+                                    <span>Beban Umum</span>
                                   </span>
                                 )}
                                 <span className="bg-slate-100 px-1.5 py-0.2 rounded font-semibold text-slate-600">{exp.kategori}</span>
@@ -1619,18 +1634,21 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">
                             {exp.tipePengeluaran === 'STOK_TERDAFTAR' && (
-                              <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold text-[9px] w-max">
-                                📦 Restock +{exp.qtyMasuk} {exp.satuan}
+                              <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold text-[9px] w-max flex items-center gap-1">
+                                <PackagePlus className="w-3 h-3 text-emerald-700" />
+                                Restock +{exp.qtyMasuk} {exp.satuan}
                               </span>
                             )}
                             {exp.tipePengeluaran === 'STOK_BARU' && (
-                              <span className="bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-bold text-[9px] w-max">
-                                ✨ Stok Baru +{exp.qtyMasuk} {exp.satuan}
+                              <span className="bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-bold text-[9px] w-max flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-blue-600" />
+                                Stok Baru +{exp.qtyMasuk} {exp.satuan}
                               </span>
                             )}
                             {exp.tipePengeluaran === 'NON_STOK' && (
-                              <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold text-[9px] w-max">
-                                🏢 Non-Stok
+                              <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold text-[9px] w-max flex items-center gap-1">
+                                <Building2 className="w-3 h-3 text-slate-500" />
+                                Non-Stok
                               </span>
                             )}
                             <span className="text-[10px] text-slate-500 font-medium">
@@ -1713,7 +1731,10 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                           <td className="px-4 py-3 font-bold text-slate-800">
                             {item.namaKasir}
                             {item.namaPengganti && (
-                              <div className="text-[10px] text-teal-600 font-normal">➔ Handover ke: {item.namaPengganti}</div>
+                              <div className="text-[10px] text-teal-600 font-normal flex items-center gap-1">
+                                <ArrowRight className="w-3 h-3 text-teal-600" />
+                                <span>Handover ke: {item.namaPengganti}</span>
+                              </div>
                             )}
                           </td>
                           <td className="px-4 py-3 text-slate-600">
@@ -1797,39 +1818,48 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                   <button
                     type="button"
                     onClick={() => setExpenseTipe('STOK_TERDAFTAR')}
-                    className={`py-2 px-2 rounded-lg text-[11px] font-bold transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                    className={`py-2 px-2 rounded-lg text-[11px] font-bold transition flex flex-col items-center justify-center gap-1 cursor-pointer ${
                       expenseTipe === 'STOK_TERDAFTAR'
                         ? 'bg-[#1E4648] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <span>📦 Stok Terdaftar</span>
+                    <span className="flex items-center gap-1">
+                      <PackagePlus className="w-3.5 h-3.5" />
+                      <span>Stok Terdaftar</span>
+                    </span>
                     <span className={`text-[9px] ${expenseTipe === 'STOK_TERDAFTAR' ? 'text-teal-200' : 'text-slate-400'}`}>Restock Bahan</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setExpenseTipe('STOK_BARU')}
-                    className={`py-2 px-2 rounded-lg text-[11px] font-bold transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                    className={`py-2 px-2 rounded-lg text-[11px] font-bold transition flex flex-col items-center justify-center gap-1 cursor-pointer ${
                       expenseTipe === 'STOK_BARU'
                         ? 'bg-[#1E4648] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <span>✨ Stok Baru</span>
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Stok Baru</span>
+                    </span>
                     <span className={`text-[9px] ${expenseTipe === 'STOK_BARU' ? 'text-teal-200' : 'text-slate-400'}`}>Bahan Baru</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setExpenseTipe('NON_STOK')}
-                    className={`py-2 px-2 rounded-lg text-[11px] font-bold transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                    className={`py-2 px-2 rounded-lg text-[11px] font-bold transition flex flex-col items-center justify-center gap-1 cursor-pointer ${
                       expenseTipe === 'NON_STOK'
                         ? 'bg-[#1E4648] text-white shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <span>🏢 Non-Stok</span>
+                    <span className="flex items-center gap-1">
+                      <Building2 className="w-3.5 h-3.5" />
+                      <span>Non-Stok</span>
+                    </span>
                     <span className={`text-[9px] ${expenseTipe === 'NON_STOK' ? 'text-teal-200' : 'text-slate-400'}`}>Beban Umum</span>
                   </button>
                 </div>
@@ -1897,8 +1927,9 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                       />
                     </div>
                   </div>
-                  <p className="text-[10px] text-teal-700 font-medium">
-                    ⚡ Saat disimpan, stok barang di atas otomatis bertambah dan uang laci berkurang.
+                  <p className="text-[10px] text-teal-700 font-medium flex items-center gap-1">
+                    <Zap className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    <span>Saat disimpan, stok barang di atas otomatis bertambah dan uang laci berkurang.</span>
                   </p>
                 </div>
               )}
@@ -1979,8 +2010,9 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                       />
                     </div>
                   </div>
-                  <p className="text-[10px] text-blue-700 font-medium">
-                    ✨ Barang ini akan otomatis didaftarkan sebagai item baru di modul Stok Inventory.
+                  <p className="text-[10px] text-blue-700 font-medium flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span>Barang ini akan otomatis didaftarkan sebagai item baru di modul Stok Inventory.</span>
                   </p>
                 </div>
               )}
@@ -2142,13 +2174,14 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                       setCloseMode('SERAH_TERIMA');
                       setHandoverVerified(false);
                     }}
-                    className={`py-2.5 px-3 rounded-xl border font-bold text-xs transition cursor-pointer ${
+                    className={`py-2.5 px-3 rounded-xl border font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 ${
                       closeMode === 'SERAH_TERIMA'
                         ? 'bg-[#1E4648] border-[#1E4648] text-white shadow-xs'
                         : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    🔄 Serah Terima Shift (Handover)
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                    <span>Serah Terima Shift (Handover)</span>
                   </button>
                   <button
                     type="button"
@@ -2156,13 +2189,14 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                       setCloseMode('TUTUP_HARIAN');
                       setHandoverVerified(false);
                     }}
-                    className={`py-2.5 px-3 rounded-xl border font-bold text-xs transition cursor-pointer ${
+                    className={`py-2.5 px-3 rounded-xl border font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 ${
                       closeMode === 'TUTUP_HARIAN'
                         ? 'bg-rose-600 border-rose-600 text-white shadow-xs'
                         : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    🚪 Tutup Harian (Closing Outlet)
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Tutup Harian (Closing Outlet)</span>
                   </button>
                 </div>
               </div>
@@ -2174,7 +2208,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <div className="space-y-1">
                       <h4 className="text-xs font-black text-amber-950">
-                        ⚠️ Ada {shiftAktif.pendingVoidCount} Pengajuan Void Menunggu Approval Manager
+                        Ada {shiftAktif.pendingVoidCount} Pengajuan Void Menunggu Approval Manager
                       </h4>
                       <p className="text-[11px] text-amber-800 leading-relaxed">
                         Total tertahan <strong>Rp {(shiftAktif.pendingVoidTotal || 0).toLocaleString('id-ID')}</strong> masih terhitung di kas laci karena belum disetujui Manager. Harap beri tahu kasir pengganti atau Manager.
@@ -2258,8 +2292,9 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
 
                     {/* Rincian Sistem */}
                     <div className="bg-white/80 border border-teal-100 rounded-xl p-2.5 my-2.5 space-y-1 text-[11px]">
-                      <div className="text-[10px] font-bold text-teal-900 uppercase tracking-wider mb-1">
-                        📊 Data Tercatat di Sistem:
+                      <div className="text-[10px] font-bold text-teal-900 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <BarChart3 className="w-3.5 h-3.5 text-teal-700" />
+                        <span>Data Tercatat di Sistem:</span>
                       </div>
                       <div className="flex justify-between text-slate-600">
                         <span>• Modal Awal Kas Laci:</span>
@@ -2285,7 +2320,10 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                       {shiftAktif.kumulatif?.isGantiShift && (
                         <div className="mt-2 pt-2 border-t border-teal-100/80 text-[10px] text-slate-500 space-y-0.5">
                           <div className="font-bold text-teal-950 flex items-center justify-between">
-                            <span>📈 Kumulatif Hari Ini (Shift 1 s/d {shiftAktif.kumulatif.shiftKe}):</span>
+                            <span className="flex items-center gap-1">
+                              <TrendingUp className="w-3.5 h-3.5 text-teal-700" />
+                              <span>Kumulatif Hari Ini (Shift 1 s/d {shiftAktif.kumulatif.shiftKe}):</span>
+                            </span>
                             <span className="text-teal-800 font-mono">Modal Pagi: Rp {(shiftAktif.kumulatif.modalAwalHariIni || 0).toLocaleString('id-ID')}</span>
                           </div>
                           <div className="flex justify-between text-slate-600">
@@ -2373,7 +2411,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                         }`}>
                           <span>Selisih Kas Fisik:</span>
                           <span className="font-mono">
-                            {diff === 0 ? 'Rp 0 (SESUAI ✅)' : diff > 0 ? `+Rp ${diff.toLocaleString('id-ID')} (LEBIH 🔵)` : `-Rp ${Math.abs(diff).toLocaleString('id-ID')} (KURANG ⚠️)`}
+                            {diff === 0 ? 'Rp 0 (SESUAI)' : diff > 0 ? `+Rp ${diff.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(diff).toLocaleString('id-ID')} (KURANG)`}
                           </span>
                         </div>
                       );
@@ -2396,8 +2434,9 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
 
                     {/* Rincian Sistem */}
                     <div className="bg-white/80 border border-indigo-100 rounded-xl p-2.5 my-2.5 space-y-1 text-[11px]">
-                      <div className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider mb-1">
-                        📊 Data Tercatat di Sistem:
+                      <div className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <BarChart3 className="w-3.5 h-3.5 text-indigo-700" />
+                        <span>Data Tercatat di Sistem:</span>
                       </div>
                       <div className="flex justify-between text-slate-600">
                         <span>• Saldo Awal Merchant:</span>
@@ -2447,7 +2486,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                         }`}>
                           <span>Selisih Saldo Merchant:</span>
                           <span className="font-mono">
-                            {diff === 0 ? 'Rp 0 (SESUAI ✅)' : diff > 0 ? `+Rp ${diff.toLocaleString('id-ID')} (LEBIH 🔵)` : `-Rp ${Math.abs(diff).toLocaleString('id-ID')} (KURANG ⚠️)`}
+                            {diff === 0 ? 'Rp 0 (SESUAI)' : diff > 0 ? `+Rp ${diff.toLocaleString('id-ID')} (LEBIH)` : `-Rp ${Math.abs(diff).toLocaleString('id-ID')} (KURANG)`}
                           </span>
                         </div>
                       );
@@ -2602,7 +2641,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                 className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/20"
               >
                 <Send className="w-4 h-4" />
-                <span>📲 Kirim Laporan ke WhatsApp Grup</span>
+                <span>Kirim Laporan ke WhatsApp Grup</span>
               </button>
             </div>
           </div>

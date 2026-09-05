@@ -23,7 +23,11 @@ import {
   Plus,
   UserPlus,
   Award,
-  User
+  User,
+  Star,
+  Sparkles,
+  Package,
+  Coins
 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
@@ -516,7 +520,9 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                 <label className="block font-bold text-slate-700 text-xs mb-1">Status Keanggotaan Member</label>
                 <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-lg">{editStatusMember ? '⭐' : '👤'}</span>
+                    <span className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center border border-amber-200/60 shrink-0">
+                      {editStatusMember ? <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> : <User className="w-4 h-4 text-slate-400" />}
+                    </span>
                     <div>
                       <div className="font-extrabold text-xs text-slate-900">
                         {editStatusMember ? 'Member Resmi Aktif' : 'Pelanggan Reguler / Umum'}
@@ -640,10 +646,11 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                       const curProg = loyaltyPrograms.find(p => p.id === editAssignedCard7kg) || loyaltyPrograms[0];
                       const isNth = curProg?.claimRule === 'FREE_ON_NTH';
                       return (
-                        <span className={`text-[10px] font-semibold block mt-1 ${isNth ? 'text-teal-700' : 'text-emerald-700'}`}>
+                        <span className={`text-[10px] font-semibold flex items-center gap-1.5 mt-1 ${isNth ? 'text-teal-700' : 'text-emerald-700'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isNth ? 'bg-teal-500' : 'bg-emerald-500'}`} />
                           {isNth 
-                            ? '🟢 Mode Member Lama: Free langsung di transaksi stempel ke-10.' 
-                            : '🔵 Mode Member Baru: 10 stamp penuh dulu, baru transaksi ke-11 free.'}
+                            ? 'Mode Member Lama: Free langsung di transaksi stempel ke-10.' 
+                            : 'Mode Member Baru: 10 stamp penuh dulu, baru transaksi ke-11 free.'}
                         </span>
                       );
                     })()}
@@ -882,7 +889,17 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                               ? 'bg-teal-50 text-teal-800 border border-teal-200' 
                               : 'bg-slate-100 text-slate-700 border border-slate-200'
                           }`}>
-                            {tx.tipe === 'FullService' ? '🧺 Drop Off' : '🪙 Self Service'}
+                            {tx.tipe === 'FullService' ? (
+                              <>
+                                <Package className="w-3 h-3 text-teal-700" />
+                                Drop Off
+                              </>
+                            ) : (
+                              <>
+                                <Coins className="w-3 h-3 text-slate-600" />
+                                Self Service
+                              </>
+                            )}
                           </span>
                         </td>
 
@@ -1025,8 +1042,9 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
           onClick={() => setFilterKategori('Lama')}
           className={`bg-white p-3.5 rounded-xl border cursor-pointer transition shadow-2xs ${filterKategori === 'Lama' ? 'border-teal-600 ring-1 ring-teal-600 bg-teal-50/20' : 'border-slate-200/80 hover:border-teal-300'}`}
         >
-          <div className="text-[11px] font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1">
-            <span>🔁 Pelanggan Lama</span>
+          <div className="text-[11px] font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1.5">
+            <History className="w-3.5 h-3.5 text-teal-600" />
+            <span>Pelanggan Lama</span>
           </div>
           <div className="text-xl font-black text-teal-950 mt-0.5">{(countLama || 0).toLocaleString('id-ID')}</div>
           <div className="text-[10px] text-teal-700 mt-0.5">&gt; 1x Transaksi (Umum)</div>
@@ -1036,8 +1054,9 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
           onClick={() => setFilterKategori('Baru')}
           className={`bg-white p-3.5 rounded-xl border cursor-pointer transition shadow-2xs ${filterKategori === 'Baru' ? 'border-slate-700 ring-1 ring-slate-700 bg-slate-50' : 'border-slate-200/80 hover:border-slate-300'}`}
         >
-          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-            <span>✨ Pelanggan Baru</span>
+          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+            <span>Pelanggan Baru</span>
           </div>
           <div className="text-xl font-black text-slate-800 mt-0.5">{(countBaru || 0).toLocaleString('id-ID')}</div>
           <div className="text-[10px] text-slate-400 mt-0.5">1x Transaksi / Baru</div>
@@ -1059,7 +1078,23 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                <span>{k === 'Semua' ? 'Semua Pelanggan' : k === 'Member' ? '⭐ Member' : k === 'Lama' ? '🔁 Pelanggan Lama' : '✨ Pelanggan Baru'}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  {k === 'Semua' ? (
+                    'Semua Pelanggan'
+                  ) : k === 'Member' ? (
+                    <>
+                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Member
+                    </>
+                  ) : k === 'Lama' ? (
+                    <>
+                      <History className="w-3.5 h-3.5 text-teal-600" /> Pelanggan Lama
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-blue-500" /> Pelanggan Baru
+                    </>
+                  )}
+                </span>
                 <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${filterKategori === k ? 'bg-teal-900/50 text-teal-100' : 'bg-slate-200 text-slate-600'}`}>
                   {k === 'Semua' ? totalPelanggan : k === 'Member' ? countMember : k === 'Lama' ? countLama : countBaru}
                 </span>
@@ -1163,15 +1198,15 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                       <td className="py-3 px-4 whitespace-nowrap">
                         {isMem ? (
                           <span className="px-2 py-0.5 bg-amber-500/15 text-amber-900 border border-amber-400/40 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1">
-                            ⭐ Member
+                            <Star className="w-3 h-3 text-amber-500 fill-amber-500" /> Member
                           </span>
                         ) : item.totalOrder > 1 ? (
                           <span className="px-2 py-0.5 bg-teal-500/15 text-teal-900 border border-teal-400/40 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                            🔁 Pelanggan Lama
+                            <History className="w-3 h-3 text-teal-700" /> Pelanggan Lama
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-[10px] font-semibold inline-flex items-center gap-1">
-                            ✨ Pelanggan Baru
+                            <Sparkles className="w-3 h-3 text-blue-500" /> Pelanggan Baru
                           </span>
                         )}
                       </td>
@@ -1272,7 +1307,9 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                 <label className="block font-bold text-slate-700 mb-1">Tipe Pelanggan</label>
                 <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-base">{addStatusMember ? '⭐' : '👤'}</span>
+                    <span className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center border border-amber-200/60 shrink-0">
+                      {addStatusMember ? <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> : <User className="w-4 h-4 text-slate-400" />}
+                    </span>
                     <div>
                       <div className="font-bold text-xs text-slate-800">
                         {addStatusMember ? 'Daftarkan sebagai Member Resmi' : 'Pelanggan Reguler / Umum'}

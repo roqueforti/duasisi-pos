@@ -1497,7 +1497,7 @@ export default function PosView({
         ? generateTagEscPos(txForPrint as any)
         : generateReceiptEscPos(txForPrint as any, poinRate);
       await sendRawEscPosData(escData);
-      setToastMsg(`✅ ${type === 'label' ? 'Label Tag' : 'Struk Thermal'} berhasil dicetak!`);
+      setToastMsg(`${type === 'label' ? 'Label Tag' : 'Struk Thermal'} berhasil dicetak!`);
     } catch (err: any) {
       const msg = err?.message || 'Gagal mencetak';
       if (msg.includes('User cancelled') || msg.includes('cancelled')) {
@@ -1669,7 +1669,7 @@ export default function PosView({
 
     if (shiftAktif.pendingVoidCount && shiftAktif.pendingVoidCount > 0) {
       const confirmProceed = await showConfirm(
-        `⚠️ Terdapat ${shiftAktif.pendingVoidCount} transaksi void yang masih MENUNGGU PERSETUJUAN Manager (Total Rp ${(shiftAktif.pendingVoidTotal || 0).toLocaleString('id-ID')}).\n\nUang transaksi ini sementara masih tercatat di kas laci.\n\nTetap lanjutkan penutupan kas shift sekarang?`
+        `Terdapat ${shiftAktif.pendingVoidCount} transaksi void yang masih MENUNGGU PERSETUJUAN Manager (Total Rp ${(shiftAktif.pendingVoidTotal || 0).toLocaleString('id-ID')}).\n\nUang transaksi ini sementara masih tercatat di kas laci.\n\nTetap lanjutkan penutupan kas shift sekarang?`
       );
       if (!confirmProceed) return;
     }
@@ -1699,7 +1699,7 @@ export default function PosView({
     // ATURAN: Jika ada selisih, tetap bisa diproses asalkan WAJIB mengisi catatan alasan selisih
     if (hasSelisih && !closeShiftCatatan.trim()) {
       await showAlert(
-        `⚠️ Terdapat SELISIH antara uang riil dan catatan sistem:\n` +
+        `Terdapat SELISIH antara uang riil dan catatan sistem:\n` +
         (selisihKas !== 0 ? `• Selisih Kas Laci : ${selisihKas > 0 ? '+' : ''}Rp ${selisihKas.toLocaleString('id-ID')} (${selisihKas > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
         (selisihMerchant !== 0 ? `• Selisih Merchant : ${selisihMerchant > 0 ? '+' : ''}Rp ${selisihMerchant.toLocaleString('id-ID')} (${selisihMerchant > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
         `\nAnda WAJIB mengisi kolom Catatan/Keterangan alasan selisih sebelum melanjutkan ganti/tutup shift.`,
@@ -1711,7 +1711,7 @@ export default function PosView({
     // Jika ada selisih dan catatan sudah diisi, tampilkan konfirmasi ringkasan selisih
     if (hasSelisih) {
       const confirmProceedWithDiff = await showConfirm(
-        `⚠️ Konfirmasi Rekonsiliasi Kas dengan SELISIH:\n\n` +
+        `Konfirmasi Rekonsiliasi Kas dengan SELISIH:\n\n` +
         (selisihKas !== 0 ? `• Kas Laci: ${selisihKas > 0 ? '+' : ''}Rp ${selisihKas.toLocaleString('id-ID')} (${selisihKas > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
         (selisihMerchant !== 0 ? `• Merchant: ${selisihMerchant > 0 ? '+' : ''}Rp ${selisihMerchant.toLocaleString('id-ID')} (${selisihMerchant > 0 ? 'LEBIH' : 'KURANG'})\n` : '') +
         `• Catatan: "${closeShiftCatatan.trim()}"\n\n` +
@@ -3026,7 +3026,7 @@ export default function PosView({
                     </label>
                     {isManualCustomer && (
                       <div className="mt-2.5 pt-2.5 border-t border-amber-200/90 text-xs text-amber-950 flex items-center gap-1.5 font-semibold">
-                        <span>💡</span>
+                        <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
                         <span>No. WhatsApp & data lainnya bersifat <strong>opsional</strong>. Transaksi tetap dapat diproses langsung tanpa validasi nomor HP.</span>
                       </div>
                     )}
@@ -3039,7 +3039,7 @@ export default function PosView({
                         <Smartphone className="w-4 h-4" />
                       </div>
                       <div className="leading-relaxed font-medium text-xs sm:text-sm">
-                        <span className="font-black text-[#1E4648]">Petunjuk Kasir:</span> Masukkan <strong>No. WhatsApp / HP</strong> terlebih dahulu. Sistem otomatis mendeteksi apakah pelanggan <strong>⭐ Member</strong>, <strong>👤 Pelanggan Lama</strong>, atau <strong>✨ Pelanggan Baru</strong>.
+                        <span className="font-black text-[#1E4648]">Petunjuk Kasir:</span> Masukkan <strong>No. WhatsApp / HP</strong> terlebih dahulu. Sistem otomatis mendeteksi status keanggotaan pelanggan (Member / Reguler).
                       </div>
                     </div>
                   )}
@@ -3067,20 +3067,20 @@ export default function PosView({
                           if (customer.isMember) {
                             return (
                               <span className="text-xs text-amber-900 bg-amber-100 font-black px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1">
-                                ⭐ Member
+                                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Member
                               </span>
                             );
                           }
                           if (customer.memberStatus === 'Pelanggan Lama') {
                             return (
                               <span className="text-xs text-teal-900 bg-teal-100 font-black px-2 py-0.5 rounded-full border border-teal-300 flex items-center gap-1">
-                                👤 Pelanggan Lama
+                                <User className="w-3.5 h-3.5 text-teal-700" /> Pelanggan Lama
                               </span>
                             );
                           }
                           return (
                             <span className="text-xs text-sky-900 bg-sky-100 font-black px-2 py-0.5 rounded-full border border-sky-300 flex items-center gap-1">
-                              ✨ Pelanggan Baru
+                              <Sparkles className="w-3.5 h-3.5 text-sky-600" /> Pelanggan Baru
                             </span>
                           );
                         })()}
@@ -3136,7 +3136,7 @@ export default function PosView({
                                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs ${
                                     isMem ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-teal-100 text-[#1E4648]'
                                   }`}>
-                                    {isMem ? '⭐' : '👤'}
+                                    {isMem ? <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> : <User className="w-4 h-4 text-[#1E4648]" />}
                                   </div>
                                   <div className="min-w-0">
                                     <div className="text-xs font-black text-slate-900 truncate flex items-center gap-1.5">
@@ -3231,7 +3231,7 @@ export default function PosView({
                                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs ${
                                     isMem ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-teal-100 text-[#1E4648]'
                                   }`}>
-                                    {isMem ? '⭐' : '👤'}
+                                    {isMem ? <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> : <User className="w-4 h-4 text-[#1E4648]" />}
                                   </div>
                                   <div className="min-w-0">
                                     <div className="text-xs font-black text-slate-900 truncate flex items-center gap-1.5">
@@ -3302,7 +3302,7 @@ export default function PosView({
                         <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 flex items-center justify-between text-sm flex-wrap gap-2 shadow-xs">
                           <div className="flex items-center gap-3 text-slate-700">
                             <div className="w-9 h-9 rounded-xl bg-teal-100 text-[#1E4648] flex items-center justify-center font-bold text-base shrink-0">
-                              👤
+                              <User className="w-4 h-4" />
                             </div>
                             <div>
                               <div className="font-black text-slate-900 text-sm sm:text-base flex items-center gap-2">
@@ -3354,7 +3354,7 @@ export default function PosView({
                       <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 flex items-center justify-between text-sm flex-wrap gap-2 shadow-xs">
                         <div className="flex items-center gap-3 text-slate-600">
                           <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center font-bold text-base shrink-0">
-                            ✨
+                            <Sparkles className="w-4 h-4 text-sky-600" />
                           </div>
                           <div>
                             <div className="font-black text-slate-800 text-sm sm:text-base">Pelanggan Baru</div>
@@ -3499,17 +3499,20 @@ export default function PosView({
                     <div className="flex flex-wrap items-center gap-2 py-0.5">
                       {cartArray.some((i) => i.tipe === 'FullService') && (
                         <span className="px-3.5 py-2.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/30 text-amber-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs">
-                          🧺 Drop Off
+                          <Package className="w-4 h-4 text-amber-700" />
+                          <span>Drop Off</span>
                         </span>
                       )}
                       {cartArray.some((i) => i.tipe === 'SelfService') && (
                         <span className="px-3.5 py-2.5 rounded-2xl bg-sky-500/15 border-2 border-sky-500/30 text-sky-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs">
-                          ⚡ Self Service
+                          <Coins className="w-4 h-4 text-sky-700" />
+                          <span>Self Service</span>
                         </span>
                       )}
                       {cartArray.some((i) => !i.tipe || (i.tipe !== 'FullService' && i.tipe !== 'SelfService')) && (
                         <span className="px-3.5 py-2.5 rounded-2xl bg-emerald-500/15 border-2 border-emerald-500/30 text-emerald-950 font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-2xs">
-                          🛒 Retail / FnB
+                          <ShoppingBag className="w-4 h-4 text-emerald-700" />
+                          <span>Retail / FnB</span>
                         </span>
                       )}
                       {cartArray.length === 0 && (
@@ -4298,7 +4301,11 @@ export default function PosView({
                               }`}
                               title={`Stempel #${idx + 1}`}
                             >
-                              {idx < completedOrderData.stampInfo.newTotal ? '✓' : idx + 1}
+                              {idx < completedOrderData.stampInfo.newTotal ? (
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              ) : (
+                                idx + 1
+                              )}
                             </div>
                           ))}
                         </div>
@@ -4327,7 +4334,7 @@ export default function PosView({
                           </div>
                           <div>
                             <span className="font-black text-amber-950 text-xs block leading-tight">
-                              🎉 Reward 1x Cuci Gratis Berhasil Diklaim!
+                              Reward 1x Cuci Gratis Berhasil Diklaim!
                             </span>
                             <span className="text-[10px] text-amber-800 font-medium">
                               {completedOrderData.stampInfo.rewardMessage}
@@ -4833,7 +4840,10 @@ export default function PosView({
                       {shiftAktif?.kumulatif?.isGantiShift && (
                         <div className="mt-2 pt-2 border-t border-teal-200/60 text-[10px] text-slate-500 space-y-0.5">
                           <div className="font-bold text-teal-950 flex items-center justify-between">
-                            <span>📈 Kumulatif Hari Ini (Shift 1 s/d {shiftAktif.kumulatif.shiftKe}):</span>
+                            <span className="flex items-center gap-1">
+                              <TrendingUp className="w-3.5 h-3.5 text-teal-700" />
+                              <span>Kumulatif Hari Ini (Shift 1 s/d {shiftAktif.kumulatif.shiftKe}):</span>
+                            </span>
                             <span className="text-teal-800 font-mono">Modal Pagi: Rp {(shiftAktif.kumulatif.modalAwalHariIni || 0).toLocaleString('id-ID')}</span>
                           </div>
                           <div className="flex justify-between text-slate-600">
@@ -4930,7 +4940,7 @@ export default function PosView({
                         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                         <div className="space-y-1">
                           <h4 className="text-xs font-black text-amber-950">
-                            ⚠️ Ada {shiftAktif.pendingVoidCount} Pengajuan Void Menunggu Approval Manager
+                            Ada {shiftAktif.pendingVoidCount} Pengajuan Void Menunggu Approval Manager
                           </h4>
                           <p className="text-[11px] text-amber-800 leading-relaxed">
                             Total tertahan <strong>Rp {(shiftAktif.pendingVoidTotal || 0).toLocaleString('id-ID')}</strong> masih terhitung di kas laci karena belum disetujui Manager.

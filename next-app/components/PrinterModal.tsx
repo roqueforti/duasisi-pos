@@ -445,8 +445,9 @@ export default function PrinterModal({
                   /* ================= LABEL TAG PENANDA CUCIAN ================= */
                   <>
                     <div className="text-center space-y-1 border-b border-dashed border-slate-400 pb-2">
-                      <div className="font-black text-xs tracking-wider text-slate-900 bg-amber-100 py-1 rounded-lg">
-                        🏷️ LABEL TAG PENANDA CUCIAN
+                      <div className="font-black text-xs tracking-wider text-slate-900 bg-amber-100 py-1 rounded-lg flex items-center justify-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-slate-800" />
+                        <span>LABEL TAG PENANDA CUCIAN</span>
                       </div>
                       <div className="font-extrabold text-sm text-slate-900 pt-1 font-mono">
                         {activeTx.noNota}
@@ -608,7 +609,7 @@ export default function PrinterModal({
                 className="w-full flex items-center justify-center gap-2 bg-[#1E4648] hover:bg-[#163536] disabled:opacity-50 text-white text-xs font-bold py-3 rounded-xl shadow-md transition"
               >
                 <Printer className="w-4 h-4" />
-                <span>{loading ? 'Mencetak…' : selectedPrintType === 'label' ? '🖨️ Cetak Thermal Label Tag' : '🖨️ Cetak Thermal Struk'}</span>
+                <span>{loading ? 'Mencetak…' : selectedPrintType === 'label' ? 'Cetak Thermal Label Tag' : 'Cetak Thermal Struk'}</span>
               </button>
 
               <div className="flex gap-2">

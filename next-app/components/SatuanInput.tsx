@@ -85,7 +85,7 @@ export default function SatuanInput({
               </option>
             ))}
           </optgroup>
-          <option value="__CUSTOM__">✍️ Lainnya (Ketik Bebas / Kustom)...</option>
+          <option value="__CUSTOM__">Lainnya (Ketik Bebas / Kustom)...</option>
         </select>
 
         {isCustom && (

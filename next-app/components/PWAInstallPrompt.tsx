@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, X, Check } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -107,7 +107,7 @@ export default function PWAInstallPrompt() {
           <div className="space-y-3 text-sm text-slate-600">
             <div className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-[#B5C9C9]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-[#1E4648] font-bold text-xs">✓</span>
+                <Check className="w-3.5 h-3.5 text-[#1E4648] stroke-[3]" />
               </div>
               <div>
                 <p className="font-semibold text-slate-700">Akses Instan</p>
@@ -117,7 +117,7 @@ export default function PWAInstallPrompt() {
 
             <div className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-[#B5C9C9]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-[#1E4648] font-bold text-xs">✓</span>
+                <Check className="w-3.5 h-3.5 text-[#1E4648] stroke-[3]" />
               </div>
               <div>
                 <p className="font-semibold text-slate-700">Mode Offline</p>
@@ -127,7 +127,7 @@ export default function PWAInstallPrompt() {
 
             <div className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-[#B5C9C9]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-[#1E4648] font-bold text-xs">✓</span>
+                <Check className="w-3.5 h-3.5 text-[#1E4648] stroke-[3]" />
               </div>
               <div>
                 <p className="font-semibold text-slate-700">Performa Maksimal</p>

@@ -4,22 +4,22 @@ import React, { useState } from 'react';
 import { Send, CheckCircle2 } from 'lucide-react';
 
 const PAIN_POINTS = [
-  "📝 Pembukuan masih manual (pakai buku tulis)",
-  "💸 Sering selisih/salah hitung uang di kasir",
-  "🔍 Susah melacak pakaian pelanggan (sering tertukar/hilang)",
-  "⚙️ Susah memantau mesin mana yang sedang dipakai (khusus koin/self-service)",
-  "💬 Pelanggan sering komplain nanya \"cucian saya sudah selesai belum?\"",
-  "📈 Tidak tahu pasti berapa keuntungan atau kerugian bulan ini",
-  "🤷‍♂️ Tidak tahu siapa penanggung jawab di suatu proses tiap ordernya"
+  "Pembukuan masih manual (pakai buku tulis)",
+  "Sering selisih/salah hitung uang di kasir",
+  "Susah melacak pakaian pelanggan (sering tertukar/hilang)",
+  "Susah memantau mesin mana yang sedang dipakai (khusus koin/self-service)",
+  "Pelanggan sering komplain menanyakan status cucian",
+  "Tidak tahu pasti berapa keuntungan atau kerugian bulan ini",
+  "Tidak tahu siapa penanggung jawab di suatu proses tiap ordernya"
 ];
 
 const FEATURES = [
-  "📱 Kirim pesan WhatsApp otomatis ke pelanggan kalau cucian selesai",
-  "🖨️ Bisa cetak struk/nota pembayaran langsung",
-  "📊 Laporan pendapatan dan omzet otomatis tiap hari",
-  "🧺 Fitur pantau mesin (tahu mesin mana yang kosong/rusak/jalan)",
-  "📦 Pencatatan stok barang (sabun, parfum, plastik, dll)",
-  "👥 Ada sistem pergantian shift kasir (biar ketahuan uangnya pas atau tidak)"
+  "Kirim pesan WhatsApp otomatis ke pelanggan kalau cucian selesai",
+  "Bisa cetak struk/nota pembayaran langsung",
+  "Laporan pendapatan dan omzet otomatis tiap hari",
+  "Fitur pantau mesin (tahu mesin mana yang kosong/rusak/jalan)",
+  "Pencatatan stok barang (sabun, parfum, plastik, dll)",
+  "Sistem pergantian shift kasir untuk rekonsiliasi kas riil"
 ];
 
 export default function RequirementsForm() {

@@ -26,7 +26,8 @@ import {
   WashingMachine,
   SlidersHorizontal,
   Award,
-  CheckCheck
+  CheckCheck,
+  Lock
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { useDialog } from '@/components/DialogProvider';
@@ -91,7 +92,7 @@ export default function Sidebar({
 
     // Cek apakah menu memerlukan kas shift aktif
     if (requiresShift && !isShiftActive && currentRole !== 'MANAGER') {
-      await showAlert('🔒 Menu ini terkunci. Harap Buka Shift terlebih dahulu di menu "Shift Saya" untuk memulai operasional kasir.', 'warning');
+      await showAlert('Menu ini terkunci. Harap Buka Shift terlebih dahulu di menu "Shift Saya" untuk memulai operasional kasir.', 'warning');
       setCurrentTab('shift_saya');
       setIsSidebarOpen(false);
       return;
@@ -218,8 +219,20 @@ export default function Sidebar({
             <div className="text-xs font-bold text-slate-800 truncate">
               {currentRole === 'MANAGER' ? 'Manager Outlet' : 'Kasir / Staff'}
             </div>
-            <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-              {currentRole === 'MANAGER' ? 'Owner / Manager' : (isShiftActive ? '🟢 Shift Aktif' : '⚪ Belum Buka Shift')}
+            <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center">
+              {currentRole === 'MANAGER' ? (
+                'Owner / Manager'
+              ) : isShiftActive ? (
+                <>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
+                  Shift Aktif
+                </>
+              ) : (
+                <>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-300 mr-1.5" />
+                  Belum Buka Shift
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -288,7 +301,7 @@ export default function Sidebar({
 
                       {/* Locked Badge */}
                       {isLocked && !isCollapsed && (
-                        <span className="ml-auto text-[11px] text-slate-400">🔒</span>
+                        <Lock className="ml-auto w-3.5 h-3.5 text-slate-400" />
                       )}
 
                       {/* Shift Saya Active / Action Badge */}

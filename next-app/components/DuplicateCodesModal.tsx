@@ -11,7 +11,10 @@ import {
   RotateCcw,
   Save,
   X,
-  Loader2
+  Loader2,
+  Lightbulb,
+  Star,
+  Package
 } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
@@ -217,7 +220,7 @@ export default function DuplicateCodesModal({
 
     let confirmMsg = `Terapkan perapian kode?\n• ${renameCount} item akan diperbarui kodenya (data tetap aman)\n`;
     if (deleteCount > 0) {
-      confirmMsg += `• ⚠️ ${deleteCount} item akan DIHAPUS permanen`;
+      confirmMsg += `• ${deleteCount} item akan DIHAPUS permanen`;
     }
 
     const isConfirmed = await showConfirm(confirmMsg, 'Konfirmasi Perapian Kode');
@@ -311,7 +314,7 @@ export default function DuplicateCodesModal({
               className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>🪄 Beri Kode Baru ke Semua Duplikat (100% Aman)</span>
+              <span>Beri Kode Baru ke Semua Duplikat (100% Aman)</span>
             </button>
 
             <button
@@ -325,8 +328,9 @@ export default function DuplicateCodesModal({
             </button>
           </div>
 
-          <div className="text-xs text-slate-500 font-medium">
-            💡 Baris pertama tiap grup adalah item utama (Primary).
+          <div className="text-xs text-slate-500 font-medium flex items-center gap-1">
+            <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span>Baris pertama tiap grup adalah item utama (Primary).</span>
           </div>
         </div>
 
@@ -408,11 +412,13 @@ export default function DuplicateCodesModal({
                             <td className="py-3 px-4">
                               {isPrimary ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                  🌟 Utama
+                                  <Star className="w-3 h-3 text-emerald-600 fill-emerald-600" />
+                                  <span>Utama</span>
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                  ⚠️ Duplikat #{idx}
+                                  <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                  <span>Duplikat #{idx}</span>
                                 </span>
                               )}
                               <div className="text-[10px] text-slate-400 mt-0.5">
@@ -423,7 +429,7 @@ export default function DuplicateCodesModal({
                             {/* Nama Produk */}
                             <td className="py-3 px-4">
                               <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                                <span>{item.icon || '🧺'}</span>
+                                <Package className="w-3.5 h-3.5 text-teal-700 shrink-0" />
                                 <span>{item.nama}</span>
                               </div>
                               <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
@@ -545,8 +551,9 @@ export default function DuplicateCodesModal({
                                   )}
 
                                   {state.action === 'DELETE' && (
-                                    <div className="text-[11px] text-rose-700 font-medium bg-rose-100/80 px-2 py-0.5 rounded-md inline-block">
-                                      ⚠️ Baris ini akan dihapus dari sheet saat disimpan.
+                                    <div className="text-[11px] text-rose-700 font-medium bg-rose-100/80 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                                      <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                                      <span>Baris ini akan dihapus dari sheet saat disimpan.</span>
                                     </div>
                                   )}
                                 </div>

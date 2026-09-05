@@ -168,8 +168,8 @@ export default function DigitalMemberCard({
       `Halo Kak *${customer.nama || 'Pelanggan'}*!`,
       `Berikut adalah update *Digital Member Loyalty Stamp Card* Anda di *Dua SiSi Laundry*:`,
       ``,
-      `🧺 *Sisi Depan (Kartu 7 KG)*: *${localStamps75}/10 Stempel* ${localStamps75 >= 10 ? '🎉 (SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - localStamps75)} stempel lagi)`}`,
-      `🧺 *Sisi Belakang (Kartu 4 KG)*: *${localStamps45}/10 Stempel* ${localStamps45 >= 10 ? '🎉 (SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - localStamps45)} stempel lagi)`}`,
+      `• *Sisi Depan (Kartu 7 KG)*: *${localStamps75}/10 Stempel* ${localStamps75 >= 10 ? '(SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - localStamps75)} stempel lagi)`}`,
+      `• *Sisi Belakang (Kartu 4 KG)*: *${localStamps45}/10 Stempel* ${localStamps45 >= 10 ? '(SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - localStamps45)} stempel lagi)`}`,
       ``,
       `Kumpulkan 10 stempel penuh untuk mendapatkan *1x Cuci GRATIS*! Tunjukkan pesan atau kartu digital ini saat berkunjung ke outlet.`,
       ``,
@@ -417,7 +417,11 @@ export default function DigitalMemberCard({
                   <g>
                     <circle cx={cx} cy={cy} r="215" fill="rgba(45, 212, 191, 0.08)" stroke="#2DD4BF" strokeWidth="10" strokeDasharray="16 10" />
                     <circle cx={cx} cy={cy} r="185" fill="rgba(4, 30, 32, 0.6)" stroke="rgba(45, 212, 191, 0.3)" strokeWidth="4" />
-                    <text x={cx} y={cy - 24} textAnchor="middle" fill="#5EEAD4" fontSize="46" fontWeight="900">★ ★ ★</text>
+                    <g transform={`translate(${cx}, ${cy - 26})`} fill="#5EEAD4">
+                      <polygon points="0,-12 3.7,-3.7 12,-3.7 5.3,1.8 7.8,10.2 0,4.8 -7.8,10.2 -5.3,1.8 -12,-3.7 -3.7,-3.7" transform="translate(-40, 0)" />
+                      <polygon points="0,-15 4.6,-4.6 15,-4.6 6.6,2.2 9.8,12.7 0,6 -9.8,12.7 -6.6,2.2 -15,-4.6 -4.6,-4.6" transform="translate(0, -2)" />
+                      <polygon points="0,-12 3.7,-3.7 12,-3.7 5.3,1.8 7.8,10.2 0,4.8 -7.8,10.2 -5.3,1.8 -12,-3.7 -3.7,-3.7" transform="translate(40, 0)" />
+                    </g>
                     <text x={cx} y={cy + 38} textAnchor="middle" fill="#FFFFFF" fontSize="68" fontWeight="900" fontFamily="sans-serif">FREE</text>
                     <text x={cx} y={cy + 96} textAnchor="middle" fill="#99F6E4" fontSize="36" fontWeight="800" letterSpacing="2">1x CUCI</text>
                   </g>
@@ -441,9 +445,15 @@ export default function DigitalMemberCard({
                       <circle cx={cx} cy={cy} r="150" fill="#042628" />
                       
                       {/* Stars & Text */}
-                      <text x={cx} y={cy - 80} textAnchor="middle" fill="#5EEAD4" fontSize="40" fontWeight="900">
-                        ★ ★ ★ ★ ★
-                      </text>
+                      <g transform={`translate(${cx}, ${cy - 80})`} fill="#5EEAD4">
+                        {[-56, -28, 0, 28, 56].map((offset, i) => (
+                          <polygon 
+                            key={i} 
+                            points="0,-11 3.4,-3.4 11,-3.4 4.8,1.6 7.2,9.3 0,4.4 -7.2,9.3 -4.8,1.6 -11,-3.4 -3.4,-3.4" 
+                            transform={`translate(${offset}, ${i === 2 ? -3 : 0})`} 
+                          />
+                        ))}
+                      </g>
                       <text x={cx} y={cy - 18} textAnchor="middle" fill="#FFFFFF" fontSize="60" fontWeight="900" fontFamily="sans-serif">
                         GRATIS
                       </text>

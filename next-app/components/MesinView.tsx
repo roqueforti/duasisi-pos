@@ -184,15 +184,30 @@ export default function MesinView({ currentRole }: { currentRole?: UserRole } = 
                       <span>{m.nama}</span>
                     </span>
                     <span
-                      className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                      className={`text-[10px] font-black px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 ${
                         isRunning
                           ? 'badge-glow-teal'
                           : isMaintenance
                           ? 'badge-glow-amber'
-                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                       }`}
                     >
-                      {isRunning ? '⏳ Digunakan' : isMaintenance ? '⚠️ Maintenance' : '🟢 Kosong'}
+                      {isRunning ? (
+                        <>
+                          <Clock className="w-3 h-3 text-teal-600 animate-pulse" />
+                          <span>Digunakan</span>
+                        </>
+                      ) : isMaintenance ? (
+                        <>
+                          <Wrench className="w-3 h-3 text-amber-600" />
+                          <span>Maintenance</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>Tersedia</span>
+                        </>
+                      )}
                     </span>
                   </div>
 

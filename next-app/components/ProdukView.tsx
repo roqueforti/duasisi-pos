@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown, Sparkles, Shirt, Clock, Flame, Star, Layers, Delete, Search, Users, Loader2, CheckCircle, XCircle, CheckSquare, Square, AlertTriangle } from 'lucide-react';
+import { Tag, Plus, RefreshCw, Trash2, Edit3, RotateCcw, X, TagIcon, Gift, Download, Upload, Zap, ArrowUp, ArrowDown, Sparkles, Shirt, Clock, Flame, Star, Layers, Delete, Search, Users, Loader2, CheckCircle, XCircle, CheckSquare, Square, AlertTriangle, WashingMachine } from 'lucide-react';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
@@ -159,7 +159,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const [harga, setHarga] = useState('');
   const [hargaModal, setHargaModal] = useState('');
   const [satuan, setSatuan] = useState('kg');
-  const [icon, setIcon] = useState('🧺');
+  const [icon, setIcon] = useState('Package');
   const [tipe, setTipe] = useState<'SelfService' | 'FullService' | ''>('');
   const [kategoriDropOff, setKategoriDropOff] = useState<string>('Reguler');
   const [idInventory, setIdInventory] = useState<string>('');
@@ -453,7 +453,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
   const handleOpenAdd = () => {
     setEditingId(null);
     setKode('');
-    setNama(''); setHarga(''); setHargaModal(''); setSatuan('paket'); setIcon('🧺'); setTipe(''); setKategori('Self Service'); setKategoriDropOff('Reguler'); setIdInventory('none'); setInventoryDeductionQty('1');
+    setNama(''); setHarga(''); setHargaModal(''); setSatuan('paket'); setIcon('Package'); setTipe(''); setKategori('Self Service'); setKategoriDropOff('Reguler'); setIdInventory('none'); setInventoryDeductionQty('1');
     setBahanBakuList([]);
     setCustomPipelineSteps([]);
     setShowModal(true);
@@ -466,7 +466,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     setHarga(item.harga.toString());
     setHargaModal((item.hargaModal || 0).toString());
     setSatuan(item.satuan || 'kg');
-    setIcon(item.icon || '🧺');
+    setIcon(item.icon || 'Package');
     
     // Sanitize tipe to ensure it matches the dropdown options
     const validTipe = ['SelfService', 'FullService'].includes(item.tipe || '') ? item.tipe : '';
@@ -900,20 +900,20 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
           if (userIcon) return userIcon;
           const n = nama.toLowerCase();
           const k = kategori.toLowerCase();
-          if (n.includes('bed cover') || n.includes('sprei') || n.includes('selimut')) return '🛏️';
-          if (n.includes('sepatu')) return '👟';
-          if (n.includes('karpet') || n.includes('gorden')) return '🧹';
-          if (n.includes('setrika') || n.includes('gosok')) return '👔';
-          if (n.includes('kering') || n.includes('dryer') || n.includes('pengering')) return '♨️';
-          if (n.includes('deterjen') || n.includes('sabun')) return '🧴';
-          if (n.includes('softener') || n.includes('pewangi') || n.includes('parfum')) return '🌸';
-          if (n.includes('plastik') || n.includes('kresek') || n.includes('bag')) return '🛍️';
-          if (n.includes('kopi') || n.includes('teh') || n.includes('minum') || n.includes('air') || n.includes('mineral')) return '🥤';
-          if (n.includes('snack') || n.includes('makan') || n.includes('roti')) return '🍿';
-          if (n.includes('express') || n.includes('kilat') || n.includes('cepat')) return '⚡';
-          if (tipeVal === 'FullService' || k.includes('drop')) return '👕';
-          if (k.includes('add') || k.includes('tambahan')) return '✨';
-          return '🧺';
+          if (n.includes('bed cover') || n.includes('sprei') || n.includes('selimut')) return 'Package';
+          if (n.includes('sepatu')) return 'Tag';
+          if (n.includes('karpet') || n.includes('gorden')) return 'Package';
+          if (n.includes('setrika') || n.includes('gosok')) return 'Sparkles';
+          if (n.includes('kering') || n.includes('dryer') || n.includes('pengering')) return 'Flame';
+          if (n.includes('deterjen') || n.includes('sabun')) return 'Package';
+          if (n.includes('softener') || n.includes('pewangi') || n.includes('parfum')) return 'Sparkles';
+          if (n.includes('plastik') || n.includes('kresek') || n.includes('bag')) return 'ShoppingBag';
+          if (n.includes('kopi') || n.includes('teh') || n.includes('minum') || n.includes('air') || n.includes('mineral')) return 'Coffee';
+          if (n.includes('snack') || n.includes('makan') || n.includes('roti')) return 'Utensils';
+          if (n.includes('express') || n.includes('kilat') || n.includes('cepat')) return 'Flame';
+          if (tipeVal === 'FullService' || k.includes('drop')) return 'Shirt';
+          if (k.includes('add') || k.includes('tambahan')) return 'Sparkles';
+          return 'Package';
         };
 
         const statusRaw = (getCol('Status', 'Aktif', 'status', 'aktif') || 'Aktif').toLowerCase();
@@ -1140,7 +1140,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     if (selectedIds.size === 0) return;
     const ids = Array.from(selectedIds);
     const isConfirmed = await showConfirm(
-      `⚠️ PERINGATAN: Apakah Anda yakin ingin menghapus ${ids.length} layanan terpilih secara permanen? Tindakan ini tidak dapat dibatalkan.`
+      `Apakah Anda yakin ingin menghapus ${ids.length} layanan terpilih secara permanen? Tindakan ini tidak dapat dibatalkan.`
     );
     if (!isConfirmed) return;
 
@@ -1299,9 +1299,9 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs w-4 h-4 flex items-center justify-center rounded-full hover:bg-slate-200 cursor-pointer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 w-4 h-4 flex items-center justify-center rounded-full hover:bg-slate-200 cursor-pointer"
                 >
-                  ✕
+                  <X className="w-3 h-3" />
                 </button>
               )}
             </div>
@@ -1583,14 +1583,15 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                             </span>
                             {(duplicateCodeMap[(item.id || '').trim().toUpperCase()] || 0) > 1 && (
                               <span
-                                className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-0.5 cursor-pointer hover:bg-amber-200 transition"
+                                className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-1 cursor-pointer hover:bg-amber-200 transition"
                                 title="Kode ini terdeteksi kembar/duplikat! Klik tombol Audit Kode untuk merapikannya."
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setShowDuplicateModal(true);
                                 }}
                               >
-                                ⚠️ Duplikat
+                                <AlertTriangle className="w-2.5 h-2.5" />
+                                <span>Duplikat</span>
                               </span>
                             )}
                           </div>
@@ -2392,27 +2393,27 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                         type="button"
                         onClick={() => setCustomPipelineSteps(buildStepsFromNames(['Diterima', 'Dicuci', 'Dikeringkan', 'Siap Diambil']))}
                         className="px-2.5 py-1 text-xs font-bold bg-white hover:bg-teal-50 text-slate-700 hover:text-[#1E4648] border border-slate-200 hover:border-teal-300 rounded-lg transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                        title="Alur: Diterima ➔ Dicuci ➔ Dikeringkan ➔ Siap Diambil"
+                        title="Alur: Diterima → Dicuci → Dikeringkan → Siap Diambil"
                       >
-                        <span>🧺</span>
+                        <WashingMachine className="w-3.5 h-3.5 text-teal-600" />
                         <span>Cuci Kering</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setCustomPipelineSteps(buildStepsFromNames(['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika', 'Dilipat', 'Siap Diambil']))}
                         className="px-2.5 py-1 text-xs font-bold bg-white hover:bg-teal-50 text-slate-700 hover:text-[#1E4648] border border-slate-200 hover:border-teal-300 rounded-lg transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                        title="Alur: Diterima ➔ Dicuci ➔ Dikeringkan ➔ Disetrika ➔ Dilipat ➔ Siap Diambil"
+                        title="Alur: Diterima → Dicuci → Dikeringkan → Disetrika → Dilipat → Siap Diambil"
                       >
-                        <span>👔</span>
+                        <Shirt className="w-3.5 h-3.5 text-indigo-600" />
                         <span>Cuci Komplit</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setCustomPipelineSteps(buildStepsFromNames(['Diterima', 'Disetrika', 'Dilipat', 'Siap Diambil']))}
                         className="px-2.5 py-1 text-xs font-bold bg-white hover:bg-teal-50 text-slate-700 hover:text-[#1E4648] border border-slate-200 hover:border-teal-300 rounded-lg transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                        title="Alur: Diterima ➔ Disetrika ➔ Dilipat ➔ Siap Diambil"
+                        title="Alur: Diterima → Disetrika → Dilipat → Siap Diambil"
                       >
-                        <span>⚡</span>
+                        <Zap className="w-3.5 h-3.5 text-amber-500" />
                         <span>Setrika Saja</span>
                       </button>
                     </div>
@@ -2784,8 +2785,8 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                 </div>
                 <p className="text-[10px] text-slate-500">
                   {targetPelangganPromo === 'MEMBER'
-                    ? '⭐ Hanya nomor pelanggan yang berstatus Member terdaftar yang dapat menggunakan voucher ini saat checkout.'
-                    : '👥 Berlaku bebas untuk Pelanggan Umum maupun Member.'}
+                    ? 'Hanya nomor pelanggan yang berstatus Member terdaftar yang dapat menggunakan voucher ini saat checkout.'
+                    : 'Berlaku bebas untuk Pelanggan Umum maupun Member.'}
                 </p>
               </div>
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserRole } from '@/lib/types';
 import { runBackend, setBackendSession, clearBackendSession } from '@/lib/api';
-import { KeyRound, Loader2, Clock } from 'lucide-react';
+import { KeyRound, Loader2, Clock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface LoginModalProps {
@@ -217,7 +217,7 @@ export default function LoginModal({ onSuccess, initialNotice }: LoginModalProps
               }`}
             >
               <span>Masuk Terminal POS</span>
-              <span>➔</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
 
             {/* Lupa PIN Link */}

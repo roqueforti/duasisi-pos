@@ -49,7 +49,7 @@ const FORMATS = [
 const THEMES = [
   {
     id: 'neo-studio',
-    name: '🎨 Studio Neo-Poster (Teal & Gold)',
+    name: 'Studio Neo-Poster (Teal & Gold)',
     bg: 'bg-[#0c1f21]',
     bgPattern: 'radial-gradient(circle at 50% 0%, rgba(30,70,72,0.8) 0%, rgba(12,31,33,1) 75%)',
     frameBorder: 'border-white/15',
@@ -75,7 +75,7 @@ const THEMES = [
   },
   {
     id: 'fresh-minimal',
-    name: '🌿 Scandinavian Clean (Warm Cream & Teal)',
+    name: 'Scandinavian Clean (Warm Cream & Teal)',
     bg: 'bg-[#F9F7F2]',
     bgPattern: 'radial-gradient(circle at 50% 0%, #FFFFFF 0%, #F4F0E8 85%)',
     frameBorder: 'border-[#1E4648]/20',
@@ -101,7 +101,7 @@ const THEMES = [
   },
   {
     id: 'cyber-dark',
-    name: '⚡ Cyber Express (Obsidian & Electric Cyan)',
+    name: 'Cyber Express (Obsidian & Electric Cyan)',
     bg: 'bg-[#0A0D14]',
     bgPattern: 'radial-gradient(circle at 50% 0%, #151D2A 0%, #080A0F 85%)',
     frameBorder: 'border-cyan-500/30',

@@ -32,7 +32,8 @@ import {
   ArrowRight,
   ExternalLink,
   ChevronRight,
-  Info
+  Info,
+  Lightbulb,
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { runBackend } from '@/lib/api';
@@ -390,7 +391,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
       `- Potongan Lain/Rutin   : Rp ${(item.potonganRutin || item.potongan || 0).toLocaleString('id-ID')}`,
       `-----------------------------------------`,
       `*TOTAL GAJI BERSIH (TAKE HOME PAY):*`,
-      `👉 *Rp ${item.totalGajiBersih.toLocaleString('id-ID')}*`,
+      `*Rp ${item.totalGajiBersih.toLocaleString('id-ID')}*`,
       `-----------------------------------------`,
       `Rekening Tujuan : ${item.bank || 'Tunai'} ${item.noRekening || ''} (${item.namaRekening || item.nama})`,
       `Status Bayar    : *${item.statusPembayaran.toUpperCase()}*`,
@@ -1925,8 +1926,9 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
 
             {/* Modal Bottom Bar */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 pt-4 mt-2">
-              <div className="text-xs text-slate-500">
-                💡 Perubahan tarif langsung mempengaruhi perhitungan slip gaji dan rekapitulasi penggajian.
+              <div className="text-xs text-slate-500 flex items-center gap-1.5">
+                <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>Perubahan tarif langsung mempengaruhi perhitungan slip gaji dan rekapitulasi penggajian.</span>
               </div>
               <button
                 onClick={() => setShowInsentifModal(false)}

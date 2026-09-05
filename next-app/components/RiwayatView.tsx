@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, AlertTriangle, Check, Download, Upload, Calendar, ArrowRight, Coins, Smartphone, CreditCard, Banknote, CheckCircle2, Clock, History, UserCheck, Edit3 } from 'lucide-react';
+import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, AlertTriangle, Check, Download, Upload, Calendar, ArrowRight, Coins, Smartphone, CreditCard, Banknote, CheckCircle2, Clock, History, UserCheck, Edit3, Ban, ClipboardList } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
@@ -454,7 +454,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
       case 'SelfService': return 'Self Service';
       case 'FullService': return 'Drop Off';
       case 'NonLayanan': return 'Non-Layanan / Retail';
-      case 'PendingVoid': return `🛑 Void Pending (${pendingVoidCount})`;
+      case 'PendingVoid': return `Void Pending (${pendingVoidCount})`;
     }
   };
 
@@ -643,7 +643,8 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                     : 'text-rose-700 hover:bg-rose-50'
                 }`}
               >
-                <span>🛑 Void Pending</span>
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Void Pending</span>
                 <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
                   filter === 'PendingVoid' ? 'bg-white text-rose-700' : 'bg-rose-600 text-white'
                 }`}>
@@ -806,8 +807,8 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                 }`}
                 title={`Shift aktif: ${activeShift.namaKasir}`}
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                <span>🟢 Shift Aktif ({activeShift.namaKasir})</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span>Shift Aktif ({activeShift.namaKasir})</span>
               </button>
             )}
 
@@ -827,7 +828,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                   }`}
                 >
                   <option value="" className="text-slate-800 bg-white">
-                    📋 Riwayat Shift Tercatat ({recordedShifts.length} Shift)...
+                    Riwayat Shift Tercatat ({recordedShifts.length} Shift)...
                   </option>
                   {recordedShifts.map((s) => (
                     <option key={s.idShift} value={s.idShift} className="text-slate-800 bg-white">
@@ -843,9 +844,10 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
               <button
                 type="button"
                 onClick={() => setSelectedShiftId('all')}
-                className="px-2.5 py-1 text-[11px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition cursor-pointer"
+                className="px-2.5 py-1 text-[11px] font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition cursor-pointer flex items-center gap-1"
               >
-                ✕ Reset Shift
+                <X className="w-3 h-3" />
+                <span>Reset Shift</span>
               </button>
             )}
           </div>
@@ -873,8 +875,9 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
               <Banknote className="w-4 h-4 text-emerald-300" />
               <span>Total Uang Riil Diterima</span>
             </span>
-            <span className="text-[9px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-black border border-emerald-400/30">
-              NON-VOID ✅
+            <span className="text-[9px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-black border border-emerald-400/30 flex items-center gap-1">
+              <Check className="w-2.5 h-2.5" />
+              NON-VOID
             </span>
           </div>
           <div className="my-2.5">
@@ -887,7 +890,10 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
           </div>
           {voidCountInFilter > 0 ? (
             <div className="text-[10px] text-rose-200 bg-rose-950/40 border border-rose-500/30 px-2 py-1 rounded-xl flex items-center justify-between">
-              <span>🚫 {voidCountInFilter} Nota Void Diabaikan:</span>
+              <span className="flex items-center gap-1">
+                <Ban className="w-3 h-3 text-rose-400" />
+                {voidCountInFilter} Nota Void Diabaikan:
+              </span>
               <span className="font-mono font-bold">-Rp {totalVoidNominal.toLocaleString('id-ID')}</span>
             </div>
           ) : (
@@ -1094,9 +1100,9 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                       {/* 5. Status Pengerjaan (Produksi) */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         {isVoid ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600" />
-                            <span>🚫 Dibatalkan (Void)</span>
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200">
+                            <Ban className="w-3 h-3 text-rose-600" />
+                            <span>Dibatalkan (Void)</span>
                           </span>
                         ) : isDropOff ? (() => {
                           const st = String(tx.status || 'Diterima');
@@ -1154,8 +1160,9 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                       {/* 7. Status Pembayaran */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         {isVoid ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200">
-                            🚫 Tidak Lunas (Void)
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-rose-50 text-rose-700 border-rose-200 inline-flex items-center gap-1">
+                            <Ban className="w-3 h-3 text-rose-600" />
+                            Tidak Lunas (Void)
                           </span>
                         ) : (
                           <span
@@ -1518,8 +1525,8 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
           <div className="bg-white rounded-lg p-5 w-full max-w-lg max-h-[92vh] overflow-y-auto space-y-4 shadow-md">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-[#B5C9C9]/20 border border-[#B5C9C9]200 text-[#1E4648] flex items-center justify-center font-bold text-sm">
-                  📝
+                <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 text-[#1E4648] flex items-center justify-center font-bold text-sm">
+                  <FileText className="w-4 h-4 text-teal-700" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-600">Input Transaksi Manual</h3>

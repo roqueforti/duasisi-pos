@@ -1243,7 +1243,7 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                           className="w-full py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-2xs"
                         >
                           <LocateFixed className={`w-3.5 h-3.5 text-emerald-700 ${gpsLoading ? 'animate-spin' : ''}`} />
-                          <span>{gpsLoading ? 'Mendeteksi Titik GPS...' : '📍 Ambil Titik Koordinat GPS Tablet Saat Ini'}</span>
+                          <span>{gpsLoading ? 'Mendeteksi Titik GPS...' : 'Ambil Titik Koordinat GPS Tablet Saat Ini'}</span>
                         </button>
                       </div>
                     )}
@@ -1290,7 +1290,7 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                           className="w-full py-2.5 px-3 bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-2xs"
                         >
                           <Globe className={`w-3.5 h-3.5 text-sky-700 ${ipLoading ? 'animate-spin' : ''}`} />
-                          <span>{ipLoading ? 'Mendeteksi IP Jaringan...' : '🌐 Ambil & Tambahkan IP Wi-Fi Saat Ini'}</span>
+                          <span>{ipLoading ? 'Mendeteksi IP Jaringan...' : 'Ambil & Tambahkan IP Wi-Fi Saat Ini'}</span>
                         </button>
                       </div>
                     )}
@@ -1511,7 +1511,7 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
                   >
                     <option value="Masuk">Masuk Bertugas</option>
-                    <option value="Libur">🛌 Hari Libur Mingguan (Off Day)</option>
+                    <option value="Libur">Hari Libur Mingguan (Off Day)</option>
                     <option value="Cuti">Cuti / Izin</option>
                     <option value="Tukar Shift">Tukar Shift</option>
                   </select>

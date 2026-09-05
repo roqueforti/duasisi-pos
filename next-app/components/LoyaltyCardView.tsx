@@ -25,7 +25,8 @@ import {
   WashingMachine,
   ShieldCheck,
   RefreshCw,
-  Copy
+  Copy,
+  X
 } from 'lucide-react';
 
 interface LoyaltyCardViewProps {
@@ -424,8 +425,8 @@ export default function LoyaltyCardView({ currentRole }: LoyaltyCardViewProps) {
                   </div>
                   <p className="text-[11px] leading-tight text-white/90 font-medium">
                     {isLegacyClaim 
-                      ? '⚡ Klaim gratis langsung didapat pada stempel ke-10 saat transaksi berlangsung.'
-                      : '🛡️ Kumpulkan 10 stempel penuh dulu, reward baru bisa dipakai di transaksi berikutnya (ke-11).'}
+                      ? 'Klaim gratis langsung didapat pada stempel ke-10 saat transaksi berlangsung.'
+                      : 'Kumpulkan 10 stempel penuh dulu, reward baru bisa dipakai di transaksi berikutnya (ke-11).'}
                   </p>
                 </div>
 
@@ -517,7 +518,7 @@ export default function LoyaltyCardView({ currentRole }: LoyaltyCardViewProps) {
                 onClick={() => setIsModalOpen(false)}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -632,8 +633,9 @@ export default function LoyaltyCardView({ currentRole }: LoyaltyCardViewProps) {
                       className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
                     />
                     <div>
-                      <span className="font-black text-slate-900 block text-xs">
-                        🔵 Kumpulkan 10 Stamp Dulu, Transaksi ke-11 Free (Standar Baru)
+                      <span className="font-black text-slate-900 flex items-center gap-1.5 text-xs">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <span>Kumpulkan 10 Stamp Dulu, Transaksi ke-11 Free (Standar Baru)</span>
                       </span>
                       <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
                         Member menyelesaikan 10 transaksi stempel (bayar normal). Setelah mencapai 10/10 stempel, reward berstatus Siap Klaim dan dapat digunakan pada <strong>transaksi berikutnya (kunjungan ke-11)</strong>.
@@ -658,8 +660,9 @@ export default function LoyaltyCardView({ currentRole }: LoyaltyCardViewProps) {
                       className="mt-0.5 text-teal-600 focus:ring-teal-500"
                     />
                     <div>
-                      <span className="font-black text-slate-900 block text-xs">
-                        🟢 Free Langsung di Stempel ke-10 (Khusus Member Lama)
+                      <span className="font-black text-slate-900 flex items-center gap-1.5 text-xs">
+                        <span className="w-2 h-2 rounded-full bg-teal-500 shrink-0" />
+                        <span>Free Langsung di Stempel ke-10 (Khusus Member Lama)</span>
                       </span>
                       <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
                         Begitu member mencapai stempel ke-10 pada transaksi saat itu, <strong>transaksi ke-10 tersebut langsung gratis</strong> tanpa perlu menunggu kunjungan ke-11.
