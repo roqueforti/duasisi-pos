@@ -1103,23 +1103,32 @@ export async function sbUpdateDropoffStatus(noNota: string | any, newStatus?: st
 // ============================================================
 // MESIN & SHIFT
 // ============================================================
-export async function sbGetMesinList(): Promise<Mesin[]> {
+export async function sbGetMesinList(): Promise<any[]> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
   const { data, error } = await sb.from('mesin').select('*').order('nama', { ascending: true });
   if (error) throw error;
-  return (data || []).map((m: any) => ({
-    id: m.id,
-    nama: m.nama,
-    tipe: m.tipe,
-    status: m.status,
-    sisaWaktuMenit: m.sisa_waktu_menit || 0,
-    noNota: m.no_nota,
-    namaPelanggan: m.nama_pelanggan,
-    layanan: m.layanan,
-    catatan: m.catatan,
-  }));
+  return (data || []).map((m: any) => {
+    const rawStatus = (m.status || '').trim();
+    const isUsed = rawStatus === 'Sedang Jalan' || rawStatus === 'Digunakan';
+    const isMaint = rawStatus === 'Maintenance';
+    const status = isMaint ? 'Maintenance' : (isUsed ? 'Digunakan' : 'Kosong');
+
+    return {
+      id: m.id,
+      nama: m.nama,
+      tipe: m.tipe,
+      status,
+      sisaWaktuMenit: m.sisa_waktu_menit || 0,
+      noNota: m.no_nota || '',
+      namaPelanggan: m.nama_pelanggan || '',
+      layanan: m.layanan || '',
+      catatan: m.catatan || '',
+      waktuMulai: m.waktu_mulai || '',
+      estimasiSelesai: m.estimasi_selesai || '',
+    };
+  });
 }
 
 function getStartOfTodayWIB(): Date {
