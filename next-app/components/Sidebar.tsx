@@ -223,7 +223,7 @@ export default function Sidebar({
     } catch {}
   };
 
-  const renderNavButton = (item: NavItem) => {
+  const renderNavButton = (item: NavItem, isSubmenu: boolean = false) => {
     const IconComp = item.icon;
     const isActive = currentTab === item.id;
     const count = badgeCounts ? (badgeCounts as any)[item.id] || 0 : 0;
@@ -235,10 +235,12 @@ export default function Sidebar({
         key={item.id}
         onClick={() => handleNavClick(item.id, item.requiresShift)}
         title={item.label}
-        className={`w-full text-left flex items-center rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 cursor-pointer tactile-btn ${
+        className={`w-full text-left flex items-center rounded-xl whitespace-nowrap transition-all duration-150 cursor-pointer tactile-btn ${
           isCollapsed 
-            ? 'lg:justify-center lg:px-2 lg:py-2 gap-2.5 px-3 py-2.5' 
-            : 'gap-2.5 px-3 py-2'
+            ? 'lg:justify-center lg:px-2 lg:py-2 gap-2.5 px-3 py-2.5 text-xs font-semibold' 
+            : isSubmenu
+            ? 'gap-2 px-2.5 py-1.5 text-[11.5px]'
+            : 'gap-2.5 px-3 py-2 text-xs font-semibold'
         } ${
           isActive 
             ? 'bg-gradient-to-r from-[#042f2e] to-[#115e59] text-white font-extrabold shadow-md border border-teal-500/30' 
@@ -246,18 +248,18 @@ export default function Sidebar({
             ? 'bg-teal-50/80 border border-teal-200 text-[#042f2e] font-extrabold shadow-xs'
             : isLocked
             ? 'text-slate-400 hover:bg-slate-50'
-            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            : 'text-slate-600 hover:bg-slate-100/90 hover:text-slate-900'
         }`}
       >
         <div className="relative shrink-0">
-          <IconComp className={`w-4 h-4 transition-colors ${isActive ? 'text-teal-300' : isShiftNotice ? 'text-teal-700' : isLocked ? 'text-slate-300' : 'text-slate-400 group-hover:text-slate-600'}`} />
+          <IconComp className={`transition-colors ${isSubmenu && !isCollapsed ? 'w-3.5 h-3.5' : 'w-4 h-4'} ${isActive ? 'text-teal-300' : isShiftNotice ? 'text-teal-700' : isLocked ? 'text-slate-300' : 'text-slate-400 group-hover:text-slate-600'}`} />
           {isCollapsed && count > 0 && (
             <span className="hidden lg:block absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
           )}
         </div>
 
         {/* Label Text */}
-        <span className={`truncate ${isCollapsed ? 'lg:hidden' : 'block'} ${isLocked ? 'text-slate-400' : ''}`}>
+        <span className={`truncate ${isCollapsed ? 'lg:hidden' : 'block'} ${isLocked ? 'text-slate-400' : ''} ${isActive ? 'font-bold' : isSubmenu ? 'font-medium' : 'font-semibold'}`}>
           {item.label}
         </span>
 
@@ -453,43 +455,57 @@ export default function Sidebar({
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.id)}
+                  title={`${group.groupName} (${isOpen ? 'Klik untuk tutup modul' : 'Klik untuk buka modul'})`}
                   className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition-all duration-150 select-none tactile-btn cursor-pointer ${
                     isCollapsed ? 'lg:hidden' : 'flex'
                   } ${
                     hasActiveItem 
-                      ? 'bg-teal-50/80 text-teal-950 font-bold border border-teal-200/70 shadow-2xs' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                      ? 'bg-teal-50/90 text-[#042f2e] font-extrabold border border-teal-300/80 shadow-2xs' 
+                      : 'bg-slate-100/80 hover:bg-slate-200/70 text-slate-700 hover:text-slate-900 border border-slate-200/80'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
-                      hasActiveItem ? 'bg-[#1E4648] text-white shadow-2xs' : 'bg-slate-100 text-slate-500'
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                      hasActiveItem 
+                        ? 'bg-[#1E4648] text-teal-100 shadow-2xs' 
+                        : 'bg-slate-200/90 text-slate-600'
                     }`}>
-                      <group.icon className="w-3.5 h-3.5" />
+                      <group.icon className="w-3 h-3" />
                     </div>
                     <span className="text-xs font-bold tracking-tight truncate">
                       {group.groupName}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {/* If collapsed and has notifications inside, alert user with red badge */}
                     {!isOpen && groupAlertCount > 0 && (
                       <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-500 text-white animate-pulse">
                         {groupAlertCount > 99 ? '99+' : groupAlertCount}
                       </span>
                     )}
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                      isOpen ? 'rotate-180 text-teal-700' : 'text-slate-400'
-                    }`} />
+                    {/* Dedicated tactile toggle pill */}
+                    <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
+                      isOpen
+                        ? 'bg-teal-700 text-white border-teal-700 shadow-2xs'
+                        : 'bg-white border-slate-200/90 text-slate-500 shadow-2xs'
+                    }`}>
+                      <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${
+                        isOpen ? 'rotate-180' : ''
+                      }`} />
+                    </div>
                   </div>
                 </button>
 
-                {/* Submenu Items */}
-                <div className={`space-y-1 ${
-                  isCollapsed ? 'lg:block' : isOpen ? 'block' : 'hidden'
+                {/* Submenu Items with Tree Line Indentation */}
+                <div className={`${
+                  isCollapsed 
+                    ? 'lg:block space-y-1' 
+                    : isOpen 
+                    ? `block ml-3 pl-2.5 my-1 space-y-0.5 border-l-2 ${hasActiveItem ? 'border-teal-300/80' : 'border-slate-200/80'}`
+                    : 'hidden'
                 }`}>
-                  {visibleItems.map(item => renderNavButton(item))}
+                  {visibleItems.map(item => renderNavButton(item, true))}
                 </div>
               </div>
             );
