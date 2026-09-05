@@ -1415,10 +1415,12 @@ export async function sbGetTransaksiList(limitOrFilter: number | string = 100): 
 
   if (typeof limitOrFilter === 'number' && limitOrFilter > 0) {
     query = query.limit(limitOrFilter);
-  } else if (limitOrFilter && limitOrFilter !== 'Semua' && !isNaN(Number(limitOrFilter))) {
+  } else if (limitOrFilter === 'Semua' || limitOrFilter === 'ALL' || limitOrFilter === 'all') {
+    query = query.limit(2000);
+  } else if (limitOrFilter && !isNaN(Number(limitOrFilter))) {
     query = query.limit(Number(limitOrFilter));
   } else {
-    query = query.limit(200);
+    query = query.limit(500);
   }
 
   const { data: trxList, error } = await query;
@@ -1428,6 +1430,7 @@ export async function sbGetTransaksiList(limitOrFilter: number | string = 100): 
   return (trxList || []).map((t: any) => ({
     noNota: t.no_nota,
     tanggal: formatDateTime(t.tanggal),
+    rawTanggal: t.tanggal,
     namaPelanggan: t.nama_pelanggan,
     noHp: t.no_hp,
     alamat: t.alamat,

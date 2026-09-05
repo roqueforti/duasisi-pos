@@ -108,6 +108,7 @@ export interface TransaksiItem {
 export interface Transaksi {
   noNota: string;
   tanggal: string;
+  rawTanggal?: string;
   namaPelanggan: string;
   noHp?: string;
   isMember?: boolean;
