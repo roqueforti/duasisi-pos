@@ -41,26 +41,29 @@ interface NavbarProps {
 }
 
 const tabTitles: Record<string, string> = {
-  transaksi: 'Point of Sale (POS Kasir)',
+  dashboard: 'Dashboard Utama Outlet',
+  transaksi: 'POS Kasir (Point of Sale)',
+  pesanan: 'Antrean Pesanan Drop-off',
+  riwayat_dropoff: 'Pesanan Selesai (Riwayat Drop-off)',
+  mesin: 'Monitoring & Status Mesin',
   riwayat: 'Riwayat Transaksi',
-  pesanan: 'Manajemen Pesanan Drop-off',
-  riwayat_dropoff: 'Riwayat Drop-off (Sudah Diambil)',
-  mesin: 'Daftar & Status Mesin Operasional',
-  absensi: 'Presensi & Cuti',
+  pelanggan: 'Data Pelanggan & Member',
   shift_saya: 'Shift Saya & Kas Laci',
-  pengeluaran: 'Pengeluaran & Belanja Shift',
-  riwayat_shift: 'Riwayat Shift & Rekonsiliasi',
-  inventory: 'Stok Inventory Bahan',
-  pegawai: 'Data Pegawai',
-  payroll: 'Payroll & Penggajian',
-  produk: 'Manajemen Layanan & Produk',
-  kategori: 'Manajemen Kategori',
-  langkah: 'Pipeline Langkah Pengerjaan',
-  shift: 'Master Shift & Config',
+  pengeluaran: 'Kas & Pengeluaran Operasional',
+  riwayat_shift: 'Riwayat Shift Kasir',
+  inventory: 'Stok Bahan & Inventory (DSS)',
+  produk: 'Daftar Layanan & Produk',
+  kategori: 'Kategori Layanan',
+  langkah: 'Alur Pengerjaan (Pipeline SOP)',
+  loyalty_card: 'Program Kartu Loyalty',
+  menu: 'Katalog & Menu Digital',
+  absensi: 'Presensi & Cuti Karyawan',
+  pegawai: 'Data Karyawan & Staf',
+  shift: 'Master Jadwal Shift',
+  payroll: 'Gaji & Payroll Karyawan',
   rekap: 'Laporan Rekap & Analytics',
-  menu: 'Menu Digital & Desain Poster',
-  keamanan: 'Manajemen Keamanan & PIN',
-  dashboard: 'Dashboard Utama Outlet'
+  keamanan: 'Keamanan & Hak Akses PIN',
+  tampilan: 'Pengaturan Tampilan & Font'
 };
 
 
