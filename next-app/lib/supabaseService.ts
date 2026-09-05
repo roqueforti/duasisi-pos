@@ -530,6 +530,115 @@ export async function sbSimpanPelangganJikaBaru(nama: string, noHp: string, alam
   return { success: true, data };
 }
 
+export async function sbCreatePipelineStepsForOrder(sb: any, noNota: string, items: any[], petugas = 'Kasir') {
+  let customStepsToUse: any[] | null = null;
+  try {
+    const { data: pipeSetting } = await sb
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'layanan_pipeline_steps')
+      .maybeSingle();
+    const pipeMap = (pipeSetting?.value && typeof pipeSetting.value === 'object') ? pipeSetting.value : {};
+
+    for (const it of items) {
+      if (it.layanan && pipeMap[it.layanan] && pipeMap[it.layanan].length > 0) {
+        customStepsToUse = pipeMap[it.layanan];
+        break;
+      }
+    }
+    if (!customStepsToUse) {
+      const { data: allLay } = await sb.from('layanan').select('id, nama');
+      for (const it of items) {
+        const itName = String(it.layanan || '').trim().toLowerCase();
+        const match = allLay?.find((l: any) =>
+          String(l.nama || '').trim().toLowerCase() === itName ||
+          String(l.id || '').trim().toLowerCase() === itName
+        );
+        if (match && pipeMap[match.id] && pipeMap[match.id].length > 0) {
+          customStepsToUse = pipeMap[match.id];
+          break;
+        }
+      }
+    }
+  } catch {}
+
+  // Fallback deduksi cerdas berbasis nama item layanan
+  if (!customStepsToUse || customStepsToUse.length === 0) {
+    const allNames = items.map((i: any) => String(i.layanan || '').toLowerCase()).join(' ');
+    if (allNames.includes('cuci kering') || (allNames.includes('kering') && !allNames.includes('setrika') && !allNames.includes('komplit'))) {
+      customStepsToUse = [
+        { nama: 'Diterima', icon: 'Inbox' },
+        { nama: 'Dicuci', icon: 'Droplets' },
+        { nama: 'Dikeringkan', icon: 'Wind' },
+        { nama: 'Siap Diambil', icon: 'CheckCircle' },
+      ];
+    } else if (allNames.includes('setrika') && !allNames.includes('cuci')) {
+      customStepsToUse = [
+        { nama: 'Diterima', icon: 'Inbox' },
+        { nama: 'Disetrika / Packing', icon: 'Sparkles' },
+        { nama: 'Siap Diambil', icon: 'CheckCircle' },
+      ];
+    } else if (allNames.includes('lipat') && !allNames.includes('setrika')) {
+      customStepsToUse = [
+        { nama: 'Diterima', icon: 'Inbox' },
+        { nama: 'Dicuci', icon: 'Droplets' },
+        { nama: 'Dikeringkan', icon: 'Wind' },
+        { nama: 'Dilipat / Packing', icon: 'Package' },
+        { nama: 'Siap Diambil', icon: 'CheckCircle' },
+      ];
+    } else {
+      customStepsToUse = [
+        { nama: 'Diterima', icon: 'Inbox' },
+        { nama: 'Dicuci', icon: 'Droplets' },
+        { nama: 'Dikeringkan', icon: 'Wind' },
+        { nama: 'Disetrika / Packing', icon: 'Sparkles' },
+        { nama: 'Siap Diambil', icon: 'CheckCircle' },
+      ];
+    }
+  }
+
+  const firstStepName = String(customStepsToUse[0]?.nama || '').trim().toLowerCase();
+  const startsWithDiterima = firstStepName.includes('terima');
+
+  const stepsToInsert = customStepsToUse.map((cs, idx) => {
+    let status = 'Pending';
+    let waktu_mulai = null;
+    let waktu_selesai = null;
+
+    if (startsWithDiterima) {
+      if (idx === 0) {
+        status = 'Selesai';
+        waktu_selesai = new Date().toISOString();
+      } else if (idx === 1) {
+        status = 'Aktif';
+        waktu_mulai = new Date().toISOString();
+      }
+    } else {
+      if (idx === 0) {
+        status = 'Aktif';
+        waktu_mulai = new Date().toISOString();
+      }
+    }
+
+    return {
+      no_nota: noNota,
+      step: idx + 1,
+      nama_step: cs.nama || `Langkah ${idx + 1}`,
+      status,
+      assigned_staff: (startsWithDiterima && idx === 0) ? (petugas || 'Kasir') : null,
+      waktu_selesai,
+      waktu_mulai,
+    };
+  });
+
+  try {
+    await sb.from('pipeline_steps').delete().eq('no_nota', noNota);
+    await sb.from('pipeline_steps').insert(stepsToInsert);
+  } catch (e) {
+    console.error('[sbCreatePipelineStepsForOrder] Error insert pipeline steps:', e);
+  }
+}
+
 // ============================================================
 // TRANSAKSI & CHECKOUT
 // ============================================================
@@ -646,6 +755,9 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
       payload: normalizedPayload,
     });
     if (!rpcErr && rpcData) {
+      if (tipe === 'FullService' || tipe === 'DropOff' || tipe === 'Drop Off') {
+        await sbCreatePipelineStepsForOrder(sb, noNota, normalizedPayload.items, petugas);
+      }
       return {
         success: true,
         noNota,
@@ -744,91 +856,9 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
     }
   }
 
-  // Create pipeline for FullService
-  if (tipe === 'FullService') {
-    let customStepsToUse: any[] | null = null;
-    try {
-      const { data: pipeSetting } = await sb
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'layanan_pipeline_steps')
-        .maybeSingle();
-      const pipeMap = (pipeSetting?.value && typeof pipeSetting.value === 'object') ? pipeSetting.value : {};
-
-      for (const it of normalizedPayload.items) {
-        if (it.layanan && pipeMap[it.layanan] && pipeMap[it.layanan].length > 0) {
-          customStepsToUse = pipeMap[it.layanan];
-          break;
-        }
-      }
-      if (!customStepsToUse) {
-        const { data: allLay } = await sb.from('layanan').select('id, nama');
-        for (const it of normalizedPayload.items) {
-          const itName = String(it.layanan || '').trim().toLowerCase();
-          const match = allLay?.find(l =>
-            String(l.nama || '').trim().toLowerCase() === itName ||
-            String(l.id || '').trim().toLowerCase() === itName
-          );
-          if (match && pipeMap[match.id] && pipeMap[match.id].length > 0) {
-            customStepsToUse = pipeMap[match.id];
-            break;
-          }
-        }
-      }
-    } catch {}
-
-    const defaultSteps = [
-      { no_nota: noNota, step: 1, nama_step: 'Diterima', status: 'Selesai', waktu_selesai: new Date().toISOString() },
-      { no_nota: noNota, step: 2, nama_step: 'Dicuci', status: 'Aktif', waktu_mulai: new Date().toISOString() },
-      { no_nota: noNota, step: 3, nama_step: 'Dikeringkan', status: 'Pending' },
-      { no_nota: noNota, step: 4, nama_step: 'Disetrika / Packing', status: 'Pending' },
-      { no_nota: noNota, step: 5, nama_step: 'Siap Diambil', status: 'Pending' },
-    ];
-
-    let stepsToInsert: any[] = defaultSteps;
-    if (Array.isArray(customStepsToUse) && customStepsToUse.length > 0) {
-      const firstStepName = String(customStepsToUse[0]?.nama || '').trim().toLowerCase();
-      const startsWithDiterima = firstStepName.includes('terima');
-
-      stepsToInsert = customStepsToUse.map((cs, idx) => {
-        let status = 'Pending';
-        let waktu_mulai = null;
-        let waktu_selesai = null;
-
-        if (startsWithDiterima) {
-          // Jika langkah 1 adalah Diterima, langsung Selesai saat nota dibuat dan langkah 2 menjadi Aktif
-          if (idx === 0) {
-            status = 'Selesai';
-            waktu_selesai = new Date().toISOString();
-          } else if (idx === 1) {
-            status = 'Aktif';
-            waktu_mulai = new Date().toISOString();
-          }
-        } else {
-          // Jika langkah 1 langsung proses kerja (cth Dicuci), langkah 1 menjadi Aktif
-          if (idx === 0) {
-            status = 'Aktif';
-            waktu_mulai = new Date().toISOString();
-          }
-        }
-
-        return {
-          no_nota: noNota,
-          step: idx + 1,
-          nama_step: cs.nama || `Langkah ${idx + 1}`,
-          status,
-          assigned_staff: (startsWithDiterima && idx === 0) ? (petugas || 'Kasir') : null,
-          waktu_selesai,
-          waktu_mulai,
-        };
-      });
-    }
-
-    try {
-      await sb.from('pipeline_steps').insert(stepsToInsert);
-    } catch (e) {
-      console.error('Error insert pipeline steps:', e);
-    }
+  // Create pipeline for FullService / DropOff
+  if (tipe === 'FullService' || tipe === 'DropOff' || tipe === 'Drop Off') {
+    await sbCreatePipelineStepsForOrder(sb, noNota, normalizedPayload.items, petugas);
   }
 
   try {
@@ -2102,7 +2132,7 @@ export async function sbGetTransaksiByPipeline(statusFilter = 'Semua'): Promise<
       transaksi_items (*),
       pipeline_steps (*)
     `)
-    .eq('tipe', 'FullService')
+    .in('tipe', ['FullService', 'DropOff', 'Drop Off'])
     .order('tanggal', { ascending: false });
 
   if (statusFilter && statusFilter !== 'Semua') {
@@ -2114,48 +2144,177 @@ export async function sbGetTransaksiByPipeline(statusFilter = 'Semua'): Promise<
   const { data, error } = await query.limit(200);
   if (error) return [];
 
-  return (data || []).map((t: any) => ({
-    noNota: t.no_nota,
-    tanggal: t.tanggal,
-    namaPelanggan: t.nama_pelanggan,
-    noHp: t.no_hp,
-    alamat: t.alamat,
-    isMember: t.is_member,
-    poinEarned: t.poin_earned,
-    petugas: t.petugas,
-    tipe: t.tipe,
-    tingkatLayanan: t.tingkat_layanan,
-    subtotal: Number(t.subtotal) || 0,
-    diskon: Number(t.diskon) || 0,
-    diskonKode: t.diskon_kode,
-    voucher: t.voucher,
-    total: Number(t.total) || 0,
-    nominalDP: Number(t.nominal_dp) || 0,
-    sisaTagihan: Number(t.sisa_tagihan) || 0,
-    metodeBayar: t.metode_bayar,
-    statusPembayaran: t.status_pembayaran,
-    referensiPembayaran: t.referensi_pembayaran,
-    status: t.status,
-    catatan: t.catatan,
-    estimasiSelesai: t.estimasi_selesai,
-    items: (t.transaksi_items || []).map((it: any) => ({
-      layanan: it.layanan,
-      qty: Number(it.qty) || 1,
-      hargaSatuan: Number(it.harga_satuan) || 0,
-      subtotal: Number(it.subtotal) || 0,
-    })),
-    pipeline: (t.pipeline_steps || []).sort((a: any, b: any) => (a.step || 0) - (b.step || 0)).map((p: any) => ({
-      id: p.id,
-      noNota: p.no_nota,
-      step: p.step,
-      namaStep: p.nama_step,
-      status: p.status,
-      assignedStaff: p.assigned_staff,
-      mesinId: p.mesin_id,
-      waktuMulai: p.waktu_mulai,
-      waktuSelesai: p.waktu_selesai,
-    })),
-  }));
+  // Ambil data custom pipeline steps per layanan dari app_settings
+  let pipeMap: Record<string, any[]> = {};
+  let allLay: any[] = [];
+  try {
+    const { data: pipeSetting } = await sb
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'layanan_pipeline_steps')
+      .maybeSingle();
+    if (pipeSetting?.value && typeof pipeSetting.value === 'object') {
+      pipeMap = pipeSetting.value;
+    }
+    const { data: layData } = await sb.from('layanan').select('id, nama');
+    if (Array.isArray(layData)) allLay = layData;
+  } catch {}
+
+  return (data || []).map((t: any) => {
+    let rawPipeline: any[] = (t.pipeline_steps || [])
+      .sort((a: any, b: any) => (a.step || 0) - (b.step || 0))
+      .map((p: any) => ({
+        id: p.id,
+        noNota: p.no_nota,
+        step: p.step,
+        namaStep: p.nama_step,
+        status: p.status,
+        assignedStaff: p.assigned_staff,
+        mesinId: p.mesin_id,
+        waktuMulai: p.waktu_mulai,
+        waktuSelesai: p.waktu_selesai,
+      }));
+
+    // Jika belum ada pipeline_steps di database, bangun alur dinamis sesuai konfigurasi aktif layanan
+    if (rawPipeline.length === 0) {
+      const items = t.transaksi_items || [];
+      let customSteps: any[] | null = null;
+      for (const it of items) {
+        if (it.layanan && pipeMap[it.layanan] && pipeMap[it.layanan].length > 0) {
+          customSteps = pipeMap[it.layanan];
+          break;
+        }
+      }
+      if (!customSteps) {
+        for (const it of items) {
+          const itName = String(it.layanan || '').trim().toLowerCase();
+          const match = allLay.find((l: any) =>
+            String(l.nama || '').trim().toLowerCase() === itName ||
+            String(l.id || '').trim().toLowerCase() === itName
+          );
+          if (match && pipeMap[match.id] && pipeMap[match.id].length > 0) {
+            customSteps = pipeMap[match.id];
+            break;
+          }
+        }
+      }
+
+      const txStatus = String(t.status || 'Diterima').toLowerCase().trim();
+
+      if (Array.isArray(customSteps) && customSteps.length > 0) {
+        const targetStepIdx = (() => {
+          if (txStatus === 'selesai' || txStatus.includes('diambil') || txStatus.includes('siap')) {
+            return customSteps.length - 1;
+          }
+          const idx = customSteps.findIndex((cs: any) => String(cs.nama || '').toLowerCase() === txStatus);
+          if (idx >= 0) return idx;
+          if (txStatus.includes('cuci')) return customSteps.findIndex((cs: any) => String(cs.nama || '').toLowerCase().includes('cuci'));
+          if (txStatus.includes('kering')) return customSteps.findIndex((cs: any) => String(cs.nama || '').toLowerCase().includes('kering'));
+          if (txStatus.includes('setrika')) return customSteps.findIndex((cs: any) => String(cs.nama || '').toLowerCase().includes('setrika'));
+          if (txStatus.includes('lipat')) return customSteps.findIndex((cs: any) => String(cs.nama || '').toLowerCase().includes('lipat'));
+          return 0;
+        })();
+
+        rawPipeline = customSteps.map((cs: any, idx: number) => {
+          let st = 'Pending';
+          if (txStatus === 'selesai') {
+            st = 'Selesai';
+          } else if (idx < targetStepIdx) {
+            st = 'Selesai';
+          } else if (idx === targetStepIdx) {
+            st = 'Aktif';
+          }
+          return {
+            id: `virt-${t.no_nota}-${idx + 1}`,
+            noNota: t.no_nota,
+            step: idx + 1,
+            namaStep: cs.nama || `Langkah ${idx + 1}`,
+            status: st,
+            assignedStaff: idx <= targetStepIdx ? (t.petugas || 'Kasir') : null,
+            waktuMulai: idx <= targetStepIdx ? t.tanggal : undefined,
+            waktuSelesai: idx < targetStepIdx ? t.tanggal : undefined,
+          };
+        });
+      } else {
+        const allItemNames = items.map((i: any) => String(i.layanan || '').toLowerCase()).join(' ');
+        let defaultStepNames = ['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika / Packing', 'Siap Diambil'];
+        if (allItemNames.includes('cuci kering') || (allItemNames.includes('kering') && !allItemNames.includes('setrika') && !allItemNames.includes('komplit'))) {
+          defaultStepNames = ['Diterima', 'Dicuci', 'Dikeringkan', 'Siap Diambil'];
+        } else if (allItemNames.includes('setrika') && !allItemNames.includes('cuci')) {
+          defaultStepNames = ['Diterima', 'Disetrika / Packing', 'Siap Diambil'];
+        } else if (allItemNames.includes('lipat') && !allItemNames.includes('setrika')) {
+          defaultStepNames = ['Diterima', 'Dicuci', 'Dikeringkan', 'Dilipat / Packing', 'Siap Diambil'];
+        }
+
+        const targetStepIdx = (() => {
+          if (txStatus === 'selesai' || txStatus.includes('diambil') || txStatus.includes('siap')) {
+            return defaultStepNames.length - 1;
+          }
+          const idx = defaultStepNames.findIndex((name) => name.toLowerCase().includes(txStatus));
+          if (idx >= 0) return idx;
+          if (txStatus.includes('cuci')) return defaultStepNames.findIndex(n => n.toLowerCase().includes('cuci'));
+          if (txStatus.includes('kering')) return defaultStepNames.findIndex(n => n.toLowerCase().includes('kering'));
+          if (txStatus.includes('setrika')) return defaultStepNames.findIndex(n => n.toLowerCase().includes('setrika'));
+          if (txStatus.includes('lipat')) return defaultStepNames.findIndex(n => n.toLowerCase().includes('lipat'));
+          return 0;
+        })();
+
+        rawPipeline = defaultStepNames.map((name, idx) => {
+          let st = 'Pending';
+          if (txStatus === 'selesai') {
+            st = 'Selesai';
+          } else if (idx < targetStepIdx) {
+            st = 'Selesai';
+          } else if (idx === targetStepIdx) {
+            st = 'Aktif';
+          }
+          return {
+            id: `virt-${t.no_nota}-${idx + 1}`,
+            noNota: t.no_nota,
+            step: idx + 1,
+            namaStep: name,
+            status: st,
+            assignedStaff: idx <= targetStepIdx ? (t.petugas || 'Kasir') : null,
+            waktuMulai: idx <= targetStepIdx ? t.tanggal : undefined,
+            waktuSelesai: idx < targetStepIdx ? t.tanggal : undefined,
+          };
+        });
+      }
+    }
+
+    return {
+      noNota: t.no_nota,
+      tanggal: t.tanggal,
+      namaPelanggan: t.nama_pelanggan,
+      noHp: t.no_hp,
+      alamat: t.alamat,
+      isMember: t.is_member,
+      poinEarned: t.poin_earned,
+      petugas: t.petugas,
+      tipe: t.tipe,
+      tingkatLayanan: t.tingkat_layanan,
+      subtotal: Number(t.subtotal) || 0,
+      diskon: Number(t.diskon) || 0,
+      diskonKode: t.diskon_kode,
+      voucher: t.voucher,
+      total: Number(t.total) || 0,
+      nominalDP: Number(t.nominal_dp) || 0,
+      sisaTagihan: Number(t.sisa_tagihan) || 0,
+      metodeBayar: t.metode_bayar,
+      statusPembayaran: t.status_pembayaran,
+      referensiPembayaran: t.referensi_pembayaran,
+      status: t.status,
+      catatan: t.catatan,
+      estimasiSelesai: t.estimasi_selesai,
+      items: (t.transaksi_items || []).map((it: any) => ({
+        layanan: it.layanan,
+        qty: Number(it.qty) || 1,
+        hargaSatuan: Number(it.harga_satuan) || 0,
+        subtotal: Number(it.subtotal) || 0,
+      })),
+      pipeline: rawPipeline,
+    };
+  });
 }
 
 // ============================================================

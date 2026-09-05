@@ -348,26 +348,124 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
     return kanbanColumns;
   }, [kanbanColumns, filterTab]);
 
-  // Determine the next step tailored specifically to each order's pipeline
+  // Fallback and effective pipeline steps generation strictly tailored per service
+  const getEffectivePipelineSteps = useCallback((order: Transaksi): PipelineStep[] => {
+    if (Array.isArray(order.pipeline) && order.pipeline.length > 0) {
+      return [...order.pipeline].sort((a, b) => (a.step || 0) - (b.step || 0));
+    }
+
+    let customSteps: any[] = [];
+    for (const item of order.items || []) {
+      const itemLayLower = String(item.layanan || '').trim().toLowerCase();
+      const lay = layananList.find(l => 
+        (l.nama || '').trim().toLowerCase() === itemLayLower ||
+        (l.id || '').trim().toLowerCase() === itemLayLower
+      );
+      if (lay && Array.isArray(lay.pipelineSteps) && lay.pipelineSteps.length > 0) {
+        customSteps = lay.pipelineSteps;
+        break;
+      }
+    }
+
+    if (customSteps.length === 0) {
+      const allItemNames = (order.items || []).map((i: any) => String(i.layanan || '').toLowerCase()).join(' ');
+      if (allItemNames.includes('cuci kering') || (allItemNames.includes('kering') && !allItemNames.includes('setrika') && !allItemNames.includes('komplit'))) {
+        customSteps = [
+          { nama: 'Diterima', icon: 'Inbox' },
+          { nama: 'Dicuci', icon: 'Droplets' },
+          { nama: 'Dikeringkan', icon: 'Wind' },
+          { nama: 'Siap Diambil', icon: 'CheckCircle' },
+        ];
+      } else if (allItemNames.includes('setrika') && !allItemNames.includes('cuci')) {
+        customSteps = [
+          { nama: 'Diterima', icon: 'Inbox' },
+          { nama: 'Disetrika / Packing', icon: 'Sparkles' },
+          { nama: 'Siap Diambil', icon: 'CheckCircle' },
+        ];
+      } else if (allItemNames.includes('lipat') && !allItemNames.includes('setrika')) {
+        customSteps = [
+          { nama: 'Diterima', icon: 'Inbox' },
+          { nama: 'Dicuci', icon: 'Droplets' },
+          { nama: 'Dikeringkan', icon: 'Wind' },
+          { nama: 'Dilipat / Packing', icon: 'Package' },
+          { nama: 'Siap Diambil', icon: 'CheckCircle' },
+        ];
+      }
+    }
+
+    const stepNames = customSteps.length > 0
+      ? customSteps.map(s => s.nama)
+      : ['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika / Packing', 'Siap Diambil'];
+
+    const curStatus = (order.status || '').toLowerCase().trim();
+    const isOrderCompleted = curStatus === 'selesai';
+    const waktuMasuk = order.tanggal || '';
+    const waktuSelesai = (order as any).updated_at || order.tanggal || '';
+
+    const targetStepIdx = (() => {
+      if (isOrderCompleted || curStatus.includes('diambil') || curStatus.includes('siap')) {
+        return stepNames.length - 1;
+      }
+      const idx = stepNames.findIndex(n => n.toLowerCase().includes(curStatus));
+      if (idx >= 0) return idx;
+      if (curStatus.includes('cuci')) return stepNames.findIndex(n => n.toLowerCase().includes('cuci'));
+      if (curStatus.includes('kering')) return stepNames.findIndex(n => n.toLowerCase().includes('kering'));
+      if (curStatus.includes('setrika')) return stepNames.findIndex(n => n.toLowerCase().includes('setrika'));
+      if (curStatus.includes('lipat')) return stepNames.findIndex(n => n.toLowerCase().includes('lipat'));
+      return 0;
+    })();
+
+    return stepNames.map((nama, idx) => {
+      const isFirst = idx === 0;
+      const isLast = idx === stepNames.length - 1;
+      const stepStatus: 'Pending' | 'Aktif' | 'Selesai' = isOrderCompleted 
+        ? 'Selesai' 
+        : (idx < targetStepIdx ? 'Selesai' : (idx === targetStepIdx ? 'Aktif' : 'Pending'));
+
+      let staff = order.petugas || 'Kasir';
+      if (!isOrderCompleted && !isFirst) {
+        staff = idx === targetStepIdx ? (order.petugas || 'Staff Outlet') : '-';
+      }
+
+      return {
+        id: `fallback-${order.noNota}-${idx}`,
+        noNota: order.noNota,
+        step: idx + 1,
+        namaStep: nama,
+        status: stepStatus,
+        assignedStaff: staff,
+        waktuMulai: idx <= targetStepIdx ? waktuMasuk : undefined,
+        waktuSelesai: idx < targetStepIdx ? waktuMasuk : (isOrderCompleted && isLast ? waktuSelesai : undefined),
+      };
+    });
+  }, [layananList]);
+
+  // Determine the next step strictly tailored to each order's active pipeline
   const getNextStatusForOrder = useCallback((order: Transaksi): string | null => {
     const curStatus = (order.status || 'Diterima').trim().toLowerCase();
 
-    if (Array.isArray(order.pipeline) && order.pipeline.length > 0) {
-      // Physical processing steps in pipeline (e.g. Dicuci, Dikeringkan, Disetrika, Dilipat, Siap Diambil)
-      const realSteps = order.pipeline.filter((p) => {
+    // Use order's effective pipeline steps (guaranteed customized to service)
+    const effectiveSteps = getEffectivePipelineSteps(order);
+
+    if (Array.isArray(effectiveSteps) && effectiveSteps.length > 0) {
+      // Physical processing steps in pipeline (e.g. Dicuci, Dikeringkan, Siap Diambil)
+      const realSteps = effectiveSteps.filter((p) => {
         const stepName = (p.namaStep || '').trim().toLowerCase();
         return stepName !== 'pesanan diterima' && stepName !== 'diterima';
       });
 
-      // 1. If the order is newly received (Diterima / Pesanan Diterima)
-      if (curStatus === 'diterima' || curStatus === 'pesanan diterima') {
-        return realSteps.length > 0 ? realSteps[0].namaStep : (kanbanColumns[1] || 'Dicuci');
+      // 1. If newly received (Diterima / Pesanan Diterima)
+      if (curStatus === 'diterima' || curStatus === 'pesanan diterima' || curStatus === 'pending' || curStatus === 'baru') {
+        return realSteps.length > 0 ? realSteps[0].namaStep : 'Dicuci';
       }
 
-      // 2. If it's already in one of the real steps
-      const activeIdx = realSteps.findIndex(
-        (p) => p.namaStep.toLowerCase() === curStatus || p.status === 'Aktif'
+      // 2. Find index matching current status by exact name first
+      let activeIdx = realSteps.findIndex(
+        (p) => (p.namaStep || '').trim().toLowerCase() === curStatus
       );
+      if (activeIdx < 0) {
+        activeIdx = realSteps.findIndex((p) => p.status === 'Aktif');
+      }
 
       if (activeIdx >= 0 && activeIdx < realSteps.length - 1) {
         return realSteps[activeIdx + 1].namaStep;
@@ -377,21 +475,8 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
       }
     }
 
-    // Fallback based on kanbanColumns
-    const curIdx = kanbanColumns.findIndex(c => c.toLowerCase() === curStatus);
-    if (curIdx >= 0 && curIdx < kanbanColumns.length - 1) {
-      return kanbanColumns[curIdx + 1];
-    }
-    if (curIdx === kanbanColumns.length - 1) {
-      return 'Selesai';
-    }
-
-    if (curStatus === 'diterima' || curStatus === 'pesanan diterima') {
-      return kanbanColumns.find(c => c.toLowerCase() !== 'diterima' && c.toLowerCase() !== 'pesanan diterima') || 'Dicuci';
-    }
-
     return null;
-  }, [kanbanColumns]);
+  }, [getEffectivePipelineSteps]);
 
   // Count summaries for quick tabs with daily re-chat check
   const summaryCounts = useMemo(() => {
@@ -534,52 +619,6 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
     if (found?.nama) return found.nama;
     return cleanId;
   }, [machines]);
-
-  const getEffectivePipelineSteps = useCallback((order: Transaksi): PipelineStep[] => {
-    if (Array.isArray(order.pipeline) && order.pipeline.length > 0) {
-      return [...order.pipeline].sort((a, b) => (a.step || 0) - (b.step || 0));
-    }
-
-    // Fallback generation for older completed or existing orders
-    let customSteps: any[] = [];
-    for (const item of order.items || []) {
-      const lay = layananList.find(l => (l.nama || '').toLowerCase() === (item.layanan || '').toLowerCase());
-      if (lay && Array.isArray(lay.pipelineSteps) && lay.pipelineSteps.length > 0) {
-        customSteps = lay.pipelineSteps;
-        break;
-      }
-    }
-
-    const stepNames = customSteps.length > 0
-      ? customSteps.map(s => s.nama)
-      : ['Diterima', 'Dicuci', 'Dikeringkan', 'Siap Diambil'];
-
-    const isOrderCompleted = (order.status || '').toLowerCase() === 'selesai';
-    const waktuMasuk = order.tanggal || '';
-    const waktuSelesai = (order as any).updated_at || order.tanggal || '';
-
-    return stepNames.map((nama, idx) => {
-      const isFirst = idx === 0;
-      const isLast = idx === stepNames.length - 1;
-      const stepStatus: 'Pending' | 'Aktif' | 'Selesai' = isOrderCompleted ? 'Selesai' : (isFirst ? 'Selesai' : (idx === 1 ? 'Aktif' : 'Pending'));
-
-      let staff = order.petugas || 'Kasir';
-      if (!isOrderCompleted && !isFirst) {
-        staff = idx === 1 ? (order.petugas || 'Staff Outlet') : '-';
-      }
-
-      return {
-        id: `fallback-${order.noNota}-${idx}`,
-        noNota: order.noNota,
-        step: idx + 1,
-        namaStep: nama,
-        status: stepStatus,
-        assignedStaff: staff,
-        waktuMulai: isFirst ? waktuMasuk : (isOrderCompleted ? waktuMasuk : undefined),
-        waktuSelesai: (isOrderCompleted || isFirst) ? (isLast ? waktuSelesai : waktuMasuk) : undefined,
-      };
-    });
-  }, [layananList]);
 
   const renderCard = (order: Transaksi) => {
     const next = getNextStatusForOrder(order);
