@@ -332,7 +332,7 @@ export default function CustomerLandingPage() {
 
       {/* 2. Hero Centerpiece (100vh Full Screen Initial Fold) */}
       <section className="min-h-screen flex flex-col items-center justify-center text-center px-4 pt-24 pb-8 w-full relative z-10 my-auto">
-        <div className="max-w-4xl mx-auto flex flex-col items-center justify-center w-full">
+        <div className={`mx-auto flex flex-col items-center justify-center w-full transition-all duration-300 ${foundPoin ? 'max-w-6xl' : 'max-w-4xl'}`}>
           {/* Tab Switcher Pills - Permanently Anchored */}
           <div className="inline-flex items-center p-1 rounded-full border border-white/15 bg-white/[0.05] backdrop-blur-xl mb-5 shadow-xl">
             <button
@@ -730,100 +730,159 @@ export default function CustomerLandingPage() {
             };
 
             return (
-              <div className="w-full max-w-xl text-left mb-6 space-y-4 animate-fade-in">
-                {/* 1. Digital Member Stamp Card (3D Flip & Rubber Stamp Seals) */}
-                <div className="w-full">
-                  <div className="flex items-center justify-between px-1 mb-2">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Kartu Member & Stempel Digital Anda</span>
+              <div className="w-full max-w-6xl text-left mb-8 animate-fade-in">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                  {/* ========================================================= */}
+                  {/* KOLOM KIRI: Digital Member Loyalty Card                   */}
+                  {/* ========================================================= */}
+                  <div className="w-full flex flex-col">
+                    <div className="flex items-center justify-between px-1 mb-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Kartu Member &amp; Stempel Digital Anda</span>
+                      </div>
+                      <span className="text-[10px] text-white/50">Klik kartu untuk membalik (3D Flip)</span>
                     </div>
-                    <span className="text-[10px] text-white/50">Klik kartu untuk membalik (3D Flip)</span>
+
+                    <DigitalMemberCard
+                      customer={memberCustomerData}
+                      canEdit={false}
+                    />
                   </div>
 
-                  <DigitalMemberCard
-                    customer={memberCustomerData}
-                    canEdit={false}
-                  />
-                </div>
-
-                {/* 2. Saldo Poin & Summary Card */}
-                <div className="rounded-2xl border border-[#153a3e] bg-[#061517] p-5 shadow-2xl space-y-4">
-                  {/* Member Header */}
-                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-emerald-500 text-black flex items-center justify-center font-bold text-sm shadow-md">
-                        ⭐
+                  {/* ========================================================= */}
+                  {/* KOLOM KANAN: Saldo Poin, Reward & Ringkasan Loyalty       */}
+                  {/* ========================================================= */}
+                  <div className="w-full flex flex-col">
+                    <div className="flex items-center justify-between px-1 mb-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
+                        <Gift className="w-3.5 h-3.5" />
+                        <span>Saldo Poin &amp; Ringkasan Loyalty</span>
                       </div>
-                      <div>
-                        <span className="text-sm font-bold text-white block">{foundPoin.maskedNama}</span>
-                        <span className="text-[10px] font-mono text-white/50">{foundPoin.maskedHp}</span>
-                      </div>
+                      <span className="text-[10px] text-white/50 font-mono">Dua SiSi Rewards</span>
                     </div>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#0a272a] border border-teal-500/40 text-teal-300">
-                      {foundPoin.statusMember}
-                    </span>
-                  </div>
 
-                  {/* Saldo Poin Display */}
-                  <div className="bg-[#030d0f] border border-teal-500/30 rounded-xl p-4 text-center shadow-inner">
-                    <span className="text-[11px] text-teal-200/80 block font-medium mb-0.5">Total Saldo Poin Cashback</span>
-                    <div className="text-3xl font-black font-mono text-white tracking-tight">
-                      {foundPoin.saldoPoin} <span className="text-sm font-bold text-teal-300">Poin</span>
-                    </div>
-                    <p className="text-[11px] text-white/60 mt-1">
-                      Kumpulkan stempel & tukarkan poin Anda langsung di kasir outlet Dua SiSi Laundry
-                    </p>
-                  </div>
-
-                  {/* Reward & Stamp Quick Summary */}
-                  <div className="bg-[#030d0f] rounded-xl p-3 border border-white/5 space-y-2 text-xs text-white/70">
-                    <div className="flex items-center gap-2 text-white/80 font-medium">
-                      <Gift className="w-3.5 h-3.5 text-teal-400" />
-                      <span>Total Riwayat Cuci: {foundPoin.totalOrder} kali</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/10 text-[11px]">
-                      <div className="bg-[#061517] p-2.5 rounded-lg border border-teal-500/20">
-                        <span className="text-white/50 block text-[10px]">Stempel 7 KG:</span>
-                        <span className="text-teal-300 font-bold font-mono text-xs">{foundPoin.stamps75 || 0} / 10 Stempel</span>
-                      </div>
-                      <div className="bg-[#061517] p-2.5 rounded-lg border border-teal-500/20">
-                        <span className="text-white/50 block text-[10px]">Stempel 4 KG:</span>
-                        <span className="text-teal-300 font-bold font-mono text-xs">{foundPoin.stamps45 || 0} / 10 Stempel</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Active Orders for this customer */}
-                  {foundPoin.activeOrders && foundPoin.activeOrders.length > 0 && (
-                    <div className="space-y-2">
-                      <span className="text-[11px] font-semibold text-white/60 block">Cucian Aktif Saat Ini:</span>
-                      {foundPoin.activeOrders.map((ord) => (
-                        <div
-                          key={ord.noNota}
-                          className="p-2.5 rounded-xl bg-[#030d0f] border border-white/10 flex items-center justify-between text-xs"
-                        >
-                          <div>
-                            <span className="font-mono font-bold text-white block">{ord.noNota}</span>
-                            <span className="text-[10px] text-white/50">Status: {ord.status}</span>
+                    <div className="relative overflow-hidden rounded-2xl border border-[#153a3e] bg-[#061517] p-5 shadow-2xl space-y-4 before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[2px] before:bg-gradient-to-r before:from-teal-600 before:via-teal-400 before:to-emerald-400">
+                      {/* Member Header */}
+                      <div className="flex items-center justify-between border-b border-white/10 pb-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 text-slate-950 flex items-center justify-center font-black text-base shadow-md">
+                            ⭐
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSearchNota(ord.noNota);
-                              setActiveTab('lacak');
-                              setFoundPoin(null);
-                              setFoundTx({ noNota: ord.noNota, status: ord.status } as any);
-                            }}
-                            className="text-xs text-teal-300 hover:text-teal-200 font-semibold flex items-center gap-1 cursor-pointer"
-                          >
-                            <span>Lacak</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
+                          <div>
+                            <span className="text-sm font-bold text-white block">{foundPoin.maskedNama}</span>
+                            <span className="text-[11px] font-mono text-white/50">{foundPoin.maskedHp}</span>
+                          </div>
                         </div>
-                      ))}
+                        <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-[#0a272a] border border-teal-500/40 text-teal-300 shadow-sm">
+                          {foundPoin.statusMember}
+                        </span>
+                      </div>
+
+                      {/* Saldo Poin Display */}
+                      <div className="bg-[#030d0f] border border-teal-500/30 rounded-xl p-5 text-center shadow-inner relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-28 h-28 bg-teal-500/5 rounded-full blur-2xl pointer-events-none" />
+                        <span className="text-[11px] uppercase tracking-wider text-teal-200/80 block font-bold mb-1">
+                          Total Saldo Poin Cashback
+                        </span>
+                        <div className="text-4xl font-black font-mono text-white tracking-tight flex items-baseline justify-center gap-2 my-1">
+                          <span>{foundPoin.saldoPoin}</span>
+                          <span className="text-base font-bold text-teal-300 font-sans">Poin</span>
+                        </div>
+                        <p className="text-[11px] text-white/60 mt-2 max-w-xs mx-auto leading-relaxed">
+                          Poin reward dapat dipotongkan langsung sebagai diskon transaksi di kasir outlet Dua SiSi Laundry
+                        </p>
+                      </div>
+
+                      {/* Reward & Stamp Quick Summary */}
+                      <div className="bg-[#030d0f] rounded-xl p-3.5 border border-white/5 space-y-2.5 text-xs text-white/70">
+                        <div className="flex items-center justify-between text-white/80 font-medium">
+                          <div className="flex items-center gap-2">
+                            <Gift className="w-3.5 h-3.5 text-teal-400" />
+                            <span>Total Riwayat Cuci</span>
+                          </div>
+                          <span className="font-mono font-bold text-white text-xs">{foundPoin.totalOrder}x Transaksi</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2.5 pt-1.5 border-t border-white/10 text-[11px]">
+                          <div className="bg-[#061517] p-3 rounded-xl border border-teal-500/20">
+                            <span className="text-white/50 block text-[10px] uppercase font-bold tracking-wider mb-1">Kartu 7 KG</span>
+                            <span className="text-teal-300 font-bold font-mono text-sm block">{foundPoin.stamps75 || 0} / 10 Stempel</span>
+                            <div className="w-full h-1.5 bg-white/10 rounded-full mt-2 overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full"
+                                style={{ width: `${Math.min(100, ((foundPoin.stamps75 || 0) % 10) * 10)}%` }}
+                              />
+                            </div>
+                          </div>
+                          <div className="bg-[#061517] p-3 rounded-xl border border-teal-500/20">
+                            <span className="text-white/50 block text-[10px] uppercase font-bold tracking-wider mb-1">Kartu 4 KG</span>
+                            <span className="text-teal-300 font-bold font-mono text-sm block">{foundPoin.stamps45 || 0} / 10 Stempel</span>
+                            <div className="w-full h-1.5 bg-white/10 rounded-full mt-2 overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full"
+                                style={{ width: `${Math.min(100, ((foundPoin.stamps45 || 0) % 10) * 10)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Member Perks Section */}
+                      <div className="p-3.5 rounded-xl bg-[#030d0f]/60 border border-teal-500/15 space-y-2 text-[11px] text-white/70">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-teal-300 block">
+                          Benefit Member Dua SiSi:
+                        </span>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
+                            <span>10 Stempel Penuh = <strong>Gratis 1x Cuci</strong> sesuai kapasitas kartu</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
+                            <span>Klaim otomatis &amp; dapat ditunjukkan langsung via layar HP Anda</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
+                            <span>Keamanan anti-pemalsuan dengan stempel hologram digital resmi</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Active Orders for this customer */}
+                      {foundPoin.activeOrders && foundPoin.activeOrders.length > 0 && (
+                        <div className="space-y-2 pt-1 border-t border-white/10">
+                          <span className="text-[11px] font-semibold text-white/70 block flex items-center justify-between">
+                            <span>Cucian Aktif Saat Ini:</span>
+                            <span className="text-[10px] text-teal-300 font-mono">{foundPoin.activeOrders.length} Order</span>
+                          </span>
+                          {foundPoin.activeOrders.map((ord) => (
+                            <div
+                              key={ord.noNota}
+                              className="p-3 rounded-xl bg-[#030d0f] border border-white/10 flex items-center justify-between text-xs"
+                            >
+                              <div>
+                                <span className="font-mono font-bold text-white block">{ord.noNota}</span>
+                                <span className="text-[10px] text-white/50">Status: <span className="text-teal-300 font-semibold">{ord.status}</span></span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSearchNota(ord.noNota);
+                                  setActiveTab('lacak');
+                                  setFoundPoin(null);
+                                  setFoundTx({ noNota: ord.noNota, status: ord.status } as any);
+                                }}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 text-teal-300 font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                              >
+                                <span>Lacak</span>
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             );
