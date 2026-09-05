@@ -5,6 +5,7 @@ import { Cpu, Plus, RefreshCw, Play, CheckCircle2, Wrench, Trash2, Clock, Washin
 import { runBackend } from '@/lib/api';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
+import { formatDateTime } from '@/lib/utils';
 
 interface MesinItem {
   id: string;
@@ -13,6 +14,7 @@ interface MesinItem {
   status: 'Kosong' | 'Digunakan' | 'Maintenance';
   keterangan?: string;
   mulaiPakai?: string;
+  waktuMulai?: string;
   estimasiSelesai?: string;
 }
 
@@ -216,7 +218,7 @@ export default function MesinView({ currentRole }: { currentRole?: UserRole } = 
                       <>
                         <p className="font-medium text-slate-700">Catatan: <span className="font-bold">{m.keterangan || 'Proses mencuci'}</span></p>
                         <p className="flex items-center gap-1 text-teal-800 font-bold text-[11px] bg-teal-50 px-2 py-1 rounded-lg border border-teal-200">
-                          <Clock className="w-3.5 h-3.5" /> Mulai: {m.mulaiPakai} (Est: {m.estimasiSelesai})
+                          <Clock className="w-3.5 h-3.5" /> Mulai: {formatDateTime(m.mulaiPakai || m.waktuMulai, { timeOnly: true })} (Est: {m.estimasiSelesai ? formatDateTime(m.estimasiSelesai, { timeOnly: true }) : '-'})
                         </p>
                       </>
                     ) : isMaintenance ? (

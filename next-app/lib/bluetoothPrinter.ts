@@ -1,5 +1,5 @@
 import { Transaksi } from './types';
-import { formatDateTime } from './utils';
+import { formatDateTime, formatTargetSelesai } from './utils';
 
 // Helper Web Bluetooth Thermal Printer & ESC/POS Command Encoder
 
@@ -278,7 +278,7 @@ export function generateReceiptEscPos(tx: Transaksi, poinRate: number = 10000): 
   if (tx.tipe === 'FullService') {
     builder.twoColumn('Layanan:', `Drop Off (${tx.tingkatLayanan || 'Reguler'})`, 32);
     if ((tx as any).estimasi || (tx as any).estimasiSelesai) {
-      builder.twoColumn('Estimasi:', (tx as any).estimasi || (tx as any).estimasiSelesai, 32);
+      builder.twoColumn('Estimasi:', formatTargetSelesai((tx as any).estimasi || (tx as any).estimasiSelesai), 32);
     }
   } else {
     builder.twoColumn('Layanan:', tx.tipe === 'SelfService' ? 'Self Service' : 'Retail / Add On', 32);

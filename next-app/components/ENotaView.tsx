@@ -16,7 +16,7 @@ import {
 import { toPng } from 'html-to-image';
 import { runBackend } from '@/lib/api';
 import { Transaksi } from '@/lib/types';
-import { maskPhone, formatDateTime } from '@/lib/utils';
+import { maskPhone, formatDateTime, formatTargetSelesai } from '@/lib/utils';
 import { generateWhatsAppReceiptFromTx } from '@/lib/whatsappUtils';
 import { useDialog } from '@/components/DialogProvider';
 import GradientWaves from '@/components/GradientWaves';
@@ -276,10 +276,10 @@ export default function ENotaView({ noNota, token, last4Phone, initialData }: EN
                     <span>LAYANAN:</span>
                     <span className="font-bold">Drop Off ({tx.tingkatLayanan || 'Reguler'})</span>
                   </div>
-                  {tx.estimasi && (
+                  {(tx.estimasi || (tx as any).estimasiSelesai) && (
                     <div className="flex justify-between font-bold border-t border-dashed border-black pt-0.5 mt-0.5">
                       <span>ESTIMASI SELESAI:</span>
-                      <span className="text-[10px]">{tx.estimasi}</span>
+                      <span className="text-[10px]">{formatTargetSelesai(tx.estimasi || (tx as any).estimasiSelesai)}</span>
                     </div>
                   )}
                 </>

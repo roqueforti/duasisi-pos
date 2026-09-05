@@ -1222,7 +1222,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
                         <span className="font-bold text-[#FF9500] font-mono">⭐ {item.saldoPoin || 0}</span>
                       </td>
                       <td className="py-3 px-4 text-slate-500 text-[11px] whitespace-nowrap">
-                        {item.terakhirOrder || '-'}
+                        {item.terakhirOrder ? formatDateTime(item.terakhirOrder) : '-'}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <button

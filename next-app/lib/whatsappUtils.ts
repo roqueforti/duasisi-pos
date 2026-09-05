@@ -1,5 +1,5 @@
 import { Transaksi } from './types';
-import { formatWaPhone, eNotaUrl as buildENotaUrl, formatDateTime } from './utils';
+import { formatWaPhone, eNotaUrl as buildENotaUrl, formatDateTime, formatTargetSelesai } from './utils';
 
 export interface WhatsAppReceiptParams {
   noNota: string;
@@ -89,7 +89,7 @@ export function generateWhatsAppReceiptMessage(params: WhatsAppReceiptParams): s
     msgLines.push(`*Layanan*      : Drop Off (Full Service)`);
     msgLines.push(`*Kecepatan*    : ${params.tingkatLayanan || 'Reguler'}`);
     if (params.estimasiSelesai) {
-      msgLines.push(`*Estimasi Selesai*: ${params.estimasiSelesai}`);
+      msgLines.push(`*Estimasi Selesai*: ${formatTargetSelesai(params.estimasiSelesai)}`);
     }
   } else if (isSelfService) {
     msgLines.push(`*Layanan*      : Self Service (Cuci / Kering Mandiri)`);
@@ -189,7 +189,7 @@ export function generateWhatsAppReceiptFromTx(
     kasir: tx.petugas,
     tipeLayanan: tx.tipe,
     tingkatLayanan: tx.tingkatLayanan,
-    estimasiSelesai: estimasi,
+    estimasiSelesai: estimasi ? formatTargetSelesai(estimasi) : '',
     items: tx.items,
     subtotal: tx.subtotal,
     diskonNilai: tx.diskon,

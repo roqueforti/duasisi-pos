@@ -39,7 +39,7 @@ import RupiahIcon from '@/components/RupiahIcon';
 import { runBackend } from '@/lib/api';
 import { toCSV, downloadCSV } from '@/lib/csvUtils';
 import { UserRole, PayrollItem, PayrollSummary, PegawaiDetail, DropoffIncentiveConfig, DropoffDetailedTask } from '@/lib/types';
-import { formatWaPhone } from '@/lib/utils';
+import { formatWaPhone, formatDateTime } from '@/lib/utils';
 import { useDialog } from '@/components/DialogProvider';
 
 const BULAN_OPTIONS = [
@@ -1715,7 +1715,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                                       </span>
                                     </td>
                                     <td className="py-2 px-3 text-slate-500 text-[11px]">
-                                      {task.completedAt || task.waktuSelesai || '-'}
+                                      {formatDateTime(task.completedAt || task.waktuSelesai)}
                                     </td>
                                     <td className="py-2 px-3 text-right font-bold text-emerald-700">
                                       {isKhusus ? `+Rp ${rate.toLocaleString('id-ID')}` : 'Rp 0'}

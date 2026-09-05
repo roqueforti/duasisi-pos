@@ -20,7 +20,7 @@ export async function sbGetInventoryList(): Promise<InventoryItem[]> {
     nama: row.nama,
     stok: Number(row.stok) || 0,
     satuan: row.satuan,
-    stokMinimum: Number(row.stok_minimum) || 0,
+    terakhirUpdate: (row.terakhir_update || row.updated_at) ? formatDateTime(row.terakhir_update || row.updated_at) : '-',
     isDijual: row.is_dijual,
     hargaJual: Number(row.harga_jual) || 0,
     kategori: row.kategori_layanan,
@@ -1125,7 +1125,8 @@ export async function sbGetMesinList(): Promise<any[]> {
       namaPelanggan: m.nama_pelanggan || '',
       layanan: m.layanan || '',
       catatan: m.catatan || '',
-      waktuMulai: m.waktu_mulai || '',
+      waktuMulai: m.waktu_mulai || m.mulai_pakai || '',
+      mulaiPakai: m.waktu_mulai || m.mulai_pakai || '',
       estimasiSelesai: m.estimasi_selesai || '',
     };
   });

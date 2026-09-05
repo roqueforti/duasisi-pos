@@ -7,7 +7,7 @@ import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
 import { UserRole } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
-import { formatFriendlyErrorMessage, parseDecimal, formatDecimal } from '@/lib/utils';
+import { formatFriendlyErrorMessage, parseDecimal, formatDecimal, formatDateTime } from '@/lib/utils';
 import SatuanInput from '@/components/SatuanInput';
 import ImportProgressToast from '@/components/ImportProgressToast';
 
@@ -464,7 +464,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-400">{item.terakhirUpdate || '-'}</td>
+                      <td className="py-3 px-4 text-slate-400">{item.terakhirUpdate ? formatDateTime(item.terakhirUpdate) : '-'}</td>
                       <td className="py-3 px-4 text-right">
                         {(currentRole === 'STAFF' || currentRole === 'MANAGER' || !currentRole) ? (
                           <div className="flex items-center justify-end gap-1.5">

@@ -832,7 +832,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                   </option>
                   {recordedShifts.map((s) => (
                     <option key={s.idShift} value={s.idShift} className="text-slate-800 bg-white">
-                      Shift {s.idShift} · {s.namaKasir} ({s.waktuBuka}{s.waktuTutup ? ` s/d ${s.waktuTutup.split(' ')[1] || s.waktuTutup}` : ''})
+                      Shift {s.idShift} · {s.namaKasir} ({formatDateTime(s.waktuBuka)}{s.waktuTutup ? ` s/d ${formatDateTime(s.waktuTutup, { timeOnly: true })}` : ''})
                     </option>
                   ))}
                 </select>

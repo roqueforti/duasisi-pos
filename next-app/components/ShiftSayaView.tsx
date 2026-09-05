@@ -41,7 +41,7 @@ import {
 import { runBackend } from '@/lib/api';
 import { useDialog } from '@/components/DialogProvider';
 import { UserRole, ShiftKumulatifData } from '@/lib/types';
-import { parseDecimal, formatDecimal } from '@/lib/utils';
+import { parseDecimal, formatDecimal, formatDateTime } from '@/lib/utils';
 
 
 export interface ShiftKasir {
@@ -302,7 +302,7 @@ export default function ShiftSayaView({
 • Outlet: OUTLET UTAMA
 • Mode: ${isHandover ? 'SERAH TERIMA SHIFT (HANDOVER)' : 'TUTUP HARIAN (CLOSING OUTLET)'}
 • Kasir Bertugas: ${data.namaKasir}
-${isHandover && data.namaPengganti ? `• Kasir Pengganti: ${data.namaPengganti}\n` : ''}• Jam Kerja: ${data.waktuBuka} - ${data.waktuTutup}
+${isHandover && data.namaPengganti ? `• Kasir Pengganti: ${data.namaPengganti}\n` : ''}• Jam Kerja: ${formatDateTime(data.waktuBuka)} - ${data.waktuTutup ? formatDateTime(data.waktuTutup) : 'Sekarang'}
 ${pendingVoidLine}
 *REKONSILIASI KAS LACI (TUNAI)*
 • Modal Awal Laci : Rp ${(data.kasAwal || 0).toLocaleString('id-ID')}
@@ -893,7 +893,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
 • Outlet: ${item.idOutlet || 'OUTLET UTAMA'}
 • Mode: ${isHandover ? 'SERAH TERIMA SHIFT (HANDOVER)' : 'TUTUP HARIAN (CLOSING OUTLET)'}
 • Kasir Bertugas: ${item.namaKasir}
-${isHandover && item.namaPengganti ? `• Kasir Pengganti: ${item.namaPengganti}\n` : ''}• Waktu: ${item.waktuBuka} - ${item.waktuTutup || 'Ditutup'}
+${isHandover && item.namaPengganti ? `• Kasir Pengganti: ${item.namaPengganti}\n` : ''}• Waktu: ${formatDateTime(item.waktuBuka)} - ${item.waktuTutup ? formatDateTime(item.waktuTutup) : 'Ditutup'}
 
 *REKONSILIASI KAS LACI (TUNAI)*
 • Modal Awal Laci : Rp ${(item.kasAwal || 0).toLocaleString('id-ID')}
@@ -1423,7 +1423,7 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                           </div>
                           <p className="text-[11px] text-slate-400 mt-0.5">
                             {shiftAktif.kumulatif.isGantiShift && shiftAktif.kumulatif.prevShift
-                              ? `Meneruskan saldo serah terima kasir sebelumnya: ${shiftAktif.kumulatif.prevShift.namaKasir} (${shiftAktif.kumulatif.prevShift.waktuTutup || shiftAktif.kumulatif.prevShift.waktuBuka})`
+                              ? `Meneruskan saldo serah terima kasir sebelumnya: ${shiftAktif.kumulatif.prevShift.namaKasir} (${formatDateTime(shiftAktif.kumulatif.prevShift.waktuTutup || shiftAktif.kumulatif.prevShift.waktuBuka)})`
                               : 'Shift pertama (pagi) hari ini'}
                           </p>
                         </div>
@@ -1738,8 +1738,8 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                             )}
                           </td>
                           <td className="px-4 py-3 text-slate-600">
-                            <div>{item.waktuBuka}</div>
-                            <div className="text-[10px] text-slate-400">{item.waktuTutup ? `Tutup: ${item.waktuTutup}` : 'Masih Berjalan'}</div>
+                            <div>{formatDateTime(item.waktuBuka)}</div>
+                            <div className="text-[10px] text-slate-400">{item.waktuTutup ? `Tutup: ${formatDateTime(item.waktuTutup)}` : 'Masih Berjalan'}</div>
                           </td>
                           <td className="px-4 py-3 text-right font-mono text-slate-700">Rp {(item.kasAwal || 0).toLocaleString('id-ID')}</td>
                           <td className="px-4 py-3 text-right font-mono text-teal-700">+ Rp {(item.omzetTunai || 0).toLocaleString('id-ID')}</td>

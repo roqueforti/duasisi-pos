@@ -60,7 +60,7 @@ import {
 import { LayananItem, CartItem, ShiftKasir, AbsensiConfig, UserRole } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { formatWaPhone, parseDecimal, formatDecimal } from '@/lib/utils';
+import { formatWaPhone, parseDecimal, formatDecimal, formatDateTime, formatTargetSelesai } from '@/lib/utils';
 import { generateWhatsAppReceiptMessage } from '@/lib/whatsappUtils';
 import {
   isBluetoothSupported,
@@ -4353,7 +4353,7 @@ export default function PosView({
                       <span className="text-amber-800 font-semibold flex items-center gap-1">
                         <Clock className="w-3 h-3 text-amber-600" /> Estimasi Selesai:
                       </span>
-                      <span className="font-mono font-bold text-amber-900">{completedOrderData.estimasiSelesai}</span>
+                      <span className="font-mono font-bold text-amber-900">{formatTargetSelesai(completedOrderData.estimasiSelesai)}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center pt-1 text-[11px] text-slate-400">
@@ -4516,7 +4516,7 @@ export default function PosView({
                       {completedOrderData.tipeLayanan === 'FullService' && completedOrderData.estimasiSelesai && (
                         <div className="flex justify-between text-slate-900 font-bold border-t border-dashed border-slate-200 pt-0.5 mt-0.5">
                           <span>Estimasi:</span>
-                          <span className="text-[9.5px]">{completedOrderData.estimasiSelesai}</span>
+                          <span className="text-[9.5px]">{formatTargetSelesai(completedOrderData.estimasiSelesai)}</span>
                         </div>
                       )}
                     </div>
@@ -4615,7 +4615,7 @@ export default function PosView({
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Estimasi:</span>
-                        <span className="font-bold">{completedOrderData.estimasiSelesai || '-'}</span>
+                        <span className="font-bold">{formatTargetSelesai(completedOrderData.estimasiSelesai)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">Petugas:</span>
@@ -4794,7 +4794,7 @@ export default function PosView({
               <div>
                 <h3 className="text-lg font-bold text-slate-800">Tutup Shift & Rekap Kas Laci & Merchant</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Kasir: <strong className="text-slate-700">{shiftAktif.namaKasir}</strong> • Shift dibuka {new Date(shiftAktif?.waktuBuka || Date.now()).toLocaleDateString('id-ID')} ({new Date(shiftAktif?.waktuBuka || Date.now()).toLocaleTimeString('id-ID')})
+                  Kasir: <strong className="text-slate-700">{shiftAktif.namaKasir}</strong> • Shift dibuka {formatDateTime(shiftAktif?.waktuBuka)}
                 </p>
               </div>
               <button onClick={() => setShowTutupShiftModal(false)} className="p-2 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition">

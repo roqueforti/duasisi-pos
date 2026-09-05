@@ -36,24 +36,15 @@ import {
 import { Mesin, Transaksi, LayananBahanBaku, PipelineStep } from '@/lib/types';
 import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
-import { formatWaPhone, parseDecimal, formatDecimal, eNotaUrl } from '@/lib/utils';
+import { formatWaPhone, parseDecimal, formatDecimal, eNotaUrl, formatDateTime, formatTargetSelesai, parseIndonesianDateTime } from '@/lib/utils';
 import { DropOffPriorityItem } from './ProdukView';
 import PrinterModal from '@/components/PrinterModal';
 
 function getFormattedDuration(startStr?: string | null, endStr?: string | null): string {
   if (!startStr) return '-';
-  const parseD = (s: string) => {
-    if (s.includes('/')) {
-      const parts = s.split(' ')[0].split('/');
-      const timePart = s.split(' ')[1] || '00:00';
-      const [hh, mm, ss] = timePart.split(':');
-      return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), Number(hh) || 0, Number(mm) || 0, Number(ss) || 0);
-    }
-    return new Date(s);
-  };
-  const start = parseD(startStr);
-  const end = endStr ? parseD(endStr) : new Date();
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) return '-';
+  const start = parseIndonesianDateTime(startStr) || new Date(startStr);
+  const end = endStr ? (parseIndonesianDateTime(endStr) || new Date(endStr)) : new Date();
+  if (!start || isNaN(start.getTime()) || !end || isNaN(end.getTime())) return '-';
   const diffMs = Math.max(0, end.getTime() - start.getTime());
   const totalMins = Math.floor(diffMs / 60000);
   if (totalMins < 1) return '< 1 Menit';
@@ -68,31 +59,11 @@ function getFormattedDuration(startStr?: string | null, endStr?: string | null):
 
 function formatWibDate(dateStr?: string | null): string {
   if (!dateStr) return '-';
-  let d: Date;
-  if (typeof dateStr === 'string' && dateStr.includes('/')) {
-    const parts = dateStr.split(' ')[0].split('/');
-    const timePart = dateStr.split(' ')[1] || '00:00';
-    const [hh, mm, ss] = timePart.split(':');
-    d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), Number(hh) || 0, Number(mm) || 0, Number(ss) || 0);
-  } else {
-    d = new Date(dateStr);
-  }
-  if (isNaN(d.getTime())) return String(dateStr);
-  const dateFormatted = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-  const timeFormatted = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-  return `${dateFormatted}, ${timeFormatted}`;
+  return formatDateTime(dateStr);
 }
 
 function formatEstimasiTarget(raw?: string | null): string {
-  if (!raw) return '-';
-  if (raw.includes('WIB') || raw.includes('wib')) return raw;
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return raw;
-  const isToday = new Date().toDateString() === d.toDateString();
-  const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-  if (isToday) return `Hari ini, ${timeStr}`;
-  const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-  return `${dateStr}, ${timeStr}`;
+  return formatTargetSelesai(raw);
 }
 
 function getWorkflowIcon(status: string) {
@@ -672,21 +643,12 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
       if (!startTimeRaw) return { timeStr: '-', elapsedStr: '-', elapsedMins: 0 };
 
       // Parse date gracefully (support "YYYY-MM-DD HH:mm:ss", "DD/MM/YYYY HH:mm", ISO, etc.)
-      let startDate: Date;
-      if (typeof startTimeRaw === 'string' && startTimeRaw.includes('/')) {
-        const parts = startTimeRaw.split(' ')[0].split('/');
-        const timePart = startTimeRaw.split(' ')[1] || '00:00';
-        const [hh, mm, ss] = timePart.split(':');
-        startDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), Number(hh) || 0, Number(mm) || 0, Number(ss) || 0);
-      } else {
-        startDate = new Date(startTimeRaw);
-      }
-
-      if (isNaN(startDate.getTime())) {
+      const startDate = parseIndonesianDateTime(startTimeRaw) || new Date(startTimeRaw);
+      if (!startDate || isNaN(startDate.getTime())) {
         return { timeStr: startTimeRaw, elapsedStr: '-', elapsedMins: 0 };
       }
 
-      const timeStr = startDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      const timeStr = formatDateTime(startDate, { timeOnly: true });
       const nowMs = Date.now();
       const diffMs = Math.max(0, nowMs - startDate.getTime());
       const totalMins = Math.floor(diffMs / (1000 * 60));
@@ -712,19 +674,11 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
     // Receipt creation timestamp (jam struk diterima)
     const jamDiterimaStr = (() => {
       if (!order.tanggal) return '';
-      let d: Date;
-      if (typeof order.tanggal === 'string' && order.tanggal.includes('/')) {
-        const parts = order.tanggal.split(' ')[0].split('/');
-        const timePart = order.tanggal.split(' ')[1] || '';
-        const [hh, mm] = timePart.split(':');
-        d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), Number(hh) || 0, Number(mm) || 0);
-      } else {
-        d = new Date(order.tanggal);
-      }
-      if (isNaN(d.getTime())) return String(order.tanggal);
+      const d = parseIndonesianDateTime(order.tanggal) || new Date(order.tanggal);
+      if (!d || isNaN(d.getTime())) return String(order.tanggal);
 
       const isToday = new Date().toDateString() === d.toDateString();
-      const timeOnly = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      const timeOnly = formatDateTime(d, { timeOnly: true });
       if (isToday) return timeOnly;
       const dateOnly = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
       return `${dateOnly}, ${timeOnly}`;
@@ -910,15 +864,7 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
       'bg-teal-100 text-teal-800 border-teal-300'
     );
 
-    const waktuSelesaiStr = (() => {
-      const raw = (order as any).updated_at || order.tanggal || '';
-      if (!raw) return '-';
-      const d = new Date(raw);
-      if (isNaN(d.getTime())) return String(raw);
-      const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-      const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-      return `${dateStr}, ${timeStr}`;
-    })();
+    const waktuSelesaiStr = formatDateTime((order as any).updated_at || order.tanggal);
 
     const sisaTagihan = Number(order.sisaTagihan) || 0;
     const isLunas = sisaTagihan <= 0;
@@ -1309,15 +1255,7 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
                   'bg-teal-100 text-teal-800 border-teal-300'
                 );
 
-                const waktuSelesaiStr = (() => {
-                  const raw = (order as any).updated_at || order.tanggal || '';
-                  if (!raw) return '-';
-                  const d = new Date(raw);
-                  if (isNaN(d.getTime())) return String(raw);
-                  const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-                  const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-                  return `${dateStr}, ${timeStr}`;
-                })();
+                const waktuSelesaiStr = formatDateTime((order as any).updated_at || order.tanggal);
 
                 const sisaTagihan = Number(order.sisaTagihan) || 0;
                 const isLunas = sisaTagihan <= 0;

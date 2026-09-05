@@ -37,6 +37,7 @@ import { Transaksi } from '@/lib/types';
 import ENotaView from '@/components/ENotaView';
 import DigitalMemberCard from '@/components/DigitalMemberCard';
 import { PelangganItem } from '@/components/PelangganView';
+import { formatTargetSelesai } from '@/lib/utils';
 
 interface PelangganPoinData {
   maskedNama: string;
@@ -694,25 +695,10 @@ export default function CustomerLandingPage() {
 
                 {/* Summary Details & E-Nota CTA */}
                 {(() => {
-                  const formatPrettyDate = (rawStr: string) => {
-                    if (!rawStr) return '';
-                    if (rawStr.includes('T') || (rawStr.includes('-') && rawStr.length > 15)) {
-                      const parsed = new Date(rawStr);
-                      if (!isNaN(parsed.getTime())) {
-                        const dateStr = parsed.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-                        const timeStr = parsed.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                        return `${dateStr}, ${timeStr} WIB`;
-                      }
-                    }
-                    return rawStr;
-                  };
-
                   const displayEstimasi = (() => {
-                    if (foundTx.estimasi && String(foundTx.estimasi).trim()) {
-                      return formatPrettyDate(String(foundTx.estimasi).trim());
-                    }
-                    if (foundTx.estimasiSelesai && String(foundTx.estimasiSelesai).trim()) {
-                      return formatPrettyDate(String(foundTx.estimasiSelesai).trim());
+                    const raw = foundTx.estimasi || foundTx.estimasiSelesai;
+                    if (raw && String(raw).trim()) {
+                      return formatTargetSelesai(String(raw).trim());
                     }
                     if (isDropOffOrder) {
                       const prioritas = String(foundTx.tingkatLayanan || 'Reguler').toLowerCase();
@@ -720,9 +706,7 @@ export default function CustomerLandingPage() {
                       const baseDate = foundTx.tanggal ? new Date(foundTx.tanggal) : new Date();
                       const validBase = isNaN(baseDate.getTime()) ? new Date() : baseDate;
                       const targetDate = new Date(validBase.getTime() + durasi * 3600 * 1000);
-                      const dateStr = targetDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-                      const timeStr = targetDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                      return `${dateStr}, ${timeStr} WIB (${durasi} Jam)`;
+                      return formatTargetSelesai(targetDate);
                     }
                     return '-';
                   })();

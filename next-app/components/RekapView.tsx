@@ -12,6 +12,7 @@ import { runBackend } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { Transaksi, AuditLog, RekapKasShiftItem } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
+import { formatDateTime } from '@/lib/utils';
 
 interface LaporanResponse {
   ringkasan: {
@@ -580,7 +581,7 @@ export default function RekapView() {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-slate-600">
                       <p>Pelanggan: <span className="font-semibold text-slate-700">{tx.namaPelanggan}</span> ({tx.noHp || '-'})</p>
-                      <p>Waktu Transaksi: <span className="font-semibold text-slate-700">{tx.tanggal || '-'}</span></p>
+                      <p>Waktu Transaksi: <span className="font-semibold text-slate-700">{formatDateTime(tx.tanggal)}</span></p>
                       <p>Total Nominal: <span className="font-bold text-rose-700">Rp {(tx?.total || 0).toLocaleString('id-ID')}</span></p>
                       <p>Metode Bayar: <span className="font-semibold text-slate-700">{tx.metodeBayar || 'Tunai'}</span></p>
                     </div>
@@ -915,7 +916,7 @@ export default function RekapView() {
                         <tr key={idx} className="hover:bg-slate-50/80 transition group">
                           <td className="py-2.5 px-3">
                             <div className="font-bold text-slate-700 text-xs flex items-center gap-1.5">
-                              {shift.waktuBuka}
+                              {formatDateTime(shift.waktuBuka)}
                               {isLive && (
                                 <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-extrabold rounded-full animate-pulse">
                                   LIVE
@@ -923,7 +924,7 @@ export default function RekapView() {
                               )}
                             </div>
                             <div className="text-slate-400 text-[10px]">
-                              {isLive ? 'Shift sedang berlangsung' : `Tutup: ${shift.waktuTutup || '-'}`}
+                              {isLive ? 'Shift sedang berlangsung' : `Tutup: ${shift.waktuTutup ? formatDateTime(shift.waktuTutup) : '-'}`}
                             </div>
                           </td>
                           
@@ -1029,7 +1030,7 @@ export default function RekapView() {
                       {selectedShiftDetail.status}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400">Dibuka: {selectedShiftDetail.waktuBuka} • Kasir: {selectedShiftDetail.namaKasir}</p>
+                  <p className="text-[11px] text-slate-400">Dibuka: {formatDateTime(selectedShiftDetail.waktuBuka)} • Kasir: {selectedShiftDetail.namaKasir}</p>
                 </div>
               </div>
               <button 
@@ -1166,7 +1167,7 @@ export default function RekapView() {
                     <span>5. Informasi Serah Terima Kasir (Handover)</span>
                   </div>
                   <p className="text-[11px] text-slate-600">
-                    Kas diserah-terimakan dari <strong className="text-slate-800">{selectedShiftDetail.namaKasir}</strong> ke kasir pengganti <strong className="text-[#1E4648]">{selectedShiftDetail.namaPengganti}</strong> pada <strong>{selectedShiftDetail.waktuHandover || selectedShiftDetail.waktuTutup}</strong>.
+                    Kas diserah-terimakan dari <strong className="text-slate-800">{selectedShiftDetail.namaKasir}</strong> ke kasir pengganti <strong className="text-[#1E4648]">{selectedShiftDetail.namaPengganti}</strong> pada <strong>{formatDateTime(selectedShiftDetail.waktuHandover || selectedShiftDetail.waktuTutup)}</strong>.
                   </p>
                 </div>
               )}

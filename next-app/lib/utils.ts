@@ -201,42 +201,7 @@ export function formatDateTime(
     } else {
       const str = String(val).trim();
       if (!str || str === '-') return '-';
-
-      // Tangani format "DD/MM/YYYY HH:mm[:ss]" atau "DD/MM/YYYY"
-      if (str.includes('/')) {
-        const cleanStr = str.replace(/\s*WIB|\s*WITA|\s*WIT/gi, '').trim();
-        const spaceParts = cleanStr.split(' ');
-        const dateParts = spaceParts[0].split('/');
-        if (dateParts.length === 3) {
-          const day = parseInt(dateParts[0], 10);
-          const month = parseInt(dateParts[1], 10) - 1;
-          const year = parseInt(dateParts[2], 10);
-          let hh = 0, mm = 0, ss = 0;
-          const hasTime = Boolean(spaceParts[1]);
-          if (hasTime) {
-            const timeParts = spaceParts[1].split(':');
-            hh = parseInt(timeParts[0], 10) || 0;
-            mm = parseInt(timeParts[1], 10) || 0;
-            ss = parseInt(timeParts[2], 10) || 0;
-          }
-          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-          const monthStr = months[month] || String(month + 1);
-          const dayStr = String(day).padStart(2, '0');
-          const hhStr = String(hh).padStart(2, '0');
-          const mmStr = String(mm).padStart(2, '0');
-          const wibSuffix = options?.showWib !== false ? ' WIB' : '';
-
-          if (options?.dateOnly || !hasTime) {
-            return `${dayStr} ${monthStr} ${year}`;
-          }
-          if (options?.timeOnly) {
-            return `${hhStr}:${mmStr}${wibSuffix}`;
-          }
-          return `${dayStr} ${monthStr} ${year}, ${hhStr}:${mmStr}${wibSuffix}`;
-        }
-      }
-
-      d = new Date(str);
+      d = parseIndonesianDateTime(str);
     }
 
     if (!d || isNaN(d.getTime())) return String(val);
@@ -270,6 +235,60 @@ export function formatDateTime(
     }
 
     return `${day} ${month} ${year}, ${hour}:${minute}${wibSuffix}`;
+  } catch {
+    return String(val || '-');
+  }
+}
+
+/**
+ * Format tanggal ramah pengguna khusus untuk Estimasi / Target Selesai Order.
+ * Menjamin tidak pernah menampilkan raw ISO "2026-09-05T20:10:39.225+00:00".
+ * Contoh hasil:
+ * - "Hari ini, 20:10 WIB"
+ * - "Besok, 14:00 WIB"
+ * - "Sab, 5 Sep 2026, 20:10 WIB"
+ */
+export function formatTargetSelesai(val: string | Date | undefined | null): string {
+  if (!val) return '-';
+  try {
+    let d: Date | null = null;
+    if (val instanceof Date) {
+      d = val;
+    } else {
+      const str = String(val).trim();
+      if (!str || str === '-') return '-';
+      d = parseIndonesianDateTime(str);
+    }
+
+    if (!d || isNaN(d.getTime())) {
+      // Jika string durasi atau format custom
+      const clean = String(val).trim();
+      return clean.replace(/:\d{2}\s*WIB/i, ' WIB');
+    }
+
+    const timeStr = d.toLocaleTimeString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).replace('.', ':') + ' WIB';
+
+    const now = new Date();
+    const dStr = d.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' });
+    const nowStr = now.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' });
+    const tmrw = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const tmrwStr = tmrw.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' });
+
+    if (dStr === nowStr) return `Hari ini, ${timeStr}`;
+    if (dStr === tmrwStr) return `Besok, ${timeStr}`;
+
+    const dateStr = d.toLocaleDateString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+    return `${dateStr}, ${timeStr}`;
   } catch {
     return String(val || '-');
   }
