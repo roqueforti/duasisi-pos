@@ -151,6 +151,7 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
         case 'getTransaksiList':
         case 'getTransaksiListAll':
           return (await sb.sbGetTransaksiList(args[0])) as any;
+        case 'updateStatus':
         case 'updateDropoffStatus':
           return (await sb.sbUpdateDropoffStatus(args[0], args[1], args[2])) as any;
         case 'getMesinList':
@@ -277,6 +278,30 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbSaveDropoffIncentiveConfig(args[0])) as any;
         case 'getPendingVoidList':
           return (await sb.sbGetPendingVoidList()) as any;
+        case 'tambahMasterShift':
+          return (await sb.sbTambahMasterShift(args[0])) as any;
+        case 'updateMasterShift':
+          return (await sb.sbUpdateMasterShift(args[0], args[1])) as any;
+        case 'hapusMasterShift':
+          return (await sb.sbHapusMasterShift(args[0])) as any;
+        case 'getAbsensiConfig':
+          return (await sb.sbGetAbsensiConfig()) as any;
+        case 'saveAbsensiConfig':
+          return (await sb.sbSaveAbsensiConfig(args[0], args[1])) as any;
+        case 'importPelangganBatch':
+          return (await sb.sbImportPelangganBatch(args[0])) as any;
+        case 'importInventoryBatch':
+          return (await sb.sbImportInventoryBatch(args[0])) as any;
+        case 'importLayananBatch':
+          return (await sb.sbImportLayananBatch(args[0])) as any;
+        case 'batchToggleAktifLayanan':
+          return (await sb.sbBatchToggleAktifLayanan(args[0], args[1])) as any;
+        case 'batchHapusLayanan':
+          return (await sb.sbBatchHapusLayanan(args[0])) as any;
+        case 'batchUbahKategoriLayanan':
+          return (await sb.sbBatchUbahKategoriLayanan(args[0], args[1])) as any;
+        case 'regenerateProductCodes':
+          return (await sb.sbRegenerateProductCodes()) as any;
       }
     } catch (sbErr: any) {
       console.warn(`[Supabase Error] Action '${action}' gagal, fallback ke Google Apps Script:`, sbErr);

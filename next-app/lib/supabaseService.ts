@@ -3466,6 +3466,322 @@ export async function sbSaveDropoffIncentiveConfig(config: DropoffIncentiveConfi
   return { success: true, data };
 }
 
+// ============================================================
+// MASTER SHIFTS MUTATION
+// ============================================================
+export async function sbTambahMasterShift(payload: any): Promise<{ success: boolean; data?: any }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
+  const curList = await sbGetMasterShiftList();
+  const id = `SHIFT-${Date.now()}`;
+  const newItem = {
+    id,
+    nama: String(payload.nama || 'Shift').trim(),
+    jamMasuk: String(payload.jamMasuk || '07:00').trim(),
+    jamKeluar: String(payload.jamKeluar || payload.jamPulang || '15:00').trim(),
+    keterangan: payload.keterangan || '',
+    status: 'Aktif',
+  };
+  const updatedList = [...curList, newItem];
 
+  const { error } = await sb.from('app_settings').upsert({
+    key: 'master_shifts',
+    value: updatedList,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'key' });
 
+  if (error) throw error;
+  return { success: true, data: newItem };
+}
+
+export async function sbUpdateMasterShift(id: string, payload: any): Promise<{ success: boolean }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const curList = await sbGetMasterShiftList();
+  const updatedList = curList.map((item) => {
+    if (item.id === id) {
+      return {
+        ...item,
+        nama: payload.nama !== undefined ? String(payload.nama).trim() : item.nama,
+        jamMasuk: payload.jamMasuk !== undefined ? String(payload.jamMasuk).trim() : item.jamMasuk,
+        jamKeluar: (payload.jamKeluar || payload.jamPulang) !== undefined ? String(payload.jamKeluar || payload.jamPulang).trim() : item.jamKeluar,
+        keterangan: payload.keterangan !== undefined ? payload.keterangan : item.keterangan,
+        status: payload.status !== undefined ? payload.status : item.status,
+      };
+    }
+    return item;
+  });
+
+  const { error } = await sb.from('app_settings').upsert({
+    key: 'master_shifts',
+    value: updatedList,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'key' });
+
+  if (error) throw error;
+  return { success: true };
+}
+
+export async function sbHapusMasterShift(id: string): Promise<{ success: boolean }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const curList = await sbGetMasterShiftList();
+  const updatedList = curList.filter((item) => item.id !== id);
+
+  const { error } = await sb.from('app_settings').upsert({
+    key: 'master_shifts',
+    value: updatedList,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'key' });
+
+  if (error) throw error;
+  return { success: true };
+}
+
+// ============================================================
+// ABSENSI CONFIG
+// ============================================================
+export async function sbGetAbsensiConfig(): Promise<any> {
+  const sb = getSupabase();
+  const DEFAULT_CONFIG = {
+    jamBuka: '07:00',
+    toleransiTelatMenit: 15,
+    dendaPerMenit: 1000,
+    maxDendaPerHari: 50000,
+    gpsRadiusMeter: 150,
+    latKantor: -6.2088,
+    lngKantor: 106.8456,
+  };
+  if (!sb) return DEFAULT_CONFIG;
+
+  try {
+    const { data } = await sb.from('app_settings').select('value').eq('key', 'absensi_config').maybeSingle();
+    if (data?.value && typeof data.value === 'object') {
+      return { ...DEFAULT_CONFIG, ...data.value };
+    }
+  } catch {}
+  return DEFAULT_CONFIG;
+}
+
+export async function sbSaveAbsensiConfig(configOrJamBuka: any, toleransiTelatMenit?: number): Promise<{ success: boolean; message?: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  let configToSave: any;
+  if (typeof configOrJamBuka === 'object' && configOrJamBuka !== null) {
+    configToSave = configOrJamBuka;
+  } else {
+    const cur = await sbGetAbsensiConfig();
+    configToSave = {
+      ...cur,
+      jamBuka: String(configOrJamBuka || cur.jamBuka),
+      toleransiTelatMenit: toleransiTelatMenit !== undefined ? Number(toleransiTelatMenit) : cur.toleransiTelatMenit,
+    };
+  }
+
+  const { error } = await sb.from('app_settings').upsert({
+    key: 'absensi_config',
+    value: configToSave,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'key' });
+
+  if (error) throw error;
+  return { success: true, message: 'Konfigurasi absensi berhasil disimpan' };
+}
+
+// ============================================================
+// BATCH OPERATIONS & BULK IMPORTS
+// ============================================================
+export async function sbImportPelangganBatch(items: any[]): Promise<{ success: boolean; added: number; updated: number }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return { success: true, added: 0, updated: 0 };
+  }
+
+  let added = 0;
+  let updated = 0;
+
+  const { data: existingList } = await sb.from('pelanggan').select('id, no_hp');
+  const existingMap = new Map<string, string>();
+  if (existingList) {
+    for (const c of existingList) {
+      if (c.no_hp) {
+        existingMap.set(String(c.no_hp).trim(), c.id);
+        const n = normalizePhone(String(c.no_hp));
+        if (n) existingMap.set(n, c.id);
+      }
+    }
+  }
+
+  for (const item of items) {
+    const rawHp = item.hp || item.noHp || item.no_hp;
+    if (!rawHp) continue;
+    const cleanHp = String(rawHp).trim();
+    const norm = normalizePhone(cleanHp);
+    const nama = String(item.nama || 'Pelanggan').trim();
+    const alamat = item.alamat ? String(item.alamat).trim() : null;
+    const tglLahir = item.tglLahir ? String(item.tglLahir).trim() : null;
+
+    const matchedId = existingMap.get(cleanHp) || (norm ? existingMap.get(norm) : undefined);
+
+    if (matchedId && matchedId !== 'new') {
+      const updateData: any = { updated_at: new Date().toISOString() };
+      if (nama) updateData.nama = nama;
+      if (alamat) updateData.alamat = alamat;
+      if (tglLahir) updateData.tgl_lahir = tglLahir;
+      await sb.from('pelanggan').update(updateData).eq('id', matchedId);
+      updated++;
+    } else {
+      await sb.from('pelanggan').insert({
+        nama,
+        no_hp: cleanHp,
+        alamat,
+        tgl_lahir: tglLahir,
+        is_member: false,
+        saldo_poin: 0,
+        total_order: 0,
+        stamps_75: 0,
+        stamps_45: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      existingMap.set(cleanHp, 'new');
+      if (norm) existingMap.set(norm, 'new');
+      added++;
+    }
+  }
+
+  return { success: true, added, updated };
+}
+
+export async function sbImportInventoryBatch(items: any[]): Promise<{ success: boolean; importedCount: number }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return { success: true, importedCount: 0 };
+  }
+
+  let count = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const nama = String(item.nama || '').trim();
+    if (!nama) continue;
+
+    const id = item.id || `INV-${Date.now()}-${i + 1}`;
+    await sb.from('inventory').insert({
+      id,
+      nama,
+      stok: Number(item.stok) || 0,
+      satuan: String(item.satuan || 'pcs').trim(),
+      stok_minimum: Number(item.stokMinimum || item.stok_minimum) || 0,
+      is_dijual: Boolean(item.isDijual),
+      harga_jual: Number(item.hargaJual || item.harga_jual) || 0,
+      kategori_layanan: item.kategoriLayanan || item.kategori_layanan || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    count++;
+  }
+
+  return { success: true, importedCount: count };
+}
+
+export async function sbImportLayananBatch(items: any[]): Promise<{ success: boolean; importedCount: number }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return { success: true, importedCount: 0 };
+  }
+
+  let count = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!item.nama) continue;
+    await sbTambahLayanan(item);
+    count++;
+  }
+
+  return { success: true, importedCount: count };
+}
+
+export async function sbBatchToggleAktifLayanan(ids: string[], aktif: boolean): Promise<{ success: boolean }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { error } = await sb
+    .from('layanan')
+    .update({ aktif: aktif ? 'Y' : 'N', updated_at: new Date().toISOString() })
+    .in('id', ids);
+
+  if (error) throw error;
+  return { success: true };
+}
+
+export async function sbBatchHapusLayanan(ids: string[]): Promise<{ success: boolean }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { error } = await sb
+    .from('layanan')
+    .delete()
+    .in('id', ids);
+
+  if (error) throw error;
+  return { success: true };
+}
+
+export async function sbBatchUbahKategoriLayanan(ids: string[], targetKategori: string): Promise<{ success: boolean }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { error } = await sb
+    .from('layanan')
+    .update({ kategori: targetKategori, updated_at: new Date().toISOString() })
+    .in('id', ids);
+
+  if (error) throw error;
+  return { success: true };
+}
+
+export async function sbRegenerateProductCodes(): Promise<{ success: boolean; message?: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { data: layananList, error } = await sb.from('layanan').select('*').order('kategori', { ascending: true }).order('nama', { ascending: true });
+  if (error || !layananList) throw error || new Error('Gagal memuat layanan');
+
+  const prefixCounters: Record<string, number> = {};
+  const getPrefix = (kat?: string, tip?: string) => {
+    const k = (kat || '').toLowerCase().trim();
+    const t = (tip || '').toLowerCase().trim();
+    if (t === 'selfservice' || k.includes('self')) return 'SS';
+    if (t === 'fullservice' || k.includes('drop') || k.includes('full')) return 'DO';
+    if (k.includes('add') || k.includes('tambahan')) return 'ADD';
+    if (k.includes('retail') || k.includes('eceran') || k.includes('makan') || k.includes('minum')) return 'RTL';
+    return 'PRD';
+  };
+
+  for (const item of layananList) {
+    const prefix = getPrefix(item.kategori, item.tipe);
+    prefixCounters[prefix] = (prefixCounters[prefix] || 0) + 1;
+    const newCode = `${prefix}-${String(prefixCounters[prefix]).padStart(3, '0')}`;
+
+    if (item.id !== newCode) {
+      const { data: existing } = await sb.from('layanan').select('id').eq('id', newCode).maybeSingle();
+      if (!existing) {
+        const copy = { ...item, id: newCode, updated_at: new Date().toISOString() };
+        await sb.from('layanan').insert(copy);
+        await sb.from('layanan').delete().eq('id', item.id);
+      }
+    }
+  }
+
+  return { success: true, message: 'Kode produk berhasil disesuaikan menurut kategori & tipe' };
+}
