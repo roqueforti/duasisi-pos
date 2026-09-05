@@ -231,12 +231,12 @@ export default function CustomerLandingPage() {
           // Log Activity: Cek Poin Member Berhasil
           runBackend(
             'logClientActivity', 
-            `Pelanggan: ${res.pelanggan.maskedNama || 'Pelanggan'}`, 
+            `Pelanggan: ${res.pelanggan.nama || res.pelanggan.maskedNama || 'Pelanggan'}`, 
             'Cek Poin Member', 
             phone, 
             '-', 
             `Saldo: ${res.pelanggan.saldoPoin} Poin (${res.pelanggan.statusMember})`, 
-            `Pelanggan ${res.pelanggan.maskedNama || 'Pelanggan'} mengecek saldo poin loyalty reward di website publik`
+            `Pelanggan ${res.pelanggan.nama || res.pelanggan.maskedNama || 'Pelanggan'} mengecek saldo poin loyalty reward di website publik`
           ).catch(() => {});
         } else {
           setErrorMsg(res?.message || `Nomor "${phone}" belum terdaftar sebagai pelanggan di Dua SiSi Laundry.`);

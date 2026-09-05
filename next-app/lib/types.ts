@@ -14,7 +14,56 @@ export interface InventoryItem {
   stok: number;
   satuan: string;
   stokMinimum?: number;
+  terakhirUpdate?: string;
+  isDijual?: boolean;
+  hargaJual?: number;
+  kategori?: string;
+  stokFisikTerakhir?: number;
+  tglOpnameTerakhir?: string;
+  petugasOpnameTerakhir?: string;
+  lastRestockQty?: number;
+  lastRestockDate?: string;
+  statusKesehatan?: 'KRITIS' | 'RENDAH' | 'SELISIH' | 'AMAN' | 'ANOMALI';
+  rekomendasiTindakan?: string;
 }
+
+export interface InventoryUsageStats {
+  id: string;
+  nama: string;
+  satuan: string;
+  currentStock: number;
+  stokMinimum: number;
+  lastRestockQty?: number;
+  lastRestockDate?: string;
+  usage7Days: number;
+  avgDailyUsage: number;
+  estimatedDaysLeft: number | string;
+  recommendedRestockQty: number;
+  stokFisikTerakhir?: number;
+  tglOpnameTerakhir?: string;
+  hasPhysicalDiscrepancy: boolean;
+  discrepancyDelta: number;
+}
+
+export interface InsufficientStockItem {
+  idInventory: string;
+  namaItem: string;
+  layanan: string;
+  stokSistem: number;
+  satuan: string;
+  kebutuhan: number;
+  kekurangan: number;
+  stokFisikTerakhir?: number;
+  tglOpnameTerakhir?: string;
+  rekomendasi: string;
+  tipeRekomendasi: 'ADJUSTMENT_READY' | 'CHECK_OR_RESTOCK';
+}
+
+export interface StockValidationResult {
+  valid: boolean;
+  insufficientItems: InsufficientStockItem[];
+}
+
 
 export interface LayananItem {
   layanan: string;

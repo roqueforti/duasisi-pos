@@ -1,24 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload, X, Loader2, ShieldAlert, Archive, RotateCcw, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload, X, 
+  Loader2, ShieldAlert, Archive, RotateCcw, ShieldCheck, TrendingUp, Scale, 
+  ShoppingCart, Info, Sparkles, CheckCircle2, AlertCircle, ArrowUpRight, 
+  ArrowDownRight, Layers, HelpCircle
+} from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
 import { toCSV, downloadCSV, downloadExcel, readSpreadsheetFile } from '@/lib/csvUtils';
-import { UserRole } from '@/lib/types';
+import { UserRole, InventoryItem, InventoryUsageStats } from '@/lib/types';
 import { useDialog } from '@/components/DialogProvider';
 import { formatFriendlyErrorMessage, parseDecimal, formatDecimal, formatDateTime } from '@/lib/utils';
 import SatuanInput from '@/components/SatuanInput';
 import ImportProgressToast from '@/components/ImportProgressToast';
-
-interface InventoryItem {
-  id: string;
-  nama: string;
-  stok: number;
-  satuan: string;
-  stokMinimum: number;
-  terakhirUpdate?: string;
-}
 
 interface InventoryViewProps {
   currentRole?: UserRole;
@@ -29,6 +25,10 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // DSS KPI Filter State: 'SEMUA' | 'KRITIS' | 'RENDAH' | 'SELISIH' | 'AMAN'
+  const [filterKesehatan, setFilterKesehatan] = useState<'SEMUA' | 'KRITIS' | 'RENDAH' | 'SELISIH' | 'AMAN'>('SEMUA');
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Add/Edit Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -38,6 +38,25 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   const [stokMin, setStokMin] = useState('5');
   const [originalStok, setOriginalStok] = useState<number | null>(null);
   const [showDecimalOptions, setShowDecimalOptions] = useState(false);
+
+  // Smart Restock Modal State
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockItem, setRestockItem] = useState<InventoryItem | null>(null);
+  const [restockStats, setRestockStats] = useState<InventoryUsageStats | null>(null);
+  const [restockLoadingStats, setRestockLoadingStats] = useState(false);
+  const [restockQty, setRestockQty] = useState('');
+  const [restockSupplier, setRestockSupplier] = useState('');
+  const [restockBiaya, setRestockBiaya] = useState('');
+  const [restockCatatan, setRestockCatatan] = useState('');
+  const [restockSubmitting, setRestockSubmitting] = useState(false);
+
+  // Stock Adjustment Modal State
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [adjustItem, setAdjustItem] = useState<InventoryItem | null>(null);
+  const [adjustStokFisik, setAdjustStokFisik] = useState('');
+  const [adjustAlasan, setAdjustAlasan] = useState('Stock Opname');
+  const [adjustCatatan, setAdjustCatatan] = useState('');
+  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
 
   // Soft Delete & Protection Modal states
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
@@ -108,12 +127,162 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
     setIsDijual(false);
   };
 
+  // DSS Computations
+  const kpiStats = useMemo(() => {
+    let kritis = 0;
+    let rendah = 0;
+    let selisih = 0;
+    let aman = 0;
+
+    items.forEach(item => {
+      if (item.stok <= 0) kritis++;
+      else if (item.statusKesehatan === 'SELISIH') selisih++;
+      else if (item.stok <= (item.stokMinimum || 5)) rendah++;
+      else aman++;
+    });
+
+    return { kritis, rendah, selisih, aman, total: items.length };
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchName = item.nama.toLowerCase().includes(q);
+        const matchId = item.id.toLowerCase().includes(q);
+        if (!matchName && !matchId) return false;
+      }
+
+      if (filterKesehatan === 'KRITIS') return item.stok <= 0;
+      if (filterKesehatan === 'RENDAH') return item.stok > 0 && item.stok <= (item.stokMinimum || 5);
+      if (filterKesehatan === 'SELISIH') return item.statusKesehatan === 'SELISIH';
+      if (filterKesehatan === 'AMAN') return item.stok > (item.stokMinimum || 5) && item.statusKesehatan !== 'SELISIH';
+
+      return true;
+    });
+  }, [items, searchQuery, filterKesehatan]);
+
+  // Handle Smart Restock Modal
+  const handleOpenRestockModal = async (item: InventoryItem) => {
+    setRestockItem(item);
+    setRestockQty('');
+    setRestockSupplier('');
+    setRestockBiaya('');
+    setRestockCatatan('');
+    setShowRestockModal(true);
+    setRestockLoadingStats(true);
+    setRestockStats(null);
+
+    try {
+      const stats = await runBackend<InventoryUsageStats>('getInventoryUsageStats', item.id, 7);
+      if (stats) {
+        setRestockStats(stats);
+        setRestockQty(String(stats.recommendedRestockQty || 10));
+      }
+    } catch (err) {
+      console.warn('Gagal memuat analitik restock:', err);
+    } finally {
+      setRestockLoadingStats(false);
+    }
+  };
+
+  const handleSubmitRestock = async () => {
+    if (!restockItem) return;
+    const qty = parseDecimal(restockQty, 0);
+    if (qty <= 0) {
+      await showAlert('Jumlah restock harus lebih dari 0 unit!', 'warning');
+      return;
+    }
+
+    setRestockSubmitting(true);
+    try {
+      const biaya = parseDecimal(restockBiaya, 0);
+      const res = await runBackend<{ success: boolean; stokBaru?: number; message?: string }>(
+        'restockInventory',
+        restockItem.id,
+        qty,
+        restockSupplier.trim(),
+        biaya,
+        restockCatatan.trim(),
+        currentRole || 'Kasir'
+      );
+
+      if (res && res.success) {
+        clearCache('getInventoryList');
+        loadInventory();
+        setShowRestockModal(false);
+        await showAlert(
+          `Restock berhasil disimpan!\n\nBarang: ${restockItem.nama}\nJumlah Masuk: +${qty} ${restockItem.satuan}\nStok Sistem Baru: ${res.stokBaru} ${restockItem.satuan}`,
+          'success',
+          'Restock Berhasil'
+        );
+      } else {
+        await showAlert(res?.message || 'Gagal menyimpan restock barang.', 'error');
+      }
+    } catch (err: any) {
+      console.error(err);
+      await showAlert('Terjadi kesalahan saat restock: ' + (err?.message || String(err)), 'error');
+    } finally {
+      setRestockSubmitting(false);
+    }
+  };
+
+  // Handle Stock Adjustment Modal
+  const handleOpenAdjustModal = (item: InventoryItem) => {
+    setAdjustItem(item);
+    const initialFisik = item.stokFisikTerakhir !== undefined ? item.stokFisikTerakhir : Math.max(0, item.stok);
+    setAdjustStokFisik(String(initialFisik));
+    setAdjustAlasan(item.stok < 0 ? 'Koreksi Stok Anomali/Minus' : 'Stock Opname');
+    setAdjustCatatan('');
+    setShowAdjustModal(true);
+  };
+
+  const handleSubmitAdjust = async () => {
+    if (!adjustItem) return;
+    const fisik = parseDecimal(adjustStokFisik, -1);
+    if (fisik < 0) {
+      await showAlert('Stok fisik tidak boleh bernilai negatif (< 0)! Periksa kembali hitungan fisik di toko.', 'warning');
+      return;
+    }
+
+    setAdjustSubmitting(true);
+    try {
+      const res = await runBackend<{ success: boolean; stokBaru?: number; delta?: number; message?: string }>(
+        'adjustInventory',
+        adjustItem.id,
+        fisik,
+        adjustAlasan,
+        adjustCatatan.trim(),
+        currentRole || 'Kasir'
+      );
+
+      if (res && res.success) {
+        clearCache('getInventoryList');
+        loadInventory();
+        setShowAdjustModal(false);
+        const deltaStr = (res.delta || 0) >= 0 ? `+${res.delta}` : `${res.delta}`;
+        await showAlert(
+          `Stock adjustment berhasil!\n\nBarang: ${adjustItem.nama}\nStok Sistem Lama: ${adjustItem.stok} ${adjustItem.satuan}\nStok Fisik Baru: ${res.stokBaru} ${adjustItem.satuan}\nPenyesuaian (Selisih): ${deltaStr} ${adjustItem.satuan}`,
+          'success',
+          'Penyesuaian Stok Berhasil'
+        );
+      } else {
+        await showAlert(res?.message || 'Gagal melakukan stock adjustment.', 'error');
+      }
+    } catch (err: any) {
+      console.error(err);
+      await showAlert('Terjadi kesalahan saat stock adjustment: ' + (err?.message || String(err)), 'error');
+    } finally {
+      setAdjustSubmitting(false);
+    }
+  };
+
   const handleEditClick = (item: InventoryItem) => {
     setEditId(item.id);
     setNama(item.nama);
     setStok(item.stok.toString());
     setSatuan(item.satuan);
-    setStokMin(item.stokMinimum.toString());
+    setStokMin((item.stokMinimum ?? 0).toString());
     setOriginalStok(item.stok);
     setShowDecimalOptions(false);
     setIsDijual(false);
@@ -231,7 +400,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   };
 
   const handleExport = () => {
-    const rows = items.map(i => [i.nama, i.stok, i.satuan, i.stokMinimum]);
+    const rows = items.map(i => [i.nama, i.stok, i.satuan, i.stokMinimum ?? 0]);
     downloadExcel('export_inventory.xlsx', ['Nama Barang', 'Stok', 'Satuan', 'Stok Minimum'], rows, 'Master Inventory');
   };
 
@@ -349,10 +518,15 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   return (
     <div className="p-3 md:p-4 space-y-4 w-full">
       {/* Header & Controls */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-          <Package className="w-4 h-4 text-[#1E4648]" />
-          <span>Stok Bahan & Deterjen</span>
+      <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between gap-3 flex-wrap shadow-2xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-[#1E4648]/10 text-[#1E4648] flex items-center justify-center font-bold">
+            <Package className="w-4 h-4" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-slate-800">Inventory & Monitoring Stok (DSS)</h1>
+            <p className="text-[11px] text-slate-400">Monitoring kesehatan stok, rekomendasi restock, & penyesuaian opname fisik.</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -395,99 +569,400 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
             </>
           )}
           
-              {/* Tambah barang - STAFF dan MANAGER */}
+          {/* Tambah barang - STAFF dan MANAGER */}
           {(currentRole === 'STAFF' || currentRole === 'MANAGER') && (
-              <button onClick={() => { handleCloseModal(); setShowAddModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-md text-xs font-semibold transition shadow-sm">
-                <Plus className="w-4 h-4" /> Tambah Bahan
-              </button>
+            <button onClick={() => { handleCloseModal(); setShowAddModal(true); }} className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-lg text-xs font-semibold transition shadow-xs cursor-pointer">
+              <Plus className="w-4 h-4" /> Tambah Bahan Baru
+            </button>
           )}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+      {/* 4 Decision KPI Cards (DSS Overview & Filter) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Card 1: Critical Stock (0 / Minus) */}
+        <button
+          type="button"
+          onClick={() => setFilterKesehatan(prev => prev === 'KRITIS' ? 'SEMUA' : 'KRITIS')}
+          className={`p-3.5 rounded-xl border text-left transition relative cursor-pointer ${
+            filterKesehatan === 'KRITIS'
+              ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-400 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-rose-200 hover:bg-rose-50/30'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-bold text-rose-700 uppercase tracking-wider flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+              Stok Kritis
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800">
+              {kpiStats.kritis} Item
+            </span>
+          </div>
+          <div className="text-2xl font-black text-rose-900 tracking-tight">
+            {kpiStats.kritis}
+          </div>
+          <p className="text-[11px] text-rose-700 font-medium mt-1 leading-tight">
+            Stok 0 atau minus. <strong>Rekomendasi: Restock / Cek Fisik Segera</strong>
+          </p>
+        </button>
+
+        {/* Card 2: Low Stock (<= Min) */}
+        <button
+          type="button"
+          onClick={() => setFilterKesehatan(prev => prev === 'RENDAH' ? 'SEMUA' : 'RENDAH')}
+          className={`p-3.5 rounded-xl border text-left transition relative cursor-pointer ${
+            filterKesehatan === 'RENDAH'
+              ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-400 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-amber-200 hover:bg-amber-50/30'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+              Stok Rendah
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800">
+              {kpiStats.rendah} Item
+            </span>
+          </div>
+          <div className="text-2xl font-black text-amber-900 tracking-tight">
+            {kpiStats.rendah}
+          </div>
+          <p className="text-[11px] text-amber-700 font-medium mt-1 leading-tight">
+            Di bawah batas minimum. <strong>Rekomendasi: Pertimbangkan Restock</strong>
+          </p>
+        </button>
+
+        {/* Card 3: Stock Discrepancy (Selisih Opname) */}
+        <button
+          type="button"
+          onClick={() => setFilterKesehatan(prev => prev === 'SELISIH' ? 'SEMUA' : 'SELISIH')}
+          className={`p-3.5 rounded-xl border text-left transition relative cursor-pointer ${
+            filterKesehatan === 'SELISIH'
+              ? 'bg-sky-50 border-sky-300 ring-2 ring-sky-400 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-sky-200 hover:bg-sky-50/30'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-bold text-sky-700 uppercase tracking-wider flex items-center gap-1">
+              <Scale className="w-3.5 h-3.5 text-sky-600" />
+              Selisih Fisik
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-sky-100 text-sky-800">
+              {kpiStats.selisih} Item
+            </span>
+          </div>
+          <div className="text-2xl font-black text-sky-900 tracking-tight">
+            {kpiStats.selisih}
+          </div>
+          <p className="text-[11px] text-sky-700 font-medium mt-1 leading-tight">
+            Fisik berbeda sistem. <strong>Rekomendasi: Stock Adjustment</strong>
+          </p>
+        </button>
+
+        {/* Card 4: Healthy Stock (Aman) */}
+        <button
+          type="button"
+          onClick={() => setFilterKesehatan(prev => prev === 'AMAN' ? 'SEMUA' : 'AMAN')}
+          className={`p-3.5 rounded-xl border text-left transition relative cursor-pointer ${
+            filterKesehatan === 'AMAN'
+              ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-400 shadow-xs'
+              : 'bg-white border-slate-200 hover:border-emerald-200 hover:bg-emerald-50/30'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              Stok Aman
+            </span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
+              {kpiStats.aman} Item
+            </span>
+          </div>
+          <div className="text-2xl font-black text-emerald-900 tracking-tight">
+            {kpiStats.aman}
+          </div>
+          <p className="text-[11px] text-emerald-700 font-medium mt-1 leading-tight">
+            Kapasitas di atas batas aman. <strong>Status: Optimal</strong>
+          </p>
+        </button>
+      </div>
+
+      {/* Filter Bar & Real-time Search */}
+      <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between gap-3 flex-wrap shadow-2xs">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs font-bold text-slate-500 mr-1 flex items-center gap-1">
+            <Layers className="w-3.5 h-3.5" /> Filter:
+          </span>
+          <button
+            type="button"
+            onClick={() => setFilterKesehatan('SEMUA')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              filterKesehatan === 'SEMUA'
+                ? 'bg-[#1E4648] text-white shadow-2xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Semua ({kpiStats.total})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterKesehatan('KRITIS')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              filterKesehatan === 'KRITIS'
+                ? 'bg-rose-600 text-white shadow-2xs'
+                : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+            }`}
+          >
+            🔴 Kritis ({kpiStats.kritis})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterKesehatan('RENDAH')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              filterKesehatan === 'RENDAH'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+            }`}
+          >
+            🟡 Rendah ({kpiStats.rendah})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterKesehatan('SELISIH')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              filterKesehatan === 'SELISIH'
+                ? 'bg-sky-600 text-white shadow-2xs'
+                : 'bg-sky-50 text-sky-700 hover:bg-sky-100'
+            }`}
+          >
+            🔵 Selisih ({kpiStats.selisih})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterKesehatan('AMAN')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              filterKesehatan === 'AMAN'
+                ? 'bg-emerald-600 text-white shadow-2xs'
+                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+            }`}
+          >
+            🟢 Aman ({kpiStats.aman})
+          </button>
+        </div>
+
+        <div className="relative w-full sm:w-64">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari nama atau kode barang..."
+            className="w-full pl-3 pr-8 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#1E4648]"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Enhanced DSS Table */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                <th className="py-3 px-3">Kode</th>
-                <th className="py-3 px-4">Nama Barang</th>
-                <th className="py-3 px-4">Stok Saat Ini</th>
-                <th className="py-3 px-4">Stok Min.</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Terakhir Update</th>
-                <th className="py-3 px-4 text-right">Aksi</th>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px]">
+                <th className="py-3 px-3.5">Kode</th>
+                <th className="py-3 px-3.5">Nama Barang</th>
+                <th className="py-3 px-3.5 text-center">Stok Sistem</th>
+                <th className="py-3 px-3.5 text-center">Fisik Terakhir</th>
+                <th className="py-3 px-3.5 text-center">Min.</th>
+                <th className="py-3 px-3.5">Status & Rekomendasi Tindakan (DSS)</th>
+                <th className="py-3 px-3.5">Update</th>
+                <th className="py-3 px-3.5 text-right">Aksi Cepat</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 Array.from({ length: 4 }).map((_, idx) => (
                   <tr key={idx} className="animate-pulse">
-                    <td className="py-3 px-3"><div className="h-3.5 bg-slate-100 rounded w-14" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-32" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-12" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-28" /></td>
-                    <td className="py-3 px-4"><div className="h-3.5 bg-slate-100 rounded w-16 ml-auto" /></td>
+                    <td className="py-3.5 px-3.5"><div className="h-3.5 bg-slate-100 rounded w-16" /></td>
+                    <td className="py-3.5 px-3.5"><div className="h-3.5 bg-slate-100 rounded w-32" /></td>
+                    <td className="py-3.5 px-3.5 text-center"><div className="h-3.5 bg-slate-100 rounded w-16 mx-auto" /></td>
+                    <td className="py-3.5 px-3.5 text-center"><div className="h-3.5 bg-slate-100 rounded w-16 mx-auto" /></td>
+                    <td className="py-3.5 px-3.5 text-center"><div className="h-3.5 bg-slate-100 rounded w-12 mx-auto" /></td>
+                    <td className="py-3.5 px-3.5"><div className="h-3.5 bg-slate-100 rounded w-48" /></td>
+                    <td className="py-3.5 px-3.5"><div className="h-3.5 bg-slate-100 rounded w-24" /></td>
+                    <td className="py-3.5 px-3.5 text-right"><div className="h-3.5 bg-slate-100 rounded w-28 ml-auto" /></td>
                   </tr>
                 ))
-              ) : items.length === 0 ? (
+              ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-slate-400">
-                    Belum ada data stok bahan
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <Package className="w-8 h-8 text-slate-300 mx-auto mb-2 opacity-60" />
+                    <p className="font-bold text-slate-600 text-sm">Tidak ada data bahan pada filter ini</p>
+                    <p className="text-xs text-slate-400 mt-1">Coba gunakan filter 'Semua' atau bersihkan kolom pencarian.</p>
                   </td>
                 </tr>
               ) : (
-                items.map((item) => {
-                  const isMenipis = item.stok <= item.stokMinimum;
+                filteredItems.map((item) => {
+                  const isMinus = item.stok < 0;
+                  const isZero = item.stok === 0;
+                  const isLow = item.stok > 0 && item.stok <= (item.stokMinimum || 5);
+                  const hasDiscrepancy = item.statusKesehatan === 'SELISIH';
+                  const selisihQty = item.stokFisikTerakhir !== undefined ? (item.stokFisikTerakhir - item.stok) : 0;
+
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3">
+                      {/* 1. Kode */}
+                      <td className="py-3.5 px-3.5 whitespace-nowrap">
                         <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                           {item.id}
                         </span>
                       </td>
-                      <td className="py-3 px-4 font-semibold text-slate-600">{item.nama}</td>
-                      <td className="py-3 px-4 font-bold text-slate-700">
-                        {formatStok(item.stok)} <span className="text-slate-400 font-normal text-[11px]">{item.satuan}</span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-500">{formatStok(item.stokMinimum)} {item.satuan}</td>
-                      <td className="py-3 px-4">
-                        {isMenipis ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/30 px-2 py-0.5 rounded">
-                            <AlertTriangle className="w-3 h-3" /> Menipis
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-semibold bg-[#B5C9C9]/20 text-[#1E4648] border border-[#B5C9C9] px-2 py-0.5 rounded">
-                            Aman
+
+                      {/* 2. Nama Barang */}
+                      <td className="py-3.5 px-3.5">
+                        <span className="font-bold text-slate-800 block text-xs">{item.nama}</span>
+                        {item.isDijual && (
+                          <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-1.5 py-0.2 rounded border border-teal-100 inline-block mt-0.5">
+                            Retail: Rp {(item.hargaJual || 0).toLocaleString('id-ID')}
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-400">{item.terakhirUpdate ? formatDateTime(item.terakhirUpdate) : '-'}</td>
-                      <td className="py-3 px-4 text-right">
-                        {(currentRole === 'STAFF' || currentRole === 'MANAGER' || !currentRole) ? (
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => handleEditClick(item)}
-                              className="p-1.5 text-slate-500 hover:text-[#1E4648] hover:bg-slate-100 rounded transition"
-                              title="Edit & Sesuaikan Stok"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            {currentRole === 'MANAGER' && (
-                              <button
-                                onClick={() => handleOpenDeleteModal(item)}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
-                                title="Hapus / Arsipkan Bahan (Soft Delete)"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+
+                      {/* 3. Stok Sistem */}
+                      <td className="py-3.5 px-3.5 text-center whitespace-nowrap">
+                        <div className={`inline-flex flex-col items-center px-2.5 py-1 rounded-lg font-bold text-xs ${
+                          isMinus ? 'bg-rose-100 text-rose-800 border border-rose-300' :
+                          isZero ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                          isLow ? 'bg-amber-50 text-amber-800 border border-amber-200' :
+                          'bg-slate-100 text-slate-800'
+                        }`}>
+                          <span>{formatStok(item.stok)}</span>
+                          <span className="text-[10px] font-normal text-slate-500">{item.satuan}</span>
+                        </div>
+                      </td>
+
+                      {/* 4. Stok Fisik Terakhir */}
+                      <td className="py-3.5 px-3.5 text-center whitespace-nowrap">
+                        {item.stokFisikTerakhir !== undefined ? (
+                          <div className="text-xs">
+                            <span className="font-bold text-slate-800">
+                              {formatStok(item.stokFisikTerakhir)} <span className="text-[10px] text-slate-400 font-normal">{item.satuan}</span>
+                            </span>
+                            {hasDiscrepancy && (
+                              <span className={`block text-[10px] font-bold ${
+                                selisihQty > 0 ? 'text-emerald-600' : 'text-rose-600'
+                              }`}>
+                                {selisihQty > 0 ? `+${selisihQty}` : selisihQty} {item.satuan}
+                              </span>
+                            )}
+                            {item.tglOpnameTerakhir && (
+                              <span className="block text-[9px] text-slate-400 font-medium">{item.tglOpnameTerakhir.split(',')[0]}</span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-slate-400 text-xs">-</span>
+                          <span className="text-slate-300 text-xs italic">-</span>
                         )}
+                      </td>
+
+                      {/* 5. Batas Min */}
+                      <td className="py-3.5 px-3.5 text-center whitespace-nowrap">
+                        <span className="text-slate-600 font-medium text-xs">
+                          {formatStok(item.stokMinimum || 5)} <span className="text-[10px] text-slate-400">{item.satuan}</span>
+                        </span>
+                      </td>
+
+                      {/* 6. Status & Rekomendasi Tindakan (DSS) */}
+                      <td className="py-3.5 px-3.5 max-w-xs">
+                        <div className="space-y-1">
+                          {isMinus ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 inline-flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" /> STOK ANOMALI / MINUS
+                            </span>
+                          ) : isZero ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 inline-flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" /> KRITIS (HABIS)
+                            </span>
+                          ) : hasDiscrepancy ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-sky-50 text-sky-800 border border-sky-200 inline-flex items-center gap-1">
+                              <Scale className="w-3 h-3" /> SELISIH FISIK ({selisihQty > 0 ? `+${selisihQty}` : selisihQty})
+                            </span>
+                          ) : isLow ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> STOK MENIPIS
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> AMAN (OPTIMAL)
+                            </span>
+                          )}
+
+                          <p className="text-[11px] text-slate-600 font-medium leading-snug">
+                            {item.rekomendasiTindakan || 'Kapasitas stok optimal.'}
+                          </p>
+                        </div>
+                      </td>
+
+                      {/* 7. Terakhir Update */}
+                      <td className="py-3.5 px-3.5 whitespace-nowrap text-slate-500 text-[11px]">
+                        {item.terakhirUpdate ? formatDateTime(item.terakhirUpdate) : '-'}
+                      </td>
+
+                      {/* 8. Aksi Cepat DSS */}
+                      <td className="py-3.5 px-3.5 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Tombol Restock */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenRestockModal(item)}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-[11px] font-bold transition shadow-2xs cursor-pointer"
+                            title="Lakukan Restock barang dari supplier"
+                          >
+                            <ShoppingCart className="w-3 h-3 text-amber-700" />
+                            <span>Restock</span>
+                          </button>
+
+                          {/* Tombol Adjust */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAdjustModal(item)}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-md text-[11px] font-bold transition shadow-2xs cursor-pointer"
+                            title="Koreksi / Penyesuaian stok fisik (Stock Opname)"
+                          >
+                            <Scale className="w-3 h-3 text-teal-700" />
+                            <span>Adjust</span>
+                          </button>
+
+                          {/* Edit Details */}
+                          <button
+                            type="button"
+                            onClick={() => handleEditClick(item)}
+                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition cursor-pointer"
+                            title="Edit Data Master Barang"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Soft Delete */}
+                          {currentRole === 'MANAGER' && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDeleteModal(item)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
+                              title="Hapus / Arsipkan (Soft Delete)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -758,6 +1233,366 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
               >
                 {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>Simpan</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 1. SMART RESTOCK MODAL (DECISION SUPPORT SYSTEM)                         */}
+      {/* ========================================================================= */}
+      {showRestockModal && restockItem && (
+        <div className="fixed inset-0 z-[520] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-lg shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-800 flex items-center justify-center font-bold">
+                  <ShoppingCart className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Restock Barang Masuk</h3>
+                  <p className="text-[11px] text-slate-400">Pencatatan barang masuk dari supplier / belanja stok.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRestockModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-md transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Target Item Pill */}
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 mb-4 flex items-center justify-between gap-3">
+              <div>
+                <span className="font-mono text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  {restockItem.id}
+                </span>
+                <span className="font-bold text-slate-800 text-sm ml-2">{restockItem.nama}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-medium">Stok Sistem Saat Ini:</span>
+                <span className={`text-sm font-black ${restockItem.stok <= 0 ? 'text-rose-600' : 'text-slate-700'}`}>
+                  {formatStok(restockItem.stok)} {restockItem.satuan}
+                </span>
+              </div>
+            </div>
+
+            {/* Decision Support Intelligence Box */}
+            <div className="bg-gradient-to-br from-amber-50/80 via-white to-orange-50/50 p-4 rounded-xl border border-amber-200/80 shadow-2xs mb-4">
+              <div className="flex items-center justify-between mb-2.5">
+                <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wider">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  Analisis Penggunaan & Rekomendasi Restock
+                </span>
+                {restockLoadingStats && <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />}
+              </div>
+
+              {restockStats ? (
+                <div className="space-y-3">
+                  {/* Grid 4 Mini Stats */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                    <div className="bg-white p-2 rounded-lg border border-amber-100 shadow-2xs">
+                      <span className="text-[10px] text-slate-400 block">Last Restock</span>
+                      <span className="font-bold text-slate-700">
+                        {restockStats.lastRestockQty !== undefined ? `${restockStats.lastRestockQty} ${restockStats.satuan}` : '-'}
+                      </span>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg border border-amber-100 shadow-2xs">
+                      <span className="text-[10px] text-slate-400 block">Tgl Restock</span>
+                      <span className="font-bold text-slate-700 text-[11px]">
+                        {restockStats.lastRestockDate ? restockStats.lastRestockDate.split(',')[0] : '-'}
+                      </span>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg border border-amber-100 shadow-2xs">
+                      <span className="text-[10px] text-slate-400 block">Usage 7 Hari</span>
+                      <span className="font-bold text-slate-700">
+                        {restockStats.usage7Days} {restockStats.satuan}
+                      </span>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg border border-amber-100 shadow-2xs">
+                      <span className="text-[10px] text-slate-400 block">Rata-rata/Hari</span>
+                      <span className="font-bold text-slate-700">
+                        {restockStats.avgDailyUsage} {restockStats.satuan}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Prediction & Suggestion Banner */}
+                  <div className="bg-white p-3 rounded-lg border border-amber-200 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="space-y-0.5">
+                      <div className="text-[11px] text-slate-600">
+                        Daya tahan stok saat ini: <strong>±{restockStats.estimatedDaysLeft} hari</strong>
+                      </div>
+                      <div className="text-xs font-bold text-amber-900">
+                        Rekomendasi Restock: <span className="text-sm font-black text-amber-700">{restockStats.recommendedRestockQty} {restockStats.satuan}</span>
+                        <span className="text-[10px] text-slate-400 font-normal ml-1.5">(Target buffer ±14 hari)</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setRestockQty(String(restockStats.recommendedRestockQty))}
+                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white rounded-lg text-xs font-bold transition shadow-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Gunakan {restockStats.recommendedRestockQty} {restockStats.satuan}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">Memuat analisis konsumsi bahan...</p>
+              )}
+            </div>
+
+            {/* Input Form Fields */}
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Jumlah Barang Masuk ({restockItem.satuan}) <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="any"
+                    min="0.01"
+                    value={restockQty}
+                    onChange={(e) => setRestockQty(e.target.value)}
+                    placeholder="Contoh: 15"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  />
+                  <span className="px-3 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold">
+                    {restockItem.satuan}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Kuantitas diinput manual oleh staf/manager sesuai barang yang diterima.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Supplier / Toko (Opsional)</label>
+                  <input
+                    type="text"
+                    value={restockSupplier}
+                    onChange={(e) => setRestockSupplier(e.target.value)}
+                    placeholder="Contoh: Toko Plastik Berkah"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Total Biaya Belanja (Rp)</label>
+                  <input
+                    type="number"
+                    value={restockBiaya}
+                    onChange={(e) => setRestockBiaya(e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Catatan Tambahan (Opsional)</label>
+                <input
+                  type="text"
+                  value={restockCatatan}
+                  onChange={(e) => setRestockCatatan(e.target.value)}
+                  placeholder="Contoh: Pembelian stok operasional mingguan"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowRestockModal(false)}
+                disabled={restockSubmitting}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitRestock}
+                disabled={restockSubmitting || parseDecimal(restockQty, 0) <= 0}
+                className="px-5 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                {restockSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShoppingCart className="w-3.5 h-3.5" />}
+                <span>Simpan Restock</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. STOCK ADJUSTMENT MODAL (KOREKSI FISIK / OPNAME)                        */}
+      {/* ========================================================================= */}
+      {showAdjustModal && adjustItem && (
+        <div className="fixed inset-0 z-[520] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-lg shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-800 flex items-center justify-center font-bold">
+                  <Scale className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Stock Adjustment (Koreksi Fisik)</h3>
+                  <p className="text-[11px] text-slate-400">Koreksi ketika stok fisik di toko berbeda dengan stok sistem.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAdjustModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-md transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Target Item Info */}
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 mb-4 flex items-center justify-between gap-3">
+              <div>
+                <span className="font-mono text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                  {adjustItem.id}
+                </span>
+                <span className="font-bold text-slate-800 text-sm ml-2">{adjustItem.nama}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-medium">Stok Sistem Saat Ini:</span>
+                <span className={`text-sm font-black ${adjustItem.stok <= 0 ? 'text-rose-600' : 'text-slate-700'}`}>
+                  {formatStok(adjustItem.stok)} {adjustItem.satuan}
+                </span>
+              </div>
+            </div>
+
+            {/* Calculation Card: System vs Physical vs Delta */}
+            {(() => {
+              const currentSystem = adjustItem.stok;
+              const inputFisik = parseDecimal(adjustStokFisik, 0);
+              const delta = Math.round((inputFisik - currentSystem) * 10000) / 10000;
+              const isPlus = delta > 0;
+              const isMinus = delta < 0;
+
+              return (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 space-y-3">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs">
+                      <span className="text-[10px] text-slate-400 block font-semibold">Stok Sistem</span>
+                      <span className="text-sm font-bold text-slate-700">{formatStok(currentSystem)} {adjustItem.satuan}</span>
+                    </div>
+
+                    <div className="bg-white p-2.5 rounded-lg border border-teal-300 ring-2 ring-teal-400/30 shadow-2xs">
+                      <span className="text-[10px] text-teal-700 block font-bold">Stok Fisik Baru</span>
+                      <span className="text-sm font-black text-teal-900">{formatStok(inputFisik)} {adjustItem.satuan}</span>
+                    </div>
+
+                    <div className={`p-2.5 rounded-lg border shadow-2xs ${
+                      isPlus ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                      isMinus ? 'bg-rose-50 border-rose-200 text-rose-800' :
+                      'bg-slate-100 border-slate-200 text-slate-600'
+                    }`}>
+                      <span className="text-[10px] block font-semibold">Selisih Koreksi</span>
+                      <span className="text-sm font-black">
+                        {isPlus ? `+${formatStok(delta)}` : formatStok(delta)} {adjustItem.satuan}
+                      </span>
+                    </div>
+                  </div>
+
+                  {delta !== 0 && (
+                    <div className={`p-2.5 rounded-lg text-xs font-medium flex items-center gap-2 ${
+                      isPlus ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
+                      'bg-amber-50 text-amber-800 border border-amber-200'
+                    }`}>
+                      <Info className="w-4 h-4 shrink-0" />
+                      <span>
+                        {isPlus 
+                          ? `Stok sistem akan DITAMBAHKAN sebesar +${formatStok(delta)} ${adjustItem.satuan} agar cocok dengan fisik.` 
+                          : `Stok sistem akan DIKURANGI sebesar ${formatStok(Math.abs(delta))} ${adjustItem.satuan} agar cocok dengan fisik.`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Input Form */}
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Jumlah Stok Fisik Riil di Toko ({adjustItem.satuan}) <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={adjustStokFisik}
+                    onChange={(e) => setAdjustStokFisik(e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none focus:border-[#1E4648] focus:ring-1 focus:ring-[#1E4648]"
+                  />
+                  <span className="px-3 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold">
+                    {adjustItem.satuan}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Aturan: <strong>Stok fisik tidak boleh bernilai negatif (&lt; 0)</strong>. Masukkan angka riil hasil hitungan fisik rak.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Alasan Penyesuaian <span className="text-rose-500">*</span></label>
+                <select
+                  value={adjustAlasan}
+                  onChange={(e) => setAdjustAlasan(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#1E4648]"
+                >
+                  <option value="Stock Opname">Hasil Stock Opname Fisik Berkala</option>
+                  <option value="Barang Rusak / Bocor">Barang Rusak, Bocor, atau Cacat Kemasan</option>
+                  <option value="Barang Expired">Barang Kedaluwarsa (Expired)</option>
+                  <option value="Koreksi Selisih Kasir">Koreksi Selisih Transaksi Kasir</option>
+                  <option value="Koreksi Stok Anomali/Minus">Koreksi Anomali Stok Negatif Sistem Lama</option>
+                  <option value="Bonus / Sample Belum Tercatat">Bonus Supplier / Sample Belum Tercatat</option>
+                  <option value="Lainnya">Alasan Lainnya</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Keterangan / Catatan Audit</label>
+                <input
+                  type="text"
+                  value={adjustCatatan}
+                  onChange={(e) => setAdjustCatatan(e.target.value)}
+                  placeholder="Contoh: Ditemukan 1 bungkus di rak belakang kasir"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#1E4648]"
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowAdjustModal(false)}
+                disabled={adjustSubmitting}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-semibold transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitAdjust}
+                disabled={adjustSubmitting || parseDecimal(adjustStokFisik, -1) < 0}
+                className="px-5 py-2 bg-[#1E4648] hover:bg-[#163536] disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                {adjustSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Scale className="w-3.5 h-3.5" />}
+                <span>Konfirmasi Adjustment</span>
               </button>
             </div>
           </div>

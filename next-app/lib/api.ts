@@ -121,6 +121,14 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbGetInventoryList()) as any;
         case 'updateStokInventory':
           return (await sb.sbUpdateStokInventory(args[0], args[1])) as any;
+        case 'restockInventory':
+          return (await sb.sbRestockInventory(args[0], args[1], args[2], args[3], args[4], args[5])) as any;
+        case 'adjustInventory':
+          return (await sb.sbAdjustInventory(args[0], args[1], args[2], args[3], args[4])) as any;
+        case 'getInventoryUsageStats':
+          return (await sb.sbGetInventoryUsageStats(args[0], args[1])) as any;
+        case 'validateCartStock':
+          return (await sb.sbValidateCartStock(args[0])) as any;
         case 'tambahInventory':
           return (await sb.sbTambahInventory(args[0])) as any;
         case 'updateInventoryItem':

@@ -1,6 +1,40 @@
 import { getSupabase } from './supabaseClient';
-import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin, AuditLog, DropoffIncentiveConfig } from './types';
+import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin, AuditLog, DropoffIncentiveConfig, InventoryUsageStats, StockValidationResult, InsufficientStockItem } from './types';
 import { formatDateTime, parseIndonesianDateTime, normalizePhone, maskPhone, maskName, decodeNotaToken } from './utils';
+
+// ============================================================
+// INVENTORY DSS (Decision Support System) METADATA HELPERS
+// ============================================================
+async function sbGetInventorySettingsMeta(): Promise<{
+  physicalAudits: Record<string, { lastPhysicalStock: number; lastOpnameAt: string; user?: string; alasan?: string; catatan?: string }>;
+  restockHistory: Record<string, { lastQty: number; lastDate: string; supplier?: string; biaya?: number; user?: string; catatan?: string }>;
+}> {
+  const sb = getSupabase();
+  if (!sb) return { physicalAudits: {}, restockHistory: {} };
+
+  try {
+    const { data } = await sb
+      .from('app_settings')
+      .select('key, value')
+      .in('key', ['inventory_physical_audit', 'inventory_restock_history']);
+
+    let physicalAudits: Record<string, any> = {};
+    let restockHistory: Record<string, any> = {};
+
+    (data || []).forEach((row: any) => {
+      if (row.key === 'inventory_physical_audit' && row.value && typeof row.value === 'object') {
+        physicalAudits = row.value;
+      } else if (row.key === 'inventory_restock_history' && row.value && typeof row.value === 'object') {
+        restockHistory = row.value;
+      }
+    });
+
+    return { physicalAudits, restockHistory };
+  } catch (err) {
+    console.warn('[sbGetInventorySettingsMeta] Error fetching inventory meta:', err);
+    return { physicalAudits: {}, restockHistory: {} };
+  }
+}
 
 // ============================================================
 // INVENTORY
@@ -9,22 +43,68 @@ export async function sbGetInventoryList(): Promise<InventoryItem[]> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
-  const { data, error } = await sb
-    .from('inventory')
-    .select('*')
-    .order('nama', { ascending: true });
+  const [invRes, meta] = await Promise.all([
+    sb.from('inventory').select('*').order('nama', { ascending: true }),
+    sbGetInventorySettingsMeta()
+  ]);
 
-  if (error) throw error;
-  return (data || []).map((row: any) => ({
-    id: row.id,
-    nama: row.nama,
-    stok: Number(row.stok) || 0,
-    satuan: row.satuan,
-    terakhirUpdate: (row.terakhir_update || row.updated_at) ? formatDateTime(row.terakhir_update || row.updated_at) : '-',
-    isDijual: row.is_dijual,
-    hargaJual: Number(row.harga_jual) || 0,
-    kategori: row.kategori_layanan,
-  }));
+  if (invRes.error) throw invRes.error;
+
+  return (invRes.data || []).map((row: any) => {
+    const stok = Number(row.stok) || 0;
+    const stokMinimum = Number(row.stok_minimum !== undefined && row.stok_minimum !== null ? row.stok_minimum : 5);
+    const audit = meta.physicalAudits[row.id];
+    const restock = meta.restockHistory[row.id];
+
+    const stokFisikTerakhir = audit && audit.lastPhysicalStock !== undefined ? Number(audit.lastPhysicalStock) : undefined;
+    const tglOpnameTerakhir = audit?.lastOpnameAt ? formatDateTime(audit.lastOpnameAt) : undefined;
+    const petugasOpnameTerakhir = audit?.user;
+
+    const lastRestockQty = restock && restock.lastQty !== undefined ? Number(restock.lastQty) : undefined;
+    const lastRestockDate = restock?.lastDate ? formatDateTime(restock.lastDate) : undefined;
+
+    // Evaluasi Status Kesehatan Stok & Rekomendasi Tindakan (DSS)
+    let statusKesehatan: 'KRITIS' | 'RENDAH' | 'SELISIH' | 'AMAN' | 'ANOMALI' = 'AMAN';
+    let rekomendasiTindakan = 'Kapasitas stok optimal & aman.';
+
+    if (stok < 0) {
+      statusKesehatan = 'ANOMALI';
+      rekomendasiTindakan = 'Stok negatif tidak valid! Segera lakukan Stock Adjustment ke angka fisik riil (minimal 0).';
+    } else if (stok === 0) {
+      statusKesehatan = 'KRITIS';
+      if (stokFisikTerakhir !== undefined && stokFisikTerakhir > 0) {
+        rekomendasiTindakan = `Fisik terakhir tercatat ${stokFisikTerakhir} ${row.satuan}. Lakukan Stock Adjustment (+${stokFisikTerakhir}).`;
+      } else {
+        rekomendasiTindakan = 'Stok habis! Lakukan Restock dari supplier atau cek fisik rak.';
+      }
+    } else if (stokFisikTerakhir !== undefined && stokFisikTerakhir !== null && stokFisikTerakhir !== stok) {
+      const selisih = stokFisikTerakhir - stok;
+      statusKesehatan = 'SELISIH';
+      rekomendasiTindakan = `Terdapat selisih fisik (${selisih > 0 ? '+' : ''}${selisih} ${row.satuan}). Lakukan Stock Adjustment.`;
+    } else if (stok <= stokMinimum) {
+      statusKesehatan = 'RENDAH';
+      rekomendasiTindakan = `Stok menipis (${stok} ${row.satuan} <= batas min ${stokMinimum} ${row.satuan}). Pertimbangkan Restock.`;
+    }
+
+    return {
+      id: row.id,
+      nama: row.nama,
+      stok: stok,
+      satuan: row.satuan,
+      stokMinimum: stokMinimum,
+      terakhirUpdate: (row.terakhir_update || row.updated_at) ? formatDateTime(row.terakhir_update || row.updated_at) : '-',
+      isDijual: Boolean(row.is_dijual),
+      hargaJual: Number(row.harga_jual) || 0,
+      kategori: row.kategori_layanan,
+      stokFisikTerakhir,
+      tglOpnameTerakhir,
+      petugasOpnameTerakhir,
+      lastRestockQty,
+      lastRestockDate,
+      statusKesehatan,
+      rekomendasiTindakan,
+    };
+  });
 }
 
 export async function sbUpdateStokInventory(id: string, delta: number): Promise<{ success: boolean; stokBaru?: number }> {
@@ -39,6 +119,418 @@ export async function sbUpdateStokInventory(id: string, delta: number): Promise<
   if (error) throw error;
   return { success: true, stokBaru: Number(data) };
 }
+
+/**
+ * RESTOCK INVENTORY:
+ * Barang benar-benar masuk dari supplier / belanja stok, quantity diinput oleh user.
+ * Menambah stok sistem dan mencatat audit log serta riwayat restock.
+ */
+export async function sbRestockInventory(
+  id: string,
+  qtyMasuk: number,
+  supplier: string = '',
+  biaya: number = 0,
+  catatan: string = '',
+  user: string = 'Kasir'
+): Promise<{ success: boolean; stokBaru: number; message: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  if (qtyMasuk <= 0) {
+    throw new Error('Jumlah restock harus lebih dari 0.');
+  }
+
+  // 1. Ambil data item saat ini
+  const { data: item, error: fetchErr } = await sb
+    .from('inventory')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (fetchErr || !item) throw new Error('Item inventaris tidak ditemukan');
+
+  const stokLama = Number(item.stok) || 0;
+  const stokBaru = Math.round((stokLama + qtyMasuk) * 10000) / 10000;
+
+  // 2. Update stok item
+  const { error: updateErr } = await sb
+    .from('inventory')
+    .update({
+      stok: stokBaru,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+
+  if (updateErr) throw updateErr;
+
+  // 3. Simpan riwayat restock ke app_settings
+  try {
+    const meta = await sbGetInventorySettingsMeta();
+    const updatedRestock = {
+      ...meta.restockHistory,
+      [id]: {
+        lastQty: qtyMasuk,
+        lastDate: new Date().toISOString(),
+        supplier: supplier.trim() || 'Supplier',
+        biaya: Number(biaya) || 0,
+        user: user || 'Kasir',
+        catatan: catatan.trim() || '',
+      }
+    };
+
+    await sb.from('app_settings').upsert({
+      key: 'inventory_restock_history',
+      value: updatedRestock,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (metaErr) {
+    console.warn('[sbRestockInventory] Gagal menyimpan history restock meta:', metaErr);
+  }
+
+  // 4. Catat ke Audit Log
+  const supplierStr = supplier.trim() ? ` dari ${supplier.trim()}` : '';
+  const biayaStr = biaya > 0 ? ` (Total: Rp ${biaya.toLocaleString('id-ID')})` : '';
+  const catatanStr = catatan.trim() ? ` - Catatan: ${catatan.trim()}` : '';
+
+  await sbLogClientActivity(
+    user || 'Kasir',
+    'Restock',
+    item.nama,
+    `${stokLama} ${item.satuan}`,
+    `${stokBaru} ${item.satuan}`,
+    `Restock +${qtyMasuk} ${item.satuan} ${item.nama}${supplierStr}${biayaStr}${catatanStr}`
+  );
+
+  return {
+    success: true,
+    stokBaru,
+    message: `Restock ${qtyMasuk} ${item.satuan} ${item.nama} berhasil disimpan (Stok baru: ${stokBaru} ${item.satuan}).`
+  };
+}
+
+/**
+ * STOCK ADJUSTMENT:
+ * Koreksi ketika stok fisik berbeda dengan stok sistem (hasil stock opname, rusak, selisih audit).
+ * Negative stock dilarang keras (< 0 tidak diperbolehkan).
+ */
+export async function sbAdjustInventory(
+  id: string,
+  stokFisik: number,
+  alasan: string = 'Stock Opname',
+  catatan: string = '',
+  user: string = 'Kasir'
+): Promise<{ success: boolean; stokBaru: number; delta: number; message: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  if (stokFisik < 0) {
+    throw new Error('Stok fisik tidak boleh bernilai negatif (< 0). Silakan periksa kembali hitungan fisik.');
+  }
+
+  // 1. Ambil data item saat ini
+  const { data: item, error: fetchErr } = await sb
+    .from('inventory')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (fetchErr || !item) throw new Error('Item inventaris tidak ditemukan');
+
+  const stokLama = Number(item.stok) || 0;
+  const delta = Math.round((stokFisik - stokLama) * 10000) / 10000;
+
+  // 2. Update stok item langsung ke angka fisik
+  const { error: updateErr } = await sb
+    .from('inventory')
+    .update({
+      stok: stokFisik,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+
+  if (updateErr) throw updateErr;
+
+  // 3. Simpan data audit fisik terakhir ke app_settings
+  try {
+    const meta = await sbGetInventorySettingsMeta();
+    const updatedAudits = {
+      ...meta.physicalAudits,
+      [id]: {
+        lastPhysicalStock: stokFisik,
+        lastOpnameAt: new Date().toISOString(),
+        user: user || 'Kasir',
+        alasan: alasan || 'Stock Opname',
+        catatan: catatan.trim() || '',
+      }
+    };
+
+    await sb.from('app_settings').upsert({
+      key: 'inventory_physical_audit',
+      value: updatedAudits,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (metaErr) {
+    console.warn('[sbAdjustInventory] Gagal menyimpan audit fisik meta:', metaErr);
+  }
+
+  // 4. Catat ke Audit Log
+  const deltaSign = delta >= 0 ? `+${delta}` : `${delta}`;
+  const catatanStr = catatan.trim() ? ` - Catatan: ${catatan.trim()}` : '';
+
+  await sbLogClientActivity(
+    user || 'Kasir',
+    'Stock Adjustment',
+    item.nama,
+    `${stokLama} ${item.satuan}`,
+    `${stokFisik} ${item.satuan}`,
+    `Stock Adjustment ${item.nama}: sistem ${stokLama} → fisik ${stokFisik} (selisih ${deltaSign} ${item.satuan}). Alasan: ${alasan}${catatanStr}`
+  );
+
+  return {
+    success: true,
+    stokBaru: stokFisik,
+    delta,
+    message: `Stock adjustment ${item.nama} berhasil disesuaikan ke ${stokFisik} ${item.satuan} (selisih ${deltaSign} ${item.satuan}).`
+  };
+}
+
+/**
+ * GET INVENTORY USAGE STATS & SMART RESTOCK RECOMMENDATION:
+ * Menganalisis pemakaian 7 hari terakhir dari transaksi POS riil untuk memberikan
+ * rekomendasi kuantitas restock prediktif bagi user.
+ */
+export async function sbGetInventoryUsageStats(id: string, days: number = 7): Promise<InventoryUsageStats> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  // 1. Ambil data item
+  const { data: item, error: itemErr } = await sb
+    .from('inventory')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (itemErr || !item) throw new Error('Item inventaris tidak ditemukan');
+
+  const currentStock = Number(item.stok) || 0;
+  const stokMinimum = Number(item.stok_minimum !== undefined && item.stok_minimum !== null ? item.stok_minimum : 5);
+
+  // 2. Ambil metadata restock & opname terakhir
+  const meta = await sbGetInventorySettingsMeta();
+  const restock = meta.restockHistory[id];
+  const audit = meta.physicalAudits[id];
+
+  // 3. Hitung pemakaian dari transaksi_items selama X hari terakhir
+  const cutoff = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString();
+  
+  // Ambil mapping layanan yang terkait dengan item inventory ini
+  const { data: mappedLayanan } = await sb
+    .from('layanan')
+    .select('nama, inventory_deduction_qty')
+    .eq('id_inventory', id);
+
+  const layananNames = (mappedLayanan || []).map((l: any) => l.nama);
+  const deductionRatioMap = new Map<string, number>();
+  (mappedLayanan || []).forEach((l: any) => {
+    deductionRatioMap.set(l.nama.toLowerCase().trim(), Number(l.inventory_deduction_qty) || 1);
+  });
+
+  // Query transaksi items yang memakai item ini secara langsung atau lewat layanan
+  let usageTotal = 0;
+
+  try {
+    const { data: directItems } = await sb
+      .from('transaksi_items')
+      .select('qty, inventory_deduction_qty, layanan')
+      .eq('id_inventory', id);
+
+    (directItems || []).forEach((it: any) => {
+      const q = Number(it.qty) || 0;
+      const d = Number(it.inventory_deduction_qty) || 1;
+      usageTotal += q * d;
+    });
+
+    if (layananNames.length > 0) {
+      const { data: serviceItems } = await sb
+        .from('transaksi_items')
+        .select('qty, inventory_deduction_qty, layanan')
+        .in('layanan', layananNames)
+        .is('id_inventory', null);
+
+      (serviceItems || []).forEach((it: any) => {
+        const q = Number(it.qty) || 0;
+        const ratio = deductionRatioMap.get(String(it.layanan || '').toLowerCase().trim()) || 1;
+        usageTotal += q * ratio;
+      });
+    }
+  } catch (err) {
+    console.warn('[sbGetInventoryUsageStats] Gagal query detail penggunaan:', err);
+  }
+
+  const usage7Days = Math.round(usageTotal * 100) / 100;
+  const avgDailyUsage = Math.round((usage7Days / days) * 10) / 10;
+
+  // Estimasi hari sisa stok
+  let estimatedDaysLeft: number | string = 0;
+  if (currentStock <= 0) {
+    estimatedDaysLeft = 0;
+  } else if (avgDailyUsage > 0) {
+    estimatedDaysLeft = Math.round((currentStock / avgDailyUsage) * 10) / 10;
+  } else {
+    estimatedDaysLeft = '±30+';
+  }
+
+  // Rekomendasi Restock Cerdas:
+  // Formula: Target buffer 14 hari pemakaian ATAU 2x stok minimum (mana yang lebih besar)
+  let recommendedRestockQty = Math.max(
+    Math.ceil(stokMinimum * 2),
+    Math.ceil(avgDailyUsage * 14)
+  );
+
+  // Jika stok saat ini di bawah minimum, tambahkan kekurangan saat ini
+  if (currentStock < stokMinimum) {
+    recommendedRestockQty += Math.ceil(stokMinimum - currentStock);
+  }
+
+  if (recommendedRestockQty <= 0) recommendedRestockQty = Math.max(5, stokMinimum);
+
+  const stokFisikTerakhir = audit?.lastPhysicalStock !== undefined ? Number(audit.lastPhysicalStock) : undefined;
+  const hasPhysicalDiscrepancy = stokFisikTerakhir !== undefined && stokFisikTerakhir !== currentStock;
+  const discrepancyDelta = stokFisikTerakhir !== undefined ? Math.round((stokFisikTerakhir - currentStock) * 100) / 100 : 0;
+
+  return {
+    id,
+    nama: item.nama,
+    satuan: item.satuan,
+    currentStock,
+    stokMinimum,
+    lastRestockQty: restock?.lastQty,
+    lastRestockDate: restock?.lastDate ? formatDateTime(restock.lastDate) : undefined,
+    usage7Days,
+    avgDailyUsage,
+    estimatedDaysLeft,
+    recommendedRestockQty,
+    stokFisikTerakhir,
+    tglOpnameTerakhir: audit?.lastOpnameAt ? formatDateTime(audit.lastOpnameAt) : undefined,
+    hasPhysicalDiscrepancy,
+    discrepancyDelta,
+  };
+}
+
+/**
+ * VALIDASI STOK KERANJANG POS (DECISION SUPPORT):
+ * Mencegah negative stock pada transaksi kasir, sekaligus menyajikan informasi actionable
+ * dan rekomendasi penyesuaian (Stock Adjustment / Restock) jika stok tidak mencukupi.
+ */
+export async function sbValidateCartStock(
+  cartItems: Array<{ layanan: string; qty: number; idInventory?: string | null; inventoryDeductionQty?: number }>
+): Promise<StockValidationResult> {
+  const sb = getSupabase();
+  if (!sb) return { valid: true, insufficientItems: [] };
+
+  // 1. Agregasi total kebutuhan per inventory item
+  const needsMap = new Map<string, { idInventory: string; layanan: string; totalQty: number }>();
+
+  // Cari mapping inventory jika idInventory belum ada di cart item
+  const { data: allLayanan } = await sb.from('layanan').select('nama, id_inventory, inventory_deduction_qty');
+  const layananMap = new Map<string, { id_inventory?: string; inventory_deduction_qty?: number }>();
+  (allLayanan || []).forEach((l: any) => {
+    layananMap.set(l.nama.toLowerCase().trim(), {
+      id_inventory: l.id_inventory,
+      inventory_deduction_qty: Number(l.inventory_deduction_qty) || 1,
+    });
+  });
+
+  cartItems.forEach(item => {
+    let invId = item.idInventory;
+    let ratio = Number(item.inventoryDeductionQty) || 1;
+
+    if (!invId || invId === 'none') {
+      const match = layananMap.get(item.layanan.toLowerCase().trim());
+      if (match?.id_inventory) {
+        invId = match.id_inventory;
+        ratio = match.inventory_deduction_qty || 1;
+      }
+    }
+
+    if (invId && invId !== 'none') {
+      const needed = (Number(item.qty) || 1) * ratio;
+      const existing = needsMap.get(invId);
+      if (existing) {
+        existing.totalQty += needed;
+      } else {
+        needsMap.set(invId, {
+          idInventory: invId,
+          layanan: item.layanan,
+          totalQty: needed,
+        });
+      }
+    }
+  });
+
+  if (needsMap.size === 0) {
+    return { valid: true, insufficientItems: [] };
+  }
+
+  // 2. Query data inventaris dan metadata opname
+  const neededIds = Array.from(needsMap.keys());
+  const [{ data: invRows }, meta] = await Promise.all([
+    sb.from('inventory').select('*').in('id', neededIds),
+    sbGetInventorySettingsMeta(),
+  ]);
+
+  const invMap = new Map<string, any>();
+  (invRows || []).forEach((r: any) => invMap.set(r.id, r));
+
+  const insufficientItems: InsufficientStockItem[] = [];
+
+  for (const [id, req] of needsMap.entries()) {
+    const inv = invMap.get(id);
+    if (!inv) continue;
+
+    const stokSistem = Number(inv.stok) || 0;
+    const kebutuhan = Math.round(req.totalQty * 10000) / 10000;
+
+    if (stokSistem < kebutuhan) {
+      const kekurangan = Math.round((kebutuhan - stokSistem) * 10000) / 10000;
+      const audit = meta.physicalAudits[id];
+      const stokFisikTerakhir = audit && audit.lastPhysicalStock !== undefined ? Number(audit.lastPhysicalStock) : undefined;
+      const tglOpnameTerakhir = audit?.lastOpnameAt ? formatDateTime(audit.lastOpnameAt) : undefined;
+
+      let rekomendasi = '';
+      let tipeRekomendasi: 'ADJUSTMENT_READY' | 'CHECK_OR_RESTOCK' = 'CHECK_OR_RESTOCK';
+
+      if (stokFisikTerakhir !== undefined && stokFisikTerakhir >= kebutuhan) {
+        tipeRekomendasi = 'ADJUSTMENT_READY';
+        const delta = Math.round((stokFisikTerakhir - stokSistem) * 100) / 100;
+        rekomendasi = `Perhatian: Terdapat kemungkinan selisih stok. Stok fisik terakhir tercatat ${stokFisikTerakhir} ${inv.satuan} (${tglOpnameTerakhir || 'Opname terakhir'}). Lakukan Stock Adjustment (+${delta}) terlebih dahulu, kemudian proses transaksi.`;
+      } else {
+        tipeRekomendasi = 'CHECK_OR_RESTOCK';
+        rekomendasi = `Silakan periksa stok fisik ${inv.nama} terlebih dahulu. Jika fisik tersedia di toko → lakukan Stock Adjustment. Jika fisik memang habis → lakukan Restock jika barang baru dibeli.`;
+      }
+
+      insufficientItems.push({
+        idInventory: id,
+        namaItem: inv.nama,
+        layanan: req.layanan,
+        stokSistem,
+        satuan: inv.satuan,
+        kebutuhan,
+        kekurangan,
+        stokFisikTerakhir,
+        tglOpnameTerakhir,
+        rekomendasi,
+        tipeRekomendasi,
+      });
+    }
+  }
+
+  return {
+    valid: insufficientItems.length === 0,
+    insufficientItems,
+  };
+}
+
 
 export async function sbTambahInventory(item: Partial<InventoryItem> & { isDijual?: boolean; hargaJual?: number; kategoriLayanan?: string }) {
   const sb = getSupabase();
