@@ -131,8 +131,8 @@ export default function Sidebar({
       icon: ShoppingCart,
       items: [
         { id: 'transaksi', label: 'POS Kasir', icon: ShoppingCart, staffOnly: true, requiresShift: true },
-        { id: 'pesanan', label: 'Antrean Pesanan', icon: ClipboardList, requiresShift: true },
-        { id: 'riwayat_dropoff', label: 'Pesanan Selesai', icon: CheckCheck, requiresShift: true },
+        { id: 'pesanan', label: 'Antrean Drop-off', icon: ClipboardList, requiresShift: true },
+        { id: 'riwayat_dropoff', label: 'Drop-off Selesai', icon: CheckCheck, requiresShift: true },
         { id: 'mesin', label: 'Monitoring Mesin', icon: WashingMachine, requiresShift: true },
         { id: 'riwayat', label: 'Riwayat Transaksi', icon: History },
         { id: 'pelanggan', label: 'Data Pelanggan', icon: Users }

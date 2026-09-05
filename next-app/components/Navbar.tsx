@@ -43,8 +43,8 @@ interface NavbarProps {
 const tabTitles: Record<string, string> = {
   dashboard: 'Dashboard Utama Outlet',
   transaksi: 'POS Kasir (Point of Sale)',
-  pesanan: 'Antrean Pesanan Drop-off',
-  riwayat_dropoff: 'Pesanan Selesai (Riwayat Drop-off)',
+  pesanan: 'Antrean Drop-off',
+  riwayat_dropoff: 'Drop-off Selesai',
   mesin: 'Monitoring & Status Mesin',
   riwayat: 'Riwayat Transaksi',
   pelanggan: 'Data Pelanggan & Member',
