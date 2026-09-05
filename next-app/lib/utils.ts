@@ -1,9 +1,38 @@
 /**
- * Mask phone number — tampilkan hanya 4 digit terakhir, sisanya bintang.
- * Contoh: "081395448773" → "********8773"
+ * Normalisasi format nomor WhatsApp/telepon (08xxx)
+ */
+export function normalizePhone(hp: string | undefined | null): string {
+  if (!hp) return '';
+  let clean = String(hp).replace(/\D/g, '');
+  if (clean.startsWith('62')) clean = '0' + clean.substring(2);
+  else if (clean.startsWith('8')) clean = '0' + clean;
+  return clean;
+}
+
+/**
+ * Mask nama pelanggan (misal "Hilda Permata" → "Hi*** Pe****")
+ */
+export function maskName(nama: string | undefined | null): string {
+  if (!nama) return 'Pelanggan';
+  const parts = String(nama).trim().split(/\s+/);
+  return parts.map(part => {
+    if (part.length <= 2) return part;
+    return part.substring(0, 2) + '*'.repeat(Math.min(part.length - 2, 4));
+  }).join(' ');
+}
+
+/**
+ * Mask phone number — tampilkan 4 digit awalan dan 4 digit akhiran atau format tersensor.
+ * Contoh: "081334220105" → "0813*****0105"
  */
 export function maskPhone(hp: string | undefined | null): string {
   if (!hp) return '-';
+  const norm = normalizePhone(hp);
+  if (norm.length >= 10) {
+    const prefix = norm.substring(0, 4);
+    const suffix = norm.substring(norm.length - 4);
+    return `${prefix}*****${suffix}`;
+  }
   const digits = String(hp).replace(/\D/g, '');
   if (digits.length <= 4) return digits;
   return '*'.repeat(digits.length - 4) + digits.slice(-4);
@@ -41,6 +70,28 @@ export function eNotaUrl(noNota: string, token?: string): string {
   const base = 'https://duasisilaundry-pos.vercel.app/';
   const activeToken = token || encodeNotaToken(noNota);
   return `${base}?t=${encodeURIComponent(activeToken)}`;
+}
+
+/**
+ * Decode token e-nota kembali menjadi noNota asli
+ */
+export function decodeNotaToken(token: string | undefined | null): string | null {
+  if (!token || !token.includes('.')) return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  try {
+    const raw = parts[0].replace(/-/g, '+').replace(/_/g, '/');
+    const b64 = raw + '='.repeat((4 - (raw.length % 4)) % 4);
+    const noNota = typeof window !== 'undefined'
+      ? decodeURIComponent(escape(atob(b64)))
+      : Buffer.from(b64, 'base64').toString('utf8');
+    if (noNota && (noNota.startsWith('LDY-') || noNota.startsWith('NOTA-') || noNota.length >= 6)) {
+      return noNota;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
 }
 
 /**

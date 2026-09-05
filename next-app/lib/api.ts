@@ -242,7 +242,7 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
         case 'getRiwayatPelangganByHp':
           return (await sb.sbGetRiwayatPelangganByHp(args[0])) as any;
         case 'getTransaksiByNota':
-          return (await sb.sbGetTransaksiByNota(args[0])) as any;
+          return (await sb.sbGetTransaksiByNota(args[0], args[1], args[2])) as any;
         case 'pelunasanDP':
           return (await sb.sbPelunasanDP(args[0], args[1], args[2])) as any;
         case 'validasiVoucher':

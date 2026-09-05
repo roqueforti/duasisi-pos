@@ -1,6 +1,6 @@
 import { getSupabase } from './supabaseClient';
 import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin, AuditLog, DropoffIncentiveConfig } from './types';
-import { formatDateTime, parseIndonesianDateTime } from './utils';
+import { formatDateTime, parseIndonesianDateTime, normalizePhone, maskPhone, maskName, decodeNotaToken } from './utils';
 
 // ============================================================
 // INVENTORY
@@ -2723,9 +2723,37 @@ export async function sbGetRiwayatPelangganByHp(noHp: string): Promise<any[]> {
   }));
 }
 
-export async function sbGetTransaksiByNota(noNota: string): Promise<any | null> {
+export async function sbGetTransaksiByNota(
+  noNota?: string,
+  token?: string,
+  last4Phone?: string
+): Promise<{ success: boolean; transaksi?: any; message?: string }> {
   const sb = getSupabase();
-  if (!sb) return null;
+  if (!sb) return { success: false, message: 'Database Supabase belum terhubung.' };
+
+  let resolvedNota = (noNota || '').trim().toUpperCase();
+
+  // Kalau ada token, decode untuk dapat noNota (URL mode: ?t=token)
+  if (token && !resolvedNota) {
+    const decoded = decodeNotaToken(token);
+    if (decoded) {
+      resolvedNota = decoded.trim().toUpperCase();
+    } else {
+      return { success: false, message: 'Link e-nota tidak valid atau telah kedaluwarsa.' };
+    }
+  }
+
+  // Kalau ada keduanya, verifikasi token cocok dengan noNota
+  if (token && resolvedNota) {
+    const decoded = decodeNotaToken(token);
+    if (decoded && decoded.trim().toUpperCase() !== resolvedNota) {
+      return { success: false, message: 'Token e-nota tidak sesuai dengan nomor nota.' };
+    }
+  }
+
+  if (!resolvedNota) {
+    return { success: false, message: 'Parameter nomor nota tidak ditemukan.' };
+  }
 
   const { data, error } = await sb
     .from('transaksi')
@@ -2734,12 +2762,32 @@ export async function sbGetTransaksiByNota(noNota: string): Promise<any | null> 
       transaksi_items (*),
       pipeline_steps (*)
     `)
-    .eq('no_nota', noNota)
+    .ilike('no_nota', resolvedNota)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error || !data) {
+    return { success: false, message: `Nota "${resolvedNota}" tidak ditemukan di sistem.` };
+  }
 
-  return {
+  // Proteksi 2-Faktor untuk pencarian manual publik tanpa token
+  if (!token) {
+    const clean4 = String(last4Phone || '').replace(/\D/g, '');
+    if (clean4.length !== 4) {
+      return {
+        success: false,
+        message: 'Verifikasi keamanan: Masukkan 4 digit terakhir nomor HP yang terdaftar pada nota.'
+      };
+    }
+    const normPhone = normalizePhone(data.no_hp || '');
+    if (!normPhone || !normPhone.endsWith(clean4)) {
+      return {
+        success: false,
+        message: `Nota "${resolvedNota}" tidak cocok dengan 4 digit nomor HP yang dimasukkan.`
+      };
+    }
+  }
+
+  const txFormatted = {
     noNota: data.no_nota,
     tanggal: formatDateTime(data.tanggal),
     namaPelanggan: data.nama_pelanggan,
@@ -2775,6 +2823,11 @@ export async function sbGetTransaksiByNota(noNota: string): Promise<any | null> 
       status: p.status,
       assignedStaff: p.assigned_staff,
     })),
+  };
+
+  return {
+    success: true,
+    transaksi: txFormatted,
   };
 }
 
@@ -2874,27 +2927,87 @@ export async function sbValidasiVoucher(kode: string, subtotal: number, noHp?: s
 
 export async function sbCekPoinPelanggan(noHp: string) {
   const sb = getSupabase();
-  if (!sb) return { success: false, message: 'Database belum terhubung' };
+  if (!sb) return { success: false, message: 'Database Supabase belum terhubung.' };
 
-  const { data, error } = await sb
-    .from('pelanggan')
-    .select('nama, no_hp, saldo_poin, is_member, stamps_75, stamps_45, total_order')
-    .eq('no_hp', String(noHp).trim())
-    .maybeSingle();
-
-  if (error || !data) {
-    return { success: false, message: 'Nomor HP tidak ditemukan.' };
+  const cleanPhone = String(noHp || '').trim();
+  const norm = normalizePhone(cleanPhone);
+  if (!norm || norm.length < 9) {
+    return { success: false, message: 'Format nomor WhatsApp tidak valid. Masukkan minimal 9 digit.' };
   }
+
+  // Ambil data pelanggan untuk dicocokkan nomor teleponnya (mendukung 08..., 8..., +62...)
+  const { data: allPelanggan, error } = await sb
+    .from('pelanggan')
+    .select('*');
+
+  if (error || !allPelanggan || allPelanggan.length === 0) {
+    return { success: false, message: `Nomor "${cleanPhone}" belum terdaftar sebagai pelanggan di Dua SiSi Laundry.` };
+  }
+
+  const found = allPelanggan.find((p: any) => {
+    const pNorm = normalizePhone(p.no_hp);
+    return pNorm === norm || pNorm.endsWith(norm) || norm.endsWith(pNorm);
+  });
+
+  if (!found) {
+    return { success: false, message: `Nomor "${cleanPhone}" belum terdaftar sebagai pelanggan di Dua SiSi Laundry.` };
+  }
+
+  // Ambil riwayat order aktif jika ada
+  const activeOrders: Array<{
+    noNota: string;
+    tipe: string;
+    status: string;
+    estimasiSelesai: string;
+  }> = [];
+
+  try {
+    const { data: txList } = await sb
+      .from('transaksi')
+      .select('no_nota, tipe, status, estimasi_selesai, created_at')
+      .or(`no_hp.eq.${found.no_hp},no_hp.eq.${norm}`)
+      .not('status', 'in', '("Selesai","Dibatalkan","Void")')
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    if (txList && txList.length > 0) {
+      for (const t of txList) {
+        activeOrders.push({
+          noNota: t.no_nota,
+          tipe: t.tipe || 'Drop Off',
+          status: t.status || 'Diterima',
+          estimasiSelesai: t.estimasi_selesai ? formatDateTime(t.estimasi_selesai) : '-'
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('[sbCekPoinPelanggan] Gagal memuat pesanan aktif:', e);
+  }
+
+  const isMember = Boolean(found.is_member) || String(found.status_member || '').toUpperCase() === 'MEMBER';
+  const totalOrder = Number(found.total_order) || 0;
+  const saldoPoin = Number(found.saldo_poin) || 0;
 
   return {
     success: true,
-    nama: data.nama,
-    noHp: data.no_hp,
-    saldoPoin: Number(data.saldo_poin) || 0,
-    isMember: Boolean(data.is_member),
-    stamps75: Number(data.stamps_75) || 0,
-    stamps45: Number(data.stamps_45) || 0,
-    totalOrder: Number(data.total_order) || 0,
+    pelanggan: {
+      noHp: found.no_hp || norm,
+      nama: found.nama || 'Pelanggan',
+      maskedNama: maskName(found.nama || 'Pelanggan'),
+      maskedHp: maskPhone(found.no_hp || norm),
+      alamat: found.alamat || '',
+      saldoPoin: saldoPoin,
+      totalOrder: totalOrder,
+      totalSpend: Number(found.total_spend) || 0,
+      terakhirOrder: found.terakhir_order ? formatDateTime(found.terakhir_order) : '-',
+      isMember: isMember,
+      statusMember: isMember ? 'MEMBER VIP' : 'PELANGGAN REGULER',
+      statusKategori: isMember ? 'Member' : (totalOrder > 1 ? 'Pelanggan Lama' : 'Pelanggan Baru'),
+      tglDaftar: found.tgl_daftar ? formatDateTime(found.tgl_daftar) : '',
+      stamps75: Number(found.stamps_75) || 0,
+      stamps45: Number(found.stamps_45) || 0,
+      activeOrders: activeOrders
+    }
   };
 }
 
