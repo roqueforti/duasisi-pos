@@ -1378,6 +1378,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         generatedBy: isManager ? 'Manager / Owner' : 'Kasir',
         generatedAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + formatWibTimeOnly(new Date().toISOString()),
         executiveSummaryOpening: finalOpening,
+        aiProvider: exportAiProvider,
         kpi: {
           totalRevenue: repRevenue,
           totalTransactions: repTrxCount,
@@ -1426,13 +1427,18 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       // 4. Merender Dokumen PDF Eksekutif dengan Logo & Glosarium
       setExportStage(4);
       await new Promise(r => setTimeout(r, 300));
+
+      // 5. Selesai — set stage final SEBELUM trigger download agar animasi & download sinkron
+      setExportStage(5);
+      await new Promise(r => setTimeout(r, 200));
+
+      // Trigger unduh PDF — animasi selesai bersamaan dengan file terdownload
       await generateBusinessPerformancePdf(payload);
 
-      // 5. Selesai & Trigger Unduh
-      setExportStage(5);
-      await new Promise(r => setTimeout(r, 600));
-
+      // Langsung tutup modal setelah download (tanpa delay tambahan)
       setShowExportModal(false);
+      setExportSubmitting(false);
+      setExportStage(0);
       await showAlert('Laporan PDF Business Performance Report berhasil dianalisis AI & diunduh!', 'success');
     } catch (err: any) {
       console.error('Export PDF error:', err);

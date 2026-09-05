@@ -10,6 +10,7 @@ export interface ReportDataPayload {
   generatedBy: string;
   generatedAt: string;
   executiveSummaryOpening?: string;
+  aiProvider?: string;
   logoDataUrl?: string;
   // Executive Summary
   kpi: {
@@ -130,6 +131,23 @@ export function formatRupiahId(val: number): string {
 export function formatPercentId(val: number): string {
   const n = Number(val) || 0;
   return n.toFixed(1).replace('.', ',') + '%';
+}
+
+// Sanitize teks agar Unicode yang tidak didukung jsPDF Helvetica terganti ASCII
+function sanitizePdfText(text: string): string {
+  return (text || '')
+    .replace(/≥/g, '>=')
+    .replace(/≤/g, '<=')
+    .replace(/→/g, '->')
+    .replace(/←/g, '<-')
+    .replace(/—/g, '-')
+    .replace(/–/g, '-')
+    .replace(/'/g, "'")
+    .replace(/'/g, "'")
+    .replace(/"/g, '"')
+    .replace(/"/g, '"')
+    .replace(/•/g, '-')
+    .replace(/…/g, '...');
 }
 
 /**
@@ -261,7 +279,7 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
 
   // Paragraf Pembuka Ringkasan Eksekutif (AI Analysis / Heuristics)
   const defaultOpening = `Laporan kinerja bisnis dua SiSi Laundry Express & Coin POS periode ${data.periodeLabel} menyajikan evaluasi komprehensif terhadap performa finansial, efisiensi operasional, dan dinamika retensi pelanggan. Dokumen ini disusun secara sistematis guna memberikan gambaran holistik bagi manajemen dalam mengidentifikasi pencapaian kunci, mengendalikan beban pokok penjualan (HPP), serta merumuskan prioritas strategis demi akselerasi pertumbuhan outlet yang berkelanjutan.`;
-  const openingText = data.executiveSummaryOpening?.trim() || defaultOpening;
+  const openingText = sanitizePdfText(data.executiveSummaryOpening?.trim() || defaultOpening);
   const openingLines = doc.splitTextToSize(openingText, contentWidth - 8);
   const openingBoxH = Math.max(13, openingLines.length * 3.6 + 4);
 
@@ -277,6 +295,20 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   doc.setFontSize(7.2);
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
   doc.text(openingLines, margin + 4.5, curY + 4.2);
+
+  // AI Provider Badge (kecil di pojok kanan bawah kotak)
+  if (data.aiProvider) {
+    const badgeText = `Analyzed by ${data.aiProvider}`;
+    const badgeW = doc.getTextWidth(badgeText) + 4;
+    const badgeX = margin + contentWidth - badgeW - 2;
+    const badgeY = curY + openingBoxH - 5.5;
+    doc.setFillColor(13, 148, 136); // accentTurquoise
+    doc.roundedRect(badgeX, badgeY, badgeW, 4, 1, 1, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(5.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(badgeText, badgeX + 2, badgeY + 2.9);
+  }
 
   curY += openingBoxH + 4;
 
@@ -837,19 +869,32 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     margin,
     curY
   );
+
+  // AI Provider Badge untuk Action Plan
+  if (data.aiProvider) {
+    const apBadgeText = `Powered by ${data.aiProvider}`;
+    const apBadgeW = doc.getTextWidth(apBadgeText) + 4;
+    doc.setFillColor(13, 148, 136);
+    doc.roundedRect(pageWidth - margin - apBadgeW, curY - 3.2, apBadgeW, 4, 1, 1, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(5.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(apBadgeText, pageWidth - margin - apBadgeW + 2, curY - 0.3);
+  }
+
   curY += 4.5;
 
   const actionTableBody = (data.actionPlans && data.actionPlans.length > 0)
     ? data.actionPlans.map(ap => [
-        ap.pilar,
-        ap.rencanaAksi,
-        ap.targetOutput,
-        `${ap.prioritas}\n(${ap.pic})`
+        sanitizePdfText(ap.pilar),
+        sanitizePdfText(ap.rencanaAksi),
+        sanitizePdfText(ap.targetOutput),
+        `${sanitizePdfText(ap.prioritas)}\n(${sanitizePdfText(ap.pic)})`
       ])
     : (data.insights && data.insights.length > 0)
       ? data.insights.map((ins, idx) => [
           `Inisiatif #${idx + 1}`,
-          ins,
+          sanitizePdfText(ins),
           'Peningkatan Kinerja',
           'Tinggi\n(Operasional)'
         ])
@@ -873,10 +918,10 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
       cellPadding: 2.6,
     },
     columnStyles: {
-      0: { cellWidth: 42, fontStyle: 'bold', textColor: [15, 118, 110] },
-      1: { cellWidth: 83 },
-      2: { cellWidth: 36 },
-      3: { cellWidth: 25, halign: 'center' },
+      0: { cellWidth: 38, fontStyle: 'bold', textColor: [15, 118, 110] },
+      1: { cellWidth: 70 },
+      2: { cellWidth: 46 },
+      3: { cellWidth: 28, halign: 'center' },
     },
   });
 
@@ -991,8 +1036,8 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     },
     columnStyles: {
       0: { cellWidth: 38, fontStyle: 'bold', textColor: [30, 70, 72] },
-      1: { cellWidth: 76 },
-      2: { cellWidth: 44, fontStyle: 'italic' },
+      1: { cellWidth: 74 },
+      2: { cellWidth: 42, fontStyle: 'italic' },
       3: { cellWidth: 28, halign: 'center' },
     },
   });
