@@ -2787,43 +2787,161 @@ export async function sbGetTransaksiByNota(
     }
   }
 
-  const txFormatted = {
-    noNota: data.no_nota,
-    tanggal: formatDateTime(data.tanggal),
-    namaPelanggan: data.nama_pelanggan,
-    noHp: data.no_hp,
-    alamat: data.alamat,
-    isMember: data.is_member,
-    poinEarned: data.poin_earned,
-    petugas: data.petugas,
-    tipe: data.tipe,
-    tingkatLayanan: data.tingkat_layanan,
-    subtotal: Number(data.subtotal) || 0,
-    diskon: Number(data.diskon) || 0,
-    total: Number(data.total) || 0,
-    nominalDP: Number(data.nominal_dp) || 0,
-    sisaTagihan: Number(data.sisa_tagihan) || 0,
-    nominalBayar: Number(data.nominal_bayar) || 0,
-    metodeBayar: data.metode_bayar,
-    statusPembayaran: data.status_pembayaran,
-    status: data.status,
-    statusVoid: data.status_void,
-    alasanVoid: data.alasan_void,
-    catatan: data.catatan,
-    estimasiSelesai: data.estimasi_selesai,
-    items: (data.transaksi_items || []).map((it: any) => ({
-      layanan: it.layanan,
-      qty: Number(it.qty) || 1,
-      hargaSatuan: Number(it.harga_satuan) || 0,
-      subtotal: Number(it.subtotal) || 0,
-    })),
-    pipeline: (data.pipeline_steps || []).map((p: any) => ({
-      step: p.step,
-      namaStep: p.nama_step,
-      status: p.status,
-      assignedStaff: p.assigned_staff,
-    })),
-  };
+  let rawPipeline: any[] = (data.pipeline_steps || [])
+      .sort((a: any, b: any) => (Number(a.step) || 0) - (Number(b.step) || 0))
+      .map((p: any) => ({
+        step: p.step,
+        namaStep: p.nama_step,
+        status: p.status,
+        assignedStaff: p.assigned_staff,
+      }));
+
+    // Jika belum ada pipeline_steps di database, selesaikan langkah aktif spesifik per layanan dari app_settings / nama layanan
+    if (rawPipeline.length === 0 && (data.tipe === 'FullService' || data.tipe === 'DropOff' || data.tipe === 'Drop Off')) {
+      try {
+        const { data: pipeSetting } = await sb
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'layanan_pipeline_steps')
+          .maybeSingle();
+        const pipeMap = (pipeSetting?.value && typeof pipeSetting.value === 'object') ? pipeSetting.value : {};
+
+        let customSteps: any[] | null = null;
+        const items = data.transaksi_items || [];
+
+        for (const it of items) {
+          if (it.layanan && pipeMap[it.layanan] && pipeMap[it.layanan].length > 0) {
+            customSteps = pipeMap[it.layanan];
+            break;
+          }
+        }
+
+        if (!customSteps) {
+          const { data: allLay } = await sb.from('layanan').select('id, nama');
+          for (const it of items) {
+            const itName = String(it.layanan || '').trim().toLowerCase();
+            const match = allLay?.find((l: any) =>
+              String(l.nama || '').trim().toLowerCase() === itName ||
+              String(l.id || '').trim().toLowerCase() === itName
+            );
+            if (match && pipeMap[match.id] && pipeMap[match.id].length > 0) {
+              customSteps = pipeMap[match.id];
+              break;
+            }
+          }
+        }
+
+        const txStatus = String(data.status || 'Diterima').toLowerCase();
+
+        if (Array.isArray(customSteps) && customSteps.length > 0) {
+          const targetStepIdx = (() => {
+            if (txStatus === 'selesai' || txStatus.includes('diambil') || txStatus.includes('siap')) {
+              return customSteps.length - 1;
+            }
+            const idx = customSteps.findIndex((cs: any) => String(cs.nama || '').toLowerCase() === txStatus);
+            if (idx >= 0) return idx;
+            if (txStatus.includes('setrika')) return customSteps.findIndex((cs: any) => String(cs.nama || '').toLowerCase().includes('setrika'));
+            if (txStatus.includes('lipat')) return customSteps.findIndex((cs: any) => String(cs.nama || '').toLowerCase().includes('lipat'));
+            if (txStatus.includes('kering')) return customSteps.findIndex((cs: any) => String(cs.nama || '').toLowerCase().includes('kering'));
+            if (txStatus.includes('cuci')) return customSteps.findIndex((cs: any) => String(cs.nama || '').toLowerCase().includes('cuci'));
+            return 0;
+          })();
+
+          rawPipeline = customSteps.map((cs: any, idx: number) => {
+            let st = 'Pending';
+            if (txStatus === 'selesai') {
+              st = 'Selesai';
+            } else if (idx < targetStepIdx) {
+              st = 'Selesai';
+            } else if (idx === targetStepIdx) {
+              st = 'Aktif';
+            }
+            return {
+              step: idx + 1,
+              namaStep: cs.nama || `Langkah ${idx + 1}`,
+              status: st,
+              assignedStaff: null,
+            };
+          });
+        } else {
+          // Analisis deduksi berbasis nama layanan jika belum ada di pipeMap
+          const allItemNames = items.map((i: any) => String(i.layanan || '').toLowerCase()).join(' ');
+          let defaultStepNames = ['Diterima', 'Dicuci', 'Dikeringkan', 'Disetrika / Packing', 'Siap Diambil'];
+          if (allItemNames.includes('cuci kering') || (allItemNames.includes('kering') && !allItemNames.includes('setrika') && !allItemNames.includes('komplit'))) {
+            defaultStepNames = ['Diterima', 'Dicuci', 'Dikeringkan', 'Siap Diambil'];
+          } else if (allItemNames.includes('setrika') && !allItemNames.includes('cuci')) {
+            defaultStepNames = ['Diterima', 'Disetrika / Packing', 'Siap Diambil'];
+          } else if (allItemNames.includes('lipat') && !allItemNames.includes('setrika')) {
+            defaultStepNames = ['Diterima', 'Dicuci', 'Dikeringkan', 'Dilipat / Packing', 'Siap Diambil'];
+          }
+
+          const targetStepIdx = (() => {
+            if (txStatus === 'selesai' || txStatus.includes('diambil') || txStatus.includes('siap')) {
+              return defaultStepNames.length - 1;
+            }
+            const idx = defaultStepNames.findIndex((name) => name.toLowerCase().includes(txStatus));
+            if (idx >= 0) return idx;
+            if (txStatus.includes('cuci')) return defaultStepNames.findIndex(n => n.toLowerCase().includes('cuci'));
+            if (txStatus.includes('kering')) return defaultStepNames.findIndex(n => n.toLowerCase().includes('kering'));
+            if (txStatus.includes('setrika')) return defaultStepNames.findIndex(n => n.toLowerCase().includes('setrika'));
+            if (txStatus.includes('lipat')) return defaultStepNames.findIndex(n => n.toLowerCase().includes('lipat'));
+            return 0;
+          })();
+
+          rawPipeline = defaultStepNames.map((name, idx) => {
+            let st = 'Pending';
+            if (txStatus === 'selesai') {
+              st = 'Selesai';
+            } else if (idx < targetStepIdx) {
+              st = 'Selesai';
+            } else if (idx === targetStepIdx) {
+              st = 'Aktif';
+            }
+            return {
+              step: idx + 1,
+              namaStep: name,
+              status: st,
+              assignedStaff: null,
+            };
+          });
+        }
+      } catch (e) {
+        console.warn('[sbGetTransaksiByNota] Error resolving dynamic pipeline steps:', e);
+      }
+    }
+
+    const txFormatted = {
+      noNota: data.no_nota,
+      tanggal: formatDateTime(data.tanggal),
+      namaPelanggan: data.nama_pelanggan,
+      noHp: data.no_hp,
+      alamat: data.alamat,
+      isMember: data.is_member,
+      poinEarned: data.poin_earned,
+      petugas: data.petugas,
+      tipe: data.tipe,
+      tingkatLayanan: data.tingkat_layanan,
+      subtotal: Number(data.subtotal) || 0,
+      diskon: Number(data.diskon) || 0,
+      total: Number(data.total) || 0,
+      nominalDP: Number(data.nominal_dp) || 0,
+      sisaTagihan: Number(data.sisa_tagihan) || 0,
+      nominalBayar: Number(data.nominal_bayar) || 0,
+      metodeBayar: data.metode_bayar,
+      statusPembayaran: data.status_pembayaran,
+      status: data.status,
+      statusVoid: data.status_void,
+      alasanVoid: data.alasan_void,
+      catatan: data.catatan,
+      estimasiSelesai: data.estimasi_selesai,
+      items: (data.transaksi_items || []).map((it: any) => ({
+        layanan: it.layanan,
+        qty: Number(it.qty) || 1,
+        hargaSatuan: Number(it.harga_satuan) || 0,
+        subtotal: Number(it.subtotal) || 0,
+      })),
+      pipeline: rawPipeline,
+    };
 
   return {
     success: true,

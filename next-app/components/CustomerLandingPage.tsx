@@ -514,31 +514,83 @@ export default function CustomerLandingPage() {
               (foundTx.tipe as string) === 'Drop Off'
             );
 
-            // Dynamically construct active steps (from order pipeline if available, or fallback to ORDER_STEPS)
+            // Dynamically construct active steps (strictly customized to the service's active steps)
             const activeSteps: Array<{ key: string; label: string }> = (() => {
+              // 1. Ambil dari pipeline transaksi jika sudah ada
               if (Array.isArray(foundTx.pipeline) && foundTx.pipeline.length > 0) {
-                const pSteps = foundTx.pipeline
-                  .filter((p: any) => p.namaStep !== 'Pesanan Diterima')
-                  .map((p: any) => ({
-                    key: p.namaStep,
-                    label: p.namaStep
-                  }));
-                if (pSteps.length > 0) {
-                  return [{ key: 'Diterima', label: 'Diterima' }, ...pSteps];
+                const uniqueSteps: Array<{ key: string; label: string }> = [];
+                const seen = new Set<string>();
+
+                for (const p of foundTx.pipeline) {
+                  const name = String(p.namaStep || '').trim();
+                  if (!name || name.toLowerCase() === 'pesanan diterima') continue;
+                  const lower = name.toLowerCase();
+                  if (!seen.has(lower)) {
+                    seen.add(lower);
+                    uniqueSteps.push({ key: name, label: name });
+                  }
+                }
+
+                if (uniqueSteps.length > 0) {
+                  return uniqueSteps;
                 }
               }
-              return ORDER_STEPS;
+
+              // 2. Deduksi spesifik dari nama layanan yang dipesan di nota
+              const itemNames = (foundTx.items || []).map((it: any) => String(it.layanan || '').toLowerCase()).join(' ');
+
+              // A. Cuci Kering (Washer & Dryer saja - Tanpa Setrika)
+              if (itemNames.includes('cuci kering') || (itemNames.includes('kering') && !itemNames.includes('setrika') && !itemNames.includes('komplit'))) {
+                return [
+                  { key: 'Diterima', label: 'Diterima' },
+                  { key: 'Dicuci', label: 'Dicuci' },
+                  { key: 'Dikeringkan', label: 'Dikeringkan' },
+                  { key: 'Siap Diambil', label: 'Siap Diambil' },
+                ];
+              }
+
+              // B. Setrika Saja (Tanpa Cuci & Dryer)
+              if (itemNames.includes('setrika') && !itemNames.includes('cuci')) {
+                return [
+                  { key: 'Diterima', label: 'Diterima' },
+                  { key: 'Disetrika', label: 'Disetrika / Packing' },
+                  { key: 'Siap Diambil', label: 'Siap Diambil' },
+                ];
+              }
+
+              // C. Cuci Lipat (Tanpa Setrika)
+              if (itemNames.includes('lipat') && !itemNames.includes('setrika')) {
+                return [
+                  { key: 'Diterima', label: 'Diterima' },
+                  { key: 'Dicuci', label: 'Dicuci' },
+                  { key: 'Dikeringkan', label: 'Dikeringkan' },
+                  { key: 'Dilipat', label: 'Dilipat / Packing' },
+                  { key: 'Siap Diambil', label: 'Siap Diambil' },
+                ];
+              }
+
+              // D. Default Standard Drop Off Cuci Komplit / Setrika
+              return [
+                { key: 'Diterima', label: 'Diterima' },
+                { key: 'Dicuci', label: 'Dicuci' },
+                { key: 'Dikeringkan', label: 'Dikeringkan' },
+                { key: 'Disetrika', label: 'Disetrika / Packing' },
+                { key: 'Siap Diambil', label: 'Siap Diambil' },
+              ];
             })();
 
             const currentStepIdx = (() => {
-              const curStatus = String(foundTx.status || '').toLowerCase();
+              const curStatus = String(foundTx.status || '').toLowerCase().trim();
+              if (curStatus === 'selesai' || curStatus.includes('diambil') || curStatus.includes('siap')) {
+                return activeSteps.length - 1;
+              }
               const foundIdx = activeSteps.findIndex(s => s.key.toLowerCase() === curStatus);
               if (foundIdx >= 0) return foundIdx;
-              if (curStatus.includes('cuci')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('cuci'));
-              if (curStatus.includes('kering')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('kering'));
-              if (curStatus.includes('lipat')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('lipat'));
               if (curStatus.includes('setrika')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('setrika'));
-              if (curStatus.includes('siap') || curStatus.includes('ambil')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('siap') || s.key.toLowerCase().includes('ambil'));
+              if (curStatus.includes('lipat')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('lipat'));
+              if (curStatus.includes('kering')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('kering'));
+              if (curStatus.includes('cuci')) return activeSteps.findIndex(s => s.key.toLowerCase().includes('cuci'));
+              if (curStatus.includes('terima')) return 0;
               return 0;
             })();
 
@@ -642,9 +694,26 @@ export default function CustomerLandingPage() {
 
                 {/* Summary Details & E-Nota CTA */}
                 {(() => {
+                  const formatPrettyDate = (rawStr: string) => {
+                    if (!rawStr) return '';
+                    if (rawStr.includes('T') || (rawStr.includes('-') && rawStr.length > 15)) {
+                      const parsed = new Date(rawStr);
+                      if (!isNaN(parsed.getTime())) {
+                        const dateStr = parsed.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                        const timeStr = parsed.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                        return `${dateStr}, ${timeStr} WIB`;
+                      }
+                    }
+                    return rawStr;
+                  };
+
                   const displayEstimasi = (() => {
-                    if (foundTx.estimasi && String(foundTx.estimasi).trim()) return String(foundTx.estimasi).trim();
-                    if (foundTx.estimasiSelesai && String(foundTx.estimasiSelesai).trim()) return String(foundTx.estimasiSelesai).trim();
+                    if (foundTx.estimasi && String(foundTx.estimasi).trim()) {
+                      return formatPrettyDate(String(foundTx.estimasi).trim());
+                    }
+                    if (foundTx.estimasiSelesai && String(foundTx.estimasiSelesai).trim()) {
+                      return formatPrettyDate(String(foundTx.estimasiSelesai).trim());
+                    }
                     if (isDropOffOrder) {
                       const prioritas = String(foundTx.tingkatLayanan || 'Reguler').toLowerCase();
                       const durasi = prioritas.includes('kilat') ? 6 : prioritas.includes('express') ? 24 : 48;
