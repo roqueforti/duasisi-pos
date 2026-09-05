@@ -875,6 +875,26 @@ export async function sbSimpanTransaksi(payload: any): Promise<any> {
     console.warn('[sbSimpanTransaksi] Gagal catat audit log:', e);
   }
 
+  // ============================================================
+  // REAL-TIME BACKGROUND BACKUP KE GOOGLE SHEETS (NON-BLOCKING FIRE-AND-FORGET)
+  // ============================================================
+  try {
+    const gasUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
+    if (gasUrl && typeof window !== 'undefined') {
+      setTimeout(() => {
+        fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'simpanTransaksi',
+            args: [normalizedPayload],
+            sessionToken: typeof window !== 'undefined' ? localStorage.getItem('gas_session_token') : undefined,
+          }),
+        }).catch((err) => console.warn('[Backup Real-time Transaksi ke Google Sheets error]:', err));
+      }, 100);
+    }
+  } catch {}
+
   return {
     success: true,
     noNota,
@@ -3220,6 +3240,24 @@ export async function sbPelunasanDP(noNota: string, nominal: number, metode = 'T
     );
   } catch (e) {}
 
+  // Non-blocking real-time sync ke Google Sheets
+  try {
+    const gasUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
+    if (gasUrl && typeof window !== 'undefined') {
+      setTimeout(() => {
+        fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'pelunasanDP',
+            args: [noNota, nominal, metode],
+            sessionToken: typeof window !== 'undefined' ? localStorage.getItem('gas_session_token') : undefined,
+          }),
+        }).catch((err) => console.warn('[Backup Real-time Pelunasan DP error]:', err));
+      }, 100);
+    }
+  } catch {}
+
   return { success: true, message: 'Pelunasan DP berhasil disimpan', data };
 }
 
@@ -3706,6 +3744,24 @@ export async function sbApproveVoidTransaksi(
       `${isApproved ? 'Persetujuan' : 'Penolakan'} permohonan void nota ${noNota} oleh ${managerName}. Catatan: ${catatan || '-'}`
     );
   } catch (e) {}
+
+  // Non-blocking real-time sync ke Google Sheets
+  try {
+    const gasUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
+    if (gasUrl && typeof window !== 'undefined') {
+      setTimeout(() => {
+        fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'approveVoidTransaksi',
+            args: [noNota, isApproved, managerName, managerId, catatan],
+            sessionToken: typeof window !== 'undefined' ? localStorage.getItem('gas_session_token') : undefined,
+          }),
+        }).catch((err) => console.warn('[Backup Real-time Approve Void error]:', err));
+      }, 100);
+    }
+  } catch {}
 
   return { success: true, data };
 }

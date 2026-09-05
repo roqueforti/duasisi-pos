@@ -74,7 +74,7 @@ async function runBackup() {
     console.warn('⚠️ Gagal membaca transaksi Google Sheets, melanjutkan dengan proteksi:', err.message);
   }
 
-  // 2. Ambil transaksi dari Supabase (misal 50 transaksi terbaru)
+  // 2. Ambil transaksi dari Supabase (hingga 1000 transaksi terbaru)
   console.log('📥 Mengambil transaksi terbaru dari Supabase...');
   const { data: supabaseTrx, error: trxErr } = await sb
     .from('transaksi')
@@ -83,7 +83,7 @@ async function runBackup() {
       transaksi_items (*)
     `)
     .order('tanggal', { ascending: true })
-    .limit(200);
+    .limit(1000);
 
   if (trxErr) throw trxErr;
 
@@ -151,7 +151,7 @@ async function runBackup() {
     }
   } catch {}
 
-  const { data: supabaseCust } = await sb.from('pelanggan').select('*').limit(300);
+  const { data: supabaseCust } = await sb.from('pelanggan').select('*').limit(1000);
   const newCust = (supabaseCust || []).filter(c => !existingCustPhone.has(String(c.no_hp).trim()));
 
   if (newCust.length > 0) {
