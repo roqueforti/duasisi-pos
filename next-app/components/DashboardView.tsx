@@ -158,6 +158,14 @@ function formatWibDateFull(date: Date): string {
   return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+// Helper: Format Date ke string YYYY-MM-DD berbasis Local Time (WIB) tanpa tergeser timezone UTC
+function formatLocalDateIso(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Helper ekstraksi berat (kg) dari nama layanan
 function extractKgFromItem(layananName: string, qty: number): number {
   if (!layananName) return 0;
@@ -178,10 +186,10 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   const [customStartDate, setCustomStartDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
-    return d.toISOString().split('T')[0];
+    return formatLocalDateIso(d);
   });
   const [customEndDate, setCustomEndDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    return formatLocalDateIso(new Date());
   });
 
   // Operational States
@@ -237,7 +245,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
   });
   const [exportCustomEnd, setExportCustomEnd] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    return formatLocalDateIso(new Date());
   });
   const [exportSubmitting, setExportSubmitting] = useState<boolean>(false);
 
@@ -566,7 +574,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     const endLimit = new Date(currentEnd);
     let stepCount = 0;
     while (cur <= endLimit && stepCount <= 31) {
-      const iso = cur.toISOString().split('T')[0];
+      const iso = formatLocalDateIso(cur);
       const lbl = cur.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
       const fDate = cur.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
       dayMap[iso] = { dateIso: iso, labelDate: lbl, fullDate: fDate, revenue: 0, orders: 0, kg: 0 };
@@ -577,7 +585,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     periodTransactions.forEach(t => {
       const d = parseSafeDate(t.rawTanggal || t.tanggal);
       if (!d) return;
-      const iso = d.toISOString().split('T')[0];
+      const iso = formatLocalDateIso(d);
       if (dayMap[iso]) {
         dayMap[iso].revenue += Number(t.total) || 0;
         dayMap[iso].orders += 1;
@@ -1138,7 +1146,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       repTxs.forEach(t => {
         const d = parseSafeDate(t.rawTanggal || t.tanggal);
         if (!d) return;
-        const iso = d.toISOString().split('T')[0];
+        const iso = formatLocalDateIso(d);
         const lbl = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
         if (!dMap[iso]) dMap[iso] = { dateStr: lbl, transactions: 0, revenue: 0, kg: 0 };
         dMap[iso].transactions += 1;
@@ -1206,8 +1214,8 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
       const payload: ReportDataPayload = {
         periodeLabel: eLabel,
-        startDateStr: eStart.toISOString().split('T')[0],
-        endDateStr: eEnd.toISOString().split('T')[0],
+        startDateStr: formatLocalDateIso(eStart),
+        endDateStr: formatLocalDateIso(eEnd),
         outletName: 'Outlet Utama (dua SiSi Laundry Express & Coin POS)',
         generatedBy: isManager ? 'Manager / Owner' : 'Kasir',
         generatedAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + formatWibTimeOnly(new Date().toISOString()),
@@ -1850,10 +1858,11 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             <div className="flex justify-between items-end h-44 pt-4 px-2 border-b border-slate-200 gap-1 sm:gap-2">
               {dailyPerformance.trendList.length > 0 ? (
                 dailyPerformance.trendList.map((d, idx) => {
-                  const isToday = d.dateIso === new Date().toISOString().split('T')[0];
-                  const heightPercent = dailyPerformance.maxRev > 0 
-                    ? Math.max(12, Math.round((d.revenue / dailyPerformance.maxRev) * 85)) 
-                    : 12;
+                  const todayKey = formatLocalDateIso(new Date());
+                  const isToday = d.dateIso === todayKey;
+                  const heightPercent = d.revenue > 0 
+                    ? Math.max(8, Math.round((d.revenue / Math.max(1, dailyPerformance.maxRev)) * 88)) 
+                    : 4;
                   const isHovered = activeHoverDate === d.dateIso;
 
                   return (
@@ -1877,7 +1886,11 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                       <div 
                         style={{ height: `${heightPercent}%` }} 
                         className={`w-full max-w-[32px] rounded-t-lg transition-all duration-300 ${
-                          isToday 
+                          d.revenue === 0
+                            ? isToday
+                              ? 'bg-emerald-100 border border-emerald-300'
+                              : 'bg-slate-200/80 hover:bg-slate-300'
+                            : isToday 
                             ? 'bg-gradient-to-t from-teal-800 via-teal-600 to-emerald-500 shadow-sm ring-2 ring-emerald-300/60' 
                             : 'bg-gradient-to-t from-[#1E4648] to-teal-500 hover:from-teal-600 hover:to-teal-400'
                         }`} 
@@ -1885,7 +1898,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
                       {/* Actual Date String Label ("1 Sep", "2 Sep", ...) */}
                       <span className={`text-[9px] sm:text-[10px] font-mono truncate max-w-[42px] ${
-                        isToday ? 'font-black text-teal-900' : 'text-slate-500 font-medium'
+                        isToday ? 'font-black text-teal-900 underline decoration-teal-500 decoration-2' : 'text-slate-500 font-medium'
                       }`}>
                         {d.labelDate}
                       </span>

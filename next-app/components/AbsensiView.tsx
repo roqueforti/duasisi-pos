@@ -115,7 +115,7 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
   const [formJadwal, setFormJadwal] = useState({
     idPegawai: '',
     namaPegawai: '',
-    tanggal: new Date().toISOString().split('T')[0],
+    tanggal: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
     shift: 'Shift 1 (Pagi)',
     status: 'Masuk' as 'Masuk' | 'Libur' | 'Cuti' | 'Tukar Shift',
     catatan: ''
