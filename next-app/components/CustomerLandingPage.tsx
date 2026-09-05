@@ -787,9 +787,9 @@ export default function CustomerLandingPage() {
                         <span className="text-white/50 block text-[10px]">Stempel 7 KG:</span>
                         <span className="text-teal-300 font-bold font-mono text-xs">{foundPoin.stamps75 || 0} / 10 Stempel</span>
                       </div>
-                      <div className="bg-[#061517] p-2.5 rounded-lg border border-amber-500/20">
+                      <div className="bg-[#061517] p-2.5 rounded-lg border border-teal-500/20">
                         <span className="text-white/50 block text-[10px]">Stempel 4 KG:</span>
-                        <span className="text-amber-300 font-bold font-mono text-xs">{foundPoin.stamps45 || 0} / 10 Stempel</span>
+                        <span className="text-teal-300 font-bold font-mono text-xs">{foundPoin.stamps45 || 0} / 10 Stempel</span>
                       </div>
                     </div>
                   </div>

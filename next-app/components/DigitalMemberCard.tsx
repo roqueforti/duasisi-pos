@@ -204,54 +204,43 @@ export default function DigitalMemberCard({
             <linearGradient id={`cardBg_${type}`} x1="0%" y1="0%" x2="100%" y2="100%">
               {type === '75' ? (
                 <>
-                  <stop offset="0%" stopColor="#081819" />
-                  <stop offset="35%" stopColor="#0F2F31" />
-                  <stop offset="70%" stopColor="#1E4648" />
-                  <stop offset="100%" stopColor="#091A1B" />
+                  <stop offset="0%" stopColor="#06181A" />
+                  <stop offset="35%" stopColor="#0C2B2E" />
+                  <stop offset="70%" stopColor="#123F42" />
+                  <stop offset="100%" stopColor="#081E21" />
                 </>
               ) : (
                 <>
-                  <stop offset="0%" stopColor="#141718" />
-                  <stop offset="35%" stopColor="#1D2625" />
-                  <stop offset="70%" stopColor="#2A3530" />
-                  <stop offset="100%" stopColor="#111615" />
+                  <stop offset="0%" stopColor="#051416" />
+                  <stop offset="35%" stopColor="#092224" />
+                  <stop offset="70%" stopColor="#0D3033" />
+                  <stop offset="100%" stopColor="#061719" />
                 </>
               )}
             </linearGradient>
 
             <linearGradient id={`cardBorderGrad_${type}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              {type === '75' ? (
-                <>
-                  <stop offset="0%" stopColor="#2DD4BF" stopOpacity="0.8" />
-                  <stop offset="40%" stopColor="#14B8A6" stopOpacity="0.4" />
-                  <stop offset="70%" stopColor="#F59E0B" stopOpacity="0.8" />
-                  <stop offset="100%" stopColor="#2DD4BF" stopOpacity="0.6" />
-                </>
-              ) : (
-                <>
-                  <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.8" />
-                  <stop offset="50%" stopColor="#D97706" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#2DD4BF" stopOpacity="0.7" />
-                </>
-              )}
+              <stop offset="0%" stopColor="#2DD4BF" stopOpacity="0.9" />
+              <stop offset="35%" stopColor="#5EEAD4" stopOpacity="0.5" />
+              <stop offset="70%" stopColor="#FFFFFF" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#14B8A6" stopOpacity="0.7" />
             </linearGradient>
 
             <radialGradient id={`glowTopLeft_${type}`} cx="15%" cy="15%" r="50%">
-              <stop offset="0%" stopColor={type === '75' ? '#2DD4BF' : '#F59E0B'} stopOpacity="0.25" />
-              <stop offset="100%" stopColor={type === '75' ? '#2DD4BF' : '#F59E0B'} stopOpacity="0" />
+              <stop offset="0%" stopColor="#2DD4BF" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#2DD4BF" stopOpacity="0" />
             </radialGradient>
 
             <radialGradient id={`glowBottomRight_${type}`} cx="85%" cy="85%" r="55%">
-              <stop offset="0%" stopColor={type === '75' ? '#F59E0B' : '#2DD4BF'} stopOpacity="0.20" />
-              <stop offset="100%" stopColor={type === '75' ? '#F59E0B' : '#2DD4BF'} stopOpacity="0" />
+              <stop offset="0%" stopColor="#14B8A6" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#14B8A6" stopOpacity="0" />
             </radialGradient>
 
-            {/* Metallic Gold Badge Gradient */}
+            {/* Crisp Mint-Teal Badge Gradient */}
             <linearGradient id={`badgeGrad_${type}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FDE68A" />
-              <stop offset="45%" stopColor="#F59E0B" />
-              <stop offset="85%" stopColor="#D97706" />
-              <stop offset="100%" stopColor="#92400E" />
+              <stop offset="0%" stopColor="#5EEAD4" />
+              <stop offset="50%" stopColor="#2DD4BF" />
+              <stop offset="100%" stopColor="#0D9488" />
             </linearGradient>
 
             {/* Shadow Filter */}
@@ -319,12 +308,12 @@ export default function DigitalMemberCard({
           {/* 7. Top-Right Luxury Weight Badge (7 KG / 4 KG) */}
           <g filter={`url(#cardShadow_${type})`}>
             <circle cx="2942" cy="261" r="158" fill={`url(#badgeGrad_${type})`} />
-            <circle cx="2942" cy="261" r="140" fill={type === '75' ? '#0F2F31' : '#1D2625'} stroke="#FDE68A" strokeWidth="6" />
+            <circle cx="2942" cy="261" r="140" fill={type === '75' ? '#0F2F31' : '#082528'} stroke="rgba(45, 212, 191, 0.6)" strokeWidth="6" />
             <text
               x="2942"
               y="255"
               textAnchor="middle"
-              fill="#FBBF24"
+              fill="#FFFFFF"
               fontSize="128"
               fontWeight="900"
               fontFamily="sans-serif"
@@ -335,7 +324,7 @@ export default function DigitalMemberCard({
               x="2942"
               y="325"
               textAnchor="middle"
-              fill="#FFFFFF"
+              fill="#5EEAD4"
               fontSize="56"
               fontWeight="900"
               fontFamily="sans-serif"
@@ -352,7 +341,7 @@ export default function DigitalMemberCard({
             width="1450" 
             height="248" 
             rx="52" 
-            fill="rgba(8, 24, 25, 0.75)" 
+            fill="rgba(4, 18, 20, 0.85)" 
             stroke="rgba(45, 212, 191, 0.4)" 
             strokeWidth="6" 
           />
@@ -387,14 +376,14 @@ export default function DigitalMemberCard({
             width="1340" 
             height="248" 
             rx="52" 
-            fill="rgba(8, 24, 25, 0.75)" 
-            stroke="rgba(245, 158, 11, 0.4)" 
+            fill="rgba(4, 18, 20, 0.85)" 
+            stroke="rgba(45, 212, 191, 0.4)" 
             strokeWidth="6" 
           />
           <text 
             x="1834" 
             y="612" 
-            fill="#FBBF24" 
+            fill="#5EEAD4" 
             fontSize="34" 
             fontWeight="800" 
             fontFamily="sans-serif"
@@ -426,42 +415,42 @@ export default function DigitalMemberCard({
                 {isReward ? (
                   /* Reward Target Slot (10) */
                   <g>
-                    <circle cx={cx} cy={cy} r="215" fill="rgba(245, 158, 11, 0.14)" stroke="#F59E0B" strokeWidth="10" strokeDasharray="16 10" />
-                    <circle cx={cx} cy={cy} r="185" fill="rgba(120, 53, 15, 0.4)" />
-                    <text x={cx} y={cy - 24} textAnchor="middle" fill="#FBBF24" fontSize="46" fontWeight="900">★ ★ ★</text>
-                    <text x={cx} y={cy + 38} textAnchor="middle" fill="#FEF3C7" fontSize="68" fontWeight="900" fontFamily="sans-serif">FREE</text>
-                    <text x={cx} y={cy + 96} textAnchor="middle" fill="#FDE68A" fontSize="36" fontWeight="800" letterSpacing="2">1x CUCI</text>
+                    <circle cx={cx} cy={cy} r="215" fill="rgba(45, 212, 191, 0.08)" stroke="#2DD4BF" strokeWidth="10" strokeDasharray="16 10" />
+                    <circle cx={cx} cy={cy} r="185" fill="rgba(4, 30, 32, 0.6)" stroke="rgba(45, 212, 191, 0.3)" strokeWidth="4" />
+                    <text x={cx} y={cy - 24} textAnchor="middle" fill="#5EEAD4" fontSize="46" fontWeight="900">★ ★ ★</text>
+                    <text x={cx} y={cy + 38} textAnchor="middle" fill="#FFFFFF" fontSize="68" fontWeight="900" fontFamily="sans-serif">FREE</text>
+                    <text x={cx} y={cy + 96} textAnchor="middle" fill="#99F6E4" fontSize="36" fontWeight="800" letterSpacing="2">1x CUCI</text>
                   </g>
                 ) : (
                   /* Standard Stamp Target Slot (1-9) */
                   <g>
-                    <circle cx={cx} cy={cy} r="215" fill="rgba(8, 24, 25, 0.55)" stroke="rgba(255, 255, 255, 0.22)" strokeWidth="8" strokeDasharray="16 10" />
+                    <circle cx={cx} cy={cy} r="215" fill="rgba(4, 20, 22, 0.65)" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="8" strokeDasharray="16 10" />
                     <circle cx={cx} cy={cy} r="185" fill="rgba(255, 255, 255, 0.03)" />
                     <text x={cx} y={cy + 32} textAnchor="middle" fill="rgba(255, 255, 255, 0.4)" fontSize="100" fontWeight="900" fontFamily="sans-serif">{slot}</text>
-                    <text x={cx} y={cy + 96} textAnchor="middle" fill="rgba(94, 234, 212, 0.55)" fontSize="32" fontWeight="800" letterSpacing="3">STAMP</text>
+                    <text x={cx} y={cy + 96} textAnchor="middle" fill="rgba(94, 234, 212, 0.6)" fontSize="32" fontWeight="800" letterSpacing="3">STAMP</text>
                   </g>
                 )}
 
                 {/* Dynamic Digital Stamp Overlay when Stamped */}
                 {isStamped && (
                   isReward ? (
-                    /* Slot 10 Celebratory Reward Seal */
+                    /* Slot 10 Celebratory Reward Seal in Emerald / Luminous Mint & White */
                     <g transform={`rotate(${rot}, ${cx}, ${cy})`}>
-                      <circle cx={cx} cy={cy} r="215" fill="#FEF3C7" stroke="#D97706" strokeWidth="14" strokeDasharray="16 8" />
-                      <circle cx={cx} cy={cy} r="185" fill="#F59E0B" stroke="#B45309" strokeWidth="8" />
-                      <circle cx={cx} cy={cy} r="150" fill="#78350F" />
+                      <circle cx={cx} cy={cy} r="215" fill="#F0FDFA" stroke="#0D9488" strokeWidth="14" strokeDasharray="16 8" />
+                      <circle cx={cx} cy={cy} r="185" fill="#0F766E" stroke="#2DD4BF" strokeWidth="8" />
+                      <circle cx={cx} cy={cy} r="150" fill="#042628" />
                       
                       {/* Stars & Text */}
-                      <text x={cx} y={cy - 80} textAnchor="middle" fill="#FDE68A" fontSize="40" fontWeight="900">
+                      <text x={cx} y={cy - 80} textAnchor="middle" fill="#5EEAD4" fontSize="40" fontWeight="900">
                         ★ ★ ★ ★ ★
                       </text>
                       <text x={cx} y={cy - 18} textAnchor="middle" fill="#FFFFFF" fontSize="60" fontWeight="900" fontFamily="sans-serif">
                         GRATIS
                       </text>
-                      <text x={cx} y={cy + 42} textAnchor="middle" fill="#FDE68A" fontSize="46" fontWeight="900" fontFamily="sans-serif">
+                      <text x={cx} y={cy + 42} textAnchor="middle" fill="#2DD4BF" fontSize="46" fontWeight="900" fontFamily="sans-serif">
                         1x CUCI
                       </text>
-                      <text x={cx} y={cy + 100} textAnchor="middle" fill="#FEF3C7" fontSize="34" fontWeight="800">
+                      <text x={cx} y={cy + 100} textAnchor="middle" fill="#CCFBF1" fontSize="34" fontWeight="800">
                         DUA SISI LAUNDRY
                       </text>
                     </g>
@@ -470,8 +459,8 @@ export default function DigitalMemberCard({
                     <g transform={`rotate(${rot}, ${cx}, ${cy})`}>
                       {/* Outer Seal Rings */}
                       <circle cx={cx} cy={cy} r="215" fill="#E6FFFA" stroke="#0D9488" strokeWidth="12" strokeDasharray="14 6" />
-                      <circle cx={cx} cy={cy} r="185" fill="#1E4648" stroke="#115E59" strokeWidth="6" />
-                      <circle cx={cx} cy={cy} r="155" fill="#0D3133" stroke="#2DD4BF" strokeWidth="4" />
+                      <circle cx={cx} cy={cy} r="185" fill="#0F3D40" stroke="#115E59" strokeWidth="6" />
+                      <circle cx={cx} cy={cy} r="155" fill="#062527" stroke="#2DD4BF" strokeWidth="4" />
 
                       {/* Stamp Header Text */}
                       <text x={cx} y={cy - 75} textAnchor="middle" fill="#99F6E4" fontSize="32" fontWeight="800" letterSpacing="3">
@@ -482,14 +471,14 @@ export default function DigitalMemberCard({
                       <path 
                         d={`M ${cx - 45} ${cy - 10} L ${cx - 15} ${cy + 25} L ${cx + 50} ${cy - 40}`} 
                         fill="none" 
-                        stroke="#FBBF24" 
+                        stroke="#FFFFFF" 
                         strokeWidth="16" 
                         strokeLinecap="round" 
                         strokeLinejoin="round" 
                       />
 
                       {/* Stamp Verified Text */}
-                      <text x={cx} y={cy + 70} textAnchor="middle" fill="#FDE68A" fontSize="40" fontWeight="900" letterSpacing="4">
+                      <text x={cx} y={cy + 70} textAnchor="middle" fill="#FFFFFF" fontSize="40" fontWeight="900" letterSpacing="4">
                         VALID
                       </text>
                       <text x={cx} y={cy + 112} textAnchor="middle" fill="#5EEAD4" fontSize="28" fontWeight="700">
@@ -515,13 +504,13 @@ export default function DigitalMemberCard({
         <div className="dmc-header">
           <div className="dmc-header-brand">
             <div className="dmc-header-icon">
-              <Award className="w-5 h-5 text-amber-300" />
+              <Award className="w-5 h-5 text-teal-300" />
             </div>
             <div className="dmc-header-text">
               <div className="dmc-title-row">
                 <h3 className="dmc-title">Digital Member Loyalty Card</h3>
                 <span className="dmc-holo-badge">
-                  <ShieldCheck className="w-3 h-3 text-teal-700 inline mr-1" />
+                  <ShieldCheck className="w-3 h-3 text-teal-400 inline mr-1" />
                   Anti-Pemalsuan
                 </span>
               </div>
@@ -572,7 +561,7 @@ export default function DigitalMemberCard({
           {/* Flip Status & Quick Action Bar */}
           <div className="dmc-flip-controller-bar">
             <div className="dmc-flip-badge-side">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
               <span>
                 {activeCardType === '75' 
                   ? `Sisi Depan: Kartu 7 KG (${localStamps75}/10 Stempel)` 
@@ -586,7 +575,7 @@ export default function DigitalMemberCard({
               className="dmc-btn-flip"
               title="Balik Kartu Member (3D Flip)"
             >
-              <RotateCw className={`w-3.5 h-3.5 transition-transform duration-500 ${isFlipped ? 'rotate-180 text-amber-300' : ''}`} />
+              <RotateCw className={`w-3.5 h-3.5 transition-transform duration-500 ${isFlipped ? 'rotate-180 text-teal-300' : 'text-teal-400'}`} />
               <span>{activeCardType === '75' ? 'Balik ke Kartu 4 KG' : 'Balik ke Kartu 7 KG'}</span>
             </button>
           </div>
@@ -615,17 +604,17 @@ export default function DigitalMemberCard({
         {isRewardReady && (
           <div className="dmc-reward-banner">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-950 text-amber-300 flex items-center justify-center shrink-0 shadow-md">
-                <Gift className="w-6 h-6" />
+              <div className="w-10 h-10 rounded-xl bg-teal-400 text-slate-950 flex items-center justify-center shrink-0 shadow-md">
+                <Gift className="w-6 h-6 stroke-[2.5]" />
               </div>
               <div>
-                <div className="text-sm font-black tracking-tight flex items-center gap-2">
+                <div className="text-sm font-black tracking-tight flex items-center gap-2 text-white">
                   <span>TARGET {targetStamps} STEMPEL TERCAPAI</span>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-900 text-amber-300 text-[10px] font-bold">
+                  <span className="px-2 py-0.5 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-[10px] font-bold">
                     {isLegacyClaim ? 'Free di ke-10' : 'Transaksi ke-11 Free'}
                   </span>
                 </div>
-                <div className="text-xs font-semibold text-slate-800">
+                <div className="text-xs font-semibold text-teal-100/80 mt-0.5">
                   {isLegacyClaim ? (
                     <>Pelanggan berhak <strong>langsung cuci gratis</strong> pada transaksi stempel ke-{targetStamps} ini.</>
                   ) : (
@@ -641,7 +630,7 @@ export default function DigitalMemberCard({
                 onClick={handleClaimReward}
                 className="dmc-reward-claim-btn"
               >
-                <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                <CheckCircle2 className="w-4 h-4 text-teal-600" />
                 <span>Klaim Reward &amp; Reset</span>
               </button>
             )}
@@ -695,7 +684,7 @@ export default function DigitalMemberCard({
               className="dmc-btn-flip-secondary"
               title="Balik Kartu Member (3D Flip)"
             >
-              <RotateCw className={`w-3.5 h-3.5 transition-transform duration-500 ${isFlipped ? 'rotate-180 text-amber-500' : 'text-teal-700'}`} />
+              <RotateCw className={`w-3.5 h-3.5 transition-transform duration-500 ${isFlipped ? 'rotate-180 text-teal-300' : 'text-teal-400'}`} />
               <span>{activeCardType === '75' ? 'Balik ke Kartu 4 KG' : 'Balik ke Kartu 7 KG'}</span>
             </button>
           </div>
