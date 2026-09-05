@@ -28,7 +28,9 @@ import {
   SlidersHorizontal,
   Award,
   CheckCheck,
-  Lock
+  Lock,
+  ChevronsDown,
+  ChevronsUp
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { useDialog } from '@/components/DialogProvider';
@@ -402,14 +404,27 @@ export default function Sidebar({
           </div>
 
           {/* Section Header & Expand/Collapse All Button */}
-          <div className={`flex items-center justify-between px-2 pt-1 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : 'flex'}`}>
-            <span>Menu Modul</span>
+          <div className={`flex items-center justify-between px-2 pt-2 pb-1.5 ${isCollapsed ? 'lg:hidden' : 'flex'}`}>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+              Menu Modul
+            </span>
             <button
               type="button"
               onClick={toggleAllGroups}
-              className="text-[10px] font-bold text-teal-700 hover:text-teal-900 lowercase cursor-pointer hover:underline"
+              title={isAllOpen ? 'Tutup semua accordion modul' : 'Buka semua accordion modul'}
+              className="tactile-btn inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-800 border border-slate-200 hover:border-teal-300 shadow-2xs transition-all cursor-pointer select-none active:scale-95"
             >
-              {isAllOpen ? 'tutup semua' : 'buka semua'}
+              {isAllOpen ? (
+                <>
+                  <ChevronsUp className="w-3 h-3 text-slate-500" />
+                  <span>Tutup Semua</span>
+                </>
+              ) : (
+                <>
+                  <ChevronsDown className="w-3 h-3 text-teal-600" />
+                  <span>Buka Semua</span>
+                </>
+              )}
             </button>
           </div>
 
