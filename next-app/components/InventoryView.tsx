@@ -709,46 +709,50 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
           <button
             type="button"
             onClick={() => setFilterKesehatan('KRITIS')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center ${
               filterKesehatan === 'KRITIS'
                 ? 'bg-rose-600 text-white shadow-2xs'
                 : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
             }`}
           >
-            🔴 Kritis ({kpiStats.kritis})
+            <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${filterKesehatan === 'KRITIS' ? 'bg-white' : 'bg-rose-500'}`} />
+            <span>Kritis ({kpiStats.kritis})</span>
           </button>
           <button
             type="button"
             onClick={() => setFilterKesehatan('RENDAH')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center ${
               filterKesehatan === 'RENDAH'
                 ? 'bg-amber-600 text-white shadow-2xs'
                 : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
             }`}
           >
-            🟡 Rendah ({kpiStats.rendah})
+            <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${filterKesehatan === 'RENDAH' ? 'bg-white' : 'bg-amber-500'}`} />
+            <span>Rendah ({kpiStats.rendah})</span>
           </button>
           <button
             type="button"
             onClick={() => setFilterKesehatan('SELISIH')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center ${
               filterKesehatan === 'SELISIH'
                 ? 'bg-sky-600 text-white shadow-2xs'
                 : 'bg-sky-50 text-sky-700 hover:bg-sky-100'
             }`}
           >
-            🔵 Selisih ({kpiStats.selisih})
+            <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${filterKesehatan === 'SELISIH' ? 'bg-white' : 'bg-sky-500'}`} />
+            <span>Selisih ({kpiStats.selisih})</span>
           </button>
           <button
             type="button"
             onClick={() => setFilterKesehatan('AMAN')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center ${
               filterKesehatan === 'AMAN'
                 ? 'bg-emerald-600 text-white shadow-2xs'
                 : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
             }`}
           >
-            🟢 Aman ({kpiStats.aman})
+            <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${filterKesehatan === 'AMAN' ? 'bg-white' : 'bg-emerald-500'}`} />
+            <span>Aman ({kpiStats.aman})</span>
           </button>
         </div>
 

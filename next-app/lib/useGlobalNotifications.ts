@@ -90,7 +90,7 @@ export function useGlobalNotifications(currentRole: UserRole) {
             items.push({
               id: `inv-low-${lowStock.length}`,
               category: 'inventory',
-              title: `⚠️ ${lowStock.length} Bahan Stok Kritis`,
+              title: `${lowStock.length} Bahan Stok Kritis`,
               message: lowStock.slice(0, 3).map(b => `${b.namaBahan || b.nama} (Sisa ${b.stok} ${b.satuan})`).join(', ') + (lowStock.length > 3 ? '...' : ''),
               type: 'warning',
               timestamp: nowStr,
@@ -127,7 +127,7 @@ export function useGlobalNotifications(currentRole: UserRole) {
               items.push({
                 id: `pesanan-ready-${readyToPickup}-${unremindedToday}`,
                 category: 'pesanan',
-                title: `🧺 ${readyToPickup} Cucian Siap Diambil di Rak${unremindedToday > 0 ? ` (${unremindedToday} Butuh Re-chat)` : ''}`,
+                title: `${readyToPickup} Cucian Siap Diambil di Rak${unremindedToday > 0 ? ` (${unremindedToday} Butuh Re-chat)` : ''}`,
                 message: unremindedToday > 0
                   ? `Terdapat ${readyToPickup} nota cucian di rak outlet. ${unremindedToday} nota belum dikirimi reminder WhatsApp hari ini.`
                   : `Terdapat ${readyToPickup} nota cucian rapi di rak outlet siap diserahkan ke pelanggan.`,
@@ -140,7 +140,7 @@ export function useGlobalNotifications(currentRole: UserRole) {
               items.push({
                 id: `pesanan-active-${activeOrders.length}`,
                 category: 'pesanan',
-                title: `📦 ${activeOrders.length} Pesanan Drop-off Sedang Diproses`,
+                title: `${activeOrders.length} Pesanan Drop-off Sedang Diproses`,
                 message: `${activeOrders.length} pesanan sedang dikerjakan dalam pipeline antrean cuci/kering/lipat.`,
                 type: 'info',
                 timestamp: nowStr,
@@ -164,7 +164,7 @@ export function useGlobalNotifications(currentRole: UserRole) {
             items.push({
               id: `void-pending-${pendingVoid.length}`,
               category: 'void',
-              title: `🛑 ${pendingVoid.length} Pengajuan Void Menunggu Persetujuan`,
+              title: `${pendingVoid.length} Pengajuan Void Menunggu Persetujuan`,
               message: pendingVoid.slice(0, 2).map(t => `Nota ${t.noNota} (Rp ${(t.total || 0).toLocaleString('id-ID')})`).join(', '),
               type: 'error',
               timestamp: nowStr,
@@ -186,7 +186,7 @@ export function useGlobalNotifications(currentRole: UserRole) {
               items.push({
                 id: `cuti-pending-${pendingCuti.length}`,
                 category: 'cuti',
-                title: `📋 ${pendingCuti.length} Pengajuan Cuti Menunggu Approval`,
+                title: `${pendingCuti.length} Pengajuan Cuti Menunggu Approval`,
                 message: pendingCuti.slice(0, 2).map(c => `${c.namaPegawai} (${c.jenisCuti} ${c.jumlahHari} hari)`).join(', '),
                 type: 'info',
                 timestamp: nowStr,

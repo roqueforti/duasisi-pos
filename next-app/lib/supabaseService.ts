@@ -4876,7 +4876,7 @@ export async function sbClockInPegawai(
   const nextList = [newRow, ...existing];
   await syncHrStore('absensi', 'hr_absensi', nextList);
 
-  return { success: true, message: `✅ Clock In Berhasil (${clockInStr})` };
+  return { success: true, message: `Clock In Berhasil (${clockInStr})` };
 }
 
 export async function sbClockOutPegawai(
@@ -4939,7 +4939,7 @@ export async function sbClockOutPegawai(
   };
   await syncHrStore('absensi', 'hr_absensi', existing);
 
-  return { success: true, message: `✅ Clock Out! Durasi: ${durasiText}` };
+  return { success: true, message: `Clock Out! Durasi: ${durasiText}` };
 }
 
 export async function sbGetStatusAbsensiHariIni(
