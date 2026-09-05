@@ -5,7 +5,7 @@ import {
   Package, Plus, RefreshCw, Trash2, Edit3, AlertTriangle, Download, Upload, X, 
   Loader2, ShieldAlert, Archive, RotateCcw, ShieldCheck, TrendingUp, Scale, 
   ShoppingCart, Info, Sparkles, CheckCircle2, AlertCircle, ArrowUpRight, 
-  ArrowDownRight, Layers, HelpCircle
+  ArrowDownRight, Layers, HelpCircle, BookOpen
 } from 'lucide-react';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
@@ -75,6 +75,10 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
   const [hargaJual, setHargaJual] = useState('');
   const [kategori, setKategori] = useState('Add On');
   const [kategoriList, setKategoriList] = useState<{id: string, nama: string, aktif: string}[]>([]);
+
+  // SOP & Guideline Modal States
+  const [showGuidelineModal, setShowGuidelineModal] = useState(false);
+  const [guidelineTab, setGuidelineTab] = useState<'ANOMALI' | 'PERBEDAAN' | 'LANGKAH' | 'TIPS'>('ANOMALI');
 
   const loadInventory = () => {
     setLoading(true);
@@ -529,16 +533,30 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button onClick={loadInventory} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Refresh Data">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={loadInventory} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition cursor-pointer" title="Refresh Data">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+
+          {/* Panduan SOP Stok Opname & Penanganan Stok Minus (Staff & Manager) */}
+          <button
+            type="button"
+            onClick={() => {
+              setGuidelineTab('ANOMALI');
+              setShowGuidelineModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 border border-teal-200 text-teal-800 hover:bg-teal-100/90 rounded-md text-xs font-semibold transition cursor-pointer shadow-2xs"
+            title="Buka Pedoman SOP Stok Opname & Penanganan Stok Minus"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-teal-700" />
+            <span>Panduan SOP Opname</span>
           </button>
           
           {/* CSV buttons hanya untuk MANAGER */}
           {currentRole === 'MANAGER' && (
             <>
               {/* Export data */}
-              <button onClick={handleExport} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition" title="Export Data ke CSV">
+              <button onClick={handleExport} className="p-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition cursor-pointer" title="Export Data ke CSV">
                 <Download className="w-3.5 h-3.5" />
               </button>
               {/* Download template kosong */}
@@ -577,6 +595,45 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
           )}
         </div>
       </div>
+
+      {/* Alert Banner Khusus Jika Terdeteksi Stok Minus (Anomali) */}
+      {items.some(i => i.stok < 0) && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 flex items-center justify-between gap-3 flex-wrap shadow-2xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-rose-900">
+                Peringatan Anomali: Ditemukan {items.filter(i => i.stok < 0).length} Barang dengan Stok Minus!
+              </div>
+              <div className="text-[11px] text-rose-700 mt-0.5">
+                Stok negatif tidak valid. Segera lakukan <strong>Stock Adjustment</strong> ke angka fisik riil di toko (minimal 0), bukan Restock.
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setFilterKesehatan('KRITIS')}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+            >
+              Filter Stok Kritis / Minus
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setGuidelineTab('ANOMALI');
+                setShowGuidelineModal(true);
+              }}
+              className="px-3 py-1.5 bg-white hover:bg-rose-100/70 border border-rose-300 text-rose-800 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-rose-700" />
+              <span>Buka Panduan SOP</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 4 Decision KPI Cards (DSS Overview & Filter) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1460,7 +1517,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
             </div>
 
             {/* Target Item Info */}
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 mb-4 flex items-center justify-between gap-3">
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 mb-3 flex items-center justify-between gap-3">
               <div>
                 <span className="font-mono text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
                   {adjustItem.id}
@@ -1474,6 +1531,31 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                 </span>
               </div>
             </div>
+
+            {/* Anomaly Notice inside Adjust Modal */}
+            {adjustItem.stok < 0 && (
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 mb-3 flex items-start justify-between gap-2 text-rose-900 text-xs">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                  <div>
+                    <div className="font-bold">Barang ini tercatat stok minus ({formatStok(adjustItem.stok)} {adjustItem.satuan})</div>
+                    <div className="text-[11px] text-rose-700 mt-0.5">
+                      Koreksi ke angka hitungan fisik nyata di rak sekarang (minimal 0). Jangan gunakan Restock.
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGuidelineTab('LANGKAH');
+                    setShowGuidelineModal(true);
+                  }}
+                  className="text-[10px] font-bold text-teal-800 underline hover:text-teal-950 shrink-0 cursor-pointer ml-1"
+                >
+                  Lihat Panduan
+                </button>
+              </div>
+            )}
 
             {/* Calculation Card: System vs Physical vs Delta */}
             {(() => {
@@ -1789,6 +1871,287 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
               >
                 Tutup
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. PANDUAN & SOP STOK OPNAME & PENANGANAN STOK MINUS (MODAL)              */}
+      {/* ========================================================================= */}
+      {showGuidelineModal && (
+        <div className="fixed inset-0 z-[550] bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-2xl p-5 md:p-6 w-full max-w-2xl shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#042f2e] to-[#115e59] text-white flex items-center justify-center shadow-xs">
+                  <BookOpen className="w-4 h-4 text-teal-300" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-800">Panduan SOP Stok Opname & Penanganan Stok Minus</h3>
+                  <p className="text-[11px] text-slate-400">Pedoman resmi menjaga kesehatan data inventaris dua SiSi Laundry</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGuidelineModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex items-center gap-1.5 border-b border-slate-100 pb-2 mb-3 shrink-0 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setGuidelineTab('ANOMALI')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                  guidelineTab === 'ANOMALI' 
+                    ? 'bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs' 
+                    : 'text-slate-500 hover:bg-slate-50'
+                }`}
+              >
+                1. Kenapa Bisa Minus?
+              </button>
+              <button
+                type="button"
+                onClick={() => setGuidelineTab('PERBEDAAN')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                  guidelineTab === 'PERBEDAAN' 
+                    ? 'bg-teal-50 text-teal-800 border border-teal-200 shadow-2xs' 
+                    : 'text-slate-500 hover:bg-slate-50'
+                }`}
+              >
+                2. Restock vs Adjustment
+              </button>
+              <button
+                type="button"
+                onClick={() => setGuidelineTab('LANGKAH')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                  guidelineTab === 'LANGKAH' 
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs' 
+                    : 'text-slate-500 hover:bg-slate-50'
+                }`}
+              >
+                3. Langkah Solusi (SOP)
+              </button>
+              <button
+                type="button"
+                onClick={() => setGuidelineTab('TIPS')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                  guidelineTab === 'TIPS' 
+                    ? 'bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs' 
+                    : 'text-slate-500 hover:bg-slate-50'
+                }`}
+              >
+                4. FAQ & Tips Opname
+              </button>
+            </div>
+
+            {/* Tab Content Body (Scrollable) */}
+            <div className="flex-1 overflow-y-auto pr-1 space-y-3.5 text-xs text-slate-600">
+              {/* TAB 1: Kenapa Bisa Minus? */}
+              {guidelineTab === 'ANOMALI' && (
+                <div className="space-y-3">
+                  <div className="bg-rose-50/80 border border-rose-200 rounded-xl p-3.5">
+                    <div className="text-xs font-extrabold text-rose-900 mb-1.5 flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      Akar Masalah: Mengapa Muncul Angka Negatif?
+                    </div>
+                    <p className="text-[11px] text-rose-800 leading-relaxed">
+                      Di dunia fisik nyata, jumlah barang tidak pernah bernilai minus (paling sedikit adalah 0 / habis total). Munculnya angka minus di sistem POS terjadi karena:
+                    </p>
+                    <ul className="mt-2 space-y-1.5 text-[11px] text-rose-700 list-disc list-inside">
+                      <li><strong>Barang Masuk Terlambat Diinput:</strong> Barang kiriman supplier sudah sampai dan langsung digunakan/dijual oleh kasir, namun staf belum sempat mencatat barang masuk (Restock) ke sistem.</li>
+                      <li><strong>Transaksi Terus Berjalan:</strong> Transaksi kasir memotong stok sistem padahal di database stok sudah 0 atau belum diperbarui.</li>
+                      <li><strong>Selisih Kerusakan / Hilang:</strong> Bahan bocor, tumpah, atau rusak tanpa dicatat pengurangannya.</li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                    <div className="text-xs font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                      <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                      Mengapa Stok Minus Sangat Berbahaya Bagi Bisnis?
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                      <div className="p-2.5 bg-white border border-slate-200 rounded-lg">
+                        <div className="font-bold text-slate-700 text-[11px]">Kekacauan Nilai HPP Toko</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">Laporan laba kotor dan valuasi aset gudang menjadi minus dan tidak realistis.</div>
+                      </div>
+                      <div className="p-2.5 bg-white border border-slate-200 rounded-lg">
+                        <div className="font-bold text-slate-700 text-[11px]">DSS Restock Bingung</div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">Sistem rekomendasi belanja tidak bisa menghitung kuantitas restock optimal yang akurat.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: Perbedaan Restock vs Adjustment */}
+              {guidelineTab === 'PERBEDAAN' && (
+                <div className="space-y-3">
+                  <div className="text-xs font-bold text-slate-800 mb-1">
+                    Pahami Perbedaan: Kapan Harus [ Restock ] dan Kapan [ Adjust ]?
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Card Adjust */}
+                    <div className="bg-teal-50/60 border-2 border-teal-500/40 rounded-xl p-3.5 flex flex-col">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-[10px]">
+                          TOMBOL HIJAU: ADJUST
+                        </span>
+                        <Scale className="w-4 h-4 text-teal-700" />
+                      </div>
+                      <div className="font-extrabold text-teal-900 text-xs mb-1">Stock Adjustment (Koreksi Opname)</div>
+                      <div className="text-[11px] text-teal-800 mb-2 leading-relaxed">
+                        Digunakan untuk <strong>menyelaraskan stok sistem agar sama persis dengan fisik di rak</strong> saat terjadi selisih atau angka minus.
+                      </div>
+                      <div className="mt-auto pt-2 border-t border-teal-200 text-[10px] text-teal-900">
+                        <strong>Cara Kerja:</strong> Menimpa (overwrite) total stok menjadi angka hitungan fisik terbaru.
+                      </div>
+                    </div>
+
+                    {/* Card Restock */}
+                    <div className="bg-amber-50/60 border-2 border-amber-500/40 rounded-xl p-3.5 flex flex-col">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="px-2 py-0.5 rounded-md bg-amber-600 text-white font-black text-[10px]">
+                          TOMBOL KUNING: RESTOCK
+                        </span>
+                        <ShoppingCart className="w-4 h-4 text-amber-700" />
+                      </div>
+                      <div className="font-extrabold text-amber-900 text-xs mb-1">Penerimaan Barang Supplier</div>
+                      <div className="text-[11px] text-amber-800 mb-2 leading-relaxed">
+                        Digunakan <strong>HANYA ketika ada barang baru yang benar-benar DIBELI / DITERIMA</strong> dari pemasok/toko grosir.
+                      </div>
+                      <div className="mt-auto pt-2 border-t border-amber-200 text-[10px] text-amber-900">
+                        <strong>Cara Kerja:</strong> Menambahkan (+ Qty) stok dan mencatat pengeluaran modal belanja.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-rose-900">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                    <div className="text-[11px] leading-relaxed">
+                      <strong>Larangan Penting:</strong> JANGAN PERNAH gunakan tombol Restock untuk menutup angka minus yang salah hitung! Mengisi restock tanpa belanja riil akan menimbulkan pembukuan belanja fiktif. Selalu gunakan tombol <strong>Adjust</strong>.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: Langkah Solusi SOP */}
+              {guidelineTab === 'LANGKAH' && (
+                <div className="space-y-3">
+                  <div className="text-xs font-bold text-slate-800">
+                    Langkah Demi Langkah Mengatasi Barang Minus (Contoh: Snack 500 = -1, Softener = -3)
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                      <div className="w-6 h-6 rounded-full bg-teal-800 text-white flex items-center justify-center font-black text-xs shrink-0">
+                        1
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-800 text-xs">Cek Jumlah Fisik di Rak Gudang</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Datangi rak penyimpanan bahan. Hitung berapa bungkus/liter aslinya yang ada saat ini. Jika di rak memang kosong, maka catat <strong>0</strong>. Jika masih ada 2 bungkus, catat <strong>2</strong>.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                      <div className="w-6 h-6 rounded-full bg-teal-800 text-white flex items-center justify-center font-black text-xs shrink-0">
+                        2
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-800 text-xs">Klik Tombol [ Adjust ] pada Baris Barang</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Pada tabel di bawah, cari barang yang bertanda merah <strong>STOK ANOMALI / MINUS</strong>. Klik tombol <strong>Adjust</strong> (warna hijau toska).
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                      <div className="w-6 h-6 rounded-full bg-teal-800 text-white flex items-center justify-center font-black text-xs shrink-0">
+                        3
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-800 text-xs">Masukkan Angka Hasil Hitungan Fisik</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Ketik angka fisik riil di kolom <strong>Stok Fisik Baru</strong> (misal <code>0</code> atau <code>2</code>). Sistem secara otomatis menghitung selisih penyesuaian.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                      <div className="w-6 h-6 rounded-full bg-teal-800 text-white flex items-center justify-center font-black text-xs shrink-0">
+                        4
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-800 text-xs">Pilih Alasan & Simpan</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Pilih alasan: <em>"Koreksi Stok Anomali / Minus"</em> atau <em>"Stock Opname"</em>, lalu klik <strong>Simpan Adjustment</strong>. Selesai! Status anomali merah akan langsung ternormalisasi.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: FAQ & Tips Opname */}
+              {guidelineTab === 'TIPS' && (
+                <div className="space-y-2.5">
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div className="font-bold text-slate-800 text-xs">Q: Seberapa sering Stock Opname sebaiknya dilakukan?</div>
+                    <div className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                      A: Untuk barang konsumtif utama (Deterjen liter, softener liter, parfum, plastik kresek), opname sebaiknya dilakukan <strong>setiap pergantian shift</strong> atau minimal <strong>1 minggu sekali</strong> saat rekap mingguan.
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div className="font-bold text-slate-800 text-xs">Q: Bagaimana jika bahan berwujud literan atau desimal?</div>
+                    <div className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                      A: Sistem Dua SiSi mendukung input desimal hingga 2 angka di belakang koma (misal: <code>9,75</code> liter atau <code>4,5</code> kg). Gunakan tanda koma atau titik saat memasukkan angka.
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div className="font-bold text-slate-800 text-xs">Q: Apakah log penyesuaian stok dicatat?</div>
+                    <div className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                      A: Ya! Setiap kali tombol <strong>Adjust</strong> atau <strong>Restock</strong> disimpan, sistem mencatat waktu, tanggal, nama petugas kasir/manajer yang login, serta alasan perubahannya ke log audit internal.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 shrink-0">
+              <span className="text-[10px] text-slate-400">
+                SOP dua SiSi Laundry — Jaga akurasi stok untuk kesehatan bisnis.
+              </span>
+              <div className="flex items-center gap-2">
+                {kpiStats.kritis > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowGuidelineModal(false);
+                      setFilterKesehatan('KRITIS');
+                    }}
+                    className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+                  >
+                    Filter Stok Kritis ({kpiStats.kritis})
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowGuidelineModal(false)}
+                  className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer"
+                >
+                  Tutup Panduan
+                </button>
+              </div>
             </div>
           </div>
         </div>
