@@ -50,7 +50,7 @@ import { UserRole, MonthlyTargets, FinancialMetrics, ServiceProfitability, Quali
 import { runBackend, runBackendCached } from '@/lib/api';
 import { useDialog } from '@/components/DialogProvider';
 import { parseDecimal, formatDecimal, parseIndonesianDateTime } from '@/lib/utils';
-import { generateBusinessPerformancePdf, ReportDataPayload, formatRupiahId, formatPercentId } from '@/lib/pdfReportGenerator';
+import { generateBusinessPerformancePdf, ReportDataPayload, ActionPlanItem, formatRupiahId, formatPercentId } from '@/lib/pdfReportGenerator';
 
 interface DashboardViewProps {
   currentRole: UserRole;
@@ -1286,11 +1286,49 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             onTimeCount: operationalPerformance.onTimeCount,
           },
           paymentRows: pList,
+          actionPlans: [
+            {
+              pilar: '1. Akselerasi Omzet & Penjualan',
+              rencanaAksi: `Tingkatkan bundle promotion dan upsell layanan '${sList[0]?.layanan || 'Cuci Kering 7kg'}' (kontribusi ${sList[0]?.percentage || 40}% pendapatan), serta terapkan diskon Happy Hour (10:00 - 13:00) pada hari kerja untuk mendongkrak omzet jam sepi.`,
+              targetOutput: `Target Omzet: ${monthlyTargets.targetRevenue > 0 ? formatRupiahId(monthlyTargets.targetRevenue) : formatRupiahId(Math.round(repRevenue * 1.15))} & AOV ${formatRupiahId(repTrxCount > 0 ? Math.round((repRevenue / repTrxCount) * 1.1) : 35000)}`,
+              prioritas: 'Tinggi',
+              pic: 'Kasir & Marketing',
+            },
+            {
+              pilar: '2. Retensi Pelanggan & CRM',
+              rencanaAksi: `Kirimkan penawaran khusus WhatsApp blast voucher 'Kangen Laundry' kepada ${customerRetention.churnedCustomer || Math.max(0, repTotalCust - repRepeatCust)} pelanggan tidak berkunjung >30 hari, serta aktifkan sistem reward poin loyalitas bagi 10 Top Customer penyumbang belanja terbesar.`,
+              targetOutput: `Repeat Order Ratio ≥ ${Math.max(monthlyTargets.targetRepeatRatio || 45, Math.round(repRatio + 5))}%`,
+              prioritas: 'Tinggi',
+              pic: 'CRM / Manajer',
+            },
+            {
+              pilar: '3. Manajemen Stok & Pengendalian HPP',
+              rencanaAksi: `Jadwalkan Purchase Order (PO) pengadaan stok bahan baku ${inventoryValuation.items.filter(i => i.daysUntilEmpty <= 7 || i.isMinus || i.isLow).map(i => i.nama).slice(0, 2).join(', ') ? `(prioritas: ${inventoryValuation.items.filter(i => i.daysUntilEmpty <= 7 || i.isMinus || i.isLow).map(i => i.nama).slice(0, 2).join(', ')})` : 'deterjen dan parfum konsentrat'} minimal H-5 sebelum estimasi habis, serta audit takaran pemakaian per kg demi menjaga margin kotor.`,
+              targetOutput: `Safety Stock ≥ 7 Hari & Margin Kotor ≥ ${Math.max(60, Math.round(repMarginKotor))}%`,
+              prioritas: 'Sedang',
+              pic: 'Logistik & Gudang',
+            },
+            {
+              pilar: '4. Standar Mutu & Zero-Rewash',
+              rencanaAksi: `Wajibkan inspeksi noda awal (spotting) saat penerimaan cucian di kasir dan pemeriksaan menyeluruh saat setrika/packing demi mempertahankan kualitas hasil cucian dan mencegah klaim pelanggan.`,
+              targetOutput: `Rewash Rate ≤ 1.0% & Nol Refund`,
+              prioritas: 'Rutin',
+              pic: 'Tim Cuci & Finishing',
+            },
+            {
+              pilar: '5. Disiplin SLA & Kecepatan Order',
+              rencanaAksi: `Pantau Kanban antrean secara real-time, prioritaskan pengerjaan cucian mendekati estimasi tenggat waktu selesai, dan lakukan briefing evaluasi harian sebelum pergantian shift kasir.`,
+              targetOutput: `On-Time SLA ≥ 98.0% & Nol Keterlambatan`,
+              prioritas: 'Tinggi',
+              pic: 'Supervisor Operasional',
+            },
+          ],
           insights: [
-            `Total omzet periode terpilih mencapai ${formatRupiahId(repRevenue)} dari ${repTrxCount} total order sukses.`,
-            `Rasio retensi pelanggan repeat order berada di angka ${formatPercentId(repRatio)} (${repRepeatCust} dari ${repTotalCust} pelanggan).`,
-            ...(categorizedInsights?.positive || []).slice(0, 2),
-            ...(categorizedInsights?.attention || []).slice(0, 2),
+            `Akselerasi Omzet: Tingkatkan bundle promotion layanan '${sList[0]?.layanan || 'Utama'}' dan aktifkan promo jam sepi (Happy Hour).`,
+            `Retensi Pelanggan: Follow-up WhatsApp re-engagement untuk ${customerRetention.churnedCustomer || Math.max(0, repTotalCust - repRepeatCust)} pelanggan tidak aktif >30 hari dan reward bagi Top 10 Spender.`,
+            `Manajemen Pengadaan: Restock terjadwal minimal H-5 sebelum stok kritis habis dan audit takaran deterjen/parfum per kg.`,
+            `Standar Kualitas: SOP pre-spotting noda saat penerimaan cucian demi mempertahankan Rewash Rate ≤ 1.0% dan zero komplain.`,
+            `Disiplin Operasional: Prioritas Kanban order mendekati estimasi selesai untuk menjaga On-Time SLA ≥ 98.0%.`,
           ],
         };
 

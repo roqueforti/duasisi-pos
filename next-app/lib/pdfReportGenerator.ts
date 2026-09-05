@@ -85,8 +85,36 @@ export interface ReportDataPayload {
     nominal: number;
     percentage: number;
   }>;
-  // Business Insights
-  insights: string[];
+  // Business Action Plan & Insights
+  actionPlans?: ActionPlanItem[];
+  insights?: string[];
+}
+
+export interface ActionPlanItem {
+  pilar: string;
+  rencanaAksi: string;
+  targetOutput: string;
+  prioritas: 'Tinggi' | 'Sedang' | 'Rutin';
+  pic: string;
+}
+
+// Helper Sensor No. HP Pelanggan demi Privasi & Keamanan Data (Informasi Keluar dari Sistem)
+export function maskPhoneNumber(phone?: string | null): string {
+  if (!phone) return '-';
+  const clean = phone.trim();
+  if (clean === '' || clean === '-') return '-';
+  const digits = clean.replace(/\D/g, '');
+  if (digits.length <= 6) return '****';
+
+  if (digits.length >= 10) {
+    const front = digits.slice(0, 4);
+    const back = digits.slice(-4);
+    return `${front}-****-${back}`;
+  } else {
+    const front = digits.slice(0, 3);
+    const back = digits.slice(-3);
+    return `${front}-****-${back}`;
+  }
 }
 
 // Helper Format Rupiah Indonesia
@@ -334,7 +362,7 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
       head: [['Komponen Finansial', 'Nominal (Rp)', 'Rasio / Margin', 'Keterangan Analisis']],
       body: finTableBody,
       theme: 'striped',
-      margin: { left: margin, right: margin },
+      margin: { left: margin, right: margin, bottom: 20 },
       headStyles: {
         fillColor: [30, 70, 72],
         textColor: [255, 255, 255],
@@ -458,7 +486,7 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     head: [['Tanggal', 'Total Order', 'Pendapatan Harian', 'Estimasi Volume (Kg)']],
     body: dailyTableBody.length > 0 ? dailyTableBody : [['-', '0', 'Rp0', '-']],
     theme: 'striped',
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, bottom: 20 },
     headStyles: {
       fillColor: [30, 70, 72],
       textColor: [255, 255, 255],
@@ -542,7 +570,7 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     head: [['Nama Layanan / Produk', 'Total Order', 'Volume (Kg)', 'Pendapatan', 'Kontribusi (%)']],
     body: serviceTableBody.length > 0 ? serviceTableBody : [['Belum ada data', '-', '-', 'Rp0', '0%']],
     theme: 'striped',
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, bottom: 20 },
     headStyles: {
       fillColor: [30, 70, 72],
       textColor: [255, 255, 255],
@@ -582,7 +610,7 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     head: [['Nama Karyawan / Staf', 'Total Order Ditangani', 'Omzet Dihasilkan', 'Order Selesai', 'Order Terlambat']],
     body: employeeTableBody.length > 0 ? employeeTableBody : [['Belum ada data staf', '-', 'Rp0', '-', '-']],
     theme: 'striped',
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, bottom: 20 },
     headStyles: {
       fillColor: [30, 70, 72],
       textColor: [255, 255, 255],
@@ -684,7 +712,7 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     head: [['Metode Pembayaran', 'Total Transaksi', 'Total Nominal (Rp)', 'Pangsa Pasar (%)']],
     body: payBody.length > 0 ? payBody : [['Tunai', '0', 'Rp0', '0%']],
     theme: 'striped',
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, bottom: 20 },
     headStyles: {
       fillColor: [30, 70, 72],
       textColor: [255, 255, 255],
@@ -713,17 +741,17 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   const topCustBody = data.topCustomers.slice(0, 10).map((c, idx) => [
     `#${idx + 1}`,
     c.nama,
-    c.noHp || '-',
+    maskPhoneNumber(c.noHp),
     `${c.totalOrder}x Order`,
     formatRupiahId(c.totalSpend)
   ]);
 
   autoTable(doc, {
     startY: curY,
-    head: [['No', 'Nama Pelanggan', 'Kontak No. HP / WhatsApp', 'Frekuensi Order', 'Total Spending']],
+    head: [['No', 'Nama Pelanggan', 'Kontak No. HP (Disensor)', 'Frekuensi Order', 'Total Spending']],
     body: topCustBody.length > 0 ? topCustBody : [['-', 'Belum ada data pelanggan', '-', '-', 'Rp0']],
     theme: 'striped',
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, bottom: 20 },
     headStyles: {
       fillColor: [30, 70, 72],
       textColor: [255, 255, 255],
@@ -743,28 +771,65 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     },
   });
 
-  curY = (doc as any).lastAutoTable.finalY + 7;
+  curY = (doc as any).lastAutoTable.finalY + 8;
 
   // =========================================================================
-  // BAB H: REKOMENDASI STRATEGIS & TINDAKAN BISNIS (STRATEGIC ACTION PLAN)
+  // BAB H: RENCANA TINDAKAN STRATEGIS BULAN DEPAN (MONTHLY ACTION PLAN)
   // =========================================================================
-  renderSectionHeader('H', 'REKOMENDASI STRATEGIS & TINDAKAN BISNIS (ACTION PLAN)', 45);
+  renderSectionHeader('H', 'RENCANA TINDAKAN STRATEGIS BULAN DEPAN (ACTION PLAN)', 65);
 
-  data.insights.forEach((insight) => {
-    doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-    doc.setDrawColor(accentTurquoise[0], accentTurquoise[1], accentTurquoise[2]);
-    doc.roundedRect(margin, curY, contentWidth, 7.5, 1, 1, 'FD');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
+  doc.text(
+    'Rekomendasi inisiatif operasional, bisnis, dan pemasaran prioritas untuk dieksekusi oleh manajemen dan staf pada bulan berikutnya:',
+    margin,
+    curY
+  );
+  curY += 4.5;
 
-    // Left Accent Bar
-    doc.setFillColor(accentTurquoise[0], accentTurquoise[1], accentTurquoise[2]);
-    doc.rect(margin, curY, 1.5, 7.5, 'F');
+  const actionTableBody = (data.actionPlans && data.actionPlans.length > 0)
+    ? data.actionPlans.map(ap => [
+        ap.pilar,
+        ap.rencanaAksi,
+        ap.targetOutput,
+        `${ap.prioritas}\n(${ap.pic})`
+      ])
+    : (data.insights && data.insights.length > 0)
+      ? data.insights.map((ins, idx) => [
+          `Inisiatif #${idx + 1}`,
+          ins,
+          'Peningkatan Kinerja',
+          'Tinggi\n(Operasional)'
+        ])
+      : [['-', 'Belum ada rencana tindakan yang dikonfigurasi', '-', '-']];
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-    doc.text(`• ${insight}`, margin + 3.5, curY + 5.2);
-    curY += 9;
+  autoTable(doc, {
+    startY: curY,
+    head: [['Pilar Strategis & Fokus', 'Rencana Tindakan Bulan Depan (Action Plan)', 'Target Indikator', 'Prioritas & PIC']],
+    body: actionTableBody,
+    theme: 'striped',
+    margin: { left: margin, right: margin, bottom: 20 },
+    headStyles: {
+      fillColor: [15, 118, 110], // Dark Teal Primary
+      textColor: [255, 255, 255],
+      fontSize: 7.5,
+      fontStyle: 'bold',
+    },
+    bodyStyles: {
+      fontSize: 7,
+      textColor: [30, 41, 59],
+      cellPadding: 2.6,
+    },
+    columnStyles: {
+      0: { cellWidth: 42, fontStyle: 'bold', textColor: [15, 118, 110] },
+      1: { cellWidth: 83 },
+      2: { cellWidth: 36 },
+      3: { cellWidth: 25, halign: 'center' },
+    },
   });
+
+  curY = (doc as any).lastAutoTable.finalY + 8;
 
   // =========================================================================
   // FOOTER HALAMAN OTOMATIS (HALAMAN X DARI Y)
