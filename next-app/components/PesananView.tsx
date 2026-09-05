@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Clock3,
   Columns3,
+  Table,
   List,
   RefreshCw,
   Search,
@@ -82,6 +83,18 @@ function formatWibDate(dateStr?: string | null): string {
   return `${dateFormatted}, ${timeFormatted}`;
 }
 
+function formatEstimasiTarget(raw?: string | null): string {
+  if (!raw) return '-';
+  if (raw.includes('WIB') || raw.includes('wib')) return raw;
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw;
+  const isToday = new Date().toDateString() === d.toDateString();
+  const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+  if (isToday) return `Hari ini, ${timeStr}`;
+  const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  return `${dateStr}, ${timeStr}`;
+}
+
 function getWorkflowIcon(status: string) {
   const s = (status || '').toLowerCase();
   if (s.includes('terima')) return Inbox;
@@ -126,7 +139,7 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
   const [query, setQuery] = useState('');
   const [priority, setPriority] = useState<string>('Semua');
   const [filterTab, setFilterTab] = useState<'Semua' | 'Diproses' | 'SiapDiambil' | 'BelumWA' | 'SudahDiambil'>(initialFilterTab || 'Semua');
-  const [view, setView] = useState<'kanban' | 'list'>('kanban');
+  const [view, setView] = useState<'kanban' | 'table' | 'list'>('kanban');
   const [selected, setSelected] = useState<Transaksi | null>(null);
   const [detailModalOrder, setDetailModalOrder] = useState<Transaksi | null>(null);
   const [machineId, setMachineId] = useState('');
@@ -769,7 +782,7 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
               <Target className="h-3 w-3 text-rose-500 shrink-0" />
               <span>Target Selesai:</span>
             </span>
-            <span className="font-bold text-slate-700">{order.estimasiSelesai || order.estimasi || '-'}</span>
+            <span className="font-bold text-slate-700">{formatEstimasiTarget(order.estimasiSelesai || order.estimasi)}</span>
           </div>
 
           {machineName && (
@@ -1024,6 +1037,415 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
     );
   };
 
+  const renderActiveTable = (orderList: Transaksi[]) => {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider">
+                <th className="py-3 px-3.5 whitespace-nowrap">No Nota & Prioritas</th>
+                <th className="py-3 px-3 min-w-[140px]">Pelanggan</th>
+                <th className="py-3 px-3 min-w-[170px]">Layanan & Item</th>
+                <th className="py-3 px-3 min-w-[140px]">Tahap / Status</th>
+                <th className="py-3 px-3 min-w-[140px]">Waktu & Durasi</th>
+                <th className="py-3 px-3 min-w-[110px]">Total Biaya</th>
+                <th className="py-3 px-3.5 text-right min-w-[180px]">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {orderList.map((order) => {
+                const orderPriority = order.tingkatLayanan || 'Reguler';
+                const priConfig = dropOffPriorities.find((p) => p.nama.toLowerCase() === orderPriority.toLowerCase());
+                const badgeWarna = priConfig?.warna || (
+                  orderPriority.toLowerCase().includes('kilat') ? 'bg-rose-100 text-rose-700 border-rose-300' :
+                  orderPriority.toLowerCase().includes('express') ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                  'bg-teal-100 text-teal-800 border-teal-300'
+                );
+
+                const isSiapDiambil = order.status === 'Siap Diambil' || (order.pipeline && order.pipeline.some(p => p.namaStep === 'Siap Diambil' && p.status === 'Aktif'));
+                const next = getNextStatusForOrder(order);
+                const rawMachine = activeMachine(order);
+                const machineName = getMachineDisplayName(rawMachine);
+
+                const remindedTime = waReminders[order.noNota];
+                const todayDateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+                const isRemindedToday = Boolean(remindedTime && remindedTime.includes(todayDateStr));
+
+                const sisaTagihan = Number(order.sisaTagihan) || 0;
+                const isLunas = sisaTagihan <= 0;
+
+                const curStatus = (order.status || 'Diterima').trim();
+                const matchedStep = order.pipeline?.find(
+                  (p) => p.status === 'Aktif' || p.namaStep.toLowerCase() === curStatus.toLowerCase()
+                );
+                const activeStepName = matchedStep?.namaStep || curStatus;
+
+                // Durasi
+                const startTimeRaw = matchedStep?.waktuMulai || order.tanggal || '';
+                let elapsedStr = '-';
+                if (startTimeRaw) {
+                  let startDate: Date;
+                  if (typeof startTimeRaw === 'string' && startTimeRaw.includes('/')) {
+                    const parts = startTimeRaw.split(' ')[0].split('/');
+                    const timePart = startTimeRaw.split(' ')[1] || '00:00';
+                    const [hh, mm, ss] = timePart.split(':');
+                    startDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]), Number(hh) || 0, Number(mm) || 0, Number(ss) || 0);
+                  } else {
+                    startDate = new Date(startTimeRaw);
+                  }
+                  if (!isNaN(startDate.getTime())) {
+                    const diffMs = Math.max(0, Date.now() - startDate.getTime());
+                    const totalMins = Math.floor(diffMs / (1000 * 60));
+                    if (totalMins < 1) elapsedStr = '< 1 mnt';
+                    else if (totalMins < 60) elapsedStr = `${totalMins} mnt`;
+                    else if (totalMins < 1440) elapsedStr = `${Math.floor(totalMins / 60)}j ${totalMins % 60}m`;
+                    else elapsedStr = `${Math.floor(totalMins / 1440)}hr`;
+                  }
+                }
+
+                const StepIcon = getWorkflowIcon(activeStepName);
+                const NextIcon = next ? getWorkflowIcon(next) : CheckCircle2;
+
+                return (
+                  <tr 
+                    key={order.noNota} 
+                    onClick={() => setDetailModalOrder(order)}
+                    className="hover:bg-teal-50/40 transition-colors cursor-pointer text-xs"
+                  >
+                    {/* 1. No Nota & Prioritas */}
+                    <td className="py-3 px-3.5 whitespace-nowrap">
+                      <div className="font-mono font-bold text-slate-800">{order.noNota}</div>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className={`rounded-full px-2 py-0.2 text-[10px] font-extrabold border ${badgeWarna}`}>
+                          {orderPriority}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* 2. Pelanggan */}
+                    <td className="py-3 px-3">
+                      <div className="font-bold text-slate-800">{order.namaPelanggan}</div>
+                      {order.noHp && (
+                        <div className="text-[11px] font-mono text-slate-400 mt-0.5">{order.noHp}</div>
+                      )}
+                    </td>
+
+                    {/* 3. Layanan & Item */}
+                    <td className="py-3 px-3 max-w-[220px]">
+                      <div className="line-clamp-2 text-slate-600 font-medium">
+                        {order.items && order.items.length > 0
+                          ? order.items.map((i) => `${i.layanan} ×${i.qty}`).join(', ')
+                          : 'Drop Off Service'}
+                      </div>
+                    </td>
+
+                    {/* 4. Tahap / Status */}
+                    <td className="py-3 px-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-5 h-5 rounded-md flex items-center justify-center text-white shrink-0 ${
+                          isSiapDiambil ? 'bg-emerald-600' : 'bg-teal-800'
+                        }`}>
+                          <StepIcon className="w-3 h-3" />
+                        </div>
+                        <span className={`font-bold ${isSiapDiambil ? 'text-emerald-700' : 'text-slate-800'}`}>
+                          {activeStepName}
+                        </span>
+                      </div>
+                      {machineName && (
+                        <div className="mt-1 flex items-center gap-1 text-[10px] text-teal-700 font-semibold bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200/80 w-fit">
+                          <WashingMachine className="w-3 h-3" />
+                          <span>{machineName}</span>
+                        </div>
+                      )}
+                      {isSiapDiambil && (
+                        <div className="mt-1">
+                          {isRemindedToday ? (
+                            <span className="badge-glow-emerald inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" /> Di-WA Hari Ini
+                            </span>
+                          ) : (
+                            <span className="badge-glow-amber inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full">
+                              <AlertCircle className="w-2.5 h-2.5" /> Belum di-WA
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* 5. Waktu & Durasi */}
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <div className="flex items-center gap-1 text-slate-600">
+                        <Clock3 className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="font-mono text-[11px] font-bold">{elapsedStr}</span>
+                      </div>
+                      {order.estimasiSelesai && (
+                        <div className="mt-0.5 text-[10px] text-slate-400">
+                          Target: <span className="font-medium text-slate-600">{formatEstimasiTarget(order.estimasiSelesai)}</span>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* 6. Total Biaya */}
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <div className="font-black text-slate-900 font-mono text-xs">
+                        Rp {(Number(order.total) || 0).toLocaleString('id-ID')}
+                      </div>
+                      <div className={`text-[10px] font-bold mt-0.5 ${isLunas ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {isLunas ? '• Lunas' : `• Sisa: Rp ${sisaTagihan.toLocaleString('id-ID')}`}
+                      </div>
+                    </td>
+
+                    {/* 7. Aksi */}
+                    <td className="py-3 px-3.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {isSiapDiambil ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openProgress(order);
+                            }}
+                            className="tactile-btn flex items-center gap-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 px-2.5 py-1.5 text-[11px] font-bold text-white transition shadow-xs cursor-pointer"
+                            title="Serahkan Cucian ke Pelanggan"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Serahkan</span>
+                          </button>
+                        ) : next ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openProgress(order);
+                            }}
+                            className="tactile-btn flex items-center gap-1 rounded-lg bg-[#1E4648] hover:bg-[#163536] px-2.5 py-1.5 text-[11px] font-bold text-white transition shadow-xs cursor-pointer"
+                            title={`Lanjut ke ${next}`}
+                          >
+                            <NextIcon className="w-3.5 h-3.5 text-teal-200" />
+                            <span>Lanjut {next}</span>
+                          </button>
+                        ) : null}
+
+                        {isSiapDiambil && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSendSiapWA(order, e);
+                            }}
+                            className="tactile-btn p-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition cursor-pointer"
+                            title="Kirim WA Siap Diambil"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTxToPrint(order);
+                            setIsPrinterModalOpen(true);
+                          }}
+                          className="tactile-btn p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                          title="Cetak Struk"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </button>
+
+                        <a
+                          href={eNotaUrl(order.noNota)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="tactile-btn p-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 transition cursor-pointer"
+                          title="e-Nota"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDetailModalOrder(order);
+                          }}
+                          className="tactile-btn p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                          title="Detail Riwayat Pipeline"
+                        >
+                          <Workflow className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCompletedTable = (orderList: Transaksi[]) => {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider">
+                <th className="py-3 px-3.5 whitespace-nowrap">No Nota & Prioritas</th>
+                <th className="py-3 px-3 min-w-[140px]">Pelanggan</th>
+                <th className="py-3 px-3 min-w-[170px]">Layanan & Item</th>
+                <th className="py-3 px-3 min-w-[140px]">Status & Petugas</th>
+                <th className="py-3 px-3 min-w-[140px]">Waktu Selesai / Diambil</th>
+                <th className="py-3 px-3 min-w-[110px]">Total Biaya</th>
+                <th className="py-3 px-3.5 text-right min-w-[160px]">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {orderList.map((order) => {
+                const orderPriority = order.tingkatLayanan || 'Reguler';
+                const priConfig = dropOffPriorities.find((p) => p.nama.toLowerCase() === orderPriority.toLowerCase());
+                const badgeWarna = priConfig?.warna || (
+                  orderPriority.toLowerCase().includes('kilat') ? 'bg-rose-100 text-rose-700 border-rose-300' :
+                  orderPriority.toLowerCase().includes('express') ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                  'bg-teal-100 text-teal-800 border-teal-300'
+                );
+
+                const waktuSelesaiStr = (() => {
+                  const raw = (order as any).updated_at || order.tanggal || '';
+                  if (!raw) return '-';
+                  const d = new Date(raw);
+                  if (isNaN(d.getTime())) return String(raw);
+                  const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+                  return `${dateStr}, ${timeStr}`;
+                })();
+
+                const sisaTagihan = Number(order.sisaTagihan) || 0;
+                const isLunas = sisaTagihan <= 0;
+
+                return (
+                  <tr 
+                    key={order.noNota} 
+                    onClick={() => setDetailModalOrder(order)}
+                    className="hover:bg-emerald-50/30 transition-colors cursor-pointer text-xs"
+                  >
+                    {/* 1. No Nota & Prioritas */}
+                    <td className="py-3 px-3.5 whitespace-nowrap">
+                      <div className="font-mono font-bold text-slate-800">{order.noNota}</div>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className={`rounded-full px-2 py-0.2 text-[10px] font-extrabold border ${badgeWarna}`}>
+                          {orderPriority}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* 2. Pelanggan */}
+                    <td className="py-3 px-3">
+                      <div className="font-bold text-slate-800">{order.namaPelanggan}</div>
+                      {order.noHp && (
+                        <div className="text-[11px] font-mono text-slate-400 mt-0.5">{order.noHp}</div>
+                      )}
+                    </td>
+
+                    {/* 3. Layanan & Item */}
+                    <td className="py-3 px-3 max-w-[220px]">
+                      <div className="line-clamp-2 text-slate-600 font-medium">
+                        {order.items && order.items.length > 0
+                          ? order.items.map((i) => `${i.layanan} ×${i.qty}`).join(', ')
+                          : 'Drop Off Service'}
+                      </div>
+                    </td>
+
+                    {/* 4. Status & Petugas */}
+                    <td className="py-3 px-3">
+                      <span className="badge-glow-emerald inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <Check className="w-3 h-3 stroke-[3]" /> Sudah Diambil
+                      </span>
+                      {order.petugas && (
+                        <div className="text-[10.5px] text-slate-500 font-medium mt-1">
+                          Petugas: <span className="font-bold text-slate-700">{order.petugas}</span>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* 5. Waktu Selesai */}
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <div className="flex items-center gap-1 text-slate-700 font-mono text-[11px] font-medium">
+                        <Clock3 className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span>{waktuSelesaiStr}</span>
+                      </div>
+                    </td>
+
+                    {/* 6. Total Biaya */}
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <div className="font-black text-slate-900 font-mono text-xs">
+                        Rp {(Number(order.total) || 0).toLocaleString('id-ID')}
+                      </div>
+                      <div className={`text-[10px] font-bold mt-0.5 ${isLunas ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {isLunas ? '• Lunas' : `• Sisa: Rp ${sisaTagihan.toLocaleString('id-ID')}`}
+                      </div>
+                    </td>
+
+                    {/* 7. Aksi */}
+                    <td className="py-3 px-3.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTxToPrint(order);
+                            setIsPrinterModalOpen(true);
+                          }}
+                          className="tactile-btn p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                          title="Cetak Struk"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </button>
+
+                        <a
+                          href={eNotaUrl(order.noNota)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="tactile-btn p-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 transition cursor-pointer"
+                          title="e-Nota"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSendTerimaKasihWA(order, e);
+                          }}
+                          className="tactile-btn p-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition cursor-pointer"
+                          title="Kirim WA Terima Kasih"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDetailModalOrder(order);
+                          }}
+                          className="tactile-btn p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                          title="Detail Riwayat Pipeline"
+                        >
+                          <Workflow className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const isTableView = view === 'table' || view === 'list';
+
   return (
     <div className="w-full space-y-4 p-3 sm:p-5">
       <section className="glass-panel p-4 sm:p-5 rounded-2xl space-y-3.5">
@@ -1033,9 +1455,30 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
             <p className="mt-0.5 text-xs text-slate-500 font-medium">Pengerjaan fisik, staf, washer/dryer, status rak, dan reminder penjemputan WhatsApp.</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setView('kanban')} className={`tactile-btn rounded-xl border p-2 ${view === 'kanban' ? 'border-teal-700 bg-teal-800 text-white shadow-xs' : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'}`} title="Kanban"><Columns3 className="h-4 w-4" /></button>
-            <button onClick={() => setView('list')} className={`tactile-btn rounded-xl border p-2 ${view === 'list' ? 'border-teal-700 bg-teal-800 text-white shadow-xs' : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'}`} title="List"><List className="h-4 w-4" /></button>
-            <button onClick={loadData} disabled={loading} className="tactile-btn rounded-xl border border-slate-200 p-2 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50" title="Refresh"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /></button>
+            <button 
+              onClick={() => setView('kanban')} 
+              className={`tactile-btn rounded-xl border px-3 py-2 flex items-center gap-1.5 text-xs font-bold transition cursor-pointer ${view === 'kanban' ? 'border-teal-700 bg-teal-800 text-white shadow-xs' : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'}`} 
+              title="Tampilan Kartu / Kanban"
+            >
+              <Columns3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Kartu</span>
+            </button>
+            <button 
+              onClick={() => setView('table')} 
+              className={`tactile-btn rounded-xl border px-3 py-2 flex items-center gap-1.5 text-xs font-bold transition cursor-pointer ${isTableView ? 'border-teal-700 bg-teal-800 text-white shadow-xs' : 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'}`} 
+              title="Tampilan Tabel (Table View)"
+            >
+              <Table className="h-4 w-4" />
+              <span className="hidden sm:inline">Tabel</span>
+            </button>
+            <button 
+              onClick={loadData} 
+              disabled={loading} 
+              className="tactile-btn rounded-xl border border-slate-200 p-2 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-50 transition cursor-pointer" 
+              title="Refresh Data"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
 
@@ -1174,6 +1617,8 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
             <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
             Tidak ada riwayat pesanan drop-off yang sudah diambil pada filter ini.
           </div>
+        ) : isTableView ? (
+          renderCompletedTable(filteredCompletedOrders)
         ) : (
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
             {filteredCompletedOrders.map(renderCompletedCard)}
@@ -1188,7 +1633,9 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
             ? 'Semua cucian di rak sudah dikirimi notifikasi WhatsApp hari ini.'
             : 'Tidak ada pesanan aktif pada filter ini.'}
         </div>
-      ) : filterTab === 'SiapDiambil' || filterTab === 'BelumWA' || view === 'list' ? (
+      ) : isTableView ? (
+        renderActiveTable(filteredOrders)
+      ) : filterTab === 'SiapDiambil' || filterTab === 'BelumWA' ? (
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">{filteredOrders.map(renderCard)}</div>
       ) : (
         <div className="flex snap-x gap-3.5 overflow-x-auto pb-4">
