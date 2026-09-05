@@ -281,8 +281,7 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   const defaultOpening = `Laporan kinerja bisnis dua SiSi Laundry Express & Coin POS periode ${data.periodeLabel} menyajikan evaluasi komprehensif terhadap performa finansial, efisiensi operasional, dan dinamika retensi pelanggan. Dokumen ini disusun secara sistematis guna memberikan gambaran holistik bagi manajemen dalam mengidentifikasi pencapaian kunci, mengendalikan beban pokok penjualan (HPP), serta merumuskan prioritas strategis demi akselerasi pertumbuhan outlet yang berkelanjutan.`;
   const openingText = sanitizePdfText(data.executiveSummaryOpening?.trim() || defaultOpening);
   const openingLines = doc.splitTextToSize(openingText, contentWidth - 6);
-  const badgeExtraH = data.aiProvider ? 7 : 0;
-  const openingBoxH = Math.max(13, openingLines.length * 3.6 + 4 + badgeExtraH);
+  const openingBoxH = Math.max(13, openingLines.length * 3.6 + 5);
 
   doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
   doc.setDrawColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
@@ -297,21 +296,24 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
   doc.text(openingLines, margin + 4, curY + 4.2);
 
-  // AI Provider Badge (kecil di pojok kanan bawah kotak)
+  curY += openingBoxH;
+
+  // AI Provider Badge (kecil, right-aligned tepat di bawah kotak)
   if (data.aiProvider) {
     const badgeText = `Analyzed by ${data.aiProvider}`;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(5.5);
     const badgeW = doc.getTextWidth(badgeText) + 4;
-    const badgeX = margin + contentWidth - badgeW - 2;
-    const badgeY = curY + openingBoxH - 5.5;
+    const badgeX = margin + contentWidth - badgeW;
+    const badgeY = curY + 1;
     doc.setFillColor(13, 148, 136); // accentTurquoise
     doc.roundedRect(badgeX, badgeY, badgeW, 4, 1, 1, 'F');
     doc.setTextColor(255, 255, 255);
     doc.text(badgeText, badgeX + 2, badgeY + 2.9);
+    curY += 6;
   }
 
-  curY += openingBoxH + 4;
+  curY += 4;
 
   const cardWidth = (contentWidth - 6) / 3;
   const cardHeight = 17;
