@@ -103,6 +103,7 @@ export function formatPercentId(val: number): string {
 
 /**
  * Generate dan langsung mengunduh PDF Business Performance Report SiSi Laundry
+ * Dirancang elegan, informatif, bab dimulai dari abjad A, dilengkapi grafik visual vektor.
  */
 export async function generateBusinessPerformancePdf(data: ReportDataPayload): Promise<void> {
   const doc = new jsPDF({
@@ -116,19 +117,22 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   const margin = 14;
   const contentWidth = pageWidth - margin * 2;
 
-  // Colors
+  // Curated Color Palette
   const primaryDarkTeal = [30, 70, 72]; // #1E4648
   const accentTurquoise = [13, 148, 136]; // #0D9488
+  const emeraldGreen = [16, 185, 129]; // #10B981
+  const warmAmber = [245, 158, 11]; // #F59E0B
+  const roseRed = [225, 29, 72]; // #E11D48
   const lightBg = [248, 250, 252]; // #F8FAFC
   const borderGray = [226, 232, 240]; // #E2E8F0
-  const textDark = [30, 41, 59]; // #1E293B
+  const textDark = [15, 23, 42]; // #0F172A
   const textMuted = [100, 116, 139]; // #64748B
 
   // Helper Header Halaman
   const renderHeader = (isFirstPage: boolean) => {
     // Header Bar Top
     doc.setFillColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-    doc.rect(0, 0, pageWidth, isFirstPage ? 28 : 14, 'F');
+    doc.rect(0, 0, pageWidth, isFirstPage ? 30 : 15, 'F');
 
     // Title
     doc.setFont('helvetica', 'bold');
@@ -137,22 +141,24 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     doc.text('dua SiSi Laundry Express & Coin POS', margin, isFirstPage ? 12 : 9);
 
     if (isFirstPage) {
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
       doc.setTextColor(204, 251, 241); // teal light
-      doc.text('BUSINESS PERFORMANCE & ANALYTICS REPORT', margin, 18);
-      doc.setFontSize(8);
+      doc.text('EXECUTIVE BUSINESS PERFORMANCE & PROFITABILITY REPORT', margin, 18);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
       doc.setTextColor(226, 232, 240);
-      doc.text(`Periode: ${data.periodeLabel}  |  Outlet: ${data.outletName}`, margin, 24);
+      doc.text(`Periode Laporan: ${data.periodeLabel}  |  Outlet: ${data.outletName}  |  Dibuat oleh: ${data.generatedBy}`, margin, 25);
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(204, 251, 241);
-      doc.text(`Business Performance Report — ${data.periodeLabel}`, pageWidth - margin, 9, { align: 'right' });
+      doc.text(`Executive Performance Report — ${data.periodeLabel}`, pageWidth - margin, 9, { align: 'right' });
     }
   };
 
-  let curY = 35;
+  let curY = 37;
   renderHeader(true);
 
   // Jika tidak ada transaksi sama sekali
@@ -160,30 +166,51 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(11);
     doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
-    doc.text('No data available for the selected period.', pageWidth / 2, 70, { align: 'center' });
-    doc.save(`SiSi_Laundry_Report_${data.startDateStr}_${data.endDateStr}.pdf`);
+    doc.text('Tidak ada data transaksi pada rentang periode yang dipilih.', pageWidth / 2, 70, { align: 'center' });
+    doc.save(`duaSiSi_Business_Report_${data.startDateStr}_${data.endDateStr}.pdf`);
     return;
   }
 
+  // Helper render Chapter Section Title with Alphabet Badge (A, B, C, ...)
+  const renderSectionHeader = (letter: string, title: string, requiredSpace: number = 30) => {
+    if (curY > pageHeight - requiredSpace) {
+      doc.addPage();
+      renderHeader(false);
+      curY = 22;
+    }
+
+    // Letter badge pill
+    doc.setFillColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
+    doc.roundedRect(margin, curY, 6.5, 6.5, 1.5, 1.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(letter, margin + 3.25, curY + 4.6, { align: 'center' });
+
+    // Section title
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
+    doc.text(title, margin + 9, curY + 4.8);
+
+    curY += 9;
+  };
+
   // =========================================================================
-  // SECTION B: EXECUTIVE SUMMARY (KPI CARDS)
+  // BAB A: RINGKASAN EKSEKUTIF (EXECUTIVE SUMMARY)
   // =========================================================================
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-  doc.text('B. EXECUTIVE SUMMARY', margin, curY);
-  curY += 4;
+  renderSectionHeader('A', 'RINGKASAN EKSEKUTIF (EXECUTIVE SUMMARY)', 45);
 
   const cardWidth = (contentWidth - 6) / 3;
-  const cardHeight = 16;
+  const cardHeight = 17;
 
   const kpiItems = [
-    { label: 'TOTAL PENDAPATAN', val: formatRupiahId(data.kpi.totalRevenue), sub: `${data.kpi.totalTransactions} Total Order Sukses` },
-    { label: 'TOTAL ORDER', val: `${data.kpi.totalTransactions} Order`, sub: `Rata-rata: ${formatRupiahId(data.kpi.avgOrderValue)}/order` },
-    { label: 'REPEAT ORDER RATIO', val: formatPercentId(data.kpi.repeatOrderRatio), sub: `${data.kpi.repeatCustomers} dari ${data.kpi.totalCustomers} Pelanggan` },
-    { label: 'TOTAL PELANGGAN', val: `${data.kpi.totalCustomers} Orang`, sub: `${data.kpi.oneTimeCustomers} Baru / 1-Time` },
-    { label: 'TOTAL BERAT CUCIAN', val: `${data.kpi.totalKg.toLocaleString('id-ID')} Kg`, sub: 'Estimasi volume cucian' },
-    { label: 'AVG CUSTOMER SPEND', val: formatRupiahId(data.kpi.avgCustomerSpend), sub: 'Rata-rata belanja/pelanggan' },
+    { label: 'TOTAL PENDAPATAN', val: formatRupiahId(data.kpi.totalRevenue), sub: `${data.kpi.totalTransactions} Total Order Sukses`, accent: primaryDarkTeal },
+    { label: 'TOTAL ORDER', val: `${data.kpi.totalTransactions} Order`, sub: `Rata-rata ${formatRupiahId(data.kpi.avgOrderValue)}/order`, accent: accentTurquoise },
+    { label: 'REPEAT ORDER RATIO', val: formatPercentId(data.kpi.repeatOrderRatio), sub: `${data.kpi.repeatCustomers} dari ${data.kpi.totalCustomers} Pelanggan`, accent: emeraldGreen },
+    { label: 'TOTAL PELANGGAN', val: `${data.kpi.totalCustomers} Orang`, sub: `${data.kpi.oneTimeCustomers} Pelanggan Baru (1-Time)`, accent: accentTurquoise },
+    { label: 'VOLUME BERAT CUCIAN', val: `${data.kpi.totalKg.toLocaleString('id-ID')} Kg`, sub: 'Estimasi beban cucian toko', accent: warmAmber },
+    { label: 'RATA-RATA BELANJA', val: formatRupiahId(data.kpi.avgCustomerSpend), sub: 'Belanja per orang (Customer Spend)', accent: primaryDarkTeal },
   ];
 
   kpiItems.forEach((item, idx) => {
@@ -196,46 +223,115 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
     doc.roundedRect(x, y, cardWidth, cardHeight, 2, 2, 'FD');
 
+    // Left Accent Stripe
+    doc.setFillColor(item.accent[0], item.accent[1], item.accent[2]);
+    doc.roundedRect(x, y, 1.8, cardHeight, 1, 1, 'F');
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
     doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
-    doc.text(item.label, x + 3, y + 4.5);
+    doc.text(item.label, x + 4, y + 4.5);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-    doc.text(item.val, x + 3, y + 10);
+    doc.text(item.val, x + 4, y + 10);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6);
     doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
-    doc.text(item.sub, x + 3, y + 14);
+    doc.text(item.sub, x + 4, y + 14.5);
   });
 
   curY += 2 * (cardHeight + 2.5) + 6;
 
   // =========================================================================
-  // FINANCIAL PERFORMANCE TABLE (HPP, LABA KOTOR, BIAYA, LABA BERSIH)
+  // BAB B: KINERJA FINANSIAL & PROFITABILITAS (FINANCIAL PERFORMANCE)
   // =========================================================================
-  if (data.financials) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-    doc.text('FINANCIAL PERFORMANCE (PROFITABILITAS & HPP)', margin, curY);
-    curY += 3;
+  renderSectionHeader('B', 'KINERJA FINANSIAL & PROFITABILITAS (FINANCIAL PERFORMANCE)', 50);
 
+  if (data.financials) {
     const fin = data.financials;
+
+    // GRAFIK 1: SEGMENTED REVENUE BREAKDOWN BAR (KOMPOSISI OMZET)
+    const breakdownH = 17;
+    doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+    doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+    doc.roundedRect(margin, curY, contentWidth, breakdownH, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
+    doc.text('Komposisi Pembagian Pendapatan (HPP vs Biaya Toko vs Laba Bersih)', margin + 3.5, curY + 4.5);
+
+    // Segmented Bar
+    const barX = margin + 3.5;
+    const barY = curY + 6.5;
+    const totalBarW = contentWidth - 7;
+    const barH = 3.5;
+
+    const baseRev = Math.max(1, fin.pendapatan);
+    const hppRatio = fin.hpp / baseRev;
+    const opsRatio = fin.biayaOperasional / baseRev;
+    const netRatio = Math.max(0, fin.labaBersih / baseRev);
+
+    const hppW = Math.max(1, hppRatio * totalBarW);
+    const opsW = Math.max(1, opsRatio * totalBarW);
+    const netW = Math.max(1, totalBarW - hppW - opsW);
+
+    // Background Bar Track
+    doc.setFillColor(226, 232, 240);
+    doc.roundedRect(barX, barY, totalBarW, barH, 1, 1, 'F');
+
+    // HPP Segment (Amber)
+    doc.setFillColor(warmAmber[0], warmAmber[1], warmAmber[2]);
+    doc.rect(barX, barY, hppW, barH, 'F');
+
+    // Ops Segment (Slate)
+    doc.setFillColor(textMuted[0], textMuted[1], textMuted[2]);
+    doc.rect(barX + hppW, barY, opsW, barH, 'F');
+
+    // Net Profit Segment (Emerald)
+    doc.setFillColor(emeraldGreen[0], emeraldGreen[1], emeraldGreen[2]);
+    doc.rect(barX + hppW + opsW, barY, netW, barH, 'F');
+
+    // Legend Underneath
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+
+    // Amber dot & text
+    doc.setFillColor(warmAmber[0], warmAmber[1], warmAmber[2]);
+    doc.circle(barX + 2, barY + 7, 1.2, 'F');
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text(`HPP / Bahan: ${formatRupiahId(fin.hpp)} (${formatPercentId(hppRatio * 100)})`, barX + 5, barY + 7.8);
+
+    // Slate dot & text
+    const col2X = barX + totalBarW * 0.36;
+    doc.setFillColor(textMuted[0], textMuted[1], textMuted[2]);
+    doc.circle(col2X + 2, barY + 7, 1.2, 'F');
+    doc.text(`Biaya Toko: ${formatRupiahId(fin.biayaOperasional)} (${formatPercentId(opsRatio * 100)})`, col2X + 5, barY + 7.8);
+
+    // Emerald dot & text
+    const col3X = barX + totalBarW * 0.70;
+    doc.setFillColor(emeraldGreen[0], emeraldGreen[1], emeraldGreen[2]);
+    doc.circle(col3X + 2, barY + 7, 1.2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Laba Bersih: ${formatRupiahId(fin.labaBersih)} (${formatPercentId(fin.marginBersih)})`, col3X + 5, barY + 7.8);
+
+    curY += breakdownH + 4;
+
+    // Financial Table
     const finTableBody = [
-      ['Total Pendapatan', formatRupiahId(fin.pendapatan), '100,0%', 'Total omzet pesanan non-void'],
-      ['HPP / Biaya Bahan & Produk', formatRupiahId(fin.hpp), formatPercentId((fin.hpp / (fin.pendapatan || 1)) * 100), 'Biaya modal detergen, softener & ritel'],
-      ['Laba Kotor (Gross Profit)', formatRupiahId(fin.labaKotor), formatPercentId(fin.marginKotor), 'Pendapatan dikurangi HPP'],
-      ['Biaya Operasional Toko', formatRupiahId(fin.biayaOperasional), formatPercentId((fin.biayaOperasional / (fin.pendapatan || 1)) * 100), 'Listrik, sewa, air & kasbon/shift operasional'],
-      ['Laba Bersih (Net Profit)', formatRupiahId(fin.labaBersih), formatPercentId(fin.marginBersih), 'Laba Kotor dikurangi Biaya Operasional']
+      ['Total Pendapatan (Omzet)', formatRupiahId(fin.pendapatan), '100,0%', 'Basis 100% omzet bruto pesanan non-void'],
+      ['HPP / Biaya Bahan & Produk', formatRupiahId(fin.hpp), formatPercentId((fin.hpp / baseRev) * 100), 'Biaya detergen, softener, plastik packing & modal ritel'],
+      ['Laba Kotor (Gross Profit)', formatRupiahId(fin.labaKotor), formatPercentId(fin.marginKotor), 'Pendapatan dikurangi HPP (Keuntungan kotor jasa)'],
+      ['Biaya Operasional Toko', formatRupiahId(fin.biayaOperasional), formatPercentId((fin.biayaOperasional / baseRev) * 100), 'Beban operasional listrik, air, sewa & kasbon kasir'],
+      ['Laba Bersih Toko (Net Profit)', formatRupiahId(fin.labaBersih), formatPercentId(fin.marginBersih), 'Laba bersih akhir yang menjadi hak pemilik bisnis']
     ];
 
     autoTable(doc, {
       startY: curY,
-      head: [['Komponen Keuangan', 'Nominal (Rp)', 'Rasio / Margin', 'Keterangan']],
+      head: [['Komponen Finansial', 'Nominal (Rp)', 'Rasio / Margin', 'Keterangan Analisis']],
       body: finTableBody,
       theme: 'striped',
       margin: { left: margin, right: margin },
@@ -257,69 +353,99 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
       },
     });
 
-    curY = (doc as any).lastAutoTable.finalY + 6;
+    curY = (doc as any).lastAutoTable.finalY + 7;
   }
 
   // =========================================================================
-  // QUALITY PERFORMANCE TABLE (CANCELLATION, REWASH, COMPLAINT, REFUND)
+  // BAB C: TREN PENDAPATAN & GRAFIK HARIAN (DAILY PERFORMANCE)
   // =========================================================================
-  if (data.quality) {
-    const q = data.quality;
-    const qualTableBody = [
-      ['Cancellation Rate', formatPercentId(q.cancellationRate), q.cancellationRate <= 2 ? 'Baik (<2%)' : 'Perhatian'],
-      ['Rewash Rate', formatPercentId(q.rewashRate), q.rewashRate <= 1 ? 'Sangat Baik (<1%)' : 'Evaluasi Cuci'],
-      ['Complaint Rate', formatPercentId(q.complaintRate), q.complaintRate <= 1 ? 'Optimal' : 'Tindak Lanjuti'],
-      ['Order Error Rate', formatPercentId(q.orderErrorRate), q.orderErrorRate <= 1 ? 'Aman' : 'Audit SOP'],
-      ['Refund Rate', formatPercentId(q.refundRate), q.refundRate === 0 ? 'Nol Refund' : 'Klaim Pelanggan']
-    ];
+  renderSectionHeader('C', 'TREN PENDAPATAN & GRAFIK HARIAN (DAILY PERFORMANCE)', 65);
 
+  // GRAFIK 2: DIAGRAM BATANG VEKTOR TREN PENJUALAN HARIAN
+  if (data.dailyRows && data.dailyRows.length > 0) {
+    const chartCardH = 44;
+    doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+    doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+    doc.roundedRect(margin, curY, contentWidth, chartCardH, 2, 2, 'FD');
+
+    // Header Chart
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(7.5);
     doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-    doc.text('QUALITY PERFORMANCE (KUALITAS & RETENSI LAYANAN)', margin, curY);
-    curY += 3;
+    doc.text('Grafik Penjualan Harian Aktual (WIB)', margin + 3.5, curY + 4.5);
 
-    autoTable(doc, {
-      startY: curY,
-      head: [['Indikator Kualitas', 'Persentase Aktual', 'Status Standar']],
-      body: qualTableBody,
-      theme: 'striped',
-      margin: { left: margin, right: margin },
-      headStyles: {
-        fillColor: [30, 70, 72],
-        textColor: [255, 255, 255],
-        fontSize: 7.5,
-        fontStyle: 'bold',
-      },
-      bodyStyles: {
-        fontSize: 7,
-        textColor: [30, 41, 59],
-      },
-      columnStyles: {
-        0: { cellWidth: 80 },
-        1: { cellWidth: 45, halign: 'center', fontStyle: 'bold' },
-        2: { cellWidth: 57, halign: 'center' },
-      },
+    const maxDailyRev = Math.max(...data.dailyRows.map(r => r.revenue), 1000);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
+    doc.text(`Puncak Tertinggi: ${formatRupiahId(maxDailyRev)}`, pageWidth - margin - 4, curY + 4.5, { align: 'right' });
+
+    // Chart Area Boundaries
+    const chartLeft = margin + 4;
+    const chartRight = margin + contentWidth - 4;
+    const chartW = chartRight - chartLeft;
+    const baselineY = curY + 34;
+    const maxBarH = 22;
+
+    // Gridlines (50% & 100%)
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineDashPattern([1, 1.5], 0);
+    doc.line(chartLeft, baselineY - maxBarH, chartRight, baselineY - maxBarH);
+    doc.line(chartLeft, baselineY - maxBarH / 2, chartRight, baselineY - maxBarH / 2);
+    doc.setLineDashPattern([], 0); // reset
+
+    // Baseline Line
+    doc.setDrawColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
+    doc.line(chartLeft, baselineY, chartRight, baselineY);
+
+    // Bars
+    const totalBars = data.dailyRows.length;
+    const slotW = chartW / totalBars;
+    const barW = Math.max(2, Math.min(10, slotW * 0.65));
+
+    data.dailyRows.forEach((r, idx) => {
+      const barX = chartLeft + idx * slotW + (slotW - barW) / 2;
+      const barH = r.revenue > 0 ? Math.max(2, Math.round((r.revenue / maxDailyRev) * maxBarH)) : 0.8;
+      const barY = baselineY - barH;
+
+      const isPeak = r.revenue === maxDailyRev && r.revenue > 0;
+
+      if (r.revenue > 0) {
+        if (isPeak) {
+          doc.setFillColor(emeraldGreen[0], emeraldGreen[1], emeraldGreen[2]);
+        } else {
+          doc.setFillColor(accentTurquoise[0], accentTurquoise[1], accentTurquoise[2]);
+        }
+        doc.roundedRect(barX, barY, barW, barH, 0.8, 0.8, 'F');
+      } else {
+        doc.setFillColor(226, 232, 240);
+        doc.rect(barX, barY, barW, barH, 'F');
+      }
+
+      // X-Axis Date Labels (skip labels if crowded > 15 bars)
+      const shouldShowLabel = totalBars <= 12 || (totalBars <= 20 && idx % 2 === 0) || (idx % 3 === 0) || idx === totalBars - 1;
+      if (shouldShowLabel) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(5.5);
+        doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
+        // Extract short label e.g. "5 Sep"
+        const cleanDate = r.dateStr.replace(/,.*$/, '').slice(0, 6);
+        doc.text(cleanDate, barX + barW / 2, baselineY + 3.8, { align: 'center' });
+      }
+
+      // Peak Indicator Text
+      if (isPeak) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(5.5);
+        doc.setTextColor(emeraldGreen[0], emeraldGreen[1], emeraldGreen[2]);
+        doc.text(formatRupiahId(r.revenue), barX + barW / 2, barY - 1.5, { align: 'center' });
+      }
     });
 
-    curY = (doc as any).lastAutoTable.finalY + 6;
+    curY += chartCardH + 4;
   }
 
-  // =========================================================================
-  // SECTION C: DAILY PERFORMANCE
-  // =========================================================================
-  if (curY > pageHeight - 50) {
-    doc.addPage();
-    renderHeader(false);
-    curY = 22;
-  }
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-  doc.text('C. DAILY PERFORMANCE (KINERJA HARIAN)', margin, curY);
-  curY += 3;
-
+  // Daily Table
   const dailyTableBody = data.dailyRows.map(r => [
     r.dateStr,
     r.transactions.toString(),
@@ -329,18 +455,18 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
 
   autoTable(doc, {
     startY: curY,
-    head: [['Tanggal', 'Total Order', 'Pendapatan', 'Estimasi Kg']],
+    head: [['Tanggal', 'Total Order', 'Pendapatan Harian', 'Estimasi Volume (Kg)']],
     body: dailyTableBody.length > 0 ? dailyTableBody : [['-', '0', 'Rp0', '-']],
     theme: 'striped',
     margin: { left: margin, right: margin },
     headStyles: {
       fillColor: [30, 70, 72],
       textColor: [255, 255, 255],
-      fontSize: 8,
+      fontSize: 7.5,
       fontStyle: 'bold',
     },
     bodyStyles: {
-      fontSize: 7.5,
+      fontSize: 7,
       textColor: [30, 41, 59],
     },
     columnStyles: {
@@ -354,20 +480,55 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   curY = (doc as any).lastAutoTable.finalY + 7;
 
   // =========================================================================
-  // SECTION D: SERVICE PERFORMANCE
+  // BAB D: ANALISIS PERFORMA LAYANAN & PRODUK (SERVICE PERFORMANCE)
   // =========================================================================
-  if (curY > pageHeight - 50) {
-    doc.addPage();
-    renderHeader(false);
-    curY = 22;
+  renderSectionHeader('D', 'ANALISIS PERFORMA LAYANAN & PRODUK (SERVICE PERFORMANCE)', 50);
+
+  // GRAFIK 3: PROGRESS BAR KONTRIBUSI LAYANAN UNGGULAN (TOP 4 SERVICES)
+  const topServices = data.serviceRows.slice(0, 4);
+  if (topServices.length > 0) {
+    const serviceCardH = 26;
+    doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+    doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
+    doc.roundedRect(margin, curY, contentWidth, serviceCardH, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
+    doc.text('Kontribusi Layanan Unggulan terhadap Total Omzet Toko', margin + 3.5, curY + 4.5);
+
+    topServices.forEach((s, idx) => {
+      const rowY = curY + 7 + idx * 4.5;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+
+      // Service Name (truncate if long)
+      const sName = s.layanan.length > 25 ? s.layanan.slice(0, 25) + '...' : s.layanan;
+      doc.text(sName, margin + 4, rowY + 2.5);
+
+      // Bar Track
+      const pBarX = margin + 55;
+      const pBarW = contentWidth - 85;
+      const fillW = Math.max(1, (s.percentage / 100) * pBarW);
+
+      doc.setFillColor(226, 232, 240);
+      doc.roundedRect(pBarX, rowY, pBarW, 2.5, 0.8, 0.8, 'F');
+
+      doc.setFillColor(idx === 0 ? primaryDarkTeal[0] : accentTurquoise[0], idx === 0 ? primaryDarkTeal[1] : accentTurquoise[1], idx === 0 ? primaryDarkTeal[2] : accentTurquoise[2]);
+      doc.roundedRect(pBarX, rowY, fillW, 2.5, 0.8, 0.8, 'F');
+
+      // Metric numbers
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
+      doc.text(`${formatPercentId(s.percentage)} (${formatRupiahId(s.revenue)})`, pBarX + pBarW + 2, rowY + 2.2);
+    });
+
+    curY += serviceCardH + 4;
   }
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-  doc.text('D. SERVICE PERFORMANCE (PERFORMA LAYANAN)', margin, curY);
-  curY += 3;
-
+  // Service Table
   const serviceTableBody = data.serviceRows.map(s => [
     s.layanan,
     s.transactions.toString(),
@@ -385,11 +546,11 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     headStyles: {
       fillColor: [30, 70, 72],
       textColor: [255, 255, 255],
-      fontSize: 8,
+      fontSize: 7.5,
       fontStyle: 'bold',
     },
     bodyStyles: {
-      fontSize: 7.5,
+      fontSize: 7,
       textColor: [30, 41, 59],
     },
     columnStyles: {
@@ -404,19 +565,9 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   curY = (doc as any).lastAutoTable.finalY + 7;
 
   // =========================================================================
-  // SECTION E: EMPLOYEE PERFORMANCE
+  // BAB E: PRODUKTIVITAS KARYAWAN & STAF (EMPLOYEE PERFORMANCE)
   // =========================================================================
-  if (curY > pageHeight - 50) {
-    doc.addPage();
-    renderHeader(false);
-    curY = 22;
-  }
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-  doc.text('E. EMPLOYEE PERFORMANCE (PRODUKTIVITAS KARYAWAN)', margin, curY);
-  curY += 3;
+  renderSectionHeader('E', 'PRODUKTIVITAS KARYAWAN & STAF (EMPLOYEE PERFORMANCE)', 45);
 
   const employeeTableBody = data.employeeRows.map(e => [
     e.nama,
@@ -428,18 +579,18 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
 
   autoTable(doc, {
     startY: curY,
-    head: [['Nama Karyawan / Staf', 'Total Order Ditangani', 'Total Pendapatan', 'Order Selesai', 'Order Terlambat']],
+    head: [['Nama Karyawan / Staf', 'Total Order Ditangani', 'Omzet Dihasilkan', 'Order Selesai', 'Order Terlambat']],
     body: employeeTableBody.length > 0 ? employeeTableBody : [['Belum ada data staf', '-', 'Rp0', '-', '-']],
     theme: 'striped',
     margin: { left: margin, right: margin },
     headStyles: {
       fillColor: [30, 70, 72],
       textColor: [255, 255, 255],
-      fontSize: 8,
+      fontSize: 7.5,
       fontStyle: 'bold',
     },
     bodyStyles: {
-      fontSize: 7.5,
+      fontSize: 7,
       textColor: [30, 41, 59],
     },
     columnStyles: {
@@ -454,46 +605,73 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   curY = (doc as any).lastAutoTable.finalY + 7;
 
   // =========================================================================
-  // SECTION F: OPERATIONAL PERFORMANCE & PAYMENT PERFORMANCE (2 COLS)
+  // BAB F: KUALITAS OPERASIONAL & METODE BAYAR (OPERATIONAL & PAYMENT)
   // =========================================================================
-  if (curY > pageHeight - 60) {
-    doc.addPage();
-    renderHeader(false);
-    curY = 22;
-  }
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-  doc.text('F. OPERATIONAL & PAYMENT PERFORMANCE', margin, curY);
-  curY += 4;
+  renderSectionHeader('F', 'KUALITAS OPERASIONAL & METODE PEMBAYARAN', 55);
 
   const halfWidth = (contentWidth - 6) / 2;
 
-  // Operational Card
+  // Operational SLA Card (Left)
   doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
   doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
-  doc.roundedRect(margin, curY, halfWidth, 38, 2, 2, 'FD');
+  doc.roundedRect(margin, curY, halfWidth, 42, 2, 2, 'FD');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-  doc.text('Kinerja Ketepatan Waktu Operasional', margin + 4, curY + 6);
+  doc.text('Ketepatan Waktu Operasional (SLA)', margin + 4, curY + 6);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(accentTurquoise[0], accentTurquoise[1], accentTurquoise[2]);
-  doc.text(`${formatPercentId(data.operational.onTimeRate)} On-Time Rate`, margin + 4, curY + 13);
+  doc.text(`${formatPercentId(data.operational.onTimeRate)} On-Time Rate`, margin + 4, curY + 13.5);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-  doc.text(`• Total Order: ${data.operational.totalOrders}`, margin + 4, curY + 19);
-  doc.text(`• Selesai Tepat Waktu: ${data.operational.onTimeCount} order`, margin + 4, curY + 24);
-  doc.text(`• Sedang Diproses / Menunggu: ${data.operational.processingOrders + data.operational.pendingOrders} order`, margin + 4, curY + 29);
-  doc.text(`• Melewati Estimasi (Terlambat): ${data.operational.lateOrders} order`, margin + 4, curY + 34);
+  doc.text(`• Total Order Terdaftar: ${data.operational.totalOrders} order`, margin + 4, curY + 20);
+  doc.text(`• Selesai Tepat Waktu: ${data.operational.onTimeCount} order`, margin + 4, curY + 25);
+  doc.text(`• Sedang Diproses / Antrean: ${data.operational.processingOrders + data.operational.pendingOrders} order`, margin + 4, curY + 30);
+  doc.text(`• Melewati Estimasi (Terlambat): ${data.operational.lateOrders} order`, margin + 4, curY + 35);
 
-  // Payment Table on the right
+  // Quality Table (Right)
+  if (data.quality) {
+    const q = data.quality;
+    const qualTableBody = [
+      ['Cancellation Rate', formatPercentId(q.cancellationRate), q.cancellationRate <= 2 ? 'Baik (<2%)' : 'Perhatian'],
+      ['Rewash Rate', formatPercentId(q.rewashRate), q.rewashRate <= 1 ? 'Sangat Baik (<1%)' : 'Evaluasi Cuci'],
+      ['Complaint Rate', formatPercentId(q.complaintRate), q.complaintRate <= 1 ? 'Optimal' : 'Tindak Lanjuti'],
+      ['Order Error Rate', formatPercentId(q.orderErrorRate), q.orderErrorRate <= 1 ? 'Aman' : 'Audit SOP'],
+      ['Refund Rate', formatPercentId(q.refundRate), q.refundRate === 0 ? 'Nol Refund' : 'Klaim Pelanggan']
+    ];
+
+    autoTable(doc, {
+      startY: curY,
+      margin: { left: margin + halfWidth + 6, right: margin },
+      head: [['Indikator Kualitas', 'Aktual', 'Status']],
+      body: qualTableBody,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [30, 70, 72],
+        textColor: [255, 255, 255],
+        fontSize: 7,
+        fontStyle: 'bold',
+      },
+      bodyStyles: {
+        fontSize: 6.8,
+        textColor: [30, 41, 59],
+      },
+      columnStyles: {
+        0: { cellWidth: 42 },
+        1: { cellWidth: 18, halign: 'center', fontStyle: 'bold' },
+        2: { cellWidth: 28, halign: 'center' },
+      },
+    });
+  }
+
+  curY += 46;
+
+  // Payment Breakdown Table
   const payBody = data.paymentRows.map(p => [
     p.metode,
     p.transactions.toString(),
@@ -503,10 +681,10 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
 
   autoTable(doc, {
     startY: curY,
-    margin: { left: margin + halfWidth + 6, right: margin },
-    head: [['Metode Bayar', 'Trx', 'Nominal', 'Pangsa']],
-    body: payBody,
-    theme: 'plain',
+    head: [['Metode Pembayaran', 'Total Transaksi', 'Total Nominal (Rp)', 'Pangsa Pasar (%)']],
+    body: payBody.length > 0 ? payBody : [['Tunai', '0', 'Rp0', '0%']],
+    theme: 'striped',
+    margin: { left: margin, right: margin },
     headStyles: {
       fillColor: [30, 70, 72],
       textColor: [255, 255, 255],
@@ -518,59 +696,49 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
       textColor: [30, 41, 59],
     },
     columnStyles: {
-      0: { cellWidth: 28 },
-      1: { cellWidth: 12, halign: 'center' },
-      2: { cellWidth: 28, halign: 'right' },
-      3: { cellWidth: 18, halign: 'right' },
+      0: { cellWidth: 60 },
+      1: { cellWidth: 35, halign: 'center' },
+      2: { cellWidth: 50, halign: 'right' },
+      3: { cellWidth: 37, halign: 'right' },
     },
   });
 
-  curY += 43;
+  curY = (doc as any).lastAutoTable.finalY + 7;
 
   // =========================================================================
-  // SECTION G: CUSTOMER ANALYTICS & TOP CUSTOMERS
+  // BAB G: ANALISIS PELANGGAN & TOP 10 PELANGGAN (CUSTOMER ANALYTICS)
   // =========================================================================
-  if (curY > pageHeight - 55) {
-    doc.addPage();
-    renderHeader(false);
-    curY = 22;
-  }
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-  doc.text('G. CUSTOMER ANALYTICS & TOP CUSTOMERS', margin, curY);
-  curY += 3;
+  renderSectionHeader('G', 'ANALISIS PELANGGAN & TOP 10 PELANGGAN (CUSTOMER ANALYTICS)', 45);
 
   const topCustBody = data.topCustomers.slice(0, 10).map((c, idx) => [
     `#${idx + 1}`,
     c.nama,
     c.noHp || '-',
-    `${c.totalOrder}x Transaksi`,
+    `${c.totalOrder}x Order`,
     formatRupiahId(c.totalSpend)
   ]);
 
   autoTable(doc, {
     startY: curY,
-    head: [['No', 'Nama Pelanggan', 'Kontak No. HP', 'Frekuensi Order', 'Total Spending']],
+    head: [['No', 'Nama Pelanggan', 'Kontak No. HP / WhatsApp', 'Frekuensi Order', 'Total Spending']],
     body: topCustBody.length > 0 ? topCustBody : [['-', 'Belum ada data pelanggan', '-', '-', 'Rp0']],
     theme: 'striped',
     margin: { left: margin, right: margin },
     headStyles: {
       fillColor: [30, 70, 72],
       textColor: [255, 255, 255],
-      fontSize: 8,
+      fontSize: 7.5,
       fontStyle: 'bold',
     },
     bodyStyles: {
-      fontSize: 7.5,
+      fontSize: 7,
       textColor: [30, 41, 59],
     },
     columnStyles: {
       0: { cellWidth: 12, halign: 'center' },
       1: { cellWidth: 55 },
-      2: { cellWidth: 40 },
-      3: { cellWidth: 35, halign: 'center' },
+      2: { cellWidth: 45 },
+      3: { cellWidth: 30, halign: 'center' },
       4: { cellWidth: 40, halign: 'right' },
     },
   });
@@ -578,40 +746,34 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   curY = (doc as any).lastAutoTable.finalY + 7;
 
   // =========================================================================
-  // SECTION H: BUSINESS INSIGHTS & ALERTS
+  // BAB H: REKOMENDASI STRATEGIS & TINDAKAN BISNIS (STRATEGIC ACTION PLAN)
   // =========================================================================
-  if (curY > pageHeight - 45) {
-    doc.addPage();
-    renderHeader(false);
-    curY = 22;
-  }
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-  doc.text('H. BUSINESS INSIGHTS & ACTIONABLE ALERTS', margin, curY);
-  curY += 4;
+  renderSectionHeader('H', 'REKOMENDASI STRATEGIS & TINDAKAN BISNIS (ACTION PLAN)', 45);
 
   data.insights.forEach((insight) => {
     doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
     doc.setDrawColor(accentTurquoise[0], accentTurquoise[1], accentTurquoise[2]);
-    doc.rect(margin, curY, contentWidth, 7, 'FD');
+    doc.roundedRect(margin, curY, contentWidth, 7.5, 1, 1, 'FD');
+
+    // Left Accent Bar
+    doc.setFillColor(accentTurquoise[0], accentTurquoise[1], accentTurquoise[2]);
+    doc.rect(margin, curY, 1.5, 7.5, 'F');
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-    doc.text(`• ${insight}`, margin + 3, curY + 4.8);
-    curY += 8.5;
+    doc.text(`• ${insight}`, margin + 3.5, curY + 5.2);
+    curY += 9;
   });
 
   // =========================================================================
-  // REPORT FOOTER DI SEMUA HALAMAN (Page X of Y)
+  // FOOTER HALAMAN OTOMATIS (HALAMAN X DARI Y)
   // =========================================================================
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
 
-    // Footer divider line
+    // Footer Divider Line
     doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
     doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
 
@@ -619,17 +781,17 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     doc.setFontSize(7);
     doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
 
-    // Kiri: Title
-    doc.text('dua SiSi Laundry — Business Performance Report', margin, pageHeight - 8);
+    // Kiri: Brand & Kerahasiaan
+    doc.text('dua SiSi Laundry Express & Coin POS — Dokumen Laporan Kinerja Bisnis', margin, pageHeight - 7.5);
 
-    // Tengah: Generated info
-    doc.text(`Generated at: ${data.generatedAt} WIB by ${data.generatedBy}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+    // Tengah: Timestamp & Pembuat
+    doc.text(`Dicetak: ${data.generatedAt} WIB  |  Oleh: ${data.generatedBy}`, pageWidth / 2, pageHeight - 7.5, { align: 'center' });
 
-    // Kanan: Page number
-    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
+    // Kanan: Page Numbering
+    doc.text(`Halaman ${i} dari ${totalPages}`, pageWidth - margin, pageHeight - 7.5, { align: 'right' });
   }
 
-  // Trigger download PDF ke browser
+  // Trigger Unduh Dokumen PDF
   const filename = `duaSiSi_Business_Report_${data.startDateStr}_${data.endDateStr}.pdf`;
   doc.save(filename);
 }

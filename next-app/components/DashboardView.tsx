@@ -1212,60 +1212,87 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       const topCustList = Object.values(custMap).sort((a, b) => b.totalSpend - a.totalSpend);
       const repTotalKg = Math.round(sList.reduce((acc, s) => acc + s.kg, 0) * 10) / 10;
 
-      const payload: ReportDataPayload = {
-        periodeLabel: eLabel,
-        startDateStr: formatLocalDateIso(eStart),
-        endDateStr: formatLocalDateIso(eEnd),
-        outletName: 'Outlet Utama (dua SiSi Laundry Express & Coin POS)',
-        generatedBy: isManager ? 'Manager / Owner' : 'Kasir',
-        generatedAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + formatWibTimeOnly(new Date().toISOString()),
-        kpi: {
-          totalRevenue: repRevenue,
-          totalTransactions: repTrxCount,
-          totalCustomers: repTotalCust,
-          repeatCustomers: repRepeatCust,
-          oneTimeCustomers: repTotalCust - repRepeatCust,
-          repeatOrderRatio: repRatio,
-          totalKg: repTotalKg,
-          avgOrderValue: repTrxCount > 0 ? Math.round(repRevenue / repTrxCount) : 0,
-          avgCustomerSpend: repTotalCust > 0 ? Math.round(repRevenue / repTotalCust) : 0,
-        },
-        financials: {
-          pendapatan: repRevenue,
-          hpp: Math.round(repRevenue * 0.25),
-          labaKotor: Math.round(repRevenue * 0.75),
-          marginKotor: 75,
-          biayaOperasional: Math.round(repRevenue * 0.15),
-          labaBersih: Math.round(repRevenue * 0.60),
-          marginBersih: 60,
-        },
-        quality: {
-          cancellationRate: qualityPerformance.cancellationRate,
-          rewashRate: qualityPerformance.rewashRate,
-          complaintRate: qualityPerformance.complaintRate,
-          orderErrorRate: qualityPerformance.errorRate,
-          refundRate: qualityPerformance.refundRate,
-        },
-        dailyRows: Object.values(dMap),
-        serviceRows: sList,
-        employeeRows: Object.values(eMap).sort((a, b) => b.revenue - a.revenue),
-        topCustomers: topCustList,
-        operational: {
-          totalOrders: repTrxCount,
-          completedOrders: repTxs.filter(t => t.status === 'Selesai').length,
-          processingOrders: repTxs.filter(t => t.status !== 'Selesai').length,
-          pendingOrders: 0,
-          lateOrders: 0,
-          onTimeRate: 98.5,
-          onTimeCount: repTxs.filter(t => t.status === 'Selesai').length,
-        },
-        paymentRows: pList,
-        insights: [
-          `Total pendapatan periode terpilih mencapai ${formatRupiahId(repRevenue)} dari ${repTrxCount} total order sukses.`,
-          `Rasio retensi pelanggan repeat order berada di angka ${formatPercentId(repRatio)} (${repRepeatCust} dari ${repTotalCust} pelanggan).`,
-          sList[0] ? `Layanan terlaris adalah '${sList[0].layanan}' dengan kontribusi pendapatan ${formatPercentId(sList[0].percentage)}.` : 'Belum ada data layanan pada periode ini.',
-        ],
-      };
+        let repHpp = 0;
+        repTxs.forEach(t => {
+          const items = t.transaksi_items || t.items || [];
+          if (items.length > 0) {
+            items.forEach(it => {
+              const nameKey = (it.layanan || '').trim().toLowerCase();
+              const modalPerUnit = layananModalMap[nameKey];
+              const qty = Number(it.qty) || 1;
+              const subtotal = Number(it.subtotal) || (qty * 10000);
+              if (modalPerUnit && modalPerUnit > 0) {
+                repHpp += modalPerUnit * qty;
+              } else {
+                const isRetail = nameKey.includes('detergen') || nameKey.includes('parfum') || nameKey.includes('botol') || nameKey.includes('hanger');
+                repHpp += subtotal * (isRetail ? 0.70 : 0.25);
+              }
+            });
+          } else {
+            repHpp += (Number(t.total) || 0) * 0.25;
+          }
+        });
+        const repLabaKotor = Math.max(0, repRevenue - repHpp);
+        const repMarginKotor = repRevenue > 0 ? Math.round((repLabaKotor / repRevenue) * 1000) / 10 : 0;
+        const repBiayaOps = Math.round(operationalExpenses > 0 ? (operationalExpenses * (repTxs.length / Math.max(1, allNonVoidTransactions.length))) : (repRevenue * 0.15));
+        const repLabaBersih = Math.max(0, repLabaKotor - repBiayaOps);
+        const repMarginBersih = repRevenue > 0 ? Math.round((repLabaBersih / repRevenue) * 1000) / 10 : 0;
+
+        const payload: ReportDataPayload = {
+          periodeLabel: eLabel,
+          startDateStr: formatLocalDateIso(eStart),
+          endDateStr: formatLocalDateIso(eEnd),
+          outletName: 'Outlet Utama (dua SiSi Laundry Express & Coin POS)',
+          generatedBy: isManager ? 'Manager / Owner' : 'Kasir',
+          generatedAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + formatWibTimeOnly(new Date().toISOString()),
+          kpi: {
+            totalRevenue: repRevenue,
+            totalTransactions: repTrxCount,
+            totalCustomers: repTotalCust,
+            repeatCustomers: repRepeatCust,
+            oneTimeCustomers: repTotalCust - repRepeatCust,
+            repeatOrderRatio: repRatio,
+            totalKg: repTotalKg,
+            avgOrderValue: repTrxCount > 0 ? Math.round(repRevenue / repTrxCount) : 0,
+            avgCustomerSpend: repTotalCust > 0 ? Math.round(repRevenue / repTotalCust) : 0,
+          },
+          financials: {
+            pendapatan: repRevenue,
+            hpp: repHpp,
+            labaKotor: repLabaKotor,
+            marginKotor: repMarginKotor,
+            biayaOperasional: repBiayaOps,
+            labaBersih: repLabaBersih,
+            marginBersih: repMarginBersih,
+          },
+          quality: {
+            cancellationRate: qualityPerformance.cancellationRate,
+            rewashRate: qualityPerformance.rewashRate,
+            complaintRate: qualityPerformance.complaintRate,
+            orderErrorRate: qualityPerformance.errorRate,
+            refundRate: qualityPerformance.refundRate,
+          },
+          dailyRows: Object.values(dMap),
+          serviceRows: sList,
+          employeeRows: Object.values(eMap).sort((a, b) => b.revenue - a.revenue),
+          topCustomers: topCustList,
+          operational: {
+            totalOrders: repTrxCount,
+            completedOrders: operationalPerformance.completedCount,
+            processingOrders: operationalPerformance.processingCount,
+            pendingOrders: operationalPerformance.pendingCount,
+            lateOrders: operationalPerformance.lateCount,
+            onTimeRate: operationalPerformance.onTimeRate,
+            onTimeCount: operationalPerformance.onTimeCount,
+          },
+          paymentRows: pList,
+          insights: [
+            `Total omzet periode terpilih mencapai ${formatRupiahId(repRevenue)} dari ${repTrxCount} total order sukses.`,
+            `Rasio retensi pelanggan repeat order berada di angka ${formatPercentId(repRatio)} (${repRepeatCust} dari ${repTotalCust} pelanggan).`,
+            ...(categorizedInsights?.positive || []).slice(0, 2),
+            ...(categorizedInsights?.attention || []).slice(0, 2),
+          ],
+        };
 
       await generateBusinessPerformancePdf(payload);
       setShowExportModal(false);
