@@ -59,6 +59,7 @@ interface NavItem {
 interface NavGroup {
   id: string;
   groupName: string;
+  icon: any;
   items: NavItem[];
 }
 
@@ -76,18 +77,18 @@ export default function Sidebar({
   const { openSettingsModal } = useDisplaySettings();
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
-  // Accordion open/close state per group
+  // Accordion open/close state per group (default open Kasir & Katalog so it's welcoming)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('duasisi_sidebar_accordions');
+        const saved = localStorage.getItem('duasisi_sidebar_accordions_v3');
         if (saved) return JSON.parse(saved);
       } catch {}
     }
     return {
       kasir_operasional: true,
       kas_shift: false,
-      katalog_stok: false,
+      katalog_stok: true,
       sdm_payroll: false,
       laporan_sistem: false
     };
@@ -124,7 +125,8 @@ export default function Sidebar({
   const navGroups: NavGroup[] = [
     {
       id: 'kasir_operasional',
-      groupName: 'Kasir & Operasional',
+      groupName: 'Kasir & Order',
+      icon: ShoppingCart,
       items: [
         { id: 'transaksi', label: 'POS Kasir', icon: ShoppingCart, staffOnly: true, requiresShift: true },
         { id: 'pesanan', label: 'Antrean Pesanan', icon: ClipboardList, requiresShift: true },
@@ -136,20 +138,22 @@ export default function Sidebar({
     },
     {
       id: 'kas_shift',
-      groupName: 'Kas & Shift Laci',
+      groupName: 'Kas & Shift',
+      icon: Coins,
       items: [
         { id: 'shift_saya', label: 'Shift Saya', icon: Clock, isShiftCta: true },
         { id: 'pengeluaran', label: 'Kas & Pengeluaran', icon: Coins, requiresShift: true },
-        { id: 'riwayat_shift', label: 'Riwayat Shift Kas', icon: History }
+        { id: 'riwayat_shift', label: 'Riwayat Shift', icon: History }
       ]
     },
     {
       id: 'katalog_stok',
-      groupName: 'Katalog & Stok Bahan',
+      groupName: 'Katalog & Stok',
+      icon: Package,
       items: [
+        { id: 'produk', label: 'Produk & Layanan', icon: Tag, managerOnly: true },
         { id: 'inventory', label: 'Stok Bahan (Inventory)', icon: Package },
-        { id: 'produk', label: 'Daftar Layanan', icon: Tag, managerOnly: true },
-        { id: 'kategori', label: 'Kategori Layanan', icon: FolderOpen, managerOnly: true },
+        { id: 'kategori', label: 'Kategori Produk & Jasa', icon: FolderOpen, managerOnly: true },
         { id: 'langkah', label: 'Alur Pengerjaan (SOP)', icon: GitMerge, managerOnly: true },
         { id: 'loyalty_card', label: 'Program Loyalty', icon: Award, managerOnly: true },
         { id: 'menu', label: 'Katalog & Menu Digital', icon: Sparkles, managerOnly: true }
@@ -157,7 +161,8 @@ export default function Sidebar({
     },
     {
       id: 'sdm_payroll',
-      groupName: 'Karyawan & Payroll',
+      groupName: 'Tim & Karyawan',
+      icon: Users,
       items: [
         { id: 'absensi', label: 'Presensi Staf', icon: UserCheck },
         { id: 'pegawai', label: 'Data Karyawan', icon: Users, managerOnly: true },
@@ -167,9 +172,10 @@ export default function Sidebar({
     },
     {
       id: 'laporan_sistem',
-      groupName: 'Laporan & Pengaturan',
+      groupName: 'Laporan & Sistem',
+      icon: BarChart3,
       items: [
-        { id: 'rekap', label: 'Laporan & Rekap', icon: BarChart3, managerOnly: true },
+        { id: 'rekap', label: 'Laporan Rekap', icon: BarChart3, managerOnly: true },
         { id: 'keamanan', label: 'Keamanan & Hak Akses', icon: ShieldCheck, managerOnly: true },
         { id: 'tampilan', label: 'Pengaturan Tampilan', icon: SlidersHorizontal }
       ]
@@ -294,7 +300,7 @@ export default function Sidebar({
 
       {/* Main Sidebar Aside */}
       <aside className={`bg-white text-slate-600 border-r border-slate-200/80 flex flex-col shrink-0 z-[200] fixed lg:static inset-y-0 left-0 transition-all duration-200 overflow-y-auto ${
-        isCollapsed ? 'lg:w-[68px]' : 'lg:w-60'
+        isCollapsed ? 'lg:w-[68px]' : 'lg:w-64'
       } ${
         isSidebarOpen ? 'w-64 sm:w-72 translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
       }`}>
@@ -432,29 +438,35 @@ export default function Sidebar({
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.id)}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors select-none tactile-btn cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition-all duration-150 select-none tactile-btn cursor-pointer ${
                     isCollapsed ? 'lg:hidden' : 'flex'
                   } ${
-                    hasActiveItem ? 'text-teal-950 font-bold bg-teal-50/70 border border-teal-100/80' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/70'
+                    hasActiveItem 
+                      ? 'bg-teal-50/80 text-teal-950 font-bold border border-teal-200/70 shadow-2xs' 
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-[10px] font-black tracking-wider uppercase truncate">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                      hasActiveItem ? 'bg-[#1E4648] text-white shadow-2xs' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <group.icon className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-xs font-bold tracking-tight truncate">
                       {group.groupName}
-                    </span>
-                    <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.2 rounded-md">
-                      {visibleItems.length}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {/* If collapsed and has notifications inside, alert user */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* If collapsed and has notifications inside, alert user with red badge */}
                     {!isOpen && groupAlertCount > 0 && (
                       <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-rose-500 text-white animate-pulse">
                         {groupAlertCount > 99 ? '99+' : groupAlertCount}
                       </span>
                     )}
-                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-teal-700' : ''}`} />
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      isOpen ? 'rotate-180 text-teal-700' : 'text-slate-400'
+                    }`} />
                   </div>
                 </button>
 
