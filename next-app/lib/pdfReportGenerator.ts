@@ -20,6 +20,24 @@ export interface ReportDataPayload {
     avgOrderValue: number;
     avgCustomerSpend: number;
   };
+  // Financial Performance (HPP, Laba Kotor & Bersih)
+  financials?: {
+    pendapatan: number;
+    hpp: number;
+    labaKotor: number;
+    marginKotor: number;
+    biayaOperasional: number;
+    labaBersih: number;
+    marginBersih: number;
+  };
+  // Quality Performance
+  quality?: {
+    cancellationRate: number;
+    rewashRate: number;
+    complaintRate: number;
+    orderErrorRate: number;
+    refundRate: number;
+  };
   // Daily Performance
   dailyRows: Array<{
     dateStr: string;
@@ -160,8 +178,8 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   const cardHeight = 16;
 
   const kpiItems = [
-    { label: 'TOTAL REVENUE', val: formatRupiahId(data.kpi.totalRevenue), sub: `${data.kpi.totalTransactions} Total Transaksi` },
-    { label: 'TOTAL TRANSAKSI', val: `${data.kpi.totalTransactions} Order`, sub: `Rata-rata: ${formatRupiahId(data.kpi.avgOrderValue)}/order` },
+    { label: 'TOTAL PENDAPATAN', val: formatRupiahId(data.kpi.totalRevenue), sub: `${data.kpi.totalTransactions} Total Order Sukses` },
+    { label: 'TOTAL ORDER', val: `${data.kpi.totalTransactions} Order`, sub: `Rata-rata: ${formatRupiahId(data.kpi.avgOrderValue)}/order` },
     { label: 'REPEAT ORDER RATIO', val: formatPercentId(data.kpi.repeatOrderRatio), sub: `${data.kpi.repeatCustomers} dari ${data.kpi.totalCustomers} Pelanggan` },
     { label: 'TOTAL PELANGGAN', val: `${data.kpi.totalCustomers} Orang`, sub: `${data.kpi.oneTimeCustomers} Baru / 1-Time` },
     { label: 'TOTAL BERAT CUCIAN', val: `${data.kpi.totalKg.toLocaleString('id-ID')} Kg`, sub: 'Estimasi volume cucian' },
@@ -197,8 +215,105 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   curY += 2 * (cardHeight + 2.5) + 6;
 
   // =========================================================================
+  // FINANCIAL PERFORMANCE TABLE (HPP, LABA KOTOR, BIAYA, LABA BERSIH)
+  // =========================================================================
+  if (data.financials) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
+    doc.text('FINANCIAL PERFORMANCE (PROFITABILITAS & HPP)', margin, curY);
+    curY += 3;
+
+    const fin = data.financials;
+    const finTableBody = [
+      ['Total Pendapatan', formatRupiahId(fin.pendapatan), '100,0%', 'Total omzet pesanan non-void'],
+      ['HPP / Biaya Bahan & Produk', formatRupiahId(fin.hpp), formatPercentId((fin.hpp / (fin.pendapatan || 1)) * 100), 'Biaya modal detergen, softener & ritel'],
+      ['Laba Kotor (Gross Profit)', formatRupiahId(fin.labaKotor), formatPercentId(fin.marginKotor), 'Pendapatan dikurangi HPP'],
+      ['Biaya Operasional Toko', formatRupiahId(fin.biayaOperasional), formatPercentId((fin.biayaOperasional / (fin.pendapatan || 1)) * 100), 'Listrik, sewa, air & kasbon/shift operasional'],
+      ['Laba Bersih (Net Profit)', formatRupiahId(fin.labaBersih), formatPercentId(fin.marginBersih), 'Laba Kotor dikurangi Biaya Operasional']
+    ];
+
+    autoTable(doc, {
+      startY: curY,
+      head: [['Komponen Keuangan', 'Nominal (Rp)', 'Rasio / Margin', 'Keterangan']],
+      body: finTableBody,
+      theme: 'striped',
+      margin: { left: margin, right: margin },
+      headStyles: {
+        fillColor: [30, 70, 72],
+        textColor: [255, 255, 255],
+        fontSize: 7.5,
+        fontStyle: 'bold',
+      },
+      bodyStyles: {
+        fontSize: 7,
+        textColor: [30, 41, 59],
+      },
+      columnStyles: {
+        0: { cellWidth: 55 },
+        1: { cellWidth: 35, halign: 'right', fontStyle: 'bold' },
+        2: { cellWidth: 25, halign: 'center' },
+        3: { cellWidth: 67 },
+      },
+    });
+
+    curY = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // =========================================================================
+  // QUALITY PERFORMANCE TABLE (CANCELLATION, REWASH, COMPLAINT, REFUND)
+  // =========================================================================
+  if (data.quality) {
+    const q = data.quality;
+    const qualTableBody = [
+      ['Cancellation Rate', formatPercentId(q.cancellationRate), q.cancellationRate <= 2 ? 'Baik (<2%)' : 'Perhatian'],
+      ['Rewash Rate', formatPercentId(q.rewashRate), q.rewashRate <= 1 ? 'Sangat Baik (<1%)' : 'Evaluasi Cuci'],
+      ['Complaint Rate', formatPercentId(q.complaintRate), q.complaintRate <= 1 ? 'Optimal' : 'Tindak Lanjuti'],
+      ['Order Error Rate', formatPercentId(q.orderErrorRate), q.orderErrorRate <= 1 ? 'Aman' : 'Audit SOP'],
+      ['Refund Rate', formatPercentId(q.refundRate), q.refundRate === 0 ? 'Nol Refund' : 'Klaim Pelanggan']
+    ];
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
+    doc.text('QUALITY PERFORMANCE (KUALITAS & RETENSI LAYANAN)', margin, curY);
+    curY += 3;
+
+    autoTable(doc, {
+      startY: curY,
+      head: [['Indikator Kualitas', 'Persentase Aktual', 'Status Standar']],
+      body: qualTableBody,
+      theme: 'striped',
+      margin: { left: margin, right: margin },
+      headStyles: {
+        fillColor: [30, 70, 72],
+        textColor: [255, 255, 255],
+        fontSize: 7.5,
+        fontStyle: 'bold',
+      },
+      bodyStyles: {
+        fontSize: 7,
+        textColor: [30, 41, 59],
+      },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { cellWidth: 45, halign: 'center', fontStyle: 'bold' },
+        2: { cellWidth: 57, halign: 'center' },
+      },
+    });
+
+    curY = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // =========================================================================
   // SECTION C: DAILY PERFORMANCE
   // =========================================================================
+  if (curY > pageHeight - 50) {
+    doc.addPage();
+    renderHeader(false);
+    curY = 22;
+  }
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
@@ -214,7 +329,7 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
 
   autoTable(doc, {
     startY: curY,
-    head: [['Tanggal', 'Jumlah Transaksi', 'Revenue (Omzet)', 'Estimasi Kg']],
+    head: [['Tanggal', 'Total Order', 'Pendapatan', 'Estimasi Kg']],
     body: dailyTableBody.length > 0 ? dailyTableBody : [['-', '0', 'Rp0', '-']],
     theme: 'striped',
     margin: { left: margin, right: margin },
@@ -263,7 +378,7 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
 
   autoTable(doc, {
     startY: curY,
-    head: [['Nama Layanan / Produk', 'Transaksi', 'Volume (Kg)', 'Revenue', 'Kontribusi (%)']],
+    head: [['Nama Layanan / Produk', 'Total Order', 'Volume (Kg)', 'Pendapatan', 'Kontribusi (%)']],
     body: serviceTableBody.length > 0 ? serviceTableBody : [['Belum ada data', '-', '-', 'Rp0', '0%']],
     theme: 'striped',
     margin: { left: margin, right: margin },
@@ -313,7 +428,7 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
 
   autoTable(doc, {
     startY: curY,
-    head: [['Nama Karyawan / Staf', 'Transaksi Ditangani', 'Total Revenue', 'Order Selesai', 'Order Terlambat']],
+    head: [['Nama Karyawan / Staf', 'Total Order Ditangani', 'Total Pendapatan', 'Order Selesai', 'Order Terlambat']],
     body: employeeTableBody.length > 0 ? employeeTableBody : [['Belum ada data staf', '-', 'Rp0', '-', '-']],
     theme: 'striped',
     margin: { left: margin, right: margin },

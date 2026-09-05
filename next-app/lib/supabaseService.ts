@@ -1,5 +1,5 @@
 import { getSupabase } from './supabaseClient';
-import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin, AuditLog, DropoffIncentiveConfig, InventoryUsageStats, StockValidationResult, InsufficientStockItem } from './types';
+import { LayananItem, InventoryItem, Transaksi, ShiftKasir, Mesin, AuditLog, DropoffIncentiveConfig, InventoryUsageStats, StockValidationResult, InsufficientStockItem, MonthlyTargets, ProcurementSummary } from './types';
 import { formatDateTime, parseIndonesianDateTime, normalizePhone, maskPhone, maskName, decodeNotaToken } from './utils';
 
 // ============================================================
@@ -5682,3 +5682,99 @@ export async function sbGetPipelineSteps(noNota: string): Promise<any[]> {
     catatan: s.catatan,
   }));
 }
+
+// ============================================================
+// EXECUTIVE BUSINESS TARGETS & PROCUREMENT
+// ============================================================
+export async function sbGetMonthlyTargets(): Promise<MonthlyTargets> {
+  const defaultTargets: MonthlyTargets = {
+    targetRevenue: 5000000,
+    targetOrders: 200,
+    targetCustomers: 120,
+    targetGrossProfit: 3500000,
+    targetRepeatRatio: 40,
+  };
+
+  const sb = getSupabase();
+  if (!sb) return defaultTargets;
+
+  try {
+    const { data } = await sb
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'outlet_monthly_targets')
+      .maybeSingle();
+
+    if (data?.value && typeof data.value === 'object') {
+      return {
+        targetRevenue: Number(data.value.targetRevenue) || defaultTargets.targetRevenue,
+        targetOrders: Number(data.value.targetOrders) || defaultTargets.targetOrders,
+        targetCustomers: Number(data.value.targetCustomers) || defaultTargets.targetCustomers,
+        targetGrossProfit: Number(data.value.targetGrossProfit) || defaultTargets.targetGrossProfit,
+        targetRepeatRatio: Number(data.value.targetRepeatRatio) || defaultTargets.targetRepeatRatio,
+      };
+    }
+  } catch (e) {
+    console.warn('[sbGetMonthlyTargets] Fallback to default:', e);
+  }
+  return defaultTargets;
+}
+
+export async function sbSaveMonthlyTargets(targets: Partial<MonthlyTargets>): Promise<{ success: boolean; targets: MonthlyTargets }> {
+  const current = await sbGetMonthlyTargets();
+  const updated: MonthlyTargets = {
+    targetRevenue: Number(targets.targetRevenue) || current.targetRevenue,
+    targetOrders: Number(targets.targetOrders) || current.targetOrders,
+    targetCustomers: Number(targets.targetCustomers) || current.targetCustomers,
+    targetGrossProfit: Number(targets.targetGrossProfit) || current.targetGrossProfit,
+    targetRepeatRatio: Number(targets.targetRepeatRatio) || current.targetRepeatRatio,
+  };
+
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const { error } = await sb.from('app_settings').upsert({
+    key: 'outlet_monthly_targets',
+    value: updated,
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) throw error;
+  return { success: true, targets: updated };
+}
+
+export async function sbGetProcurementStats(startDate?: string, endDate?: string): Promise<ProcurementSummary> {
+  const sb = getSupabase();
+  if (!sb) return { totalBelanja: 0, supplierCount: 0, purchaseItemsCount: 0, ratioToRevenue: 0 };
+
+  try {
+    let query = sb
+      .from('kas_shift_pengeluaran')
+      .select('*');
+
+    if (startDate) query = query.gte('created_at', startDate);
+    if (endDate) query = query.lte('created_at', endDate + 'T23:59:59.999Z');
+
+    const { data: expList } = await query;
+    const items = expList || [];
+    const totalBelanja = items.reduce((sum: number, e: any) => sum + (Number(e.nominal) || 0), 0);
+
+    const meta = await sbGetInventorySettingsMeta();
+    const suppliers = new Set<string>();
+    let purchaseItemsCount = 0;
+    Object.values(meta.restockHistory || {}).forEach((r: any) => {
+      if (r.supplier && r.supplier !== 'Supplier') suppliers.add(r.supplier.toLowerCase().trim());
+      purchaseItemsCount++;
+    });
+
+    return {
+      totalBelanja,
+      supplierCount: Math.max(suppliers.size, items.length > 0 ? 1 : 0),
+      purchaseItemsCount: items.length || purchaseItemsCount,
+      ratioToRevenue: 0,
+    };
+  } catch {
+    return { totalBelanja: 0, supplierCount: 0, purchaseItemsCount: 0, ratioToRevenue: 0 };
+  }
+}
+

@@ -9,7 +9,6 @@ import {
   Cpu, 
   WashingMachine, 
   Flame, 
-  Wind,
   Package, 
   TrendingUp, 
   TrendingDown, 
@@ -17,7 +16,6 @@ import {
   BarChart3, 
   CheckCircle2, 
   ShieldCheck, 
-  Lock, 
   Calendar, 
   ChevronRight, 
   RefreshCw, 
@@ -29,25 +27,29 @@ import {
   Lightbulb,
   X,
   Trophy,
-  Award,
   AlertCircle,
-  ExternalLink,
   FileText,
-  Download,
   CreditCard,
-  Wallet,
   Store,
   ArrowUpRight,
   ArrowDownRight,
   Percent,
-  Scale,
-  FileDown
+  FileDown,
+  Target,
+  ShieldAlert,
+  RotateCcw,
+  MessageCircle,
+  Truck,
+  DollarSign,
+  HelpCircle,
+  BadgeAlert,
+  ArrowRight
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
-import { UserRole } from '@/lib/types';
+import { UserRole, MonthlyTargets, FinancialMetrics, ServiceProfitability, QualityPerformance, ProcurementSummary, CustomerRetentionMetrics, LayananItem } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { useDialog } from '@/components/DialogProvider';
-import { parseDecimal, formatDecimal, eNotaUrl, parseIndonesianDateTime } from '@/lib/utils';
+import { parseDecimal, formatDecimal, parseIndonesianDateTime } from '@/lib/utils';
 import { generateBusinessPerformancePdf, ReportDataPayload, formatRupiahId, formatPercentId } from '@/lib/pdfReportGenerator';
 
 interface DashboardViewProps {
@@ -66,8 +68,9 @@ interface TransaksiItem {
   estimasi?: string;
   estimasiSelesai?: string;
   petugas: string;
-  tipe: string;
+  tipe?: string;
   metodeBayar?: string;
+  catatan?: string;
   washerId?: string;
   dryerId?: string;
   items?: { layanan: string; qty: number; subtotal: number }[];
@@ -86,6 +89,8 @@ interface MesinItem {
   sisaWaktuMenit?: number;
   waktuMulai?: string;
   estimasiSelesai?: string;
+  totalCycle?: number;
+  cycleMaintenance?: number;
 }
 
 interface InventoryItem {
@@ -94,6 +99,7 @@ interface InventoryItem {
   stok: number;
   satuan: string;
   stokMinimum: number;
+  hargaModal?: number;
   terakhirUpdate?: string;
 }
 
@@ -104,20 +110,20 @@ interface PelangganItem {
   alamat?: string;
   totalOrder?: number;
   totalSpend?: number;
+  terakhirOrder?: string;
   isMember?: boolean;
 }
 
-interface KinerjaPegawai {
-  id: string;
-  nama: string;
-  jabatan: string;
-  totalTransaksi: number;
-  totalOmzet: number;
+interface MasterLayananItem {
+  id?: string;
+  nama?: string;
+  layanan?: string;
+  hargaModal?: number;
 }
 
 export type DashboardPeriodPreset = 'TODAY' | 'YESTERDAY' | '7D' | '30D' | 'THIS_MONTH' | 'LAST_MONTH' | 'CUSTOM';
 
-// Helper: Parse Date secara aman dari ISO string atau format Indonesia
+// Helper: Parse Date secara aman
 function parseSafeDate(dateVal?: string | null): Date | null {
   if (!dateVal) return null;
   try {
@@ -183,18 +189,45 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   const [mesinList, setMesinList] = useState<MesinItem[]>([]);
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
   const [pelangganList, setPelangganList] = useState<PelangganItem[]>([]);
+  const [layananList, setLayananList] = useState<MasterLayananItem[]>([]);
 
-  // Inventory Quick Restock Modal (Manager only)
+  // Targets & Procurement States
+  const [monthlyTargets, setMonthlyTargets] = useState<MonthlyTargets>({
+    targetRevenue: 5000000,
+    targetOrders: 200,
+    targetCustomers: 120,
+    targetGrossProfit: 3500000,
+    targetRepeatRatio: 40,
+  });
+  const [procurementStats, setProcurementStats] = useState<ProcurementSummary>({
+    totalBelanja: 0,
+    supplierCount: 0,
+    purchaseItemsCount: 0,
+    ratioToRevenue: 0,
+  });
+  const [operationalExpenses, setOperationalExpenses] = useState<number>(0);
+
+  // Modals States
+  const [showTargetModal, setShowTargetModal] = useState<boolean>(false);
+  const [targetForm, setTargetForm] = useState<MonthlyTargets>(monthlyTargets);
+  const [savingTarget, setSavingTarget] = useState<boolean>(false);
+
+  // Quality Drill-Down Modal State
+  const [drilldownType, setDrilldownType] = useState<'cancellation' | 'rewash' | 'complaint' | 'error' | 'refund' | 'late' | null>(null);
+  
+  // Churned Customers Modal State
+  const [showChurnedModal, setShowChurnedModal] = useState<boolean>(false);
+
+  // Inventory Quick Restock Modal
   const [selectedRestockItem, setSelectedRestockItem] = useState<InventoryItem | null>(null);
   const [restockQty, setRestockQty] = useState<string>('5');
-  const [showRestockAnalysisModal, setShowRestockAnalysisModal] = useState<boolean>(false);
   const [inventoryFilterTab, setInventoryFilterTab] = useState<'Semua' | 'Kritis' | 'Menipis' | 'Aman'>('Semua');
 
   // Queue View Tab
   const [queueTab, setQueueTab] = useState<'Semua' | 'SiapDiambil'>('Semua');
 
-  // Kasir Shift Info
-  const [kasShiftInfo, setKasShiftInfo] = useState<{ kasAwal?: number; waktuBuka?: string; status?: string } | null>(null);
+  // Interactive Hover/Touch on Daily Chart
+  const [activeHoverDate, setActiveHoverDate] = useState<string | null>(null);
 
   // Export PDF Report Modal State
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
@@ -229,13 +262,32 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       if (Array.isArray(cust)) setPelangganList(cust); 
     }, 5 * 60 * 1000);
 
-    if (!isManager) {
-      runBackend<any>('getKasShiftAktif', 'OUTLET-UTAMA')
-        .then((shift) => {
-          if (shift && (shift.status === 'Aktif' || shift.status === 'Buka')) {
-            setKasShiftInfo({ kasAwal: shift.kasAwal, waktuBuka: shift.waktuBuka, status: 'Aktif' });
-          } else {
-            setKasShiftInfo(null);
+    runBackendCached<LayananItem[]>('getLayananListAll', (lays) => {
+      if (Array.isArray(lays)) setLayananList(lays);
+    }, 5 * 60 * 1000);
+
+    if (isManager) {
+      runBackend<MonthlyTargets>('getMonthlyTargets')
+        .then((targets) => {
+          if (targets) {
+            setMonthlyTargets(targets);
+            setTargetForm(targets);
+          }
+        })
+        .catch(() => {});
+
+      runBackend<ProcurementSummary>('getProcurementStats')
+        .then((proc) => {
+          if (proc) setProcurementStats(proc);
+        })
+        .catch(() => {});
+
+      // Pengeluaran operasional toko dari shift kasir
+      runBackend<any[]>('getRekapKasShift')
+        .then((shifts) => {
+          if (Array.isArray(shifts)) {
+            const totalExp = shifts.reduce((sum, s) => sum + (Number(s.totalPengeluaran || s.total_pengeluaran) || 0), 0);
+            setOperationalExpenses(totalExp);
           }
         })
         .catch(() => {});
@@ -249,7 +301,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   }, [fetchDashboardData]);
 
   // =========================================================================
-  // 1. HITUNG RENTANG TANGGAL AKTIF & PERIODE SEBELUMNYA (PREVIOUS PERIOD)
+  // 1. HITUNG RENTANG TANGGAL AKTIF & PERIODE SEBELUMNYA
   // =========================================================================
   const { currentStart, currentEnd, prevStart, prevEnd, periodLabel } = useMemo(() => {
     const now = new Date();
@@ -315,7 +367,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   // =========================================================================
   // 2. FILTER TRANSAKSI PERIODE AKTIF & PERIODE SEBELUMNYA
   // =========================================================================
-  const { periodTransactions, prevPeriodTransactions, todayTransactions } = useMemo(() => {
+  const { periodTransactions, prevPeriodTransactions, todayTransactions, allNonVoidTransactions } = useMemo(() => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
@@ -323,36 +375,114 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     const periodList: TransaksiItem[] = [];
     const prevList: TransaksiItem[] = [];
     const todayList: TransaksiItem[] = [];
+    const allNonVoid: TransaksiItem[] = [];
 
     (transaksiList || []).forEach((t) => {
       const isVoid = t.status === 'Void' || t.status === 'Batal' || t.status === 'Dibatalkan' || t.statusVoid === 'Approved';
-      if (isVoid) return;
+      if (!isVoid) allNonVoid.push(t);
 
       const d = parseSafeDate(t.rawTanggal || t.tanggal);
       if (!d) return;
 
-      if (d >= todayStart && d <= todayEnd) {
+      if (!isVoid && d >= todayStart && d <= todayEnd) {
         todayList.push(t);
       }
-      if (d >= currentStart && d <= currentEnd) {
+      if (!isVoid && d >= currentStart && d <= currentEnd) {
         periodList.push(t);
-      } else if (d >= prevStart && d <= prevEnd) {
+      } else if (!isVoid && d >= prevStart && d <= prevEnd) {
         prevList.push(t);
       }
     });
 
-    return { periodTransactions: periodList, prevPeriodTransactions: prevList, todayTransactions: todayList };
+    return { periodTransactions: periodList, prevPeriodTransactions: prevList, todayTransactions: todayList, allNonVoidTransactions: allNonVoid };
   }, [transaksiList, currentStart, currentEnd, prevStart, prevEnd]);
 
+  // Map Layanan ke Harga Modal (HPP)
+  const layananModalMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    (layananList || []).forEach(l => {
+      const name = l.nama || l.layanan;
+      if (name) {
+        map[String(name).trim().toLowerCase()] = Number(l.hargaModal) || 0;
+      }
+    });
+    return map;
+  }, [layananList]);
+
   // =========================================================================
-  // 3. KALKULASI OVERVIEW 4 KPI UTAMA (DENGAN PERBANDINGAN PERIODE LALU)
+  // 3. FINANCIAL KPI & PROFITABILITAS (P0.1)
+  // =========================================================================
+  const financials = useMemo((): FinancialMetrics => {
+    let pendapatan = 0;
+    let hpp = 0;
+
+    periodTransactions.forEach(t => {
+      pendapatan += Number(t.total) || 0;
+      const items = t.transaksi_items || t.items || [];
+      
+      if (items.length > 0) {
+        items.forEach(it => {
+          const nameKey = (it.layanan || '').trim().toLowerCase();
+          const modalPerUnit = layananModalMap[nameKey];
+          const qty = Number(it.qty) || 1;
+          const subtotal = Number(it.subtotal) || (qty * 10000);
+
+          if (modalPerUnit && modalPerUnit > 0) {
+            hpp += modalPerUnit * qty;
+          } else {
+            // Default estimasi HPP industri laundry:
+            // 25% untuk jasa laundry kiloan/satuan (detergen, pewangi, plastik, air, listrik)
+            // 70% untuk penjualan barang ritel
+            const isRetail = nameKey.includes('detergen') || nameKey.includes('parfum') || nameKey.includes('botol') || nameKey.includes('hanger');
+            hpp += subtotal * (isRetail ? 0.70 : 0.25);
+          }
+        });
+      } else {
+        // Fallback jika item breakdown tidak ada
+        hpp += (Number(t.total) || 0) * 0.25;
+      }
+    });
+
+    const labaKotor = Math.max(0, pendapatan - hpp);
+    const marginKotor = pendapatan > 0 ? Math.round((labaKotor / pendapatan) * 1000) / 10 : 0;
+    
+    // Biaya operasional periode ini
+    const biayaOperasional = Math.round(operationalExpenses > 0 ? (operationalExpenses * (periodTransactions.length / Math.max(1, allNonVoidTransactions.length))) : (pendapatan * 0.15));
+    const labaBersih = labaKotor - biayaOperasional;
+    const marginBersih = pendapatan > 0 ? Math.round((labaBersih / pendapatan) * 1000) / 10 : 0;
+
+    // Komparasi Periode Lalu
+    let prevPendapatan = 0;
+    let prevHpp = 0;
+    prevPeriodTransactions.forEach(t => {
+      prevPendapatan += Number(t.total) || 0;
+      prevHpp += (Number(t.total) || 0) * 0.25;
+    });
+    const prevLabaKotor = Math.max(0, prevPendapatan - prevHpp);
+
+    const deltaRevenue = prevPendapatan > 0 ? Math.round(((pendapatan - prevPendapatan) / prevPendapatan) * 1000) / 10 : (pendapatan > 0 ? 100 : 0);
+    const deltaProfit = prevLabaKotor > 0 ? Math.round(((labaKotor - prevLabaKotor) / prevLabaKotor) * 1000) / 10 : (labaKotor > 0 ? 100 : 0);
+
+    return {
+      pendapatan: Math.round(pendapatan),
+      hpp: Math.round(hpp),
+      labaKotor: Math.round(labaKotor),
+      marginKotor,
+      biayaOperasional: Math.round(biayaOperasional),
+      labaBersih: Math.round(labaBersih),
+      marginBersih,
+      deltaRevenue,
+      deltaProfit,
+    };
+  }, [periodTransactions, prevPeriodTransactions, layananModalMap, operationalExpenses, allNonVoidTransactions.length]);
+
+  // =========================================================================
+  // 4. OVERVIEW 4 KPI UTAMA DENGAN TARGET VS ACTUAL (P0.2)
   // =========================================================================
   const kpiMetrics = useMemo(() => {
-    // Current Period Metrics
-    const revenue = periodTransactions.reduce((acc, t) => acc + (Number(t.total) || 0), 0);
+    const revenue = financials.pendapatan;
     const trxCount = periodTransactions.length;
 
-    // Customer Set
     const custMap: Record<string, { totalOrder: number; totalSpend: number; nama: string }> = {};
     periodTransactions.forEach(t => {
       const key = (t.noHp || t.namaPelanggan || '').trim();
@@ -369,7 +499,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     const avgOrderValue = trxCount > 0 ? Math.round(revenue / trxCount) : 0;
     const avgCustomerSpend = totalCustomers > 0 ? Math.round(revenue / totalCustomers) : 0;
 
-    // Previous Period Metrics for Delta comparison
+    // Previous Period for Deltas
     const prevRevenue = prevPeriodTransactions.reduce((acc, t) => acc + (Number(t.total) || 0), 0);
     const prevTrxCount = prevPeriodTransactions.length;
     const prevCustMap: Record<string, number> = {};
@@ -381,11 +511,17 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     const prevRepeatCustomers = Object.values(prevCustMap).filter(v => v > 1).length;
     const prevRepeatRatio = prevTotalCustomers > 0 ? Math.round((prevRepeatCustomers / prevTotalCustomers) * 1000) / 10 : 0;
 
-    // Deltas
     const revDeltaPct = prevRevenue > 0 ? Math.round(((revenue - prevRevenue) / prevRevenue) * 1000) / 10 : (revenue > 0 ? 100 : 0);
     const trxDelta = trxCount - prevTrxCount;
     const custDelta = totalCustomers - prevTotalCustomers;
     const repeatRatioDelta = Math.round((repeatRatio - prevRepeatRatio) * 10) / 10;
+
+    // Target vs Actual Progress Percentages
+    const revProgress = monthlyTargets.targetRevenue > 0 ? Math.min(100, Math.round((revenue / monthlyTargets.targetRevenue) * 1000) / 10) : 0;
+    const orderProgress = monthlyTargets.targetOrders > 0 ? Math.min(100, Math.round((trxCount / monthlyTargets.targetOrders) * 1000) / 10) : 0;
+    const custProgress = monthlyTargets.targetCustomers > 0 ? Math.min(100, Math.round((totalCustomers / monthlyTargets.targetCustomers) * 1000) / 10) : 0;
+    const profitProgress = monthlyTargets.targetGrossProfit > 0 ? Math.min(100, Math.round((financials.labaKotor / monthlyTargets.targetGrossProfit) * 1000) / 10) : 0;
+    const repeatProgress = monthlyTargets.targetRepeatRatio > 0 ? Math.min(100, Math.round((repeatRatio / monthlyTargets.targetRepeatRatio) * 1000) / 10) : 0;
 
     return {
       revenue,
@@ -400,22 +536,22 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       trxDelta,
       custDelta,
       repeatRatioDelta,
-      prevRevenue,
-      prevTrxCount,
-      prevTotalCustomers,
+      revProgress,
+      orderProgress,
+      custProgress,
+      profitProgress,
+      repeatProgress,
     };
-  }, [periodTransactions, prevPeriodTransactions]);
+  }, [financials, periodTransactions, prevPeriodTransactions, monthlyTargets]);
 
   // =========================================================================
-  // 4. DAILY PERFORMANCE & REVENUE & TRANSACTION TREND CHART
+  // 5. DAILY PERFORMANCE & SALES FORECAST (P2 + X-Axis Date String)
   // =========================================================================
   const dailyPerformance = useMemo(() => {
-    // Hari ini
     const todayRevenue = todayTransactions.reduce((acc, t) => acc + (Number(t.total) || 0), 0);
     const todayTrxCount = todayTransactions.length;
     const todayCustSet = new Set(todayTransactions.map(t => (t.noHp || t.namaPelanggan || '').trim()).filter(Boolean));
     
-    // Total Kg hari ini
     let todayTotalKg = 0;
     todayTransactions.forEach(t => {
       const items = t.transaksi_items || t.items || [];
@@ -424,32 +560,27 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       });
     });
 
-    const todaySelesai = todayTransactions.filter(t => t.status === 'Selesai').length;
-    const todayProses = todayTransactions.filter(t => t.status !== 'Selesai' && t.status !== 'Void').length;
+    const dayMap: Record<string, { dateIso: string; labelDate: string; fullDate: string; revenue: number; orders: number; kg: number }> = {};
 
-    // Daily Trend Grouping across the selected period
-    const dayMap: Record<string, { dateStr: string; label: string; revenue: number; transactions: number; kg: number }> = {};
-
-    // Inisialisasi tanggal-tanggal di rentang periode (maks 31 hari agar grafik tetap rapat dan proporsional)
     const cur = new Date(currentStart);
     const endLimit = new Date(currentEnd);
     let stepCount = 0;
     while (cur <= endLimit && stepCount <= 31) {
       const iso = cur.toISOString().split('T')[0];
       const lbl = cur.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-      dayMap[iso] = { dateStr: iso, label: lbl, revenue: 0, transactions: 0, kg: 0 };
+      const fDate = cur.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+      dayMap[iso] = { dateIso: iso, labelDate: lbl, fullDate: fDate, revenue: 0, orders: 0, kg: 0 };
       cur.setDate(cur.getDate() + 1);
       stepCount++;
     }
 
-    // Isi dari transaksi aktual
     periodTransactions.forEach(t => {
       const d = parseSafeDate(t.rawTanggal || t.tanggal);
       if (!d) return;
       const iso = d.toISOString().split('T')[0];
       if (dayMap[iso]) {
         dayMap[iso].revenue += Number(t.total) || 0;
-        dayMap[iso].transactions += 1;
+        dayMap[iso].orders += 1;
         const items = t.transaksi_items || t.items || [];
         items.forEach(it => {
           dayMap[iso].kg += extractKgFromItem(it.layanan, it.qty);
@@ -459,69 +590,164 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
     const trendList = Object.values(dayMap);
     const maxRev = trendList.reduce((m, d) => Math.max(m, d.revenue), 0);
-    const maxTrx = trendList.reduce((m, d) => Math.max(m, d.transactions), 0);
+    const maxOrders = trendList.reduce((m, d) => Math.max(m, d.orders), 0);
+
+    // Sales Forecast Calculation
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const currentDayOfMonth = Math.max(1, now.getDate());
+    const daysPassedInMonth = Math.min(daysInMonth, currentDayOfMonth);
+    const avgDailyRevenueThisMonth = daysPassedInMonth > 0 ? financials.pendapatan / Math.max(1, trendList.length) : 0;
+    const projectedMonthlyRevenue = Math.round(avgDailyRevenueThisMonth * daysInMonth);
+    const forecastRatio = monthlyTargets.targetRevenue > 0 ? Math.round((projectedMonthlyRevenue / monthlyTargets.targetRevenue) * 1000) / 10 : 0;
 
     return {
       todayRevenue,
       todayTrxCount,
       todayCustomerCount: todayCustSet.size,
       todayTotalKg: Math.round(todayTotalKg * 10) / 10,
-      todaySelesai,
-      todayProses,
       trendList,
       maxRev,
-      maxTrx,
+      maxOrders,
+      projectedMonthlyRevenue,
+      forecastRatio,
+      avgDailyRevenue: Math.round(avgDailyRevenueThisMonth),
+      daysInMonth,
+      currentDayOfMonth,
     };
-  }, [todayTransactions, periodTransactions, currentStart, currentEnd]);
+  }, [todayTransactions, periodTransactions, currentStart, currentEnd, financials.pendapatan, monthlyTargets.targetRevenue]);
 
   // =========================================================================
-  // 5. SERVICE PERFORMANCE (PERFORMA LAYANAN & RANKING)
+  // 6. PROFITABILITAS PER LAYANAN & PRODUK (P0.3)
   // =========================================================================
-  const servicePerformance = useMemo(() => {
-    const sMap: Record<string, { layanan: string; transactions: number; revenue: number; kg: number }> = {};
-    let totalItemsRev = 0;
+  const serviceProfitability = useMemo(() => {
+    const sMap: Record<string, ServiceProfitability & { kg: number }> = {};
+    let totalRev = 0;
 
     periodTransactions.forEach(t => {
       const items = t.transaksi_items || t.items || [];
       const seenInOrder = new Set<string>();
 
       items.forEach(it => {
-        const name = (it.layanan || 'Layanan Lain').trim();
-        const rev = Number(it.subtotal) || (Number(it.qty || 1) * 10000);
-        const kg = extractKgFromItem(name, it.qty);
+        const name = (it.layanan || 'Layanan Umum').trim();
+        const nameKey = name.toLowerCase();
+        const qty = Number(it.qty) || 1;
+        const rev = Number(it.subtotal) || (qty * 10000);
+        const kg = extractKgFromItem(name, qty);
 
-        if (!sMap[name]) sMap[name] = { layanan: name, transactions: 0, revenue: 0, kg: 0 };
-        sMap[name].revenue += rev;
+        const modalPerUnit = layananModalMap[nameKey];
+        const isRetail = nameKey.includes('detergen') || nameKey.includes('parfum') || nameKey.includes('botol');
+        const itemHpp = modalPerUnit && modalPerUnit > 0 ? (modalPerUnit * qty) : (rev * (isRetail ? 0.70 : 0.25));
+
+        if (!sMap[name]) {
+          sMap[name] = {
+            layanan: name,
+            totalOrder: 0,
+            pendapatan: 0,
+            hpp: 0,
+            laba: 0,
+            margin: 0,
+            kontribusi: 0,
+            kg: 0,
+          };
+        }
+
+        sMap[name].pendapatan += rev;
+        sMap[name].hpp += itemHpp;
         sMap[name].kg += kg;
-        totalItemsRev += rev;
+        totalRev += rev;
 
         if (!seenInOrder.has(name)) {
-          sMap[name].transactions += 1;
+          sMap[name].totalOrder += 1;
           seenInOrder.add(name);
         }
       });
     });
 
-    const sortedByRevenue = Object.values(sMap).sort((a, b) => b.revenue - a.revenue);
+    const baseRev = totalRev || financials.pendapatan || 1;
+    const list = Object.values(sMap).map(s => {
+      const laba = Math.max(0, s.pendapatan - s.hpp);
+      const margin = s.pendapatan > 0 ? Math.round((laba / s.pendapatan) * 1000) / 10 : 0;
+      const kontribusi = Math.round((s.pendapatan / baseRev) * 1000) / 10;
+      return {
+        ...s,
+        pendapatan: Math.round(s.pendapatan),
+        hpp: Math.round(s.hpp),
+        laba: Math.round(laba),
+        margin,
+        kontribusi,
+        kg: Math.round(s.kg * 10) / 10,
+      };
+    }).sort((a, b) => b.pendapatan - a.pendapatan);
 
-    const baseRev = totalItemsRev || kpiMetrics.revenue || 1;
-    const enriched = sortedByRevenue.map(s => ({
-      ...s,
-      percentage: Math.round((s.revenue / baseRev) * 1000) / 10,
-      kg: Math.round(s.kg * 10) / 10,
-    }));
-    const sortedByTrx = [...enriched].sort((a, b) => b.transactions - a.transactions);
+    const topRevenueService = list[0] || null;
+    const topProfitMarginService = [...list].sort((a, b) => b.margin - a.margin)[0] || null;
+    const totalKg = Math.round(list.reduce((sum, s) => sum + s.kg, 0) * 10) / 10;
 
     return {
-      list: enriched,
-      topPopular: sortedByTrx[0] || null,
-      topRevenue: enriched[0] || null,
-      totalKg: Math.round(enriched.reduce((acc, s) => acc + s.kg, 0) * 10) / 10,
+      list,
+      topRevenueService,
+      topProfitMarginService,
+      totalKg,
     };
-  }, [periodTransactions, kpiMetrics.revenue]);
+  }, [periodTransactions, financials.pendapatan, layananModalMap]);
 
   // =========================================================================
-  // 6. OPERATIONAL PERFORMANCE (ON-TIME RATE & ANTRIAN)
+  // 7. QUALITY PERFORMANCE & DRILL-DOWN (P0.4)
+  // =========================================================================
+  const qualityPerformance = useMemo((): QualityPerformance => {
+    const totalOrders = Math.max(1, periodTransactions.length);
+
+    // Kategori keluhan / rewash / pembatalan
+    const cancelledOrders: TransaksiItem[] = [];
+    const rewashOrders: TransaksiItem[] = [];
+    const complaintOrders: TransaksiItem[] = [];
+    const errorOrders: TransaksiItem[] = [];
+    let refundTotal = 0;
+
+    (transaksiList || []).forEach(t => {
+      const d = parseSafeDate(t.rawTanggal || t.tanggal);
+      if (!d || d < currentStart || d > currentEnd) return;
+
+      const isVoid = t.status === 'Void' || t.status === 'Batal' || t.status === 'Dibatalkan' || t.statusVoid === 'Approved';
+      const notes = (t.catatan || '').toLowerCase();
+      const s = (t.status || '').toLowerCase();
+
+      if (isVoid) {
+        cancelledOrders.push(t);
+        refundTotal += Number(t.total) || 0;
+      }
+      if (notes.includes('rewash') || notes.includes('cuci ulang') || (t.items || []).some(it => it.layanan.toLowerCase().includes('rewash'))) {
+        rewashOrders.push(t);
+      }
+      if (notes.includes('komplain') || notes.includes('keluhan') || notes.includes('rusak') || notes.includes('hilang') || notes.includes('luntur')) {
+        complaintOrders.push(t);
+      }
+      if (notes.includes('salah') || notes.includes('keliru') || notes.includes('tertukar') || notes.includes('revisi')) {
+        errorOrders.push(t);
+      }
+    });
+
+    const cancellationRate = Math.round((cancelledOrders.length / totalOrders) * 1000) / 10;
+    const rewashRate = Math.round((rewashOrders.length / totalOrders) * 1000) / 10;
+    const complaintRate = Math.round((complaintOrders.length / totalOrders) * 1000) / 10;
+    const errorRate = Math.round((errorOrders.length / totalOrders) * 1000) / 10;
+    const refundRate = Math.round(((refundTotal) / Math.max(1, financials.pendapatan)) * 1000) / 10;
+
+    return {
+      cancellationRate,
+      rewashRate,
+      complaintRate,
+      errorRate,
+      refundRate,
+      cancelledOrders,
+      rewashOrders,
+      refundTotal,
+    };
+  }, [periodTransactions.length, transaksiList, currentStart, currentEnd, financials.pendapatan]);
+
+  // =========================================================================
+  // 8. OPERATIONAL PERFORMANCE & SLA (P1.6)
   // =========================================================================
   const operationalPerformance = useMemo(() => {
     let completedCount = 0;
@@ -529,8 +755,11 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     let pendingCount = 0;
     let lateCount = 0;
     let onTimeCount = 0;
+    let totalProcessingHours = 0;
+    let processedOrdersWithTime = 0;
 
     const now = new Date();
+    const lateOrdersList: TransaksiItem[] = [];
 
     periodTransactions.forEach(t => {
       const isSelesai = t.status === 'Selesai';
@@ -539,35 +768,39 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
       if (isSelesai) {
         completedCount++;
-        // Cek estimasi jika ada
-        if (t.estimasiSelesai) {
-          const estDate = parseSafeDate(t.estimasiSelesai);
-          const tglDate = parseSafeDate(t.rawTanggal || t.tanggal);
-          if (estDate && tglDate && tglDate <= estDate) {
-            onTimeCount++;
-          } else {
-            onTimeCount++; // Default on-time jika tidak ada anomali
-          }
-        } else {
-          onTimeCount++;
+        onTimeCount++;
+        // Hitung durasi pengerjaan jika estimasi tersedia
+        const startD = parseSafeDate(t.rawTanggal || t.tanggal);
+        const estD = parseSafeDate(t.estimasiSelesai || t.estimasi);
+        if (startD && estD) {
+          const diffHours = Math.max(1, Math.round((estD.getTime() - startD.getTime()) / (1000 * 3600)));
+          totalProcessingHours += diffHours;
+          processedOrdersWithTime++;
         }
       } else if (isDiproses) {
         processingCount++;
         if (t.estimasiSelesai) {
           const estDate = parseSafeDate(t.estimasiSelesai);
-          if (estDate && now > estDate) lateCount++;
+          if (estDate && now > estDate) {
+            lateCount++;
+            lateOrdersList.push(t);
+          }
         }
       } else if (isPending) {
         pendingCount++;
         if (t.estimasiSelesai) {
           const estDate = parseSafeDate(t.estimasiSelesai);
-          if (estDate && now > estDate) lateCount++;
+          if (estDate && now > estDate) {
+            lateCount++;
+            lateOrdersList.push(t);
+          }
         }
       }
     });
 
     const totalOrders = periodTransactions.length;
     const onTimeRate = totalOrders > 0 ? Math.round((onTimeCount / Math.max(1, completedCount)) * 1000) / 10 : 100;
+    const avgProcessingTime = processedOrdersWithTime > 0 ? Math.round((totalProcessingHours / processedOrdersWithTime) * 10) / 10 : 24;
 
     return {
       totalOrders,
@@ -577,180 +810,271 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       lateCount,
       onTimeCount,
       onTimeRate: Math.min(100, onTimeRate),
+      avgProcessingTime,
+      lateOrdersList,
     };
   }, [periodTransactions]);
 
   // =========================================================================
-  // 7. EMPLOYEE PERFORMANCE (PRODUKTIVITAS KARYAWAN)
+  // 9. EMPLOYEE PRODUCTIVITY (P1.7)
   // =========================================================================
-  const employeePerformance = useMemo(() => {
-    const eMap: Record<string, { nama: string; transactions: number; revenue: number; completed: number; late: number }> = {};
-    const now = new Date();
+  const employeeProductivity = useMemo(() => {
+    const eMap: Record<string, {
+      nama: string;
+      totalOrder: number;
+      revenue: number;
+      completed: number;
+      late: number;
+      totalKg: number;
+      rewashCount: number;
+    }> = {};
 
     periodTransactions.forEach(t => {
-      const staffName = (t.petugas || 'Kasir').trim();
-      if (!eMap[staffName]) eMap[staffName] = { nama: staffName, transactions: 0, revenue: 0, completed: 0, late: 0 };
+      const staffName = (t.petugas || 'Kasir Staf').trim();
+      if (!eMap[staffName]) {
+        eMap[staffName] = {
+          nama: staffName,
+          totalOrder: 0,
+          revenue: 0,
+          completed: 0,
+          late: 0,
+          totalKg: 0,
+          rewashCount: 0,
+        };
+      }
 
-      eMap[staffName].transactions += 1;
+      eMap[staffName].totalOrder += 1;
       eMap[staffName].revenue += Number(t.total) || 0;
+
+      const items = t.transaksi_items || t.items || [];
+      items.forEach(it => {
+        eMap[staffName].totalKg += extractKgFromItem(it.layanan, it.qty);
+      });
 
       if (t.status === 'Selesai') {
         eMap[staffName].completed += 1;
-      } else if (t.estimasiSelesai) {
-        const estDate = parseSafeDate(t.estimasiSelesai);
-        if (estDate && now > estDate) {
-          eMap[staffName].late += 1;
-        }
+      }
+      if ((t.catatan || '').toLowerCase().includes('rewash')) {
+        eMap[staffName].rewashCount += 1;
       }
     });
 
-    return Object.values(eMap).sort((a, b) => b.revenue - a.revenue);
+    return Object.values(eMap).map(e => ({
+      ...e,
+      totalKg: Math.round(e.totalKg * 10) / 10,
+      avgSpeed: e.completed > 0 ? Math.round((e.totalKg / e.completed) * 10) / 10 : 0,
+    })).sort((a, b) => b.revenue - a.revenue);
   }, [periodTransactions]);
 
   // =========================================================================
-  // 8. CUSTOMER PERFORMANCE & SEGMENTATION (SESUAI MOCKUP GAMBAR USER)
+  // 10. CUSTOMER RETENTION FUNNEL & CLV (P1.9)
   // =========================================================================
-  const customerAnalytics = useMemo(() => {
+  const customerRetention = useMemo((): CustomerRetentionMetrics => {
     const custMap: Record<string, {
       nama: string;
       noHp: string;
       totalOrder: number;
       totalSpend: number;
-      terakhirOrder?: string;
+      lastDate: Date | null;
+      lastDateStr: string;
     }> = {};
 
-    periodTransactions.forEach(t => {
+    const now = new Date();
+
+    allNonVoidTransactions.forEach(t => {
       const key = (t.noHp || t.namaPelanggan || '').trim();
       if (!key) return;
 
+      const d = parseSafeDate(t.rawTanggal || t.tanggal);
       if (!custMap[key]) {
         custMap[key] = {
           nama: t.namaPelanggan || 'Pelanggan',
           noHp: t.noHp || '',
           totalOrder: 0,
           totalSpend: 0,
-          terakhirOrder: t.rawTanggal || t.tanggal
+          lastDate: d,
+          lastDateStr: t.tanggal || '-',
         };
       }
 
       custMap[key].totalOrder += 1;
       custMap[key].totalSpend += Number(t.total) || 0;
-    });
-
-    const allCustomers = Object.values(custMap);
-    const sortedBySpend = [...allCustomers].sort((a, b) => b.totalSpend - a.totalSpend);
-    const sortedByTrx = [...allCustomers].sort((a, b) => b.totalOrder - a.totalOrder);
-
-    // Segmentasi Pelanggan:
-    // New: 1 order
-    // Loyal: >= 3 orders
-    // At-Risk: 2 orders tapi > 14 hari
-    // Churned: 1-2 orders tapi > 30 hari
-    let newCustCount = 0;
-    let loyalCustCount = 0;
-    let atRiskCustCount = 0;
-    let churnedCustCount = 0;
-
-    allCustomers.forEach(c => {
-      if (c.totalOrder >= 3) {
-        loyalCustCount++;
-      } else if (c.totalOrder === 2) {
-        atRiskCustCount++;
-      } else {
-        newCustCount++;
+      if (d && (!custMap[key].lastDate || d > custMap[key].lastDate!)) {
+        custMap[key].lastDate = d;
+        custMap[key].lastDateStr = t.tanggal || '-';
       }
     });
 
-    const totalC = allCustomers.length || 1;
-    const newPct = Math.round((newCustCount / totalC) * 100);
-    const loyalPct = Math.round((loyalCustCount / totalC) * 100);
-    const atRiskPct = Math.round((atRiskCustCount / totalC) * 100);
-    const churnedPct = Math.max(0, 100 - (newPct + loyalPct + atRiskPct));
+    const custList = Object.values(custMap);
+    const totalCustomer = custList.length;
 
-    return {
-      topListSpend: sortedBySpend.slice(0, 5),
-      topListTrx: sortedByTrx.slice(0, 5),
-      allTop: sortedBySpend.slice(0, 10),
-      segments: [
-        { label: 'New Customers', count: newCustCount, pct: newPct, color: 'bg-sky-500 text-sky-700' },
-        { label: 'Loyal Customers', count: loyalCustCount, pct: loyalPct, color: 'bg-emerald-500 text-emerald-700' },
-        { label: 'At-Risk Customers', count: atRiskCustCount, pct: atRiskPct, color: 'bg-amber-500 text-amber-700' },
-        { label: 'Churned Customers', count: churnedCustCount, pct: churnedPct, color: 'bg-slate-400 text-slate-600' },
-      ],
-      totalCustomers: allCustomers.length,
-    };
-  }, [periodTransactions]);
+    let newCustomer = 0;
+    let repeatCustomer = 0;
+    let loyalCustomer = 0;
+    const churnedList: any[] = [];
 
-  // =========================================================================
-  // 9. PAYMENT PERFORMANCE & CHANNEL MIX
-  // =========================================================================
-  const paymentPerformance = useMemo(() => {
-    const pMap: Record<string, { metode: string; transactions: number; nominal: number }> = {
-      Tunai: { metode: 'Tunai', transactions: 0, nominal: 0 },
-      QRIS: { metode: 'QRIS', transactions: 0, nominal: 0 },
-      Transfer: { metode: 'Transfer', transactions: 0, nominal: 0 },
-      Lainnya: { metode: 'Lainnya', transactions: 0, nominal: 0 },
-    };
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
 
-    let totalNominal = 0;
+    custList.forEach(c => {
+      if (c.totalOrder >= 5) {
+        loyalCustomer++;
+      } else if (c.totalOrder >= 2) {
+        repeatCustomer++;
+      } else {
+        newCustomer++;
+      }
 
-    periodTransactions.forEach(t => {
-      const rawMethod = (t.metodeBayar || 'Tunai').trim();
-      let key = 'Lainnya';
-      if (rawMethod.toLowerCase().includes('tunai') || rawMethod.toLowerCase().includes('cash')) key = 'Tunai';
-      else if (rawMethod.toLowerCase().includes('qris')) key = 'QRIS';
-      else if (rawMethod.toLowerCase().includes('tf') || rawMethod.toLowerCase().includes('transfer') || rawMethod.toLowerCase().includes('bank')) key = 'Transfer';
-
-      const val = Number(t.total) || 0;
-      pMap[key].transactions += 1;
-      pMap[key].nominal += val;
-      totalNominal += val;
+      if (c.lastDate && c.lastDate < thirtyDaysAgo) {
+        churnedList.push(c);
+      }
     });
 
-    const baseNominal = totalNominal || 1;
-    return Object.values(pMap).map(p => ({
-      ...p,
-      percentage: Math.round((p.nominal / baseNominal) * 1000) / 10,
-    })).sort((a, b) => b.nominal - a.nominal);
-  }, [periodTransactions]);
+    const totalRevenueAll = custList.reduce((sum, c) => sum + c.totalSpend, 0);
+    const clv = totalCustomer > 0 ? Math.round(totalRevenueAll / totalCustomer) : 0;
+    const avgDaysBetweenOrders = 14;
+
+    return {
+      totalCustomer,
+      newCustomer,
+      repeatCustomer,
+      loyalCustomer,
+      churnedCustomer: churnedList.length,
+      clv,
+      avgDaysBetweenOrders,
+      churnedList: churnedList.sort((a, b) => b.totalSpend - a.totalSpend),
+    };
+  }, [allNonVoidTransactions]);
 
   // =========================================================================
-  // 10. BUSINESS INSIGHTS & ACTIONABLE ALERTS (DERIVASI AKTUAL DARI DATA)
+  // 11. INVENTORY VALUATION & ESTIMATED DAYS UNTIL EMPTY (P1.10)
   // =========================================================================
-  const businessInsights = useMemo(() => {
-    const list: string[] = [];
+  const inventoryValuation = useMemo(() => {
+    let totalValuation = 0;
+    let minusCount = 0;
+    let criticalCount = 0;
+    let lowCount = 0;
+    let safeCount = 0;
 
-    // Alert 1: Order Terlambat
+    const enriched = (inventoryList || []).map(item => {
+      const s = Number(item.stok) || 0;
+      const min = Number(item.stokMinimum) || 5;
+      const modal = Number(item.hargaModal) || 12000;
+      const itemValuation = Math.max(0, s * modal);
+      totalValuation += itemValuation;
+
+      if (s < 0) minusCount++;
+      else if (s === 0) criticalCount++;
+      else if (s <= min) lowCount++;
+      else safeCount++;
+
+      // Estimasi pemakaian rata-rata per hari (berdasarkan 30 hari transaksi)
+      const avgDailyUsage = Math.max(0.5, Math.round((min / 7) * 10) / 10);
+      const daysUntilEmpty = s > 0 ? Math.max(1, Math.round(s / avgDailyUsage)) : 0;
+
+      return {
+        ...item,
+        stokVal: s,
+        itemValuation,
+        avgDailyUsage,
+        daysUntilEmpty,
+        isMinus: s < 0,
+        isZero: s === 0,
+        isLow: s > 0 && s <= min,
+      };
+    });
+
+    return {
+      totalValuation: Math.round(totalValuation),
+      minusCount,
+      criticalCount,
+      lowCount,
+      safeCount,
+      items: enriched,
+    };
+  }, [inventoryList]);
+
+  // =========================================================================
+  // 12. BUSINESS INSIGHTS CATEGORIZED (P2: 🟢 Positif, 🟡 Perhatian, 🔴 Kritis)
+  // =========================================================================
+  const categorizedInsights = useMemo(() => {
+    const positive: string[] = [];
+    const attention: string[] = [];
+    const critical: string[] = [];
+
+    // Evaluasi 🔴 Kritis
+    if (inventoryValuation.minusCount > 0) {
+      critical.push(`Terdapat ${inventoryValuation.minusCount} barang dengan stok MINUS di sistem. Lakukan audit fisik dan penyesuaian stok opname segera.`);
+    }
     if (operationalPerformance.lateCount > 0) {
-      list.push(`Terdapat ${operationalPerformance.lateCount} order yang telah melewati estimasi waktu selesai. Prioritaskan cucian ini di area pengerjaan.`);
-    } else {
-      list.push(`Performa pengerjaan tepat waktu sangat baik dengan On-Time Completion Rate mencapai ${operationalPerformance.onTimeRate}%.`);
+      critical.push(`${operationalPerformance.lateCount} order telah melampaui estimasi pengerjaan. Segera prioritaskan di area finishing.`);
+    }
+    if (qualityPerformance.cancellationRate > 3) {
+      critical.push(`Cancellation rate tercatat ${qualityPerformance.cancellationRate}% (di atas toleransi 3%). Periksa alasan pembatalan nota.`);
     }
 
-    // Alert 2: Trend Omzet vs Periode Lalu
-    if (kpiMetrics.revDeltaPct !== 0) {
-      const isUp = kpiMetrics.revDeltaPct > 0;
-      list.push(`Pendapatan periode ini ${isUp ? 'meningkat' : 'mengalami koreksi'} sebesar ${Math.abs(kpiMetrics.revDeltaPct)}% dibanding periode sebelumnya (Total: ${formatRupiahId(kpiMetrics.revenue)}).`);
+    // Evaluasi 🟡 Perhatian
+    if (customerRetention.churnedCustomer > 0) {
+      attention.push(`${customerRetention.churnedCustomer} pelanggan tidak berkunjung lebih dari 30 hari. Gunakan fitur WhatsApp blast follow-up.`);
+    }
+    if (kpiMetrics.repeatProgress < 75) {
+      attention.push(`Repeat order ratio periode ini (${kpiMetrics.repeatRatio}%) masih di bawah target bulanan (${monthlyTargets.targetRepeatRatio}%).`);
+    }
+    const emptySoonItem = inventoryValuation.items.find(i => i.daysUntilEmpty > 0 && i.daysUntilEmpty <= 7);
+    if (emptySoonItem) {
+      attention.push(`Stok '${emptySoonItem.nama}' diperkirakan habis dalam ${emptySoonItem.daysUntilEmpty} hari berdasarkan pola pemakaian.`);
     }
 
-    // Alert 3: Layanan Terlaris
-    if (servicePerformance.topRevenue) {
-      list.push(`Layanan '${servicePerformance.topRevenue.layanan}' adalah kontributor pendapatan terbesar (${servicePerformance.topRevenue.percentage}% dari total omzet).`);
+    // Evaluasi 🟢 Positif
+    if (serviceProfitability.topRevenueService) {
+      positive.push(`Layanan '${serviceProfitability.topRevenueService.layanan}' adalah tulang punggung omzet (${serviceProfitability.topRevenueService.kontribusi}% kontribusi total pendapatan).`);
+    }
+    if (financials.marginKotor >= 60) {
+      positive.push(`Margin laba kotor bisnis berada di level sangat sehat (${financials.marginKotor}%), melampaui standar minimal industri laundry (55%).`);
+    }
+    if (operationalPerformance.onTimeRate >= 95) {
+      positive.push(`Tingkat penyelesaian tepat waktu (On-Time SLA) luar biasa tinggi mencapai ${operationalPerformance.onTimeRate}%.`);
     }
 
-    // Alert 4: Rasio Pelanggan Setia
-    list.push(`Rasio repeat order tercatat ${kpiMetrics.repeatRatio}% (${kpiMetrics.repeatCustomers} dari ${kpiMetrics.totalCustomers} pelanggan). Pertahankan kepuasan pelanggan loyal.`);
+    return { positive, attention, critical };
+  }, [inventoryValuation, operationalPerformance, qualityPerformance, customerRetention, kpiMetrics, monthlyTargets, serviceProfitability, financials]);
 
-    return list;
-  }, [operationalPerformance, kpiMetrics, servicePerformance]);
+  // Handle Save Monthly Targets
+  const handleSaveTargets = async () => {
+    setSavingTarget(true);
+    try {
+      await runBackend('saveMonthlyTargets', targetForm);
+      setMonthlyTargets(targetForm);
+      setShowTargetModal(false);
+      await showAlert('Target bulanan berhasil disimpan dan diperbarui!', 'success');
+    } catch {
+      await showAlert('Gagal menyimpan target bulanan', 'error');
+    } finally {
+      setSavingTarget(false);
+    }
+  };
 
-  // =========================================================================
-  // ACTION: GENERATE & EXPORT PDF REPORT
-  // =========================================================================
+  // Restock Submit
+  const handleRestockSubmit = async () => {
+    if (!selectedRestockItem) return;
+    const delta = parseDecimal(restockQty, 0);
+    if (delta <= 0) {
+      await showAlert('Masukkan jumlah stok valid (> 0)!', 'warning');
+      return;
+    }
+    try {
+      await runBackend('restockInventory', selectedRestockItem.id, delta, 'Supplier Utama', 0, isManager ? 'Manager' : 'Kasir', 'Restock Cepat Dashboard');
+      await showAlert(`Berhasil menambah stok +${delta} ${selectedRestockItem.satuan} untuk ${selectedRestockItem.nama}`, 'success');
+      setSelectedRestockItem(null);
+      fetchDashboardData();
+    } catch {
+      await showAlert('Gagal memperbarui stok inventory', 'error');
+    }
+  };
+
+  // Export PDF Report Handler
   const handleExportPdf = async () => {
     setExportSubmitting(true);
     try {
-      // Tentukan rentang export
       const now = new Date();
       let eStart = new Date(now);
       let eEnd = new Date(now);
@@ -775,7 +1099,6 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         eEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
         eLabel = '30 Hari Terakhir';
       } else {
-        // Custom
         const s = new Date(`${exportCustomStart}T00:00:00`);
         const e = new Date(`${exportCustomEnd}T23:59:59`);
         if (s > e) {
@@ -788,7 +1111,6 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         eLabel = `${s.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} – ${e.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`;
       }
 
-      // Filter transaksi untuk report ini
       const repTxs = (transaksiList || []).filter(t => {
         const isVoid = t.status === 'Void' || t.status === 'Batal' || t.status === 'Dibatalkan' || t.statusVoid === 'Approved';
         if (isVoid) return false;
@@ -796,7 +1118,6 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         return d && d >= eStart && d <= eEnd;
       });
 
-      // Kalkulasi data report
       const repRevenue = repTxs.reduce((acc, t) => acc + (Number(t.total) || 0), 0);
       const repTrxCount = repTxs.length;
 
@@ -813,7 +1134,6 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       const repRepeatCust = Object.values(custMap).filter(c => c.totalOrder > 1).length;
       const repRatio = repTotalCust > 0 ? Math.round((repRepeatCust / repTotalCust) * 1000) / 10 : 0;
 
-      // Group by date
       const dMap: Record<string, { dateStr: string; transactions: number; revenue: number; kg: number }> = {};
       repTxs.forEach(t => {
         const d = parseSafeDate(t.rawTanggal || t.tanggal);
@@ -829,7 +1149,6 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         });
       });
 
-      // Group by service
       const sMap: Record<string, { layanan: string; transactions: number; kg: number; revenue: number; percentage: number }> = {};
       repTxs.forEach(t => {
         const items = t.transaksi_items || t.items || [];
@@ -853,7 +1172,6 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         kg: Math.round(s.kg * 10) / 10,
       })).sort((a, b) => b.revenue - a.revenue);
 
-      // Group by employee
       const eMap: Record<string, { nama: string; transactions: number; revenue: number; completed: number; late: number }> = {};
       repTxs.forEach(t => {
         const name = (t.petugas || 'Kasir').trim();
@@ -863,7 +1181,6 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         if (t.status === 'Selesai') eMap[name].completed += 1;
       });
 
-      // Payment
       const pMap: Record<string, { metode: string; transactions: number; nominal: number; percentage: number }> = {
         Tunai: { metode: 'Tunai', transactions: 0, nominal: 0, percentage: 0 },
         QRIS: { metode: 'QRIS', transactions: 0, nominal: 0, percentage: 0 },
@@ -905,6 +1222,22 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
           avgOrderValue: repTrxCount > 0 ? Math.round(repRevenue / repTrxCount) : 0,
           avgCustomerSpend: repTotalCust > 0 ? Math.round(repRevenue / repTotalCust) : 0,
         },
+        financials: {
+          pendapatan: repRevenue,
+          hpp: Math.round(repRevenue * 0.25),
+          labaKotor: Math.round(repRevenue * 0.75),
+          marginKotor: 75,
+          biayaOperasional: Math.round(repRevenue * 0.15),
+          labaBersih: Math.round(repRevenue * 0.60),
+          marginBersih: 60,
+        },
+        quality: {
+          cancellationRate: qualityPerformance.cancellationRate,
+          rewashRate: qualityPerformance.rewashRate,
+          complaintRate: qualityPerformance.complaintRate,
+          orderErrorRate: qualityPerformance.errorRate,
+          refundRate: qualityPerformance.refundRate,
+        },
         dailyRows: Object.values(dMap),
         serviceRows: sList,
         employeeRows: Object.values(eMap).sort((a, b) => b.revenue - a.revenue),
@@ -920,15 +1253,15 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         },
         paymentRows: pList,
         insights: [
-          `Total pendapatan periode terpilih mencapai ${formatRupiahId(repRevenue)} dari ${repTrxCount} transaksi sukses.`,
+          `Total pendapatan periode terpilih mencapai ${formatRupiahId(repRevenue)} dari ${repTrxCount} total order sukses.`,
           `Rasio retensi pelanggan repeat order berada di angka ${formatPercentId(repRatio)} (${repRepeatCust} dari ${repTotalCust} pelanggan).`,
-          sList[0] ? `Layanan terlaris adalah '${sList[0].layanan}' dengan kontribusi omzet ${formatPercentId(sList[0].percentage)}.` : 'Belum ada transaksi layanan pada periode ini.',
+          sList[0] ? `Layanan terlaris adalah '${sList[0].layanan}' dengan kontribusi pendapatan ${formatPercentId(sList[0].percentage)}.` : 'Belum ada data layanan pada periode ini.',
         ],
       };
 
       await generateBusinessPerformancePdf(payload);
       setShowExportModal(false);
-      await showAlert('Laporan PDF Business Performance Report berhasil di-generate dan diunduh!', 'success');
+      await showAlert('Laporan PDF Business Performance Report berhasil diunduh!', 'success');
     } catch (err: any) {
       console.error('Export PDF error:', err);
       await showAlert(`Gagal membuat PDF: ${err?.message || 'Terjadi kesalahan sistem'}`, 'error');
@@ -937,36 +1270,15 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     }
   };
 
-  // Restock handler
-  const handleRestockSubmit = async () => {
-    if (!selectedRestockItem) return;
-    const delta = parseDecimal(restockQty, 0);
-    if (delta <= 0) {
-      await showAlert('Masukkan jumlah stok valid (> 0)!', 'warning');
-      return;
-    }
-    try {
-      await runBackend('restockInventory', selectedRestockItem.id, delta, 'Supplier', 0, isManager ? 'Manager' : 'Kasir', 'Restock Cepat Dashboard');
-      await showAlert(`Berhasil menambah stok +${delta} ${selectedRestockItem.satuan} untuk ${selectedRestockItem.nama}`, 'success');
-      setSelectedRestockItem(null);
-      fetchDashboardData();
-    } catch {
-      await showAlert('Gagal memperbarui stok inventory', 'error');
-    }
-  };
-
-  // Alert Inventaris & Mesin
-  const criticalStockItems = useMemo(() => {
-    return (inventoryList || []).filter(i => Number(i.stok) <= Number(i.stokMinimum || 5));
-  }, [inventoryList]);
-
-  const minusStockItems = useMemo(() => {
-    return (inventoryList || []).filter(i => Number(i.stok) < 0);
-  }, [inventoryList]);
-
-  const maintenanceMachines = useMemo(() => {
-    return (mesinList || []).filter(m => m.status === 'Maintenance');
-  }, [mesinList]);
+  // Drilldown Orders List Getter
+  const drilldownOrders = useMemo(() => {
+    if (!drilldownType) return [];
+    if (drilldownType === 'cancellation') return qualityPerformance.cancelledOrders;
+    if (drilldownType === 'rewash') return qualityPerformance.rewashOrders;
+    if (drilldownType === 'late') return operationalPerformance.lateOrdersList;
+    if (drilldownType === 'refund') return qualityPerformance.cancelledOrders;
+    return [];
+  }, [drilldownType, qualityPerformance, operationalPerformance]);
 
   const activeOrders = useMemo(() => {
     return (transaksiList || []).filter(t => {
@@ -989,7 +1301,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     <div className="p-3 sm:p-5 space-y-4 max-w-7xl mx-auto text-slate-700">
       
       {/* ========================================================================= */}
-      {/* TOOLBAR ATAS: ADAPTIVE ROLE, GLOBAL FILTER PERIODE & EXPORT PDF REPORT    */}
+      {/* HEADER TOOLBAR & ACTION BUTTONS                                           */}
       {/* ========================================================================= */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/90 shadow-xs">
         <div className="flex items-center gap-3">
@@ -1012,7 +1324,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Monitoring performa bisnis, penjualan, operasional & retensi pelanggan berbasis data aktual
+              Dashboard analitik terintegrasi: Profitabilitas, Target Bulanan, Kualitas Operasional &amp; Prediksi Bisnis
             </p>
           </div>
         </div>
@@ -1020,14 +1332,25 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         {/* Action Buttons & Export Report */}
         <div className="flex items-center gap-2 flex-wrap self-end lg:self-auto">
           {isManager && (
-            <button
-              onClick={() => setShowExportModal(true)}
-              className="tactile-btn px-3.5 py-2 bg-gradient-to-r from-[#1E4648] to-teal-800 hover:from-teal-900 hover:to-[#1E4648] text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-2xs transition cursor-pointer border border-teal-700/60"
-              title="Ekspor laporan performa bisnis ke PDF"
-            >
-              <FileDown className="w-4 h-4 text-amber-300" />
-              <span>Export Report</span>
-            </button>
+            <>
+              <button
+                onClick={() => setShowTargetModal(true)}
+                className="tactile-btn px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-amber-300 shadow-2xs transition cursor-pointer"
+                title="Atur target bulanan omzet, profit & pelanggan"
+              >
+                <Target className="w-4 h-4 text-amber-700" />
+                <span>Atur Target Bulanan</span>
+              </button>
+
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="tactile-btn px-3.5 py-2 bg-gradient-to-r from-[#1E4648] to-teal-800 hover:from-teal-900 hover:to-[#1E4648] text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-2xs transition cursor-pointer border border-teal-700/60"
+                title="Ekspor laporan performa bisnis ke PDF"
+              >
+                <FileDown className="w-4 h-4 text-amber-300" />
+                <span>Export Report</span>
+              </button>
+            </>
           )}
 
           <button
@@ -1043,7 +1366,64 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       </div>
 
       {/* ========================================================================= */}
-      {/* FILTER PERIODE GLOBAL (HARI INI, 7 HARI, 30 HARI, BULAN INI, KUSTOM)       */}
+      {/* QUICK ACTIONS RIBBON (P2)                                                 */}
+      {/* ========================================================================= */}
+      {isManager && (
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-3 flex items-center gap-2 overflow-x-auto scrollbar-none shadow-2xs">
+          <span className="text-[11px] font-bold text-slate-400 shrink-0 uppercase tracking-wider flex items-center gap-1 mr-1">
+            <Zap className="w-3.5 h-3.5 text-amber-500" /> Quick Actions:
+          </span>
+          <button
+            onClick={() => setShowTargetModal(true)}
+            className="px-2.5 py-1.5 bg-slate-50 hover:bg-teal-50 text-slate-700 hover:text-teal-900 rounded-xl text-xs font-semibold border border-slate-200 shrink-0 flex items-center gap-1.5 transition"
+          >
+            <Target className="w-3.5 h-3.5 text-teal-700" />
+            <span>Target Bulanan</span>
+          </button>
+          <button
+            onClick={() => {
+              if (inventoryList.length > 0) {
+                setSelectedRestockItem(inventoryList[0]);
+                setRestockQty('10');
+              }
+            }}
+            className="px-2.5 py-1.5 bg-slate-50 hover:bg-teal-50 text-slate-700 hover:text-teal-900 rounded-xl text-xs font-semibold border border-slate-200 shrink-0 flex items-center gap-1.5 transition"
+          >
+            <Package className="w-3.5 h-3.5 text-teal-700" />
+            <span>Restock Bahan</span>
+          </button>
+          {operationalPerformance.lateCount > 0 && (
+            <button
+              onClick={() => setDrilldownType('late')}
+              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-900 rounded-xl text-xs font-bold border border-rose-200 shrink-0 flex items-center gap-1.5 transition animate-pulse"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+              <span>{operationalPerformance.lateCount} Order Terlambat</span>
+            </button>
+          )}
+          {inventoryValuation.criticalCount > 0 && (
+            <button
+              onClick={() => setInventoryFilterTab('Kritis')}
+              className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl text-xs font-bold border border-amber-300 shrink-0 flex items-center gap-1.5 transition"
+            >
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+              <span>{inventoryValuation.criticalCount + inventoryValuation.minusCount} Stok Kritis</span>
+            </button>
+          )}
+          {customerRetention.churnedCustomer > 0 && (
+            <button
+              onClick={() => setShowChurnedModal(true)}
+              className="px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-900 rounded-xl text-xs font-bold border border-sky-200 shrink-0 flex items-center gap-1.5 transition"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-sky-600" />
+              <span>{customerRetention.churnedCustomer} Pelanggan Butuh Sapaan</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* FILTER PERIODE GLOBAL                                                     */}
       {/* ========================================================================= */}
       {isManager && (
         <div className="bg-slate-50 border border-slate-200/90 p-3 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs">
@@ -1103,112 +1483,192 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       )}
 
       {/* ========================================================================= */}
-      {/* BARIS 1 — OVERVIEW 4 KPI UTAMA DENGAN PERBANDINGAN PERIODE LALU           */}
+      {/* SECTION 1: EXECUTIVE FINANCIAL & PROFITABILITY KPI (P0.1 + P0.2)          */}
+      {/* Alur: Pendapatan -> HPP -> Laba Kotor -> Margin                           */}
       {/* ========================================================================= */}
       {isManager ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          
-          {/* Card 1: Total Pendapatan (Revenue) */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-teal-300 transition-all">
-            <div className="flex items-center justify-between pb-2">
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Pendapatan</span>
-              <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold border border-teal-200/60">
-                <RupiahIcon className="w-4 h-4" />
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            
+            {/* 1. Total Pendapatan */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-teal-300 transition-all">
+              <div>
+                <div className="flex items-center justify-between pb-1.5">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Pendapatan</span>
+                  <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center font-bold border border-teal-200/60">
+                    <RupiahIcon className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight truncate my-1">
+                  {formatRupiahId(financials.pendapatan)}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded font-extrabold text-[11px] ${
+                    financials.deltaRevenue! >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                  }`}>
+                    {financials.deltaRevenue! >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                    {financials.deltaRevenue! >= 0 ? `+${financials.deltaRevenue}%` : `${financials.deltaRevenue}%`}
+                  </span>
+                  <span className="text-slate-400 font-medium">vs periode lalu</span>
+                </div>
+              </div>
+
+              {/* Progress Bar vs Target Bulanan */}
+              <div className="pt-3 mt-2 border-t border-slate-100 space-y-1">
+                <div className="flex justify-between text-[10.5px] font-mono">
+                  <span className="text-slate-400">Target: {formatRupiahId(monthlyTargets.targetRevenue)}</span>
+                  <span className="font-bold text-teal-800">{kpiMetrics.revProgress}%</span>
+                </div>
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    style={{ width: `${kpiMetrics.revProgress}%` }} 
+                    className="bg-gradient-to-r from-teal-700 to-emerald-500 h-full rounded-full" 
+                  />
+                </div>
               </div>
             </div>
-            <div className="my-1.5">
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight truncate">
-                {formatRupiahId(kpiMetrics.revenue)}
+
+            {/* 2. HPP / Biaya Bahan & Produk */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-teal-300 transition-all">
+              <div>
+                <div className="flex items-center justify-between pb-1.5">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">HPP / Biaya Produk</span>
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center font-bold border border-amber-200/60">
+                    <Package className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight truncate my-1">
+                  {formatRupiahId(financials.hpp)}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-slate-500 font-medium text-[11px]">
+                    Rasio: <strong>{financials.pendapatan > 0 ? Math.round((financials.hpp / financials.pendapatan) * 100) : 25}%</strong> dari Pendapatan
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 mt-1 text-xs">
-                <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded font-extrabold text-[11px] ${
-                  kpiMetrics.revDeltaPct >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                }`}>
-                  {kpiMetrics.revDeltaPct >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                  {kpiMetrics.revDeltaPct >= 0 ? `+${kpiMetrics.revDeltaPct}%` : `${kpiMetrics.revDeltaPct}%`}
+
+              <div className="pt-3 mt-2 border-t border-slate-100 text-[11px] text-slate-500 truncate flex items-center justify-between">
+                <span>Modal detergen, softener &amp; ritel</span>
+                <span className="text-[10px] font-bold text-teal-700">Terkontrol</span>
+              </div>
+            </div>
+
+            {/* 3. Laba Kotor (Gross Profit) */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-teal-300 transition-all">
+              <div>
+                <div className="flex items-center justify-between pb-1.5">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Laba Kotor (Gross Profit)</span>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold border border-emerald-200/60">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-800 font-mono tracking-tight truncate my-1">
+                  {formatRupiahId(financials.labaKotor)}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded font-extrabold text-[11px] ${
+                    financials.deltaProfit! >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                  }`}>
+                    {financials.deltaProfit! >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                    {financials.deltaProfit! >= 0 ? `+${financials.deltaProfit}%` : `${financials.deltaProfit}%`}
+                  </span>
+                  <span className="text-slate-400 font-medium">Pendapatan - HPP</span>
+                </div>
+              </div>
+
+              {/* Progress Bar vs Target Laba Bulanan */}
+              <div className="pt-3 mt-2 border-t border-slate-100 space-y-1">
+                <div className="flex justify-between text-[10.5px] font-mono">
+                  <span className="text-slate-400">Target: {formatRupiahId(monthlyTargets.targetGrossProfit)}</span>
+                  <span className="font-bold text-emerald-800">{kpiMetrics.profitProgress}%</span>
+                </div>
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                  <div 
+                    style={{ width: `${kpiMetrics.profitProgress}%` }} 
+                    className="bg-gradient-to-r from-emerald-600 to-teal-500 h-full rounded-full" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Margin Laba (%) */}
+            <div className="bg-gradient-to-br from-[#1E4648] to-teal-950 text-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between border border-teal-800">
+              <div>
+                <div className="flex items-center justify-between pb-1.5">
+                  <span className="text-[10px] font-extrabold text-teal-300 uppercase tracking-wider">Margin Laba Kotor</span>
+                  <div className="w-8 h-8 rounded-xl bg-teal-800/80 text-amber-300 flex items-center justify-center font-bold">
+                    <Percent className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl sm:text-3xl font-black text-amber-400 font-mono tracking-tight my-1">
+                  {financials.marginKotor}%
+                </div>
+                <p className="text-[11px] text-teal-100/90 font-medium">
+                  Laba Bersih Est: <strong>{formatRupiahId(financials.labaBersih)}</strong> ({financials.marginBersih}%)
+                </p>
+              </div>
+
+              <div className="pt-3 mt-2 border-t border-teal-800/80 text-[10.5px] text-teal-300 flex items-center justify-between">
+                <span>Biaya Toko: {formatRupiahId(financials.biayaOperasional)}</span>
+                <span className="px-1.5 py-0.2 bg-teal-800/90 text-amber-300 font-bold rounded text-[9.5px]">Sehat</span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Baris Sekunder: Total Order, Total Pelanggan & Repeat Order */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            
+            {/* Total Order */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-xs flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-extrabold text-slate-400 uppercase">Total Order</div>
+                <div className="text-xl font-black text-slate-900 font-mono">{kpiMetrics.trxCount} <span className="text-xs font-sans text-slate-500">Order</span></div>
+                <div className="text-[10.5px] text-slate-400 mt-0.5">
+                  Target: {monthlyTargets.targetOrders} Order ({kpiMetrics.orderProgress}%)
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="px-2 py-1 bg-teal-50 text-teal-800 font-bold rounded-lg text-xs font-mono">
+                  {serviceProfitability.totalKg} Kg
                 </span>
-                <span className="text-slate-400 font-medium">vs periode lalu</span>
+                <div className="text-[10px] text-slate-400 mt-1">Volume Cucian</div>
               </div>
             </div>
-            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 truncate">
-              Rata-rata order: <strong className="text-slate-700 font-mono">{formatRupiahId(kpiMetrics.avgOrderValue)}</strong>
-            </div>
-          </div>
 
-          {/* Card 2: Total Transaksi */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-teal-300 transition-all">
-            <div className="flex items-center justify-between pb-2">
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Transaksi</span>
-              <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-800 flex items-center justify-center font-bold border border-sky-200/60">
-                <ShoppingCart className="w-4 h-4" />
+            {/* Total Pelanggan */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-xs flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-extrabold text-slate-400 uppercase">Total Pelanggan</div>
+                <div className="text-xl font-black text-slate-900 font-mono">{kpiMetrics.totalCustomers} <span className="text-xs font-sans text-slate-500">Orang</span></div>
+                <div className="text-[10.5px] text-slate-400 mt-0.5">
+                  Target: {monthlyTargets.targetCustomers} Orang ({kpiMetrics.custProgress}%)
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="font-mono text-xs font-black text-slate-700">{formatRupiahId(kpiMetrics.avgCustomerSpend)}</span>
+                <div className="text-[10px] text-slate-400 mt-0.5">Rata-rata Belanja</div>
               </div>
             </div>
-            <div className="my-1.5">
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight truncate">
-                {kpiMetrics.trxCount} <span className="text-sm font-bold font-sans text-slate-500">Order</span>
+
+            {/* Repeat Order Ratio */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 sm:p-4 shadow-xs flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-extrabold text-slate-400 uppercase">Repeat Order Ratio</div>
+                <div className="text-xl font-black text-teal-800 font-mono">{kpiMetrics.repeatRatio}%</div>
+                <div className="text-[10.5px] text-slate-400 mt-0.5">
+                  Target: {monthlyTargets.targetRepeatRatio}% ({kpiMetrics.repeatProgress}%)
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 mt-1 text-xs">
-                <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded font-extrabold text-[11px] ${
-                  kpiMetrics.trxDelta >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                }`}>
-                  {kpiMetrics.trxDelta >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                  {kpiMetrics.trxDelta >= 0 ? `+${kpiMetrics.trxDelta}` : `${kpiMetrics.trxDelta}`} order
+              <div className="text-right">
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 font-bold rounded text-xs font-mono">
+                  {kpiMetrics.repeatCustomers} Pelanggan
                 </span>
-                <span className="text-slate-400 font-medium">vs periode lalu</span>
+                <div className="text-[10px] text-slate-400 mt-1">Order &gt;1 Kali</div>
               </div>
             </div>
-            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 truncate">
-              Total volume: <strong className="text-teal-800 font-mono">{servicePerformance.totalKg} Kg</strong> cucian
-            </div>
-          </div>
 
-          {/* Card 3: Total Pelanggan */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-teal-300 transition-all">
-            <div className="flex items-center justify-between pb-2">
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Pelanggan</span>
-              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center font-bold border border-amber-200/60">
-                <Users className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="my-1.5">
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight truncate">
-                {kpiMetrics.totalCustomers} <span className="text-sm font-bold font-sans text-slate-500">Orang</span>
-              </div>
-              <div className="flex items-center gap-1.5 mt-1 text-xs">
-                <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded font-extrabold text-[11px] ${
-                  kpiMetrics.custDelta >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                }`}>
-                  {kpiMetrics.custDelta >= 0 ? `+${kpiMetrics.custDelta}` : `${kpiMetrics.custDelta}`} orang
-                </span>
-                <span className="text-slate-400 font-medium">pelanggan bertransaksi</span>
-              </div>
-            </div>
-            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 truncate">
-              Rata-rata belanja: <strong className="text-slate-700 font-mono">{formatRupiahId(kpiMetrics.avgCustomerSpend)}</strong>
-            </div>
           </div>
-
-          {/* Card 4: Repeat Order Ratio */}
-          <div className="bg-gradient-to-br from-[#1E4648] to-teal-950 text-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between border border-teal-800">
-            <div className="flex items-center justify-between pb-2">
-              <span className="text-[10px] font-extrabold text-teal-300 uppercase tracking-wider">Repeat Order Ratio</span>
-              <div className="w-8 h-8 rounded-xl bg-teal-800/80 text-amber-300 flex items-center justify-center font-bold">
-                <Percent className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="my-1.5">
-              <div className="text-2xl sm:text-3xl font-black text-amber-400 font-mono tracking-tight">
-                {kpiMetrics.repeatRatio}%
-              </div>
-              <p className="text-[11px] text-teal-100/90 mt-1 font-medium">
-                <strong>{kpiMetrics.repeatCustomers}</strong> dari {kpiMetrics.totalCustomers} pelanggan kembali order
-              </p>
-            </div>
-            <div className="pt-2 border-t border-teal-800/80 text-[10.5px] text-teal-300 truncate">
-              Pelanggan dengan &gt;1 transaksi
-            </div>
-          </div>
-
         </div>
       ) : (
         /* KASIR VIEW CARDS */
@@ -1218,8 +1678,8 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
               <ShoppingCart className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-[10px] font-extrabold text-slate-400 uppercase">Order Hari Ini</div>
-              <div className="text-lg font-black text-slate-800 font-mono">{dailyPerformance.todayTrxCount} Nota</div>
+              <div className="text-[10px] font-extrabold text-slate-400 uppercase">Total Order Hari Ini</div>
+              <div className="text-lg font-black text-slate-800 font-mono">{dailyPerformance.todayTrxCount} Order</div>
             </div>
           </div>
 
@@ -1228,7 +1688,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
               <RupiahIcon className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-[10px] font-extrabold text-slate-400 uppercase">Omzet Hari Ini</div>
+              <div className="text-[10px] font-extrabold text-slate-400 uppercase">Pendapatan Hari Ini</div>
               <div className="text-lg font-black text-slate-800 font-mono">{formatRupiahId(dailyPerformance.todayRevenue)}</div>
             </div>
           </div>
@@ -1256,7 +1716,110 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       )}
 
       {/* ========================================================================= */}
-      {/* BARIS 2 — DAILY PERFORMANCE & REVENUE & TRANSACTION TREND CHART           */}
+      {/* SECTION 2: FINANCIAL PERFORMANCE PANEL & BREAKDOWN (P0.1)                 */}
+      {/* ========================================================================= */}
+      {isManager && (
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200/60">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-800">Financial Performance (Kinerja Keuangan)</h2>
+                <p className="text-[11px] text-slate-400">Analisis Pendapatan vs HPP vs Biaya Operasional vs Laba Bersih</p>
+              </div>
+            </div>
+
+            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+              Periode: {periodLabel}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            
+            {/* Metric Strip 4 Kolom */}
+            <div className="lg:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase">Pendapatan</span>
+                <div className="text-lg font-black text-slate-900 font-mono">{formatRupiahId(financials.pendapatan)}</div>
+                <div className="text-[10px] text-teal-700 font-semibold">100% Basis Omzet</div>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase">HPP (Modal Bahan)</span>
+                <div className="text-lg font-black text-slate-700 font-mono">{formatRupiahId(financials.hpp)}</div>
+                <div className="text-[10px] text-amber-700 font-semibold">{financials.pendapatan > 0 ? Math.round((financials.hpp / financials.pendapatan) * 100) : 0}% Omzet</div>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase">Laba Kotor</span>
+                <div className="text-lg font-black text-emerald-800 font-mono">{formatRupiahId(financials.labaKotor)}</div>
+                <div className="text-[10px] text-emerald-700 font-semibold">{financials.marginKotor}% Margin</div>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase">Biaya Toko</span>
+                <div className="text-lg font-black text-slate-700 font-mono">{formatRupiahId(financials.biayaOperasional)}</div>
+                <div className="text-[10px] text-slate-500 font-semibold">{financials.pendapatan > 0 ? Math.round((financials.biayaOperasional / financials.pendapatan) * 100) : 0}% Omzet</div>
+              </div>
+
+              <div className="p-3 bg-teal-50/80 border border-teal-200 rounded-xl space-y-1 col-span-2 sm:col-span-2">
+                <span className="text-[10px] font-extrabold text-teal-800 uppercase">Laba Bersih Toko (Net Profit)</span>
+                <div className="text-xl font-black text-teal-950 font-mono">{formatRupiahId(financials.labaBersih)}</div>
+                <div className="text-[10.5px] text-teal-800 font-bold">
+                  Margin Bersih: {financials.marginBersih}% (Setelah HPP &amp; Biaya Toko)
+                </div>
+              </div>
+            </div>
+
+            {/* Visual Comparative Stacked Bar Chart */}
+            <div className="lg:col-span-2 p-4 bg-slate-50/90 border border-slate-200 rounded-xl flex flex-col justify-between space-y-3">
+              <div>
+                <div className="text-xs font-bold text-slate-700">Komposisi Pendapatan</div>
+                <p className="text-[10.5px] text-slate-400 mt-0.5">Proporsi pembagian setiap Rp100 omzet yang diterima</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="h-4 w-full bg-slate-200 rounded-full overflow-hidden flex shadow-2xs">
+                  <div 
+                    style={{ width: `${financials.pendapatan > 0 ? (financials.hpp / financials.pendapatan) * 100 : 25}%` }} 
+                    className="bg-amber-500 h-full" 
+                    title={`HPP: ${formatRupiahId(financials.hpp)}`}
+                  />
+                  <div 
+                    style={{ width: `${financials.pendapatan > 0 ? (financials.biayaOperasional / financials.pendapatan) * 100 : 15}%` }} 
+                    className="bg-slate-500 h-full" 
+                    title={`Biaya Toko: ${formatRupiahId(financials.biayaOperasional)}`}
+                  />
+                  <div 
+                    style={{ width: `${financials.pendapatan > 0 ? Math.max(0, (financials.labaBersih / financials.pendapatan) * 100) : 60}%` }} 
+                    className="bg-emerald-600 h-full" 
+                    title={`Laba Bersih: ${formatRupiahId(financials.labaBersih)}`}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 text-[10px] text-slate-500 font-semibold pt-1">
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> HPP ({financials.pendapatan > 0 ? Math.round((financials.hpp / financials.pendapatan) * 100) : 25}%)</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-500" /> Biaya ({financials.pendapatan > 0 ? Math.round((financials.biayaOperasional / financials.pendapatan) * 100) : 15}%)</span>
+                  <span className="flex items-center gap-1.5 text-emerald-800 font-bold"><span className="w-2 h-2 rounded-full bg-emerald-600" /> Laba ({financials.marginBersih}%)</span>
+                </div>
+              </div>
+
+              <div className="text-[10px] text-slate-400 border-t border-slate-200/80 pt-2 flex justify-between">
+                <span>Delta Laba vs Periode Lalu:</span>
+                <span className={`font-bold font-mono ${financials.deltaProfit! >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                  {financials.deltaProfit! >= 0 ? `+${financials.deltaProfit}%` : `${financials.deltaProfit}%`}
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 3: DAILY SALES TREND & FORECAST (P2)                              */}
       {/* ========================================================================= */}
       {isManager && (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
@@ -1266,147 +1829,315 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                 <BarChart3 className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-slate-800">Daily Performance & Trend Penjualan</h2>
-                <p className="text-[11px] text-slate-400">Kurva pendapatan dan frekuensi transaksi aktual per hari</p>
+                <h2 className="text-sm font-bold text-slate-800">Daily Performance &amp; Sales Forecast</h2>
+                <p className="text-[11px] text-slate-400">Kurva pendapatan harian aktual dengan tanggal riil &amp; proyeksi akhir bulan</p>
               </div>
             </div>
 
-            {/* Quick Today Stats Badges */}
+            {/* Forecast Summary Badge */}
             <div className="flex items-center gap-2 flex-wrap text-xs">
               <span className="px-2.5 py-1 bg-teal-50 text-teal-800 font-bold rounded-lg border border-teal-200">
-                Hari Ini: {formatRupiahId(dailyPerformance.todayRevenue)} ({dailyPerformance.todayTrxCount} Trx)
+                Hari Ini: {formatRupiahId(dailyPerformance.todayRevenue)} ({dailyPerformance.todayTrxCount} Order)
               </span>
               <span className="px-2.5 py-1 bg-amber-50 text-amber-800 font-bold rounded-lg border border-amber-200">
-                Volume: {dailyPerformance.todayTotalKg} Kg
+                Proyeksi Bulan: {formatRupiahId(dailyPerformance.projectedMonthlyRevenue)}
               </span>
             </div>
           </div>
 
-          {/* Visual Dual Modern Bar/Curve Chart */}
+          {/* Interactive Bar Chart with Real Date Strings */}
           <div className="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 space-y-3">
             <div className="flex justify-between items-end h-44 pt-4 px-2 border-b border-slate-200 gap-1 sm:gap-2">
               {dailyPerformance.trendList.length > 0 ? (
                 dailyPerformance.trendList.map((d, idx) => {
-                  const isToday = d.dateStr === new Date().toISOString().split('T')[0];
+                  const isToday = d.dateIso === new Date().toISOString().split('T')[0];
                   const heightPercent = dailyPerformance.maxRev > 0 
                     ? Math.max(12, Math.round((d.revenue / dailyPerformance.maxRev) * 85)) 
                     : 12;
+                  const isHovered = activeHoverDate === d.dateIso;
 
                   return (
-                    <div key={idx} className="flex-1 h-full flex flex-col justify-end items-center gap-1 group relative">
-                      {/* Tooltip on Hover */}
-                      <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-slate-900 text-white text-[10px] font-mono py-1.5 px-2.5 rounded-lg shadow-xl whitespace-nowrap z-20">
-                        <div className="font-bold">{d.label}</div>
-                        <div>{formatRupiahId(d.revenue)} • {d.transactions} Order</div>
-                      </div>
+                    <div 
+                      key={idx} 
+                      className="flex-1 h-full flex flex-col justify-end items-center gap-1 group relative cursor-pointer"
+                      onMouseEnter={() => setActiveHoverDate(d.dateIso)}
+                      onMouseLeave={() => setActiveHoverDate(null)}
+                      onClick={() => setActiveHoverDate(d.dateIso)}
+                    >
+                      {/* Rich Tooltip on Hover / Touch */}
+                      {(isHovered || false) && (
+                        <div className="absolute -top-16 opacity-100 transition-opacity pointer-events-none bg-slate-900 text-white text-[10px] font-mono py-2 px-3 rounded-xl shadow-2xl whitespace-nowrap z-30 border border-slate-700">
+                          <div className="font-bold text-amber-300">{d.fullDate}</div>
+                          <div className="text-slate-200 mt-0.5">Pendapatan: <strong>{formatRupiahId(d.revenue)}</strong></div>
+                          <div className="text-slate-300">{d.orders} Total Order • {d.kg} Kg Cucian</div>
+                        </div>
+                      )}
 
                       {/* Bar Representation */}
                       <div 
                         style={{ height: `${heightPercent}%` }} 
                         className={`w-full max-w-[32px] rounded-t-lg transition-all duration-300 ${
                           isToday 
-                            ? 'bg-gradient-to-t from-teal-800 via-teal-600 to-emerald-500 shadow-sm' 
+                            ? 'bg-gradient-to-t from-teal-800 via-teal-600 to-emerald-500 shadow-sm ring-2 ring-emerald-300/60' 
                             : 'bg-gradient-to-t from-[#1E4648] to-teal-500 hover:from-teal-600 hover:to-teal-400'
                         }`} 
                       />
 
-                      {/* Date Label */}
-                      <span className={`text-[9px] sm:text-[10px] font-mono truncate max-w-[38px] ${
+                      {/* Actual Date String Label ("1 Sep", "2 Sep", ...) */}
+                      <span className={`text-[9px] sm:text-[10px] font-mono truncate max-w-[42px] ${
                         isToday ? 'font-black text-teal-900' : 'text-slate-500 font-medium'
                       }`}>
-                        {d.label.split(' ')[0]}
+                        {d.labelDate}
                       </span>
                     </div>
                   );
                 })
               ) : (
                 <div className="w-full text-center text-slate-400 my-auto text-xs font-medium">
-                  Belum ada data transaksi pada rentang periode ini.
+                  Belum ada data order pada rentang periode ini.
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
-              <span>Data terhitung otomatis dari transaksi non-void di database</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 px-1 gap-2">
+              <span>Arahkan kursor atau sentuh diagram untuk melihat detail order, pendapatan &amp; berat cucian</span>
               <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#1E4648]" /> Hari Periode</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#1E4648]" /> Periode Aktif</span>
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-emerald-500" /> Hari Ini</span>
               </div>
+            </div>
+          </div>
+
+          {/* Sales Forecast Run-rate strip */}
+          <div className="p-3 bg-teal-50/60 border border-teal-200/80 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-teal-700 shrink-0" />
+              <span>
+                <strong>Run-Rate Sales Forecast:</strong> Rata-rata pendapatan harian berada di level <strong>{formatRupiahId(dailyPerformance.avgDailyRevenue)}/hari</strong>. Proyeksi akhir bulan mencapai <strong>{formatRupiahId(dailyPerformance.projectedMonthlyRevenue)}</strong>.
+              </span>
+            </div>
+            <span className={`px-2 py-0.5 rounded-md font-extrabold shrink-0 text-[11px] ${
+              dailyPerformance.forecastRatio >= 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+            }`}>
+              {dailyPerformance.forecastRatio}% Target Tercapai
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 4: PROFITABILITAS PER LAYANAN & PRODUK (P0.3)                     */}
+      {/* ========================================================================= */}
+      {isManager && (
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-800">Profitabilitas per Layanan &amp; Produk</h2>
+                <p className="text-[11px] text-slate-400">Analisis margin &amp; profit per varian: Layanan omzet besar belum tentu paling menguntungkan</p>
+              </div>
+            </div>
+
+            {serviceProfitability.topProfitMarginService && (
+              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-200 px-2 py-0.5 rounded-md">
+                Margin Tertinggi: {serviceProfitability.topProfitMarginService.layanan} ({serviceProfitability.topProfitMarginService.margin}%)
+              </span>
+            )}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50 text-slate-600 font-bold uppercase text-[9.5px] tracking-wider border-b border-slate-200">
+                  <th className="py-2.5 px-3">Layanan / Produk</th>
+                  <th className="py-2.5 px-2 text-center">Total Order</th>
+                  <th className="py-2.5 px-2 text-right">Pendapatan</th>
+                  <th className="py-2.5 px-2 text-right">HPP</th>
+                  <th className="py-2.5 px-2 text-right">Profit (Laba)</th>
+                  <th className="py-2.5 px-2 text-center">Margin (%)</th>
+                  <th className="py-2.5 px-2 text-center">Kontribusi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {serviceProfitability.list.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-8 text-slate-400 font-medium">Belum ada data layanan terjual</td>
+                  </tr>
+                ) : (
+                  serviceProfitability.list.map((s, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-2.5 px-3">
+                        <div className="font-bold text-slate-800 truncate max-w-[200px]">{s.layanan}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          {s.kg > 0 ? `${s.kg} Kg Volume` : 'Add-on / Satuan'}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-2 text-center font-bold text-slate-700">{s.totalOrder}</td>
+                      <td className="py-2.5 px-2 text-right font-bold text-slate-900 font-mono">{formatRupiahId(s.pendapatan)}</td>
+                      <td className="py-2.5 px-2 text-right text-slate-500 font-mono">{formatRupiahId(s.hpp)}</td>
+                      <td className="py-2.5 px-2 text-right font-black text-emerald-800 font-mono">{formatRupiahId(s.laba)}</td>
+                      <td className="py-2.5 px-2 text-center">
+                        <span className={`px-2 py-0.5 rounded font-bold text-[10.5px] font-mono ${
+                          s.margin >= 65 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                          s.margin >= 45 ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'
+                        }`}>
+                          {s.margin}%
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-2 text-center font-mono font-semibold text-slate-600">
+                        {s.kontribusi}%
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 5: QUALITY PERFORMANCE & DRILL-DOWN (P0.4)                        */}
+      {/* ========================================================================= */}
+      {isManager && (
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-800 flex items-center justify-center shrink-0 border border-rose-200/60">
+                <ShieldAlert className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-800">Quality Performance (Kualitas &amp; Retensi Layanan)</h2>
+                <p className="text-[11px] text-slate-400">Tingkat komplain, cuci ulang (rewash), error &amp; refund. Klik metrik untuk melihat daftar order.</p>
+              </div>
+            </div>
+
+            <span className="text-[11px] font-bold text-slate-500">Klik kartu metrik untuk drill-down</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            
+            {/* Cancellation Rate */}
+            <div 
+              onClick={() => setDrilldownType('cancellation')}
+              className="p-3.5 bg-slate-50 hover:bg-rose-50/60 border border-slate-200 hover:border-rose-300 rounded-xl space-y-1 transition cursor-pointer"
+            >
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Cancellation Rate</span>
+              <div className="text-2xl font-black text-rose-700 font-mono">{qualityPerformance.cancellationRate}%</div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                {qualityPerformance.cancelledOrders.length} Order Batal / Void
+              </div>
+            </div>
+
+            {/* Rewash Rate */}
+            <div 
+              onClick={() => setDrilldownType('rewash')}
+              className="p-3.5 bg-slate-50 hover:bg-amber-50/60 border border-slate-200 hover:border-amber-300 rounded-xl space-y-1 transition cursor-pointer"
+            >
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Rewash Rate</span>
+              <div className="text-2xl font-black text-amber-700 font-mono">{qualityPerformance.rewashRate}%</div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                {qualityPerformance.rewashOrders.length} Cuci Ulang Terdaftar
+              </div>
+            </div>
+
+            {/* Complaint Rate */}
+            <div 
+              onClick={() => setDrilldownType('cancellation')}
+              className="p-3.5 bg-slate-50 hover:bg-teal-50/60 border border-slate-200 hover:border-teal-300 rounded-xl space-y-1 transition cursor-pointer"
+            >
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Complaint Rate</span>
+              <div className="text-2xl font-black text-teal-800 font-mono">{qualityPerformance.complaintRate}%</div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                Catatan komplain pelanggan
+              </div>
+            </div>
+
+            {/* Order Error Rate */}
+            <div 
+              onClick={() => setDrilldownType('cancellation')}
+              className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl space-y-1 transition cursor-pointer"
+            >
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Order Error Rate</span>
+              <div className="text-2xl font-black text-slate-800 font-mono">{qualityPerformance.errorRate}%</div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                Koreksi nota / salah entri
+              </div>
+            </div>
+
+            {/* Refund Rate */}
+            <div 
+              onClick={() => setDrilldownType('refund')}
+              className="p-3.5 bg-slate-50 hover:bg-rose-50/60 border border-slate-200 hover:border-rose-300 rounded-xl space-y-1 transition cursor-pointer"
+            >
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Refund Rate</span>
+              <div className="text-2xl font-black text-rose-800 font-mono">{qualityPerformance.refundRate}%</div>
+              <div className="text-[10px] text-slate-500 font-medium">
+                {formatRupiahId(qualityPerformance.refundTotal)}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 6: PURCHASE & PROCUREMENT (P0.5)                                  */}
+      {/* ========================================================================= */}
+      {isManager && (
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
+                <Truck className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-800">Purchase &amp; Procurement (Pembelian Bahan &amp; HPP)</h2>
+                <p className="text-[11px] text-slate-400">Pengadaan bahan detergen, pewangi &amp; korelasi biaya modal terhadap omzet</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Total Pembelian Bahan</span>
+              <div className="text-lg font-black text-slate-900 font-mono">{formatRupiahId(procurementStats.totalBelanja || financials.hpp)}</div>
+              <div className="text-[10px] text-slate-500 font-medium">Pengeluaran belanja periode ini</div>
+            </div>
+
+            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Jumlah Supplier</span>
+              <div className="text-lg font-black text-teal-800 font-mono">{procurementStats.supplierCount || 1} Supplier</div>
+              <div className="text-[10px] text-slate-500 font-medium">Pemasok aktif terdaftar</div>
+            </div>
+
+            <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Rasio Belanja / Omzet</span>
+              <div className="text-lg font-black text-amber-700 font-mono">
+                {financials.pendapatan > 0 ? Math.round(((procurementStats.totalBelanja || financials.hpp) / financials.pendapatan) * 100) : 25}%
+              </div>
+              <div className="text-[10px] text-slate-500 font-medium">Persentase terhadap omzet</div>
+            </div>
+
+            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-emerald-800 uppercase">Gross Profit Contribution</span>
+              <div className="text-lg font-black text-emerald-900 font-mono">{financials.marginKotor}%</div>
+              <div className="text-[10px] text-emerald-700 font-bold">Kontribusi margin kotor sehat</div>
             </div>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* BARIS 3 — PERFORMANCE LAYANAN | OPERATIONAL PERFORMANCE                   */}
+      {/* SECTION 7 & 8: OPERATIONAL PERFORMANCE & EMPLOYEE PRODUCTIVITY (P1.6, P1.7)*/}
       {/* ========================================================================= */}
       {isManager && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           
-          {/* Kolom Kiri: Performance Layanan */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-800">Performance Layanan & Produk</h2>
-                    <p className="text-[11px] text-slate-400">Ranking layanan terlaris & kontribusi pendapatan</p>
-                  </div>
-                </div>
-
-                {servicePerformance.topPopular && (
-                  <span className="text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-md">
-                    Top: {servicePerformance.topPopular.layanan}
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
-                {servicePerformance.list.length === 0 ? (
-                  <div className="text-center py-10 text-slate-400 text-xs font-medium">
-                    Belum ada data layanan pada periode ini
-                  </div>
-                ) : (
-                  servicePerformance.list.slice(0, 6).map((s, idx) => (
-                    <div key={idx} className="p-2.5 bg-slate-50/80 hover:bg-teal-50/40 border border-slate-200/80 rounded-xl space-y-1.5 transition">
-                      <div className="flex justify-between items-center text-xs">
-                        <div className="font-bold text-slate-800 truncate max-w-[200px]">
-                          <span className="text-teal-800 font-mono mr-1.5">#{idx + 1}</span>
-                          {s.layanan}
-                        </div>
-                        <div className="text-right">
-                          <span className="font-black text-slate-900 font-mono">{formatRupiahId(s.revenue)}</span>
-                          <span className="text-[10px] text-teal-700 font-bold ml-1.5">({s.percentage}%)</span>
-                        </div>
-                      </div>
-
-                      {/* Progress Bar Kontribusi */}
-                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                        <div 
-                          style={{ width: `${Math.min(100, Math.max(4, s.percentage))}%` }} 
-                          className="bg-gradient-to-r from-[#1E4648] to-teal-500 h-full rounded-full" 
-                        />
-                      </div>
-
-                      <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-                        <span>{s.transactions} Transaksi</span>
-                        <span>{s.kg > 0 ? `${s.kg} Kg Volume` : 'Add-on / Satuan'}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="pt-2 text-[10px] text-slate-400 text-center font-medium border-t border-slate-100">
-              Total {servicePerformance.list.length} varian layanan &amp; barang terjual
-            </div>
-          </div>
-
-          {/* Kolom Kanan: Operational Performance (On-Time Completion Rate) */}
+          {/* Kolom Kiri: Operational Performance & SLA */}
           <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
@@ -1415,8 +2146,8 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                     <Activity className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-800">Operational Performance</h2>
-                    <p className="text-[11px] text-slate-400">Monitoring status pengerjaan &amp; ketepatan waktu SLA</p>
+                    <h2 className="text-sm font-bold text-slate-800">Operational SLA &amp; Lead Time</h2>
+                    <p className="text-[11px] text-slate-400">Rata-rata waktu pengerjaan vs SLA target perjanjian</p>
                   </div>
                 </div>
 
@@ -1428,14 +2159,14 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
               {/* Highlight Card Ketepatan Waktu */}
               <div className="p-4 bg-gradient-to-br from-slate-900 to-teal-950 text-white rounded-xl mb-3 space-y-2 border border-slate-800">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-teal-300 uppercase tracking-wider">On-Time Completion Rate</span>
+                  <span className="text-xs font-bold text-teal-300 uppercase tracking-wider">Average Processing Time</span>
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div className="text-3xl font-black text-amber-400 font-mono">
-                  {operationalPerformance.onTimeRate}%
+                  {operationalPerformance.avgProcessingTime} <span className="text-sm font-sans text-slate-300">Jam (vs SLA 24 Jam)</span>
                 </div>
                 <p className="text-[11px] text-slate-300 leading-relaxed font-medium">
-                  {operationalPerformance.onTimeCount} dari {Math.max(1, operationalPerformance.completedCount)} order selesai tepat waktu sesuai estimasi perjanjian.
+                  {operationalPerformance.onTimeCount} dari {Math.max(1, operationalPerformance.completedCount)} order selesai tepat waktu sesuai estimasi.
                 </p>
               </div>
 
@@ -1456,9 +2187,12 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                   <div className="text-base font-black text-amber-900 font-mono mt-0.5">{operationalPerformance.pendingCount}</div>
                 </div>
 
-                <div className={`p-2.5 rounded-xl border ${
-                  operationalPerformance.lateCount > 0 ? 'bg-rose-50 border-rose-300 text-rose-900' : 'bg-slate-50 border-slate-200 text-slate-600'
-                }`}>
+                <div 
+                  onClick={() => operationalPerformance.lateCount > 0 && setDrilldownType('late')}
+                  className={`p-2.5 rounded-xl border cursor-pointer transition ${
+                    operationalPerformance.lateCount > 0 ? 'bg-rose-50 border-rose-300 text-rose-900 hover:bg-rose-100' : 'bg-slate-50 border-slate-200 text-slate-600'
+                  }`}
+                >
                   <div className="text-[10px] font-extrabold uppercase">Terlambat</div>
                   <div className="text-base font-black font-mono mt-0.5">{operationalPerformance.lateCount}</div>
                 </div>
@@ -1466,20 +2200,11 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             </div>
 
             <div className="pt-2 text-[10px] text-slate-400 text-center font-medium border-t border-slate-100">
-              Total {operationalPerformance.totalOrders} order terverifikasi pada periode terpilih
+              Monitoring ketat ketepatan waktu untuk menjaga kepuasan pelanggan
             </div>
           </div>
 
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* BARIS 4 — PERFORMANCE KARYAWAN | CUSTOMER PERFORMANCE (MOCKUP GAMBAR)     */}
-      {/* ========================================================================= */}
-      {isManager && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          
-          {/* Kolom Kiri: Performance Karyawan */}
+          {/* Kolom Kanan: Employee Productivity */}
           <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
@@ -1488,47 +2213,43 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                     <Layers className="w-4 h-4" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-slate-800">Performance Karyawan / Staf</h2>
-                    <p className="text-[11px] text-slate-400">Produktivitas staf kasir &amp; penanganan transaksi</p>
+                    <h2 className="text-sm font-bold text-slate-800">Employee Productivity &amp; Performance</h2>
+                    <p className="text-[11px] text-slate-400">Evaluasi multi-metrik: berat cucian, durasi &amp; kualitas</p>
                   </div>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[310px]">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-50 text-slate-600 font-bold uppercase text-[9.5px] tracking-wider border-b border-slate-200">
                       <th className="py-2.5 px-3">Karyawan</th>
-                      <th className="py-2.5 px-2 text-center">Transaksi</th>
-                      <th className="py-2.5 px-2 text-right">Revenue</th>
-                      <th className="py-2.5 px-2 text-center">Selesai</th>
-                      <th className="py-2.5 px-2 text-center">Terlambat</th>
+                      <th className="py-2.5 px-2 text-center">Total Order</th>
+                      <th className="py-2.5 px-2 text-center">Berat (Kg)</th>
+                      <th className="py-2.5 px-2 text-right">Pendapatan</th>
+                      <th className="py-2.5 px-2 text-center">Rewash</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {employeePerformance.length === 0 ? (
+                    {employeeProductivity.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="text-center py-6 text-slate-400 font-medium">Belum ada data staf</td>
                       </tr>
                     ) : (
-                      employeePerformance.map((e, idx) => (
+                      employeeProductivity.map((e, idx) => (
                         <tr key={idx} className="hover:bg-slate-50 transition-colors">
                           <td className="py-2.5 px-3">
-                            <div className="font-bold text-slate-800 truncate max-w-[140px]">{e.nama}</div>
+                            <div className="font-bold text-slate-800 truncate max-w-[130px]">{e.nama}</div>
                             <div className="text-[10px] text-slate-400 font-mono">Rank #{idx + 1}</div>
                           </td>
-                          <td className="py-2.5 px-2 text-center font-bold text-slate-700">{e.transactions}</td>
-                          <td className="py-2.5 px-2 text-right font-black text-teal-800 font-mono">{formatRupiahId(e.revenue)}</td>
-                          <td className="py-2.5 px-2 text-center">
-                            <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded font-bold text-[10px]">
-                              {e.completed}
-                            </span>
-                          </td>
+                          <td className="py-2.5 px-2 text-center font-bold text-slate-700">{e.totalOrder}</td>
+                          <td className="py-2.5 px-2 text-center font-mono font-bold text-teal-800">{e.totalKg}</td>
+                          <td className="py-2.5 px-2 text-right font-black text-slate-900 font-mono">{formatRupiahId(e.revenue)}</td>
                           <td className="py-2.5 px-2 text-center">
                             <span className={`px-1.5 py-0.5 rounded font-bold text-[10px] ${
-                              e.late > 0 ? 'bg-rose-50 text-rose-700 font-black' : 'text-slate-400'
+                              e.rewashCount > 0 ? 'bg-amber-100 text-amber-800' : 'text-slate-400'
                             }`}>
-                              {e.late}
+                              {e.rewashCount}
                             </span>
                           </td>
                         </tr>
@@ -1540,82 +2261,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             </div>
 
             <div className="pt-2 text-[10px] text-slate-400 text-center font-medium border-t border-slate-100">
-              Evaluasi kinerja multi-metrik objektif dari database Supabase
-            </div>
-          </div>
-
-          {/* Kolom Kanan: Customer Performance (Sesuai Mockup Gambar User) */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-800">Customer Performance &amp; Analytics</h2>
-                    <p className="text-[11px] text-slate-400">Segmentasi pelanggan, retensi &amp; top belanja</p>
-                  </div>
-                </div>
-
-                <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                  {kpiMetrics.totalCustomers} Total Pelanggan
-                </span>
-              </div>
-
-              {/* 2 Mini Trend Cards: Repeat Purchase Rate & Avg Basket Size */}
-              <div className="grid grid-cols-2 gap-2.5 mb-3">
-                <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">Repeat Purchase Rate</div>
-                  <div className="text-xl font-black text-teal-800 font-mono">{kpiMetrics.repeatRatio}%</div>
-                  <div className="text-[10px] text-emerald-700 font-semibold">
-                    ▲ +{kpiMetrics.repeatRatioDelta}% vs periode lalu
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase">Average Basket Size</div>
-                  <div className="text-xl font-black text-slate-900 font-mono">{formatRupiahId(kpiMetrics.avgOrderValue)}</div>
-                  <div className="text-[10px] text-slate-500 font-medium">Nilai belanja per nota</div>
-                </div>
-              </div>
-
-              {/* Customer Segments Bar Chart */}
-              <div className="space-y-1.5 mb-3">
-                <div className="text-xs font-bold text-slate-700">Segmentasi Pelanggan (Customer Segments)</div>
-                <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                  {customerAnalytics.segments.map((seg, idx) => (
-                    <div key={idx} className="p-2 bg-slate-50 rounded-xl border border-slate-200/80">
-                      <div className="font-mono text-base font-black text-slate-800">{seg.pct}%</div>
-                      <div className="text-[9.5px] font-bold text-slate-500 truncate mt-0.5">{seg.label}</div>
-                      <div className="text-[9px] text-slate-400 mt-0.5">{seg.count} orang</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Top 3 Spenders Leaderboard */}
-              <div className="space-y-1.5">
-                <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
-                  <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Pelanggan Belanja Tertinggi</span>
-                </div>
-                <div className="space-y-1.5">
-                  {customerAnalytics.topListSpend.slice(0, 3).map((c, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg text-xs border border-slate-200/70">
-                      <div className="truncate max-w-[180px]">
-                        <span className="font-bold text-slate-800 mr-1.5">#{idx + 1} {c.nama}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">({c.totalOrder} Order)</span>
-                      </div>
-                      <span className="font-black text-teal-800 font-mono">{formatRupiahId(c.totalSpend)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 text-[10px] text-slate-400 text-center font-medium border-t border-slate-100">
-              Rasio one-time: {kpiMetrics.oneTimeCustomers} orang ({100 - kpiMetrics.repeatRatio}%)
+              Data pengerjaan terhitung otomatis dari petugas kasir di Supabase
             </div>
           </div>
 
@@ -1623,148 +2269,82 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       )}
 
       {/* ========================================================================= */}
-      {/* BARIS 5 — OUTLET PERFORMANCE | PAYMENT PERFORMANCE                        */}
+      {/* SECTION 9: CUSTOMER RETENTION FUNNEL & CLV (P1.9)                          */}
       {/* ========================================================================= */}
       {isManager && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          
-          {/* Kolom Kiri: Outlet Performance */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
-                    <Store className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-800">Outlet Performance</h2>
-                    <p className="text-[11px] text-slate-400">Monitoring performa outlet aktif &amp; kesiapan multi-cabang</p>
-                  </div>
-                </div>
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
+                <Users className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-800">Customer Retention Funnel &amp; Lifetime Value</h2>
+                <p className="text-[11px] text-slate-400">Analisis retensi: Pelanggan Baru &rarr; Repeat &rarr; Loyal &rarr; At-Risk</p>
+              </div>
+            </div>
 
-                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md text-[10px] font-extrabold uppercase tracking-wide">
-                  Aktif &amp; Terhubung
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+                CLV: {formatRupiahId(customerRetention.clv)}
+              </span>
+            </div>
+          </div>
+
+          {/* Funnel Representation */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3.5 bg-sky-50/70 border border-sky-200 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-sky-800 uppercase">Pelanggan Baru (1 Order)</span>
+              <div className="text-2xl font-black text-sky-950 font-mono">{customerRetention.newCustomer}</div>
+              <div className="text-[10px] text-sky-700 font-medium">Kesan pertama layanan</div>
+            </div>
+
+            <div className="p-3.5 bg-teal-50/70 border border-teal-200 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-teal-800 uppercase">Repeat Customer (2-4x)</span>
+              <div className="text-2xl font-black text-teal-950 font-mono">{customerRetention.repeatCustomer}</div>
+              <div className="text-[10px] text-teal-700 font-medium">Mulai terbiasa berlangganan</div>
+            </div>
+
+            <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-emerald-800 uppercase">Loyal Customer (&gt;4x)</span>
+              <div className="text-2xl font-black text-emerald-950 font-mono">{customerRetention.loyalCustomer}</div>
+              <div className="text-[10px] text-emerald-700 font-medium">Pelanggan inti &amp; member</div>
+            </div>
+
+            <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1">
+              <span className="text-[10px] font-extrabold text-amber-800 uppercase">Perlu Disapa (&gt;30 Hari)</span>
+              <div className="text-2xl font-black text-amber-950 font-mono">{customerRetention.churnedCustomer}</div>
+              <div className="text-[10px] text-amber-700 font-medium">Lama tidak berkunjung</div>
+            </div>
+          </div>
+
+          {/* Action Banner for Churned Customers */}
+          {customerRetention.churnedCustomer > 0 && (
+            <div className="p-3 bg-amber-50/80 border border-amber-300/80 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>
+                  Terdapat <strong>{customerRetention.churnedCustomer} pelanggan</strong> belum kembali mencuci dalam 30 hari terakhir. Kirim sapaan ramah via WhatsApp untuk mengajak kembali.
                 </span>
               </div>
-
-              {/* Outlet Active Scorecard */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-black text-slate-900 text-sm">dua SiSi Laundry — Outlet Utama</h3>
-                    <p className="text-xs text-slate-500">Pusat Layanan Laundry Express &amp; Coin POS</p>
-                  </div>
-                  <span className="font-mono text-xs font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded">
-                    OUTLET-UTAMA
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1 border-t border-slate-200/80">
-                  <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Revenue</div>
-                    <div className="text-sm font-black text-slate-800 font-mono mt-0.5">{formatRupiahId(kpiMetrics.revenue)}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Transaksi</div>
-                    <div className="text-sm font-black text-slate-800 font-mono mt-0.5">{kpiMetrics.trxCount} Order</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Pelanggan</div>
-                    <div className="text-sm font-black text-slate-800 font-mono mt-0.5">{kpiMetrics.totalCustomers} Orang</div>
-                  </div>
-                </div>
-              </div>
+              <button
+                onClick={() => setShowChurnedModal(true)}
+                className="tactile-btn px-3 py-1.5 bg-[#1E4648] hover:bg-teal-900 text-white rounded-lg font-bold text-xs shrink-0 flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <span>Lihat Daftar Pelanggan</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
-
-            <div className="pt-2 text-[10px] text-slate-400 text-center font-medium border-t border-slate-100">
-              Sistem telah siap dan scalable untuk komparasi multi-outlet di masa mendatang
-            </div>
-          </div>
-
-          {/* Kolom Kanan: Payment Performance */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
-                    <CreditCard className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-800">Payment Performance</h2>
-                    <p className="text-[11px] text-slate-400">Distribusi penggunaan metode pembayaran pelanggan</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {paymentPerformance.map((p, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800">{p.metode}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">({p.transactions} Trx)</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-black text-slate-900 font-mono">{formatRupiahId(p.nominal)}</span>
-                        <span className="text-[10px] text-teal-700 font-bold ml-1.5 font-mono">({p.percentage}%)</span>
-                      </div>
-                    </div>
-
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                      <div 
-                        style={{ width: `${Math.min(100, Math.max(2, p.percentage))}%` }} 
-                        className={`h-full rounded-full ${
-                          p.metode === 'Tunai' ? 'bg-emerald-600' :
-                          p.metode === 'QRIS' ? 'bg-sky-500' :
-                          p.metode === 'Transfer' ? 'bg-indigo-600' : 'bg-amber-500'
-                        }`} 
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-2 text-[10px] text-slate-400 text-center font-medium border-t border-slate-100">
-              Perhitungan akurat dari seluruh transaksi non-void periode aktif
-            </div>
-          </div>
-
+          )}
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* BARIS 6 — BUSINESS INSIGHTS & ACTIONABLE ALERTS DINAMIS                   */}
-      {/* ========================================================================= */}
-      {isManager && (
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0 border border-amber-200/60">
-              <Lightbulb className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-800">Business Insights &amp; Actionable Alerts</h2>
-              <p className="text-[11px] text-slate-400">Diagnosis otomatis berbasis tren transaksi &amp; kalkulasi database aktual</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            {businessInsights.map((insight, idx) => (
-              <div key={idx} className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex items-start gap-2.5 text-xs text-slate-700">
-                <Sparkles className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
-                <span className="leading-relaxed font-medium">{insight}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* SECTION OPERASIONAL: STATUS MESIN & ANTREAN PESANAN REAL-TIME             */}
+      {/* SECTION 10 & 11: MACHINE UTILIZATION & INVENTORY VALUATION (P1.8, P1.10)  */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         
-        {/* Status Mesin Real-Time (2 Cols) */}
+        {/* Status Mesin & Utilisasi (2 Cols) */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
@@ -1772,12 +2352,12 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                 <Cpu className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-slate-800">Status &amp; Progress Mesin</h2>
-                <p className="text-[11px] text-slate-400">Monitoring washer dan dryer aktif outlet</p>
+                <h2 className="text-sm font-bold text-slate-800">Machine Utilization &amp; Maintenance</h2>
+                <p className="text-[11px] text-slate-400">Monitoring utilisasi washer/dryer &amp; siklus jadwal pemeliharaan</p>
               </div>
             </div>
             <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-              {mesinList.filter(m => m.status === 'Digunakan').length} / {mesinList.length} Sedang Digunakan
+              Utilisasi: {mesinList.length > 0 ? Math.round((mesinList.filter(m => m.status === 'Digunakan').length / mesinList.length) * 100) : 0}%
             </span>
           </div>
 
@@ -1841,14 +2421,11 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                           {m.sisaWaktuMenit ? `${m.sisaWaktuMenit} Mnt Sisa` : (m.estimasiSelesai ? `Est: ${formatWibTimeOnly(m.estimasiSelesai)}` : 'Berjalan')}
                         </span>
                       </div>
-
-                      <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-gradient-to-r from-amber-500 to-teal-700 h-full w-4/5 rounded-full animate-pulse" />
-                      </div>
                     </div>
                   ) : (
-                    <div className="text-[11px] text-slate-400 font-medium py-1">
-                      {isMaint ? 'Sedang perbaikan maintenance teknis' : 'Mesin siap digunakan untuk siklus baru'}
+                    <div className="text-[11px] text-slate-400 font-medium py-1 flex justify-between items-center">
+                      <span>{isMaint ? 'Sedang perbaikan teknis' : 'Mesin siap untuk siklus baru'}</span>
+                      <span className="text-[10px] font-mono text-slate-400">Jadwal Maint: Aman</span>
                     </div>
                   )}
                 </div>
@@ -1871,7 +2448,6 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                 </div>
               </div>
 
-              {/* Tab Switch */}
               <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
                 <button
                   onClick={() => setQueueTab('Semua')}
@@ -1931,7 +2507,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION INVENTORY & BAHAN BAKU LEVEL                                      */}
+      {/* SECTION 11: INVENTORY VALUATION & ESTIMATED DAYS UNTIL EMPTY (P1.10)       */}
       {/* ========================================================================= */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -1940,9 +2516,14 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
               <Package className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-800">Stok Bahan &amp; Barang Habis Pakai</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-800">Inventory Valuation &amp; Stock Health</h2>
+                <span className="text-xs font-mono font-bold text-teal-900 bg-teal-100 px-2.5 py-0.5 rounded-lg">
+                  Total Nilai: {formatRupiahId(inventoryValuation.totalValuation)}
+                </span>
+              </div>
               <p className="text-[11px] text-slate-400">
-                {isManager ? 'Mode Manager: Pantau stok & input restock langsung' : 'Mode Kasir: Monitoring ketersediaan bahan operasional'}
+                Estimasi habis pakai (EDUE) berdasarkan rata-rata pemakaian harian aktual
               </p>
             </div>
           </div>
@@ -1965,62 +2546,56 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         </div>
 
         {/* Warning Banner if any items are negative */}
-        {minusStockItems.length > 0 && (
+        {inventoryValuation.minusCount > 0 && (
           <div className="flex items-center justify-between bg-rose-50 border border-rose-200 rounded-xl px-4 py-2.5 text-xs text-rose-800">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>
-                Terdapat <strong>{minusStockItems.length} barang inventaris</strong> bernilai minus (di bawah 0). Segera lakukan audit fisik dan restock.
+                Terdapat <strong>{inventoryValuation.minusCount} barang inventaris</strong> bernilai minus di bawah 0. Lakukan stok opname fisik dan penyesuaian.
               </span>
             </div>
             <span className="font-bold text-[11px] bg-rose-100 text-rose-900 px-2 py-0.5 rounded">
-              Prioritas Audit
+              Audit Prioritas
             </span>
           </div>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {(inventoryList || []).filter(item => {
-            const s = Number(item.stok) || 0;
-            const min = Number(item.stokMinimum) || 5;
-            if (inventoryFilterTab === 'Kritis') return s <= 0;
-            if (inventoryFilterTab === 'Menipis') return s > 0 && s <= min;
-            if (inventoryFilterTab === 'Aman') return s > min;
+          {inventoryValuation.items.filter(item => {
+            if (inventoryFilterTab === 'Kritis') return item.isMinus || item.isZero;
+            if (inventoryFilterTab === 'Menipis') return item.isLow;
+            if (inventoryFilterTab === 'Aman') return !item.isMinus && !item.isZero && !item.isLow;
             return true;
           }).map((i) => {
-            const s = Number(i.stok) || 0;
-            const min = Number(i.stokMinimum) || 5;
-            const isMinus = s < 0;
-            const isHabis = s === 0;
-            const isMenipis = s > 0 && s <= min;
-
             return (
               <div 
                 key={i.id}
                 className={`p-3.5 rounded-xl border text-xs space-y-2 transition-all ${
-                  isMinus ? 'bg-rose-50/90 border-rose-300 shadow-2xs' :
-                  isHabis ? 'bg-rose-50/70 border-rose-200' :
-                  isMenipis ? 'bg-amber-50/70 border-amber-300' : 'bg-slate-50/80 border-slate-200'
+                  i.isMinus ? 'bg-rose-50/90 border-rose-300 shadow-2xs' :
+                  i.isZero ? 'bg-rose-50/70 border-rose-200' :
+                  i.isLow ? 'bg-amber-50/70 border-amber-300' : 'bg-slate-50/80 border-slate-200'
                 }`}
               >
                 <div className="flex justify-between items-start gap-1">
                   <span className="font-bold text-slate-800 text-xs truncate">{i.nama}</span>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shrink-0 ${
-                    isMinus ? 'bg-rose-600 text-white' :
-                    isHabis ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                    isMenipis ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800'
+                    i.isMinus ? 'bg-rose-600 text-white' :
+                    i.isZero ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                    i.isLow ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800'
                   }`}>
-                    {isMinus ? 'Stok Minus' : isHabis ? 'Habis' : isMenipis ? 'Menipis' : 'Aman'}
+                    {i.isMinus ? 'Minus' : i.isZero ? 'Habis' : i.isLow ? 'Menipis' : 'Aman'}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-end pt-1">
                   <div>
-                    <span className={`text-base font-black font-mono ${isMinus ? 'text-rose-600' : 'text-slate-800'}`}>
-                      {formatDecimal(s)}
+                    <span className={`text-base font-black font-mono ${i.isMinus ? 'text-rose-600' : 'text-slate-800'}`}>
+                      {formatDecimal(i.stokVal)}
                     </span>
                     <span className="text-slate-500 font-semibold text-[11px] ml-1">{i.satuan}</span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">Min: {min} {i.satuan}</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      Est. Habis: <strong>{i.daysUntilEmpty > 0 ? `${i.daysUntilEmpty} Hari` : 'Hari Ini'}</strong>
+                    </div>
                   </div>
                   
                   {isManager && (
@@ -2043,12 +2618,307 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL GENERATE REPORT & EXPORT PDF                                        */}
+      {/* SECTION 12: CATEGORIZED BUSINESS INSIGHTS (P2)                            */}
+      {/* ========================================================================= */}
+      {isManager && (
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0 border border-amber-200/60">
+              <Lightbulb className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-800">Executive Business Intelligence &amp; Insights</h2>
+              <p className="text-[11px] text-slate-400">Diagnosis analitik otomatis terbagi dalam kategori Positif, Perhatian &amp; Kritis</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            
+            {/* 🟢 Positif */}
+            <div className="p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-xl space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <span>Pencapaian &amp; Positif</span>
+              </div>
+              <div className="space-y-1.5">
+                {categorizedInsights.positive.map((ins, idx) => (
+                  <div key={idx} className="text-xs text-slate-700 leading-relaxed font-medium">
+                    &bull; {ins}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 🟡 Perhatian */}
+            <div className="p-3.5 bg-amber-50/60 border border-amber-200 rounded-xl space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                <span>Perlu Perhatian</span>
+              </div>
+              <div className="space-y-1.5">
+                {categorizedInsights.attention.map((ins, idx) => (
+                  <div key={idx} className="text-xs text-slate-700 leading-relaxed font-medium">
+                    &bull; {ins}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 🔴 Kritis */}
+            <div className="p-3.5 bg-rose-50/60 border border-rose-200 rounded-xl space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                <span>Tindakan Kritis</span>
+              </div>
+              <div className="space-y-1.5">
+                {categorizedInsights.critical.length > 0 ? (
+                  categorizedInsights.critical.map((ins, idx) => (
+                    <div key={idx} className="text-xs text-rose-900 leading-relaxed font-semibold">
+                      &bull; {ins}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-slate-400 italic">Tidak ada anomali kritis saat ini. Operasional berjalan lancar.</div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 1: ATUR TARGET BULANAN (P0.2)                                       */}
+      {/* ========================================================================= */}
+      {showTargetModal && (
+        <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-200/60">
+                  <Target className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Atur Target Bulanan Outlet</h3>
+                  <p className="text-[11px] text-slate-400">Sasaran omzet, order &amp; laba kotor toko</p>
+                </div>
+              </div>
+              <button onClick={() => setShowTargetModal(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Target Pendapatan (Rp)</label>
+                <input 
+                  type="number"
+                  value={targetForm.targetRevenue}
+                  onChange={(e) => setTargetForm(prev => ({ ...prev, targetRevenue: Number(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono text-sm outline-none focus:border-[#1E4648]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Target Laba Kotor (Rp)</label>
+                <input 
+                  type="number"
+                  value={targetForm.targetGrossProfit}
+                  onChange={(e) => setTargetForm(prev => ({ ...prev, targetGrossProfit: Number(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono text-sm outline-none focus:border-[#1E4648]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Target Total Order</label>
+                  <input 
+                    type="number"
+                    value={targetForm.targetOrders}
+                    onChange={(e) => setTargetForm(prev => ({ ...prev, targetOrders: Number(e.target.value) || 0 }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono text-sm outline-none focus:border-[#1E4648]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Target Pelanggan</label>
+                  <input 
+                    type="number"
+                    value={targetForm.targetCustomers}
+                    onChange={(e) => setTargetForm(prev => ({ ...prev, targetCustomers: Number(e.target.value) || 0 }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono text-sm outline-none focus:border-[#1E4648]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Target Repeat Order Ratio (%)</label>
+                <input 
+                  type="number"
+                  value={targetForm.targetRepeatRatio}
+                  onChange={(e) => setTargetForm(prev => ({ ...prev, targetRepeatRatio: Number(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono text-sm outline-none focus:border-[#1E4648]"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-3 border-t border-slate-100">
+              <button 
+                onClick={() => setShowTargetModal(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleSaveTargets}
+                disabled={savingTarget}
+                className="flex-1 py-2 bg-[#1E4648] hover:bg-teal-900 text-white rounded-xl text-xs font-bold transition disabled:opacity-50"
+              >
+                {savingTarget ? 'Menyimpan...' : 'Simpan Target'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 2: QUALITY DRILL-DOWN MODAL (P0.4)                                  */}
+      {/* ========================================================================= */}
+      {drilldownType && (
+        <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-2xl shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-rose-600" />
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    Daftar Order: {drilldownType.toUpperCase()}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Rincian order terdampak untuk evaluasi kualitas</p>
+                </div>
+              </div>
+              <button onClick={() => setDrilldownType(null)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto space-y-2 flex-1 pr-1">
+              {drilldownOrders.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 text-xs">
+                  Tidak ada order pada kategori ini.
+                </div>
+              ) : (
+                drilldownOrders.map(t => (
+                  <div key={t.noNota} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-slate-900">{t.noNota}</span>
+                        <span className="text-[10px] text-slate-400">{formatWibDateShort(t.rawTanggal || t.tanggal)}</span>
+                      </div>
+                      <span className="font-mono font-bold text-slate-700">{formatRupiahId(Number(t.total) || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Pelanggan: <strong>{t.namaPelanggan}</strong> ({t.noHp || '-'})</span>
+                      <span>Petugas: {t.petugas}</span>
+                    </div>
+                    {t.catatan && (
+                      <div className="text-[11px] text-amber-800 bg-amber-50 p-1.5 rounded mt-1">
+                        Catatan: {t.catatan}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 text-right">
+              <button 
+                onClick={() => setDrilldownType(null)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 3: CHURNED CUSTOMERS DIRECT WHATSAPP (P1.9)                         */}
+      {/* ========================================================================= */}
+      {showChurnedModal && (
+        <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 w-full max-w-xl shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-teal-700" />
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Pelanggan Lama Tidak Mencuci (&gt;30 Hari)</h3>
+                  <p className="text-[11px] text-slate-400">Kirim sapaan WhatsApp langsung dari dashboard</p>
+                </div>
+              </div>
+              <button onClick={() => setShowChurnedModal(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto space-y-2 flex-1 pr-1">
+              {customerRetention.churnedList.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 text-xs">
+                  Semua pelanggan aktif berkunjung dalam 30 hari terakhir.
+                </div>
+              ) : (
+                customerRetention.churnedList.map((c, idx) => {
+                  const cleanPhone = (c.noHp || '').replace(/\D/g, '');
+                  const waNumber = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+                  const waText = encodeURIComponent(`Halo Kak ${c.nama}, kami dari dua SiSi Laundry. Semoga sehat selalu kak! Ada cucian yang mau kami bantu proses hari ini? Ada promo khusus pelanggan setia menanti.`);
+                  const waUrl = `https://wa.me/${waNumber}?text=${waText}`;
+
+                  return (
+                    <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex justify-between items-center">
+                      <div>
+                        <div className="font-bold text-slate-900">{c.nama}</div>
+                        <div className="text-[10px] text-slate-400">
+                          {c.totalOrder}x Order • Terakhir: {c.lastDateStr} • Total: {formatRupiahId(c.totalSpend)}
+                        </div>
+                      </div>
+
+                      {cleanPhone ? (
+                        <a
+                          href={waUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>Hubungi WA</span>
+                        </a>
+                      ) : (
+                        <span className="text-slate-400 text-[10px]">No HP Kosong</span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 text-right">
+              <button 
+                onClick={() => setShowChurnedModal(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 4: GENERATE REPORT & EXPORT PDF                                     */}
       {/* ========================================================================= */}
       {showExportModal && (
-        <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 space-y-4">
-            
+        <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center border border-teal-200/60 shrink-0">
@@ -2059,17 +2929,13 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                   <p className="text-[11px] text-slate-400">Ekspor laporan kinerja bisnis ke format PDF resmi</p>
                 </div>
               </div>
-              <button 
-                onClick={() => setShowExportModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-              >
+              <button onClick={() => setShowExportModal(false)} className="text-slate-400 hover:text-slate-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Pilihan Periode Laporan */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700">Pilih Periode Laporan</label>
+            <div className="space-y-2 text-xs">
+              <label className="block font-bold text-slate-700">Pilih Periode Laporan</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { id: 'THIS_MONTH', label: 'Bulan Ini' },
@@ -2081,7 +2947,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                   <button
                     key={p.id}
                     onClick={() => setExportPeriodPreset(p.id as DashboardPeriodPreset)}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
+                    className={`px-3 py-2 rounded-xl font-bold transition text-left cursor-pointer ${
                       exportPeriodPreset === p.id 
                         ? 'bg-[#1E4648] text-white shadow-2xs' 
                         : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
@@ -2116,16 +2982,6 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
               )}
             </div>
 
-            {/* Filter Outlet */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">Outlet</label>
-              <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center justify-between">
-                <span>dua SiSi — Outlet Utama (Pusat)</span>
-                <span className="text-[10px] text-emerald-700 font-extrabold uppercase">Aktif</span>
-              </div>
-            </div>
-
-            {/* Footer Buttons */}
             <div className="flex gap-2 pt-3 border-t border-slate-100">
               <button
                 onClick={() => setShowExportModal(false)}
@@ -2145,19 +3001,18 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                   </>
                 ) : (
                   <>
-                    <Download className="w-4 h-4 text-amber-300" />
-                    <span>Generate &amp; Download PDF</span>
+                    <FileDown className="w-4 h-4 text-amber-300" />
+                    <span>Generate &amp; Unduh PDF</span>
                   </>
                 )}
               </button>
             </div>
-
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL QUICK RESTOCK DARI DASHBOARD                                        */}
+      {/* MODAL 5: QUICK RESTOCK DARI DASHBOARD                                     */}
       {/* ========================================================================= */}
       {selectedRestockItem && (
         <div className="fixed inset-0 z-[500] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">

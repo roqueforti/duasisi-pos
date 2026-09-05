@@ -278,6 +278,12 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbGetMasterShiftList()) as any;
         case 'checkDuplicateItemCodes':
           return (await sb.sbCheckDuplicateItemCodes()) as any;
+        case 'getMonthlyTargets':
+          return (await sb.sbGetMonthlyTargets()) as any;
+        case 'saveMonthlyTargets':
+          return (await sb.sbSaveMonthlyTargets(args[0])) as any;
+        case 'getProcurementStats':
+          return (await sb.sbGetProcurementStats(args[0], args[1])) as any;
         case 'getRekapKinerjaPegawai':
           return (await sb.sbGetRekapKinerjaPegawai(args[0], args[1])) as any;
         case 'getDropoffIncentiveConfig':

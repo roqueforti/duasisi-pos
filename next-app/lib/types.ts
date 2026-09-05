@@ -534,3 +534,65 @@ export interface DuplicateResolutionPayload {
   targetId?: string;
 }
 
+// ============================================================
+// EXECUTIVE BUSINESS ANALYTICS & PROFITABILITY TYPES
+// ============================================================
+export interface MonthlyTargets {
+  targetRevenue: number;
+  targetOrders: number;
+  targetCustomers: number;
+  targetGrossProfit: number;
+  targetRepeatRatio: number;
+}
+
+export interface FinancialMetrics {
+  pendapatan: number;
+  hpp: number;
+  labaKotor: number;
+  marginKotor: number;
+  biayaOperasional: number;
+  labaBersih: number;
+  marginBersih: number;
+  deltaRevenue?: number;
+  deltaProfit?: number;
+}
+
+export interface ServiceProfitability {
+  layanan: string;
+  totalOrder: number;
+  pendapatan: number;
+  hpp: number;
+  laba: number;
+  margin: number;
+  kontribusi: number;
+}
+
+export interface QualityPerformance {
+  cancellationRate: number;
+  rewashRate: number;
+  complaintRate: number;
+  errorRate: number;
+  refundRate: number;
+  cancelledOrders: any[];
+  rewashOrders: any[];
+  refundTotal: number;
+}
+
+export interface ProcurementSummary {
+  totalBelanja: number;
+  supplierCount: number;
+  purchaseItemsCount: number;
+  ratioToRevenue: number;
+}
+
+export interface CustomerRetentionMetrics {
+  totalCustomer: number;
+  newCustomer: number;
+  repeatCustomer: number;
+  loyalCustomer: number;
+  churnedCustomer: number;
+  clv: number;
+  avgDaysBetweenOrders: number;
+  churnedList: any[];
+}
+
