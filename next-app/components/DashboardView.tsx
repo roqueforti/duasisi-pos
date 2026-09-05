@@ -248,6 +248,8 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     return formatLocalDateIso(new Date());
   });
   const [exportSubmitting, setExportSubmitting] = useState<boolean>(false);
+  const [exportStage, setExportStage] = useState<number>(0);
+  const [exportAiProvider, setExportAiProvider] = useState<string>('AI Gemini');
 
   // Fetch Data Utama
   const fetchDashboardData = useCallback(async () => {
@@ -1079,9 +1081,10 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     }
   };
 
-  // Export PDF Report Handler
+  // Export PDF Report Handler dengan Analisis AI Gemini & Animasi Progress
   const handleExportPdf = async () => {
     setExportSubmitting(true);
+    setExportStage(1);
     try {
       const now = new Date();
       let eStart = new Date(now);
@@ -1112,6 +1115,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         if (s > e) {
           await showAlert('Tanggal awal tidak boleh melebihi tanggal akhir!', 'warning');
           setExportSubmitting(false);
+          setExportStage(0);
           return;
         }
         eStart = s;
@@ -1119,6 +1123,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         eLabel = `${s.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} – ${e.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`;
       }
 
+      // 1. Ekstraksi Data Transaksi
       const repTxs = (transaksiList || []).filter(t => {
         const isVoid = t.status === 'Void' || t.status === 'Batal' || t.status === 'Dibatalkan' || t.statusVoid === 'Approved';
         if (isVoid) return false;
@@ -1212,134 +1217,229 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       const topCustList = Object.values(custMap).sort((a, b) => b.totalSpend - a.totalSpend);
       const repTotalKg = Math.round(sList.reduce((acc, s) => acc + s.kg, 0) * 10) / 10;
 
-        let repHpp = 0;
-        repTxs.forEach(t => {
-          const items = t.transaksi_items || t.items || [];
-          if (items.length > 0) {
-            items.forEach(it => {
-              const nameKey = (it.layanan || '').trim().toLowerCase();
-              const modalPerUnit = layananModalMap[nameKey];
-              const qty = Number(it.qty) || 1;
-              const subtotal = Number(it.subtotal) || (qty * 10000);
-              if (modalPerUnit && modalPerUnit > 0) {
-                repHpp += modalPerUnit * qty;
-              } else {
-                const isRetail = nameKey.includes('detergen') || nameKey.includes('parfum') || nameKey.includes('botol') || nameKey.includes('hanger');
-                repHpp += subtotal * (isRetail ? 0.70 : 0.25);
-              }
-            });
-          } else {
-            repHpp += (Number(t.total) || 0) * 0.25;
-          }
-        });
-        const repLabaKotor = Math.max(0, repRevenue - repHpp);
-        const repMarginKotor = repRevenue > 0 ? Math.round((repLabaKotor / repRevenue) * 1000) / 10 : 0;
-        const repBiayaOps = Math.round(operationalExpenses > 0 ? (operationalExpenses * (repTxs.length / Math.max(1, allNonVoidTransactions.length))) : (repRevenue * 0.15));
-        const repLabaBersih = Math.max(0, repLabaKotor - repBiayaOps);
-        const repMarginBersih = repRevenue > 0 ? Math.round((repLabaBersih / repRevenue) * 1000) / 10 : 0;
+      let repHpp = 0;
+      repTxs.forEach(t => {
+        const items = t.transaksi_items || t.items || [];
+        if (items.length > 0) {
+          items.forEach(it => {
+            const nameKey = (it.layanan || '').trim().toLowerCase();
+            const modalPerUnit = layananModalMap[nameKey];
+            const qty = Number(it.qty) || 1;
+            const subtotal = Number(it.subtotal) || (qty * 10000);
+            if (modalPerUnit && modalPerUnit > 0) {
+              repHpp += modalPerUnit * qty;
+            } else {
+              const isRetail = nameKey.includes('detergen') || nameKey.includes('parfum') || nameKey.includes('botol') || nameKey.includes('hanger');
+              repHpp += subtotal * (isRetail ? 0.70 : 0.25);
+            }
+          });
+        } else {
+          repHpp += (Number(t.total) || 0) * 0.25;
+        }
+      });
+      const repLabaKotor = Math.max(0, repRevenue - repHpp);
+      const repMarginKotor = repRevenue > 0 ? Math.round((repLabaKotor / repRevenue) * 1000) / 10 : 0;
+      const repBiayaOps = Math.round(operationalExpenses > 0 ? (operationalExpenses * (repTxs.length / Math.max(1, allNonVoidTransactions.length))) : (repRevenue * 0.15));
+      const repLabaBersih = Math.max(0, repLabaKotor - repBiayaOps);
+      const repMarginBersih = repRevenue > 0 ? Math.round((repLabaBersih / repRevenue) * 1000) / 10 : 0;
 
-        const payload: ReportDataPayload = {
+      // 2. Hubungkan ke AI Engine (Gemini AI & Analisis Pintar)
+      setExportStage(2);
+      await new Promise(r => setTimeout(r, 350));
+
+      let aiResult: any = null;
+      try {
+        const criticalItemsNames = inventoryValuation.items
+          .filter(i => i.daysUntilEmpty <= 7 || i.isMinus || i.isLow)
+          .map(i => i.nama);
+
+        const aiReqPayload = {
           periodeLabel: eLabel,
-          startDateStr: formatLocalDateIso(eStart),
-          endDateStr: formatLocalDateIso(eEnd),
-          outletName: 'Outlet Utama (dua SiSi Laundry Express & Coin POS)',
-          generatedBy: isManager ? 'Manager / Owner' : 'Kasir',
-          generatedAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + formatWibTimeOnly(new Date().toISOString()),
           kpi: {
             totalRevenue: repRevenue,
             totalTransactions: repTrxCount,
             totalCustomers: repTotalCust,
             repeatCustomers: repRepeatCust,
-            oneTimeCustomers: repTotalCust - repRepeatCust,
             repeatOrderRatio: repRatio,
-            totalKg: repTotalKg,
             avgOrderValue: repTrxCount > 0 ? Math.round(repRevenue / repTrxCount) : 0,
-            avgCustomerSpend: repTotalCust > 0 ? Math.round(repRevenue / repTotalCust) : 0,
           },
           financials: {
-            pendapatan: repRevenue,
             hpp: repHpp,
             labaKotor: repLabaKotor,
             marginKotor: repMarginKotor,
-            biayaOperasional: repBiayaOps,
             labaBersih: repLabaBersih,
             marginBersih: repMarginBersih,
           },
           quality: {
-            cancellationRate: qualityPerformance.cancellationRate,
             rewashRate: qualityPerformance.rewashRate,
-            complaintRate: qualityPerformance.complaintRate,
-            orderErrorRate: qualityPerformance.errorRate,
-            refundRate: qualityPerformance.refundRate,
+            cancellationRate: qualityPerformance.cancellationRate,
           },
-          dailyRows: Object.values(dMap),
-          serviceRows: sList,
-          employeeRows: Object.values(eMap).sort((a, b) => b.revenue - a.revenue),
-          topCustomers: topCustList,
+          serviceRows: sList.slice(0, 5),
           operational: {
-            totalOrders: repTrxCount,
-            completedOrders: operationalPerformance.completedCount,
-            processingOrders: operationalPerformance.processingCount,
-            pendingOrders: operationalPerformance.pendingCount,
-            lateOrders: operationalPerformance.lateCount,
             onTimeRate: operationalPerformance.onTimeRate,
-            onTimeCount: operationalPerformance.onTimeCount,
           },
-          paymentRows: pList,
-          actionPlans: [
-            {
-              pilar: '1. Akselerasi Omzet & Penjualan',
-              rencanaAksi: `Tingkatkan bundle promotion dan upsell layanan '${sList[0]?.layanan || 'Cuci Kering 7kg'}' (kontribusi ${sList[0]?.percentage || 40}% pendapatan), serta terapkan diskon Happy Hour (10:00 - 13:00) pada hari kerja untuk mendongkrak omzet jam sepi.`,
-              targetOutput: `Target Omzet: ${monthlyTargets.targetRevenue > 0 ? formatRupiahId(monthlyTargets.targetRevenue) : formatRupiahId(Math.round(repRevenue * 1.15))} & AOV ${formatRupiahId(repTrxCount > 0 ? Math.round((repRevenue / repTrxCount) * 1.1) : 35000)}`,
-              prioritas: 'Tinggi',
-              pic: 'Kasir & Marketing',
-            },
-            {
-              pilar: '2. Retensi Pelanggan & CRM',
-              rencanaAksi: `Kirimkan penawaran khusus WhatsApp blast voucher 'Kangen Laundry' kepada ${customerRetention.churnedCustomer || Math.max(0, repTotalCust - repRepeatCust)} pelanggan tidak berkunjung >30 hari, serta aktifkan sistem reward poin loyalitas bagi 10 Top Customer penyumbang belanja terbesar.`,
-              targetOutput: `Repeat Order Ratio ≥ ${Math.max(monthlyTargets.targetRepeatRatio || 45, Math.round(repRatio + 5))}%`,
-              prioritas: 'Tinggi',
-              pic: 'CRM / Manajer',
-            },
-            {
-              pilar: '3. Manajemen Stok & Pengendalian HPP',
-              rencanaAksi: `Jadwalkan Purchase Order (PO) pengadaan stok bahan baku ${inventoryValuation.items.filter(i => i.daysUntilEmpty <= 7 || i.isMinus || i.isLow).map(i => i.nama).slice(0, 2).join(', ') ? `(prioritas: ${inventoryValuation.items.filter(i => i.daysUntilEmpty <= 7 || i.isMinus || i.isLow).map(i => i.nama).slice(0, 2).join(', ')})` : 'deterjen dan parfum konsentrat'} minimal H-5 sebelum estimasi habis, serta audit takaran pemakaian per kg demi menjaga margin kotor.`,
-              targetOutput: `Safety Stock ≥ 7 Hari & Margin Kotor ≥ ${Math.max(60, Math.round(repMarginKotor))}%`,
-              prioritas: 'Sedang',
-              pic: 'Logistik & Gudang',
-            },
-            {
-              pilar: '4. Standar Mutu & Zero-Rewash',
-              rencanaAksi: `Wajibkan inspeksi noda awal (spotting) saat penerimaan cucian di kasir dan pemeriksaan menyeluruh saat setrika/packing demi mempertahankan kualitas hasil cucian dan mencegah klaim pelanggan.`,
-              targetOutput: `Rewash Rate ≤ 1.0% & Nol Refund`,
-              prioritas: 'Rutin',
-              pic: 'Tim Cuci & Finishing',
-            },
-            {
-              pilar: '5. Disiplin SLA & Kecepatan Order',
-              rencanaAksi: `Pantau Kanban antrean secara real-time, prioritaskan pengerjaan cucian mendekati estimasi tenggat waktu selesai, dan lakukan briefing evaluasi harian sebelum pergantian shift kasir.`,
-              targetOutput: `On-Time SLA ≥ 98.0% & Nol Keterlambatan`,
-              prioritas: 'Tinggi',
-              pic: 'Supervisor Operasional',
-            },
-          ],
-          insights: [
-            `Akselerasi Omzet: Tingkatkan bundle promotion layanan '${sList[0]?.layanan || 'Utama'}' dan aktifkan promo jam sepi (Happy Hour).`,
-            `Retensi Pelanggan: Follow-up WhatsApp re-engagement untuk ${customerRetention.churnedCustomer || Math.max(0, repTotalCust - repRepeatCust)} pelanggan tidak aktif >30 hari dan reward bagi Top 10 Spender.`,
+          criticalItems: criticalItemsNames,
+          churnedCount: customerRetention.churnedCustomer || Math.max(0, repTotalCust - repRepeatCust),
+          monthlyTargets,
+        };
+
+        const aiFetchRes = await fetch('/api/ai/analyze-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(aiReqPayload),
+        });
+
+        if (aiFetchRes.ok) {
+          const aiJson = await aiFetchRes.json();
+          if (aiJson.success && aiJson.data) {
+            aiResult = aiJson.data;
+            if (aiJson.provider) {
+              setExportAiProvider(aiJson.provider);
+            }
+          }
+        }
+      } catch (aiErr) {
+        console.warn('AI analysis request error (using fallback heuristics):', aiErr);
+      }
+
+      // 3. Merumuskan Action Plan & Ringkasan Eksekutif
+      setExportStage(3);
+      await new Promise(r => setTimeout(r, 300));
+
+      const topService = sList[0];
+      const criticalNames = inventoryValuation.items
+        .filter(i => i.daysUntilEmpty <= 7 || i.isMinus || i.isLow)
+        .map(i => i.nama).slice(0, 2).join(', ');
+      const churnedCount = customerRetention.churnedCustomer || Math.max(0, repTotalCust - repRepeatCust);
+      const targetRevVal = monthlyTargets.targetRevenue > 0 
+        ? monthlyTargets.targetRevenue 
+        : Math.round(repRevenue * 1.15);
+
+      const fallbackActionPlans: ActionPlanItem[] = [
+        {
+          pilar: '1. Akselerasi Omzet & Penjualan',
+          rencanaAksi: `Tingkatkan bundle promotion dan upsell layanan '${topService?.layanan || 'Cuci Kering 7kg'}' (kontribusi ${topService?.percentage || 40}% pendapatan), serta terapkan diskon Happy Hour (10:00 - 13:00) pada hari kerja untuk mendongkrak omzet jam sepi.`,
+          targetOutput: `Target Omzet: ${formatRupiahId(targetRevVal)} & AOV ${formatRupiahId(repTrxCount > 0 ? Math.round((repRevenue / repTrxCount) * 1.1) : 35000)}`,
+          prioritas: 'Tinggi',
+          pic: 'Kasir & Marketing',
+        },
+        {
+          pilar: '2. Retensi Pelanggan & CRM',
+          rencanaAksi: `Kirimkan penawaran khusus WhatsApp blast voucher 'Kangen Laundry' kepada ${churnedCount} pelanggan tidak berkunjung >30 hari, serta aktifkan sistem reward poin loyalitas bagi 10 Top Customer penyumbang belanja terbesar.`,
+          targetOutput: `Repeat Order Ratio ≥ ${Math.max(monthlyTargets.targetRepeatRatio || 45, Math.round(repRatio + 5))}%`,
+          prioritas: 'Tinggi',
+          pic: 'CRM / Manajer',
+        },
+        {
+          pilar: '3. Manajemen Stok & Pengendalian HPP',
+          rencanaAksi: `Jadwalkan Purchase Order (PO) pengadaan stok bahan baku ${criticalNames ? `(prioritas: ${criticalNames})` : 'deterjen dan parfum konsentrat'} minimal H-5 sebelum estimasi habis, serta audit takaran pemakaian per kg demi menjaga margin kotor.`,
+          targetOutput: `Safety Stock ≥ 7 Hari & Margin Kotor ≥ ${Math.max(60, Math.round(repMarginKotor))}%`,
+          prioritas: 'Sedang',
+          pic: 'Logistik & Gudang',
+        },
+        {
+          pilar: '4. Standar Mutu & Zero-Rewash',
+          rencanaAksi: `Wajibkan inspeksi noda awal (spotting) saat penerimaan cucian di kasir dan pemeriksaan menyeluruh saat setrika/packing demi mempertahankan kualitas hasil cucian dan mencegah klaim pelanggan.`,
+          targetOutput: `Rewash Rate ≤ 1.0% & Nol Refund`,
+          prioritas: 'Rutin',
+          pic: 'Tim Cuci & Finishing',
+        },
+        {
+          pilar: '5. Disiplin SLA & Kecepatan Order',
+          rencanaAksi: `Pantau Kanban antrean secara real-time, prioritaskan pengerjaan cucian mendekati estimasi tenggat waktu selesai, dan lakukan briefing evaluasi harian sebelum pergantian shift kasir.`,
+          targetOutput: `On-Time SLA ≥ 98.0% & Nol Keterlambatan`,
+          prioritas: 'Tinggi',
+          pic: 'Supervisor Operasional',
+        },
+      ];
+
+      const finalActionPlans = (aiResult?.actionPlans && aiResult.actionPlans.length > 0)
+        ? aiResult.actionPlans
+        : fallbackActionPlans;
+
+      const finalOpening = aiResult?.executiveSummaryOpening || 
+        `Laporan kinerja bisnis dua SiSi Laundry Express & Coin POS periode ${eLabel} menyajikan evaluasi menyeluruh atas perolehan omzet sebesar ${formatRupiahId(repRevenue)} dari ${repTrxCount} order dengan margin kotor ${formatPercentId(repMarginKotor)}. On-Time SLA tercapai ${formatPercentId(operationalPerformance.onTimeRate)}, membuktikan ketelitian operasional pengerjaan cucian. Manajemen fokus mengakselerasi retensi pelanggan (saat ini ${formatPercentId(repRatio)}) dan menjaga stabilitas pasokan bahan baku demi mengamankan target omzet bulan mendatang.`;
+
+      const finalInsights = (aiResult?.insights && aiResult.insights.length > 0)
+        ? aiResult.insights
+        : [
+            `Akselerasi Omzet: Tingkatkan bundle promotion layanan '${topService?.layanan || 'Utama'}' dan aktifkan promo jam sepi (Happy Hour).`,
+            `Retensi Pelanggan: Follow-up WhatsApp re-engagement untuk ${churnedCount} pelanggan tidak aktif >30 hari dan reward bagi Top 10 Spender.`,
             `Manajemen Pengadaan: Restock terjadwal minimal H-5 sebelum stok kritis habis dan audit takaran deterjen/parfum per kg.`,
             `Standar Kualitas: SOP pre-spotting noda saat penerimaan cucian demi mempertahankan Rewash Rate ≤ 1.0% dan zero komplain.`,
             `Disiplin Operasional: Prioritas Kanban order mendekati estimasi selesai untuk menjaga On-Time SLA ≥ 98.0%.`,
-          ],
-        };
+          ];
 
+      const payload: ReportDataPayload = {
+        periodeLabel: eLabel,
+        startDateStr: formatLocalDateIso(eStart),
+        endDateStr: formatLocalDateIso(eEnd),
+        outletName: 'Outlet Utama (dua SiSi Laundry Express & Coin POS)',
+        generatedBy: isManager ? 'Manager / Owner' : 'Kasir',
+        generatedAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + formatWibTimeOnly(new Date().toISOString()),
+        executiveSummaryOpening: finalOpening,
+        kpi: {
+          totalRevenue: repRevenue,
+          totalTransactions: repTrxCount,
+          totalCustomers: repTotalCust,
+          repeatCustomers: repRepeatCust,
+          oneTimeCustomers: repTotalCust - repRepeatCust,
+          repeatOrderRatio: repRatio,
+          totalKg: repTotalKg,
+          avgOrderValue: repTrxCount > 0 ? Math.round(repRevenue / repTrxCount) : 0,
+          avgCustomerSpend: repTotalCust > 0 ? Math.round(repRevenue / repTotalCust) : 0,
+        },
+        financials: {
+          pendapatan: repRevenue,
+          hpp: repHpp,
+          labaKotor: repLabaKotor,
+          marginKotor: repMarginKotor,
+          biayaOperasional: repBiayaOps,
+          labaBersih: repLabaBersih,
+          marginBersih: repMarginBersih,
+        },
+        quality: {
+          cancellationRate: qualityPerformance.cancellationRate,
+          rewashRate: qualityPerformance.rewashRate,
+          complaintRate: qualityPerformance.complaintRate,
+          orderErrorRate: qualityPerformance.errorRate,
+          refundRate: qualityPerformance.refundRate,
+        },
+        dailyRows: Object.values(dMap),
+        serviceRows: sList,
+        employeeRows: Object.values(eMap).sort((a, b) => b.revenue - a.revenue),
+        topCustomers: topCustList,
+        operational: {
+          totalOrders: repTrxCount,
+          completedOrders: operationalPerformance.completedCount,
+          processingOrders: operationalPerformance.processingCount,
+          pendingOrders: operationalPerformance.pendingCount,
+          lateOrders: operationalPerformance.lateCount,
+          onTimeRate: operationalPerformance.onTimeRate,
+          onTimeCount: operationalPerformance.onTimeCount,
+        },
+        paymentRows: pList,
+        actionPlans: finalActionPlans,
+        insights: finalInsights,
+      };
+
+      // 4. Merender Dokumen PDF Eksekutif dengan Logo & Glosarium
+      setExportStage(4);
+      await new Promise(r => setTimeout(r, 300));
       await generateBusinessPerformancePdf(payload);
+
+      // 5. Selesai & Trigger Unduh
+      setExportStage(5);
+      await new Promise(r => setTimeout(r, 600));
+
       setShowExportModal(false);
-      await showAlert('Laporan PDF Business Performance Report berhasil diunduh!', 'success');
+      await showAlert('Laporan PDF Business Performance Report berhasil dianalisis AI & diunduh!', 'success');
     } catch (err: any) {
       console.error('Export PDF error:', err);
       await showAlert(`Gagal membuat PDF: ${err?.message || 'Terjadi kesalahan sistem'}`, 'error');
     } finally {
       setExportSubmitting(false);
+      setExportStage(0);
     }
   };
 
@@ -2992,99 +3092,202 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 4: GENERATE REPORT & EXPORT PDF                                     */}
+      {/* MODAL 4: GENERATE REPORT & EXPORT PDF (DENGAN ANIMASI AI DOWNLOAD)        */}
       {/* ========================================================================= */}
       {showExportModal && (
         <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center border border-teal-200/60 shrink-0">
-                  <FileText className="w-5 h-5 text-[#1E4648]" />
+            {exportSubmitting ? (
+              <div className="py-4 px-1 space-y-5 text-center">
+                {/* Visual AI Pulse Orb */}
+                <div className="relative mx-auto w-16 h-16 flex items-center justify-center">
+                  <div className="absolute inset-0 rounded-2xl bg-teal-500/20 animate-ping" />
+                  <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#1E4648] to-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-900/20 border border-teal-400/30">
+                    <Sparkles className="w-7 h-7 text-amber-300 animate-pulse" />
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-sm">Generate Business Report</h3>
-                  <p className="text-[11px] text-slate-400">Ekspor laporan kinerja bisnis ke format PDF resmi</p>
+
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200/80 text-[11px] font-bold text-teal-800">
+                    <Cpu className="w-3.5 h-3.5 text-teal-600 animate-spin" />
+                    <span>{exportAiProvider} Active</span>
+                  </div>
+                  <h3 className="text-base font-extrabold text-slate-900">
+                    {exportStage === 1 && 'Mengekstrak Data Kinerja...'}
+                    {exportStage === 2 && 'Menganalisis Data dengan AI Gemini...'}
+                    {exportStage === 3 && 'Merumuskan Narasi & Action Plan...'}
+                    {exportStage === 4 && 'Merender Dokumen PDF Eksekutif...'}
+                    {exportStage >= 5 && 'Selesai! Mengunduh Laporan...'}
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                    {exportStage <= 2 
+                      ? 'AI membaca pola omzet, efisiensi HPP, retensi pelanggan, dan indikator mutu outlet Anda...'
+                      : 'Menyusun dokumen PDF resmi lengkap dengan logo, grafik visual, glosarium, dan rencana aksi strategis.'}
+                  </p>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-1.5">
+                  <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200/60 p-0.5">
+                    <div 
+                      className="bg-gradient-to-r from-[#1E4648] via-teal-500 to-emerald-400 h-full rounded-full transition-all duration-500 ease-out"
+                      style={{ 
+                        width: exportStage === 1 ? '25%' : exportStage === 2 ? '55%' : exportStage === 3 ? '78%' : exportStage === 4 ? '92%' : '100%' 
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-semibold text-slate-400">
+                    <span>Persiapan</span>
+                    <span>Analisis AI</span>
+                    <span>Action Plan</span>
+                    <span>Cetak PDF</span>
+                  </div>
+                </div>
+
+                {/* Step by step checklist */}
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-left space-y-2 text-xs">
+                  <div className={`flex items-center gap-2 ${exportStage >= 1 ? 'text-slate-800 font-semibold' : 'text-slate-400'}`}>
+                    {exportStage > 1 ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : exportStage === 1 ? (
+                      <RefreshCw className="w-4 h-4 text-teal-600 animate-spin shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                    )}
+                    <span>Konsolidasi Data Finansial, HPP, SLA &amp; Stok</span>
+                  </div>
+
+                  <div className={`flex items-center gap-2 ${exportStage >= 2 ? 'text-slate-800 font-semibold' : 'text-slate-400'}`}>
+                    {exportStage > 2 ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : exportStage === 2 ? (
+                      <RefreshCw className="w-4 h-4 text-teal-600 animate-spin shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                    )}
+                    <span>Koneksi AI: Diagnosis Pertumbuhan &amp; Margin</span>
+                  </div>
+
+                  <div className={`flex items-center gap-2 ${exportStage >= 3 ? 'text-slate-800 font-semibold' : 'text-slate-400'}`}>
+                    {exportStage > 3 ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : exportStage === 3 ? (
+                      <RefreshCw className="w-4 h-4 text-teal-600 animate-spin shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                    )}
+                    <span>Penyusunan Rencana Aksi Strategis Bulan Depan</span>
+                  </div>
+
+                  <div className={`flex items-center gap-2 ${exportStage >= 4 ? 'text-slate-800 font-semibold' : 'text-slate-400'}`}>
+                    {exportStage >= 5 ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : exportStage === 4 ? (
+                      <RefreshCw className="w-4 h-4 text-teal-600 animate-spin shrink-0" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                    )}
+                    <span>Render PDF Vektor dengan Logo &amp; Glosarium</span>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-400 italic">
+                  Harap tunggu beberapa detik, berkas PDF akan terunduh otomatis ke perangkat Anda...
                 </div>
               </div>
-              <button onClick={() => setShowExportModal(false)} className="text-slate-400 hover:text-slate-700">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <label className="block font-bold text-slate-700">Pilih Periode Laporan</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'THIS_MONTH', label: 'Bulan Ini' },
-                  { id: 'LAST_MONTH', label: 'Bulan Lalu' },
-                  { id: '7D', label: '7 Hari Terakhir' },
-                  { id: '30D', label: '30 Hari Terakhir' },
-                  { id: 'CUSTOM', label: 'Custom Range' },
-                ].map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => setExportPeriodPreset(p.id as DashboardPeriodPreset)}
-                    className={`px-3 py-2 rounded-xl font-bold transition text-left cursor-pointer ${
-                      exportPeriodPreset === p.id 
-                        ? 'bg-[#1E4648] text-white shadow-2xs' 
-                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
-                    } ${p.id === 'CUSTOM' ? 'col-span-2' : ''}`}
-                  >
-                    {p.label}
+            ) : (
+              <>
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center border border-teal-200/60 shrink-0">
+                      <FileText className="w-5 h-5 text-[#1E4648]" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm">Generate Business Report</h3>
+                      <p className="text-[11px] text-slate-400">Ekspor laporan kinerja bisnis lengkap dengan analisis AI</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowExportModal(false)} className="text-slate-400 hover:text-slate-700">
+                    <X className="w-5 h-5" />
                   </button>
-                ))}
-              </div>
+                </div>
 
-              {exportPeriodPreset === 'CUSTOM' && (
-                <div className="grid grid-cols-2 gap-2 pt-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Dari Tanggal:</label>
-                    <input 
-                      type="date" 
-                      value={exportCustomStart} 
-                      onChange={(e) => setExportCustomStart(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono outline-none focus:border-[#1E4648]"
-                    />
+                <div className="space-y-2 text-xs">
+                  <label className="block font-bold text-slate-700">Pilih Periode Laporan</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'THIS_MONTH', label: 'Bulan Ini' },
+                      { id: 'LAST_MONTH', label: 'Bulan Lalu' },
+                      { id: '7D', label: '7 Hari Terakhir' },
+                      { id: '30D', label: '30 Hari Terakhir' },
+                      { id: 'CUSTOM', label: 'Custom Range' },
+                    ].map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => setExportPeriodPreset(p.id as DashboardPeriodPreset)}
+                        className={`px-3 py-2 rounded-xl font-bold transition text-left cursor-pointer ${
+                          exportPeriodPreset === p.id 
+                            ? 'bg-[#1E4648] text-white shadow-2xs' 
+                            : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
+                        } ${p.id === 'CUSTOM' ? 'col-span-2' : ''}`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Sampai Tanggal:</label>
-                    <input 
-                      type="date" 
-                      value={exportCustomEnd} 
-                      onChange={(e) => setExportCustomEnd(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono outline-none focus:border-[#1E4648]"
-                    />
+
+                  {exportPeriodPreset === 'CUSTOM' && (
+                    <div className="grid grid-cols-2 gap-2 pt-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Dari Tanggal:</label>
+                        <input 
+                          type="date" 
+                          value={exportCustomStart} 
+                          onChange={(e) => setExportCustomStart(e.target.value)}
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono outline-none focus:border-[#1E4648]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1">Sampai Tanggal:</label>
+                        <input 
+                          type="date" 
+                          value={exportCustomEnd} 
+                          onChange={(e) => setExportCustomEnd(e.target.value)}
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono outline-none focus:border-[#1E4648]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Feature Pill */}
+                  <div className="mt-2 p-2.5 rounded-xl bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/80 flex items-start gap-2 text-xs">
+                    <Sparkles className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-teal-900 block text-[11px]">Bertenaga AI Gemini &amp; Deep Intelligence</span>
+                      <span className="text-[10px] text-teal-700 leading-tight block">
+                        Laporan otomatis menyertakan pembuka eksekutif, glosarium metrik, logo resmi, dan 5 pilar rencana aksi strategis bulan depan.
+                      </span>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
 
-            <div className="flex gap-2 pt-3 border-t border-slate-100">
-              <button
-                onClick={() => setShowExportModal(false)}
-                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleExportPdf}
-                disabled={exportSubmitting}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#1E4648] to-teal-800 hover:from-teal-900 hover:to-[#1E4648] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50"
-              >
-                {exportSubmitting ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Menyiapkan PDF...</span>
-                  </>
-                ) : (
-                  <>
-                    <FileDown className="w-4 h-4 text-amber-300" />
+                <div className="flex gap-2 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => setShowExportModal(false)}
+                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleExportPdf}
+                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-[#1E4648] to-teal-800 hover:from-teal-900 hover:to-[#1E4648] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
                     <span>Generate &amp; Unduh PDF</span>
-                  </>
-                )}
-              </button>
-            </div>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

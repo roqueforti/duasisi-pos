@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { DUASISI_LOGO_WHITE_BASE64 } from './reportLogo';
 
 export interface ReportDataPayload {
   periodeLabel: string;
@@ -8,6 +9,8 @@ export interface ReportDataPayload {
   outletName: string;
   generatedBy: string;
   generatedAt: string;
+  executiveSummaryOpening?: string;
+  logoDataUrl?: string;
   // Executive Summary
   kpi: {
     totalRevenue: number;
@@ -156,37 +159,64 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   const textDark = [15, 23, 42]; // #0F172A
   const textMuted = [100, 116, 139]; // #64748B
 
-  // Helper Header Halaman
+  // Helper Header Halaman dengan Logo Resmi dua SiSi
   const renderHeader = (isFirstPage: boolean) => {
     // Header Bar Top
     doc.setFillColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-    doc.rect(0, 0, pageWidth, isFirstPage ? 30 : 15, 'F');
+    doc.rect(0, 0, pageWidth, isFirstPage ? 32 : 15, 'F');
 
-    // Title
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(isFirstPage ? 14 : 10);
-    doc.setTextColor(255, 255, 255);
-    doc.text('dua SiSi Laundry Express & Coin POS', margin, isFirstPage ? 12 : 9);
+    const logoSrc = data.logoDataUrl || DUASISI_LOGO_WHITE_BASE64;
 
-    if (isFirstPage) {
+    try {
+      if (isFirstPage) {
+        // Logo banner di sebelah kiri
+        if (logoSrc) {
+          doc.addImage(logoSrc, 'PNG', margin, 5.5, 27, 8.04);
+        }
+
+        // Title & metadata di sebelah kanan logo
+        const textX = margin + 31;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(255, 255, 255);
+        doc.text('dua SiSi Laundry Express & Coin POS', textX, 11);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(204, 251, 241); // teal light
+        doc.text('EXECUTIVE BUSINESS PERFORMANCE & PROFITABILITY REPORT', textX, 17);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.2);
+        doc.setTextColor(226, 232, 240);
+        doc.text(`Periode: ${data.periodeLabel}  |  Outlet: ${data.outletName}  |  Dibuat oleh: ${data.generatedBy}`, textX, 23.5);
+      } else {
+        // Halaman lanjutan: logo kecil di kiri
+        if (logoSrc) {
+          doc.addImage(logoSrc, 'PNG', margin, 3.8, 18, 5.36);
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(255, 255, 255);
+        doc.text('dua SiSi Laundry Express & Coin POS', margin + 21, 9.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(204, 251, 241);
+        doc.text(`Executive Performance Report — ${data.periodeLabel}`, pageWidth - margin, 9.5, { align: 'right' });
+      }
+    } catch (e) {
+      console.warn('Gagal memuat logo ke PDF header:', e);
+      // Fallback text
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(204, 251, 241); // teal light
-      doc.text('EXECUTIVE BUSINESS PERFORMANCE & PROFITABILITY REPORT', margin, 18);
-      
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(226, 232, 240);
-      doc.text(`Periode Laporan: ${data.periodeLabel}  |  Outlet: ${data.outletName}  |  Dibuat oleh: ${data.generatedBy}`, margin, 25);
-    } else {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(204, 251, 241);
-      doc.text(`Executive Performance Report — ${data.periodeLabel}`, pageWidth - margin, 9, { align: 'right' });
+      doc.setFontSize(isFirstPage ? 14 : 10);
+      doc.setTextColor(255, 255, 255);
+      doc.text('dua SiSi Laundry Express & Coin POS', margin, isFirstPage ? 12 : 9);
     }
   };
 
-  let curY = 37;
+  let curY = 39;
   renderHeader(true);
 
   // Jika tidak ada transaksi sama sekali
@@ -227,7 +257,28 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   // =========================================================================
   // BAB A: RINGKASAN EKSEKUTIF (EXECUTIVE SUMMARY)
   // =========================================================================
-  renderSectionHeader('A', 'RINGKASAN EKSEKUTIF (EXECUTIVE SUMMARY)', 45);
+  renderSectionHeader('A', 'RINGKASAN EKSEKUTIF (EXECUTIVE SUMMARY)', 60);
+
+  // Paragraf Pembuka Ringkasan Eksekutif (AI Analysis / Heuristics)
+  const defaultOpening = `Laporan kinerja bisnis dua SiSi Laundry Express & Coin POS periode ${data.periodeLabel} menyajikan evaluasi komprehensif terhadap performa finansial, efisiensi operasional, dan dinamika retensi pelanggan. Dokumen ini disusun secara sistematis guna memberikan gambaran holistik bagi manajemen dalam mengidentifikasi pencapaian kunci, mengendalikan beban pokok penjualan (HPP), serta merumuskan prioritas strategis demi akselerasi pertumbuhan outlet yang berkelanjutan.`;
+  const openingText = data.executiveSummaryOpening?.trim() || defaultOpening;
+  const openingLines = doc.splitTextToSize(openingText, contentWidth - 8);
+  const openingBoxH = Math.max(13, openingLines.length * 3.6 + 4);
+
+  doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+  doc.setDrawColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
+  doc.roundedRect(margin, curY, contentWidth, openingBoxH, 1.5, 1.5, 'FD');
+
+  // Left Accent Bar
+  doc.setFillColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
+  doc.rect(margin, curY, 2, openingBoxH, 'F');
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+  doc.text(openingLines, margin + 4.5, curY + 4.2);
+
+  curY += openingBoxH + 4;
 
   const cardWidth = (contentWidth - 6) / 3;
   const cardHeight = 17;
@@ -832,7 +883,124 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   curY = (doc as any).lastAutoTable.finalY + 8;
 
   // =========================================================================
-  // FOOTER HALAMAN OTOMATIS (HALAMAN X DARI Y)
+  // BAB I: GLOSARIUM & DEFINISI METRIK BISNIS (GLOSSARY)
+  // =========================================================================
+  renderSectionHeader('I', 'GLOSARIUM & DEFINISI METRIK BISNIS (GLOSSARY)', 65);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
+  doc.text(
+    'Panduan terminologi operasional, indikator kinerja utama (KPI), serta formula perhitungan yang diterapkan dalam laporan ini:',
+    margin,
+    curY
+  );
+  curY += 4.5;
+
+  const glossaryRows = [
+    [
+      'Total Omzet / Pendapatan',
+      'Akumulasi nilai bruto dari seluruh order layanan dan ritel yang berstatus sukses (non-void).',
+      'Sum(Total Transaksi Sukses)',
+      'Pertumbuhan Positif MoM'
+    ],
+    [
+      'HPP (Harga Pokok Penjualan)',
+      'Total biaya langsung bahan baku operasional (deterjen, parfum, plastik) dan modal ritel terpakai.',
+      'Sum(Bahan Baku + Modal Ritel Terpakai)',
+      'Maksimal 35% - 40% Omzet'
+    ],
+    [
+      'Laba Kotor & Gross Margin',
+      'Selisih total pendapatan terhadap HPP sebelum dipotong beban operasional tetap (OPEX).',
+      '(Pendapatan - HPP) / Pendapatan x 100%',
+      'Sehat: >= 55% - 60%'
+    ],
+    [
+      'Biaya Operasional (OPEX)',
+      'Pengeluaran rutin toko (listrik, air, gas, sewa tempat, gaji staf, maintenance mesin) di luar HPP.',
+      'Alokasi Beban Operasional Terdistribusi',
+      'Efisien: <= 20% Omzet'
+    ],
+    [
+      'Laba Bersih & Net Margin',
+      'Profit bersih riil yang dihasilkan outlet setelah dikurangi HPP dan seluruh biaya operasional.',
+      '(Laba Kotor - OPEX) / Pendapatan x 100%',
+      'Prima: >= 35% - 45%'
+    ],
+    [
+      'On-Time SLA',
+      'Ketepatan waktu pengerjaan order tepat pada atau sebelum estimasi tanggal & jam janji serah terima.',
+      '(Order Tepat Waktu / Total Selesai) x 100%',
+      'Standar Prima: >= 95.0%'
+    ],
+    [
+      'Repeat Order Ratio',
+      'Tingkat retensi pelanggan yang bertransaksi lebih dari 1 kali dalam rentang periode laporan.',
+      '(Pelanggan Repeat / Total Pelanggan) x 100%',
+      'Target Sehat: >= 40% - 50%'
+    ],
+    [
+      'AOV (Average Order Value)',
+      'Rata-rata nominal uang yang dibelanjakan pelanggan dalam satu kali nota transaksi.',
+      'Total Omzet / Total Order Sukses',
+      'Meningkat dengan Upsell / Bundle'
+    ],
+    [
+      'CLV (Customer Lifetime Value)',
+      'Estimasi total nilai kontribusi belanja rata-rata yang dihasilkan seorang pelanggan sepanjang hubungan.',
+      'Rata-rata Belanja x Frekuensi Kunjungan',
+      'Maksimalisasi via Loyalitas'
+    ],
+    [
+      'Rewash Rate',
+      'Persentase cucian yang harus dicuci ulang karena noda belum tuntas atau keluhan aroma/kebersihan.',
+      '(Order Cuci Ulang / Total Order) x 100%',
+      'Standar SOP: <= 1.0%'
+    ],
+    [
+      'Cancellation Rate',
+      'Persentase nota yang dibatalkan/void oleh kasir terhadap seluruh nota yang terbit.',
+      '(Order Void / Total Order) x 100%',
+      'Toleransi Aman: <= 2.0%'
+    ],
+    [
+      'Safety Stock (Days to Empty)',
+      'Estimasi sisa hari ketahanan stok bahan baku/produk berdasarkan rata-rata konsumsi harian.',
+      'Stok Tersedia / Rata-rata Pemakaian Harian',
+      'Reorder Point: H-5 Sebelum Habis'
+    ],
+  ];
+
+  autoTable(doc, {
+    startY: curY,
+    head: [['Istilah / Metrik', 'Definisi & Penjelasan Operasional', 'Formula / Cara Hitung', 'Standar Acuan']],
+    body: glossaryRows,
+    theme: 'striped',
+    margin: { left: margin, right: margin, bottom: 20 },
+    headStyles: {
+      fillColor: [30, 70, 72],
+      textColor: [255, 255, 255],
+      fontSize: 7.5,
+      fontStyle: 'bold',
+    },
+    bodyStyles: {
+      fontSize: 6.8,
+      textColor: [30, 41, 59],
+      cellPadding: 2.2,
+    },
+    columnStyles: {
+      0: { cellWidth: 38, fontStyle: 'bold', textColor: [30, 70, 72] },
+      1: { cellWidth: 76 },
+      2: { cellWidth: 44, fontStyle: 'italic' },
+      3: { cellWidth: 28, halign: 'center' },
+    },
+  });
+
+  curY = (doc as any).lastAutoTable.finalY + 8;
+
+  // =========================================================================
+  // FOOTER HALAMAN OTOMATIS (HALAMAN X DARI Y) - 2-TIER ANTI-OVERLAP
   // =========================================================================
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
@@ -842,18 +1010,26 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     doc.setDrawColor(borderGray[0], borderGray[1], borderGray[2]);
     doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
 
-    doc.setFont('helvetica', 'normal');
+    // Bersihkan format WIB ganda jika ada
+    const cleanGeneratedAt = data.generatedAt.replace(/\s*WIB\s*WIB/gi, ' WIB').replace(/\s*WIB$/i, '') + ' WIB';
+
+    // Baris 1 Footer (y = pageHeight - 7.5)
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
-    doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
+    doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
+    doc.text('dua SiSi Laundry Express & Coin POS', margin, pageHeight - 7.5);
 
-    // Kiri: Brand & Kerahasiaan
-    doc.text('dua SiSi Laundry Express & Coin POS — Dokumen Laporan Kinerja Bisnis', margin, pageHeight - 7.5);
-
-    // Tengah: Timestamp & Pembuat
-    doc.text(`Dicetak: ${data.generatedAt} WIB  |  Oleh: ${data.generatedBy}`, pageWidth / 2, pageHeight - 7.5, { align: 'center' });
-
-    // Kanan: Page Numbering
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
     doc.text(`Halaman ${i} dari ${totalPages}`, pageWidth - margin, pageHeight - 7.5, { align: 'right' });
+
+    // Baris 2 Footer (y = pageHeight - 4)
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.2);
+    doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
+    doc.text('Dokumen Laporan Kinerja Bisnis & Finansial (Kerahasiaan Manajemen)', margin, pageHeight - 4);
+    doc.text(`Dicetak: ${cleanGeneratedAt}  |  Oleh: ${data.generatedBy}`, pageWidth - margin, pageHeight - 4, { align: 'right' });
   }
 
   // Trigger Unduh Dokumen PDF
