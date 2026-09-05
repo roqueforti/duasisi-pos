@@ -260,7 +260,7 @@ export default function LoyaltyCardView({ currentRole }: LoyaltyCardViewProps) {
   });
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto animate-fade-in">
+    <div className="p-3 sm:p-4 md:p-5 lg:p-6 space-y-6 w-full animate-fade-in">
       
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-[#1E4648] via-[#143234] to-[#0A1D1E] rounded-2xl p-5 md:p-6 text-white shadow-xl relative overflow-hidden">

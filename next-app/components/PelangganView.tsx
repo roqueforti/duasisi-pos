@@ -410,7 +410,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   // Render Full-Page Detail Pelanggan View
   if (selectedCust) {
     return (
-      <div className="p-3 sm:p-4 md:p-6 space-y-5 max-w-7xl mx-auto text-slate-700 animate-fade-in">
+      <div className="p-3 sm:p-4 md:p-5 lg:p-6 space-y-5 w-full text-slate-700 animate-fade-in">
         {/* Top Navigation Bar with Back Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="flex items-center gap-3">
@@ -946,7 +946,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto text-slate-600">
+    <div className="p-3 sm:p-4 md:p-5 lg:p-6 space-y-4 w-full text-slate-600">
       {/* Top Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-lg border border-slate-200/80 shadow-2xs">
         <div className="flex items-center gap-3">

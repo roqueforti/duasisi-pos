@@ -226,7 +226,7 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
   });
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-5 lg:p-6 space-y-6 w-full">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div>

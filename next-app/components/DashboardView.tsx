@@ -1298,7 +1298,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   }, [transaksiList]);
 
   return (
-    <div className="p-3 sm:p-5 space-y-4 max-w-7xl mx-auto text-slate-700">
+    <div className="p-3 sm:p-4 md:p-5 space-y-4 w-full text-slate-700">
       
       {/* ========================================================================= */}
       {/* HEADER TOOLBAR & ACTION BUTTONS                                           */}
