@@ -1674,19 +1674,39 @@ export async function sbGetPegawaiList(): Promise<any[]> {
     .order('nama', { ascending: true });
 
   if (error) return [];
-  return (data || []).map((p: any) => ({
-    id: p.id,
-    nama: p.nama,
-    noHp: p.no_hp,
-    jabatan: p.jabatan,
-    status: p.status,
-    role: p.role,
-    nik: p.nik,
-    namaPanggilan: p.nama_panggilan,
-    alamat: p.alamat,
-    shiftUtama: p.shift_utama,
-    tanggalBergabung: p.tanggal_bergabung,
-  }));
+
+  // Fetch extended details map (gajiPokok, tunjangan, bank, dsb)
+  let extMap: Record<string, any> = {};
+  try {
+    const { data: extData } = await sb.from('app_settings').select('value').eq('key', 'pegawai_extended_details').maybeSingle();
+    if (extData?.value && typeof extData.value === 'object') {
+      extMap = extData.value;
+    }
+  } catch {}
+
+  return (data || []).map((p: any) => {
+    const ext = extMap[p.id] || {};
+    return {
+      id: p.id,
+      nama: p.nama,
+      noHp: p.no_hp,
+      jabatan: p.jabatan,
+      status: p.status,
+      role: p.role,
+      nik: p.nik,
+      namaPanggilan: p.nama_panggilan,
+      alamat: p.alamat,
+      shiftUtama: p.shift_utama,
+      tanggalBergabung: p.tanggal_bergabung,
+      gajiPokok: ext.gajiPokok !== undefined ? ext.gajiPokok : 0,
+      tunjangan: ext.tunjangan !== undefined ? ext.tunjangan : 0,
+      potongan: ext.potongan !== undefined ? ext.potongan : 0,
+      bank: ext.bank || '',
+      noRekening: ext.noRekening || '',
+      namaRekening: ext.namaRekening || '',
+      statusKepegawaian: ext.statusKepegawaian || 'Tetap',
+    };
+  });
 }
 
 // ============================================================
@@ -2091,6 +2111,40 @@ export async function sbUpdatePegawai(id: string, payload: any) {
     .single();
 
   if (error) throw error;
+
+  // Simpan extended profile details jika ada (gaji pokok, tunjangan, bank, dsb)
+  if (
+    payload.gajiPokok !== undefined ||
+    payload.tunjangan !== undefined ||
+    payload.potongan !== undefined ||
+    payload.bank !== undefined ||
+    payload.noRekening !== undefined ||
+    payload.namaRekening !== undefined ||
+    payload.statusKepegawaian !== undefined
+  ) {
+    try {
+      const { data: extData } = await sb.from('app_settings').select('value').eq('key', 'pegawai_extended_details').maybeSingle();
+      const extMap = (extData?.value && typeof extData.value === 'object') ? extData.value : {};
+      extMap[id] = {
+        ...(extMap[id] || {}),
+        gajiPokok: payload.gajiPokok !== undefined ? Number(payload.gajiPokok) : extMap[id]?.gajiPokok,
+        tunjangan: payload.tunjangan !== undefined ? Number(payload.tunjangan) : extMap[id]?.tunjangan,
+        potongan: payload.potongan !== undefined ? Number(payload.potongan) : extMap[id]?.potongan,
+        bank: payload.bank !== undefined ? String(payload.bank) : extMap[id]?.bank,
+        noRekening: payload.noRekening !== undefined ? String(payload.noRekening) : extMap[id]?.noRekening,
+        namaRekening: payload.namaRekening !== undefined ? String(payload.namaRekening) : extMap[id]?.namaRekening,
+        statusKepegawaian: payload.statusKepegawaian !== undefined ? String(payload.statusKepegawaian) : extMap[id]?.statusKepegawaian,
+      };
+      await sb.from('app_settings').upsert({
+        key: 'pegawai_extended_details',
+        value: extMap,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'key' });
+    } catch (e) {
+      console.warn('[sbUpdatePegawai] Gagal simpan pegawai_extended_details:', e);
+    }
+  }
+
   return { success: true, data };
 }
 
@@ -4075,4 +4129,995 @@ export async function sbRegenerateProductCodes(): Promise<{ success: boolean; me
   }
 
   return { success: true, message: 'Kode produk berhasil disesuaikan menurut kategori & tipe' };
+}
+
+// ============================================================
+// MODUL HR, ABSENSI, ROSTER, CUTI, PAYROLL & KEAMANAN
+// ============================================================
+
+function formatWib(d: Date | string | null | undefined, fmt: 'yyyy-MM-dd' | 'dd/MM/yyyy' | 'yyyy-MM' | 'HH:mm' | 'full' = 'yyyy-MM-dd'): string {
+  if (!d) return '';
+  const dateObj = typeof d === 'string' ? parseIndonesianDateTime(d) || new Date(d) : d;
+  if (!dateObj || isNaN(dateObj.getTime())) return '';
+
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(dateObj);
+
+  const map: Record<string, string> = {};
+  parts.forEach(p => { map[p.type] = p.value; });
+  const yyyy = map.year || '1970';
+  const MM = map.month || '01';
+  const dd = map.day || '01';
+  const HH = map.hour || '00';
+  const mm = map.minute || '00';
+
+  if (fmt === 'yyyy-MM-dd') return `${yyyy}-${MM}-${dd}`;
+  if (fmt === 'dd/MM/yyyy') return `${dd}/${MM}/${yyyy}`;
+  if (fmt === 'yyyy-MM') return `${yyyy}-${MM}`;
+  if (fmt === 'HH:mm') return `${HH}:${mm}`;
+  return `${dd}/${MM}/${yyyy} ${HH}:${mm}`;
+}
+
+async function fetchHrStore<T = any>(tableName: string, appSettingsKey: string): Promise<T[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  try {
+    const { data, error } = await sb.from(tableName).select('*');
+    if (!error && Array.isArray(data) && data.length > 0) return data as T[];
+  } catch {}
+  try {
+    const { data } = await sb.from('app_settings').select('value').eq('key', appSettingsKey).maybeSingle();
+    if (Array.isArray(data?.value)) return data.value as T[];
+  } catch {}
+  return [];
+}
+
+async function syncHrStore(tableName: string, appSettingsKey: string, list: any[]): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  try {
+    await sb.from('app_settings').upsert({
+      key: appSettingsKey,
+      value: list,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'key' });
+  } catch (e) {
+    console.warn(`[syncHrStore] Error saving ${appSettingsKey}:`, e);
+  }
+}
+
+// ============================================================
+// 1. ABSENSI & KEHADIRAN
+// ============================================================
+
+export async function sbClockInPegawai(
+  namaPegawai: string,
+  shift: string,
+  catatan?: string
+): Promise<{ success: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const now = new Date();
+  const tglStr = formatWib(now, 'yyyy-MM-dd');
+  const clockInStr = formatWib(now, 'full');
+  const cleanNama = String(namaPegawai || '').trim();
+  const cleanShift = String(shift || 'Pagi').trim();
+
+  const existing = await fetchHrStore('absensi', 'hr_absensi');
+
+  // Cek apakah pegawai sudah clock in hari ini dan belum clock out
+  const alreadyIn = existing.find((r: any) => {
+    const rTgl = r.tanggal_raw || r.tanggal || (r.clock_in ? formatWib(r.clock_in, 'yyyy-MM-dd') : '');
+    const rNama = r.nama_pegawai || r.namaPegawai;
+    const rOut = r.clock_out || r.clockOut;
+    return rTgl === tglStr && rNama === cleanNama && !rOut;
+  });
+
+  if (alreadyIn) {
+    return { success: false, message: 'Pegawai ini sudah Clock In (belum Clock Out).' };
+  }
+
+  // Cek Keterlambatan
+  let finalCatatan = String(catatan || '').trim();
+  let menitTelat = 0;
+  let denda = 0;
+  try {
+    const masterShifts = await sbGetMasterShiftList();
+    const targetShift = masterShifts.find((s: any) => s.nama === cleanShift || (s.id && s.id === cleanShift));
+    const config = await sbGetAbsensiConfig();
+    const jamMasuk = targetShift?.jamMasuk || targetShift?.jam_masuk;
+    if (jamMasuk && jamMasuk.includes(':')) {
+      const [shHH, shMM] = jamMasuk.split(':').map(Number);
+      const wibParts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+      }).formatToParts(now);
+      const y = Number(wibParts.find(p => p.type === 'year')?.value) || now.getFullYear();
+      const m = (Number(wibParts.find(p => p.type === 'month')?.value) || (now.getMonth() + 1)) - 1;
+      const d = Number(wibParts.find(p => p.type === 'day')?.value) || now.getDate();
+
+      const jamMulaiShift = new Date(y, m, d, shHH, shMM, 0);
+      const toleransiMenit = Number(config.toleransiTelatMenit) || 15;
+      const batasWaktu = new Date(jamMulaiShift.getTime() + toleransiMenit * 60000);
+
+      if (now.getTime() > batasWaktu.getTime()) {
+        const diffMs = now.getTime() - jamMulaiShift.getTime();
+        menitTelat = Math.floor(diffMs / 60000);
+        const warning = `[TERLAMBAT ${menitTelat} Menit]`;
+        finalCatatan = finalCatatan ? `${warning} ${finalCatatan}` : warning;
+
+        if (config.aktifDenda) {
+          const overMenit = Math.max(0, menitTelat - toleransiMenit);
+          const tarif = Number(config.tarifDenda || config.dendaPerMenit) || 1000;
+          if (config.tipeDenda === 'MENIT') {
+            denda = overMenit * tarif;
+          } else if (config.tipeDenda === 'JAM') {
+            denda = Math.ceil(overMenit / 60) * tarif;
+          } else if (config.tipeDenda === 'FLAT') {
+            denda = tarif;
+          }
+          if (config.maxDendaPerHari && denda > Number(config.maxDendaPerHari)) {
+            denda = Number(config.maxDendaPerHari);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[sbClockInPegawai] Error deteksi keterlambatan:', err);
+  }
+
+  const id = `ABS-${Date.now()}`;
+  const newRow = {
+    id,
+    tanggal: tglStr,
+    tanggal_raw: tglStr,
+    nama_pegawai: cleanNama,
+    namaPegawai: cleanNama,
+    shift: cleanShift,
+    clock_in: now.toISOString(),
+    clockIn: clockInStr,
+    clock_out: null,
+    clockOut: '',
+    durasi: '',
+    catatan: finalCatatan,
+    menit_telat: menitTelat,
+    menitTelat,
+    denda,
+    created_at: now.toISOString(),
+  };
+
+  // 1. Simpan ke tabel PostgreSQL jika sudah ada
+  try {
+    await sb.from('absensi').insert({
+      id,
+      tanggal: tglStr,
+      nama_pegawai: cleanNama,
+      shift: cleanShift,
+      clock_in: now.toISOString(),
+      catatan: finalCatatan,
+      menit_telat: menitTelat,
+      denda,
+    });
+  } catch {}
+
+  // 2. Dual-sync ke app_settings
+  const nextList = [newRow, ...existing];
+  await syncHrStore('absensi', 'hr_absensi', nextList);
+
+  return { success: true, message: `✅ Clock In Berhasil (${clockInStr})` };
+}
+
+export async function sbClockOutPegawai(
+  namaPegawai: string,
+  catatanOut?: string
+): Promise<{ success: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const now = new Date();
+  const tglStr = formatWib(now, 'yyyy-MM-dd');
+  const clockOutStr = formatWib(now, 'full');
+  const cleanNama = String(namaPegawai || '').trim();
+
+  const existing = await fetchHrStore('absensi', 'hr_absensi');
+
+  let targetIdx = -1;
+  for (let i = 0; i < existing.length; i++) {
+    const r = existing[i];
+    const rTgl = r.tanggal_raw || r.tanggal || (r.clock_in ? formatWib(r.clock_in, 'yyyy-MM-dd') : '');
+    const rNama = r.nama_pegawai || r.namaPegawai;
+    const rOut = r.clock_out || r.clockOut;
+    if (rTgl === tglStr && rNama === cleanNama && !rOut) {
+      targetIdx = i;
+      break;
+    }
+  }
+
+  if (targetIdx === -1) {
+    return { success: false, message: 'Tidak ditemukan Clock In aktif hari ini.' };
+  }
+
+  const activeRec = existing[targetIdx];
+  const clockInDate = activeRec.clock_in ? new Date(activeRec.clock_in) : parseIndonesianDateTime(activeRec.clockIn) || now;
+  const diffMs = Math.max(0, now.getTime() - clockInDate.getTime());
+  const diffHours = (diffMs / (1000 * 60 * 60)).toFixed(1);
+  const durasiText = `${diffHours} Jam`;
+
+  let updatedCatatan = activeRec.catatan || '';
+  if (catatanOut && catatanOut.trim()) {
+    updatedCatatan = updatedCatatan ? `${updatedCatatan} | Out: ${catatanOut.trim()}` : `Out: ${catatanOut.trim()}`;
+  }
+
+  // 1. Simpan ke tabel PostgreSQL
+  try {
+    await sb.from('absensi').update({
+      clock_out: now.toISOString(),
+      durasi: durasiText,
+      catatan: updatedCatatan,
+    }).eq('id', activeRec.id);
+  } catch {}
+
+  // 2. Dual-sync ke app_settings
+  existing[targetIdx] = {
+    ...activeRec,
+    clock_out: now.toISOString(),
+    clockOut: clockOutStr,
+    durasi: durasiText,
+    catatan: updatedCatatan,
+  };
+  await syncHrStore('absensi', 'hr_absensi', existing);
+
+  return { success: true, message: `✅ Clock Out! Durasi: ${durasiText}` };
+}
+
+export async function sbGetStatusAbsensiHariIni(
+  namaPegawai: string
+): Promise<{ status: string; clockIn?: string; clockOut?: string; shift?: string; durasi?: string }> {
+  const cleanNama = String(namaPegawai || '').trim();
+  const tglStr = formatWib(new Date(), 'yyyy-MM-dd');
+  const existing = await fetchHrStore('absensi', 'hr_absensi');
+
+  const record = existing.find((r: any) => {
+    const rTgl = r.tanggal_raw || r.tanggal || (r.clock_in ? formatWib(r.clock_in, 'yyyy-MM-dd') : '');
+    const rNama = r.nama_pegawai || r.namaPegawai;
+    return rTgl === tglStr && rNama === cleanNama;
+  });
+
+  if (!record) return { status: 'BELUM_IN' };
+  const clockIn = record.clockIn || (record.clock_in ? formatWib(record.clock_in, 'HH:mm') : '');
+  const clockOut = record.clockOut || (record.clock_out ? formatWib(record.clock_out, 'HH:mm') : '');
+  if (!record.clock_out && !record.clockOut) {
+    return { status: 'SUDAH_IN', clockIn, shift: record.shift };
+  }
+  return { status: 'SUDAH_OUT', clockIn, clockOut, durasi: record.durasi };
+}
+
+export async function sbGetRekapAbsensi(startDateStr?: string, endDateStr?: string): Promise<any[]> {
+  const rawList = await fetchHrStore('absensi', 'hr_absensi');
+  const config = await sbGetAbsensiConfig();
+
+  const filtered = rawList.filter((r: any) => {
+    const tglRaw = r.tanggal_raw || r.tanggal || (r.clock_in ? formatWib(r.clock_in, 'yyyy-MM-dd') : '');
+    if (!tglRaw) return false;
+    return (!startDateStr || !endDateStr || (tglRaw >= startDateStr && tglRaw <= endDateStr));
+  });
+
+  return filtered.map((r: any) => {
+    const catatan = r.catatan || '-';
+    let menitTelat = Number(r.menit_telat || r.menitTelat) || 0;
+    let denda = Number(r.denda) || 0;
+
+    if (denda === 0 && catatan.includes('[TERLAMBAT') && config?.aktifDenda) {
+      const match = catatan.match(/\[TERLAMBAT (\d+) Menit/);
+      if (match) {
+        menitTelat = parseInt(match[1], 10);
+        const overMenit = Math.max(0, menitTelat - (config.toleransiTelatMenit || 15));
+        const tarif = Number(config.tarifDenda || config.dendaPerMenit) || 1000;
+        if (config.tipeDenda === 'MENIT') denda = overMenit * tarif;
+        else if (config.tipeDenda === 'JAM') denda = Math.ceil(overMenit / 60) * tarif;
+        else if (config.tipeDenda === 'FLAT') denda = tarif;
+      }
+    }
+
+    const tglRaw = r.tanggal_raw || r.tanggal || (r.clock_in ? formatWib(r.clock_in, 'yyyy-MM-dd') : '');
+    const clockInVal = r.clockIn || (r.clock_in ? formatWib(r.clock_in, 'full') : '-');
+    const clockOutVal = r.clockOut || (r.clock_out ? formatWib(r.clock_out, 'full') : '-');
+
+    return {
+      id: r.id,
+      tanggal: formatWib(tglRaw, 'dd/MM/yyyy'),
+      tanggalRaw: tglRaw,
+      namaPegawai: r.nama_pegawai || r.namaPegawai,
+      shift: r.shift || 'Pagi',
+      clockIn: clockInVal,
+      clockOut: clockOutVal,
+      durasi: r.durasi || '-',
+      catatan,
+      menitTelat,
+      denda,
+    };
+  }).sort((a: any, b: any) => String(b.tanggalRaw).localeCompare(String(a.tanggalRaw)));
+}
+
+// ============================================================
+// 2. JADWAL KERJA PEGAWAI (ROSTER)
+// ============================================================
+
+export async function sbGetJadwalKerjaList(bulanTahun?: string): Promise<any[]> {
+  const raw = await fetchHrStore('jadwal_kerja', 'hr_jadwal_kerja');
+  return raw
+    .filter((r: any) => {
+      if (!bulanTahun) return true;
+      const tgl = r.tanggal ? String(r.tanggal).slice(0, 7) : '';
+      return tgl === bulanTahun;
+    })
+    .map((r: any) => ({
+      id: r.id,
+      idPegawai: r.id_pegawai || r.idPegawai || '',
+      namaPegawai: r.nama_pegawai || r.namaPegawai || '',
+      tanggal: r.tanggal ? String(r.tanggal).slice(0, 10) : '',
+      hari: r.hari || '',
+      shift: r.shift || 'Shift 1 (Pagi)',
+      status: r.status || 'Masuk',
+      catatan: r.catatan || '',
+    }));
+}
+
+export async function sbSaveJadwalKerjaBatch(rows: any[]): Promise<{ success: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+  if (!Array.isArray(rows) || rows.length === 0) return { success: true, message: 'Tidak ada data jadwal disimpan' };
+
+  const existing = await fetchHrStore('jadwal_kerja', 'hr_jadwal_kerja');
+  const updatedList = [...existing];
+
+  for (const r of rows) {
+    const tglStr = r.tanggal ? String(r.tanggal).slice(0, 10) : formatWib(new Date(), 'yyyy-MM-dd');
+    const idPegawai = r.idPegawai || r.id_pegawai || '';
+    const idx = updatedList.findIndex(e => (e.id && e.id === r.id) || ((e.id_pegawai || e.idPegawai) === idPegawai && (e.tanggal ? String(e.tanggal).slice(0, 10) : '') === tglStr));
+
+    const itemObj = {
+      id: r.id || `JDW-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id_pegawai: idPegawai,
+      idPegawai,
+      nama_pegawai: r.namaPegawai || r.nama_pegawai || '',
+      namaPegawai: r.namaPegawai || r.nama_pegawai || '',
+      tanggal: tglStr,
+      hari: r.hari || '',
+      shift: r.shift || 'Shift 1 (Pagi)',
+      status: r.status || 'Masuk',
+      catatan: r.catatan || '',
+    };
+
+    if (idx !== -1) {
+      updatedList[idx] = { ...updatedList[idx], ...itemObj };
+    } else {
+      updatedList.push(itemObj);
+    }
+
+    try {
+      await sb.from('jadwal_kerja').upsert({
+        id: itemObj.id,
+        id_pegawai: idPegawai,
+        nama_pegawai: itemObj.namaPegawai,
+        tanggal: tglStr,
+        hari: itemObj.hari,
+        shift: itemObj.shift,
+        status: itemObj.status,
+        catatan: itemObj.catatan,
+      }, { onConflict: 'id' });
+    } catch {}
+  }
+
+  await syncHrStore('jadwal_kerja', 'hr_jadwal_kerja', updatedList);
+  return { success: true, message: 'Jadwal kerja berhasil disimpan!' };
+}
+
+export async function sbHapusJadwalKerja(id: string): Promise<{ success: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  try {
+    await sb.from('jadwal_kerja').delete().eq('id', id);
+  } catch {}
+
+  const existing = await fetchHrStore('jadwal_kerja', 'hr_jadwal_kerja');
+  const filtered = existing.filter(e => e.id !== id);
+  await syncHrStore('jadwal_kerja', 'hr_jadwal_kerja', filtered);
+
+  return { success: true, message: 'Jadwal berhasil dihapus.' };
+}
+
+// ============================================================
+// 3. MANAJEMEN CUTI & IZIN
+// ============================================================
+
+export async function sbGetCutiList(bulanTahun?: string): Promise<any[]> {
+  const raw = await fetchHrStore('cuti', 'hr_cuti');
+  return raw
+    .filter((r: any) => {
+      if (!bulanTahun) return true;
+      const tgl = r.tgl_mulai || r.tglMulai;
+      return !tgl || String(tgl).slice(0, 7) === bulanTahun;
+    })
+    .map((r: any) => ({
+      id: r.id,
+      idPegawai: r.id_pegawai || r.idPegawai || '',
+      namaPegawai: r.nama_pegawai || r.namaPegawai || '',
+      jenisCuti: r.jenis_cuti || r.jenisCuti || 'Cuti Tahunan',
+      tglMulai: r.tgl_mulai || r.tglMulai ? String(r.tgl_mulai || r.tglMulai).slice(0, 10) : '',
+      tglSelesai: r.tgl_selesai || r.tglSelesai ? String(r.tgl_selesai || r.tglSelesai).slice(0, 10) : '',
+      jumlahHari: Number(r.jumlah_hari || r.jumlahHari) || 1,
+      alasan: r.alasan || '',
+      status: r.status || 'Disetujui',
+      waktuPengajuan: r.waktu_pengajuan || r.waktuPengajuan || formatWib(new Date(), 'full'),
+    })).sort((a, b) => String(b.waktuPengajuan).localeCompare(String(a.waktuPengajuan)));
+}
+
+export async function sbTambahCuti(data: any): Promise<{ success: boolean; id: string; message: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const id = `CUT-${Date.now()}`;
+  const now = new Date();
+  const newRow = {
+    id,
+    id_pegawai: data.idPegawai || '',
+    idPegawai: data.idPegawai || '',
+    nama_pegawai: data.namaPegawai || '',
+    namaPegawai: data.namaPegawai || '',
+    jenis_cuti: data.jenisCuti || 'Cuti Tahunan',
+    jenisCuti: data.jenisCuti || 'Cuti Tahunan',
+    tgl_mulai: data.tglMulai ? String(data.tglMulai).slice(0, 10) : formatWib(now, 'yyyy-MM-dd'),
+    tglMulai: data.tglMulai ? String(data.tglMulai).slice(0, 10) : formatWib(now, 'yyyy-MM-dd'),
+    tgl_selesai: data.tglSelesai ? String(data.tglSelesai).slice(0, 10) : formatWib(now, 'yyyy-MM-dd'),
+    tglSelesai: data.tglSelesai ? String(data.tglSelesai).slice(0, 10) : formatWib(now, 'yyyy-MM-dd'),
+    jumlah_hari: Number(data.jumlahHari) || 1,
+    jumlahHari: Number(data.jumlahHari) || 1,
+    alasan: data.alasan || '',
+    status: data.status || 'Disetujui',
+    waktu_pengajuan: formatWib(now, 'full'),
+    waktuPengajuan: formatWib(now, 'full'),
+  };
+
+  try {
+    await sb.from('cuti').insert({
+      id,
+      id_pegawai: newRow.id_pegawai,
+      nama_pegawai: newRow.nama_pegawai,
+      jenis_cuti: newRow.jenis_cuti,
+      tgl_mulai: newRow.tgl_mulai,
+      tgl_selesai: newRow.tgl_selesai,
+      jumlah_hari: newRow.jumlah_hari,
+      alasan: newRow.alasan,
+      status: newRow.status,
+    });
+  } catch {}
+
+  const existing = await fetchHrStore('cuti', 'hr_cuti');
+  await syncHrStore('cuti', 'hr_cuti', [newRow, ...existing]);
+
+  return { success: true, id, message: 'Pengajuan cuti/izin berhasil dicatat!' };
+}
+
+export async function sbUpdateStatusCuti(id: string, status: string): Promise<{ success: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  try {
+    await sb.from('cuti').update({ status }).eq('id', id);
+  } catch {}
+
+  const existing = await fetchHrStore('cuti', 'hr_cuti');
+  const updated = existing.map(e => e.id === id ? { ...e, status } : e);
+  await syncHrStore('cuti', 'hr_cuti', updated);
+
+  return { success: true, message: `Status cuti berhasil diubah menjadi ${status}!` };
+}
+
+export async function sbHapusCuti(id: string): Promise<{ success: boolean; message?: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  try {
+    await sb.from('cuti').delete().eq('id', id);
+  } catch {}
+
+  const existing = await fetchHrStore('cuti', 'hr_cuti');
+  const filtered = existing.filter(e => e.id !== id);
+  await syncHrStore('cuti', 'hr_cuti', filtered);
+
+  return { success: true, message: 'Data cuti berhasil dihapus.' };
+}
+
+// ============================================================
+// 4. HARI LIBUR NASIONAL & OUTLET
+// ============================================================
+
+export async function sbGetHariLiburList(tahun?: string): Promise<any[]> {
+  const raw = await fetchHrStore('hari_libur', 'hr_hari_libur');
+  return raw
+    .filter((r: any) => {
+      if (!tahun) return true;
+      const tgl = r.tanggal ? String(r.tanggal).slice(0, 4) : '';
+      return !tgl || tgl === String(tahun);
+    })
+    .map((r: any) => ({
+      id: r.id,
+      tanggal: r.tanggal ? String(r.tanggal).slice(0, 10) : '',
+      namaLibur: r.nama_libur || r.namaLibur || '',
+      kategori: r.kategori || 'Libur Nasional',
+      keterangan: r.keterangan || '',
+    }))
+    .sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal)));
+}
+
+export async function sbTambahHariLibur(data: any): Promise<{ success: boolean; id: string; message: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const id = `HBR-${Date.now()}`;
+  const tglStr = data.tanggal ? String(data.tanggal).slice(0, 10) : formatWib(new Date(), 'yyyy-MM-dd');
+  const newRow = {
+    id,
+    tanggal: tglStr,
+    nama_libur: data.namaLibur || 'Hari Libur',
+    namaLibur: data.namaLibur || 'Hari Libur',
+    kategori: data.kategori || 'Libur Nasional',
+    keterangan: data.keterangan || '',
+  };
+
+  try {
+    await sb.from('hari_libur').insert({
+      id,
+      tanggal: tglStr,
+      nama_libur: newRow.nama_libur,
+      kategori: newRow.kategori,
+      keterangan: newRow.keterangan,
+    });
+  } catch {}
+
+  const existing = await fetchHrStore('hari_libur', 'hr_hari_libur');
+  await syncHrStore('hari_libur', 'hr_hari_libur', [...existing, newRow]);
+
+  return { success: true, id, message: 'Hari libur berhasil ditambahkan!' };
+}
+
+export async function sbHapusHariLibur(id: string): Promise<{ success: boolean; message: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  try {
+    await sb.from('hari_libur').delete().eq('id', id);
+  } catch {}
+
+  const existing = await fetchHrStore('hari_libur', 'hr_hari_libur');
+  const filtered = existing.filter(e => e.id !== id);
+  await syncHrStore('hari_libur', 'hr_hari_libur', filtered);
+
+  return { success: true, message: 'Hari libur berhasil dihapus.' };
+}
+
+// ============================================================
+// 5. PAYROLL & REKAP GAJI LENGKAP
+// ============================================================
+
+export async function sbGetPayrollSummary(periodeStr?: string): Promise<any> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const now = new Date();
+  const targetPeriode = periodeStr || formatWib(now, 'yyyy-MM');
+  const [yearStr, monthStr] = targetPeriode.split('-');
+  const year = parseInt(yearStr, 10) || now.getFullYear();
+  const month = parseInt(monthStr, 10) || (now.getMonth() + 1);
+
+  const startDateStr = `${targetPeriode}-01`;
+  const endDay = new Date(year, month, 0).getDate();
+  const endDateStr = `${targetPeriode}-${String(endDay).padStart(2, '0')}`;
+
+  const pegawaiList = await sbGetPegawaiList();
+  const absensiList = await sbGetRekapAbsensi(startDateStr, endDateStr);
+  const kinerjaList = await sbGetRekapKinerjaPegawai(startDateStr, endDateStr);
+  const config = await sbGetAbsensiConfig();
+  const dropoffConfig = await sbGetDropoffIncentiveConfig();
+
+  // Load saved payment records
+  const paidRaw = await fetchHrStore('payroll', 'hr_payroll');
+  const paidMap: Record<string, any> = {};
+  paidRaw.forEach((p: any) => {
+    if (p.periode === targetPeriode) {
+      paidMap[p.id_pegawai || p.idPegawai] = {
+        idPayroll: p.id,
+        status: p.status_pembayaran || p.statusPembayaran || 'Sudah Dibayar',
+        tanggalBayar: p.tanggal_pembayaran || p.tanggalPembayaran || '',
+        metodeBayar: p.metode_pembayaran || p.metodePembayaran || 'Transfer',
+        catatan: p.catatan || '',
+        gajiPokok: Number(p.gaji_pokok || p.gajiPokok) || 0,
+        tunjangan: Number(p.tunjangan) || 0,
+        bonusKomisi: Number(p.bonus_komisi || p.bonusKomisi) || 0,
+        potongan: Number(p.potongan) || 0,
+        totalGajiBersih: Number(p.total_gaji_bersih || p.totalGajiBersih) || 0,
+      };
+    }
+  });
+
+  // Calculate dropoff task contributions per staff from pipeline_steps
+  const UMUM_STEPS = dropoffConfig.umumSteps || ['Pesanan Diterima', 'Diterima', 'Siap Diambil', 'Selesai'];
+  const stepRates = dropoffConfig.rates || {
+    'Dicuci': 1500,
+    'Dikeringkan': 1500,
+    'Disetrika': 2500,
+    'Lipat & Packing': 1000,
+    'Packing': 1000,
+    'Spotting Noda': 2000,
+    'Treatment Khusus': 3000,
+  };
+
+  const dropoffTasksMap: Record<string, any[]> = {};
+  try {
+    const { data: stepRows } = await sb
+      .from('pipeline_steps')
+      .select('*')
+      .gte('waktu_selesai', `${startDateStr}T00:00:00Z`)
+      .lte('waktu_selesai', `${endDateStr}T23:59:59Z`)
+      .eq('selesai', true);
+
+    if (Array.isArray(stepRows)) {
+      stepRows.forEach((step: any) => {
+        const staff = step.petugas || '';
+        if (staff) {
+          if (!dropoffTasksMap[staff]) dropoffTasksMap[staff] = [];
+          dropoffTasksMap[staff].push({
+            id: step.id,
+            noNota: step.no_nota,
+            step: step.step,
+            namaStep: step.nama_step,
+            waktuSelesai: step.waktu_selesai,
+            catatan: step.catatan,
+          });
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('[sbGetPayrollSummary] Error load pipeline_steps:', err);
+  }
+
+  const items = pegawaiList.map((peg: any) => {
+    const empAbs = absensiList.filter((a: any) => a.namaPegawai === peg.nama);
+    const jumlahHadir = empAbs.length;
+    let totalJamKerja = 0;
+    let jumlahTelat = 0;
+    let dendaTelat = 0;
+
+    empAbs.forEach((a: any) => {
+      const durasiNum = parseFloat(a.durasi) || 0;
+      totalJamKerja += durasiNum;
+      if (a.catatan && a.catatan.includes('TERLAMBAT')) {
+        jumlahTelat += 1;
+      }
+      dendaTelat += Number(a.denda) || 0;
+    });
+
+    const empKin = kinerjaList.find((k: any) => k.nama === peg.nama || k.id === peg.id);
+    const totalOmzet = empKin ? empKin.totalOmzet : 0;
+    const totalTransaksi = empKin ? empKin.totalTransaksi : 0;
+
+    const empTasks = (dropoffTasksMap[peg.nama] || []).concat(dropoffTasksMap[peg.id] || []);
+    let totalTahapKhusus = 0;
+    let insentifDropOff = 0;
+    const dropoffBreakdown: Record<string, number> = {};
+    const dropoffKhususBreakdown: Record<string, any> = {};
+    const dropoffUmumBreakdown: Record<string, number> = {};
+
+    empTasks.forEach((t: any) => {
+      const stName = t.namaStep || '';
+      dropoffBreakdown[stName] = (dropoffBreakdown[stName] || 0) + 1;
+      const isUmum = UMUM_STEPS.includes(stName);
+      if (isUmum) {
+        dropoffUmumBreakdown[stName] = (dropoffUmumBreakdown[stName] || 0) + 1;
+      } else {
+        const rate = Number(stepRates[stName]) || 1500;
+        totalTahapKhusus += 1;
+        insentifDropOff += rate;
+        if (!dropoffKhususBreakdown[stName]) {
+          dropoffKhususBreakdown[stName] = { count: 0, rate, subtotal: 0 };
+        }
+        dropoffKhususBreakdown[stName].count += 1;
+        dropoffKhususBreakdown[stName].subtotal += rate;
+      }
+    });
+
+    const dropoffDetailedTasks = empTasks.map((t: any) => {
+      const isUmum = UMUM_STEPS.includes(t.namaStep);
+      const tarif = isUmum ? 0 : (Number(stepRates[t.namaStep]) || 1500);
+      return {
+        id: t.id,
+        noNota: t.noNota,
+        step: t.step,
+        namaStep: t.namaStep,
+        waktuSelesai: t.waktuSelesai,
+        isKhusus: !isUmum,
+        tarif,
+        catatan: t.catatan,
+      };
+    });
+
+    const tunjanganKehadiranOtomatis = jumlahHadir * (Number(config?.tunjanganKehadiranPerHari) || 15000);
+    const defaultTunjangan = (Number(peg.tunjangan) || 0) > 0 ? Number(peg.tunjangan) : tunjanganKehadiranOtomatis;
+    const potonganRutin = Number(peg.potongan) || 0;
+    const totalPotonganComputed = potonganRutin + dendaTelat;
+
+    const savedPay = paidMap[peg.id];
+    const gajiPokok = savedPay ? savedPay.gajiPokok : (Number(peg.gajiPokok) || 0);
+    const bonusKomisi = savedPay ? savedPay.bonusKomisi : insentifDropOff;
+    const finalTunjangan = savedPay ? savedPay.tunjangan : defaultTunjangan;
+    const finalPotongan = savedPay ? savedPay.potongan : totalPotonganComputed;
+    const totalGajiBersih = savedPay ? savedPay.totalGajiBersih : Math.max(0, (gajiPokok + finalTunjangan + bonusKomisi) - finalPotongan);
+
+    return {
+      idPegawai: peg.id,
+      nama: peg.nama,
+      namaPanggilan: peg.namaPanggilan || '',
+      jabatan: peg.jabatan || 'Kasir / Staff',
+      statusPegawai: peg.status || 'Aktif',
+      statusKepegawaian: peg.statusKepegawaian || 'Tetap',
+      bank: peg.bank || '',
+      noRekening: peg.noRekening || '',
+      namaRekening: peg.namaRekening || '',
+      noHp: peg.noHp || '',
+
+      periode: targetPeriode,
+      gajiPokok,
+      tunjangan: finalTunjangan,
+      tunjanganKehadiran: tunjanganKehadiranOtomatis,
+      bonusKomisi,
+      insentifDropOff,
+      totalTahapDropOff: empTasks.length,
+      totalTahapKhusus,
+      dropoffBreakdown,
+      dropoffKhususBreakdown,
+      dropoffUmumBreakdown,
+      dropoffDetailedTasks,
+      potongan: finalPotongan,
+      potonganRutin,
+      dendaTelat,
+      totalGajiBersih,
+
+      jumlahHadir,
+      totalJamKerja: Math.round(totalJamKerja * 10) / 10,
+      jumlahTelat,
+      totalOmzetDihasilkan: totalOmzet,
+      totalTransaksiDihasilkan: totalTransaksi,
+
+      statusPembayaran: savedPay ? (savedPay.status || 'Sudah Dibayar') : 'Belum Dibayar',
+      tanggalPembayaran: savedPay ? savedPay.tanggalBayar : '',
+      metodePembayaran: savedPay ? savedPay.metodeBayar : (peg.bank ? 'Transfer' : 'Tunai'),
+      catatan: savedPay ? savedPay.catatan : '',
+    };
+  });
+
+  return {
+    periode: targetPeriode,
+    totalGajiPokok: items.reduce((acc: number, i: any) => acc + i.gajiPokok, 0),
+    totalTunjangan: items.reduce((acc: number, i: any) => acc + i.tunjangan, 0),
+    totalBonus: items.reduce((acc: number, i: any) => acc + i.bonusKomisi, 0),
+    totalPotongan: items.reduce((acc: number, i: any) => acc + i.potongan, 0),
+    totalPengeluaranGaji: items.reduce((acc: number, i: any) => acc + i.totalGajiBersih, 0),
+    totalPegawai: items.length,
+    sudahDibayarCount: items.filter((i: any) => i.statusPembayaran === 'Sudah Dibayar').length,
+    belumDibayarCount: items.filter((i: any) => i.statusPembayaran !== 'Sudah Dibayar').length,
+    allDropoffSteps: Object.keys(stepRates),
+    items,
+  };
+}
+
+export async function sbSavePayrollPayment(
+  idPegawai: string,
+  periode: string,
+  payload: any
+): Promise<{ success: boolean; idPayroll?: string; message: string }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  const idPayroll = `PAY-${periode}-${idPegawai}`;
+  const now = new Date();
+  const paymentObj = {
+    id: idPayroll,
+    periode,
+    id_pegawai: idPegawai,
+    idPegawai,
+    nama_pegawai: payload.nama || '',
+    namaPegawai: payload.nama || '',
+    jabatan: payload.jabatan || '',
+    gaji_pokok: Number(payload.gajiPokok) || 0,
+    gajiPokok: Number(payload.gajiPokok) || 0,
+    tunjangan: Number(payload.tunjangan) || 0,
+    bonus_komisi: Number(payload.bonusKomisi) || 0,
+    bonusKomisi: Number(payload.bonusKomisi) || 0,
+    potongan: Number(payload.potongan) || 0,
+    total_gaji_bersih: Number(payload.totalGajiBersih) || 0,
+    totalGajiBersih: Number(payload.totalGajiBersih) || 0,
+    status_pembayaran: payload.statusPembayaran || 'Sudah Dibayar',
+    statusPembayaran: payload.statusPembayaran || 'Sudah Dibayar',
+    tanggal_pembayaran: payload.statusPembayaran === 'Belum Dibayar' ? '' : formatWib(now, 'full'),
+    tanggalPembayaran: payload.statusPembayaran === 'Belum Dibayar' ? '' : formatWib(now, 'full'),
+    metode_pembayaran: payload.metodePembayaran || 'Transfer',
+    metodePembayaran: payload.metodePembayaran || 'Transfer',
+    catatan: payload.catatan || '',
+  };
+
+  try {
+    await sb.from('payroll').upsert({
+      id: idPayroll,
+      periode,
+      id_pegawai: idPegawai,
+      nama_pegawai: paymentObj.namaPegawai,
+      jabatan: paymentObj.jabatan,
+      gaji_pokok: paymentObj.gajiPokok,
+      tunjangan: paymentObj.tunjangan,
+      bonus_komisi: paymentObj.bonusKomisi,
+      potongan: paymentObj.potongan,
+      total_gaji_bersih: paymentObj.totalGajiBersih,
+      status_pembayaran: paymentObj.statusPembayaran,
+      tanggal_pembayaran: paymentObj.tanggalPembayaran ? now.toISOString() : null,
+      metode_pembayaran: paymentObj.metodePembayaran,
+      catatan: paymentObj.catatan,
+    }, { onConflict: 'id' });
+  } catch {}
+
+  const existing = await fetchHrStore('payroll', 'hr_payroll');
+  const idx = existing.findIndex((e: any) => e.periode === periode && (e.id_pegawai || e.idPegawai) === idPegawai);
+  if (idx !== -1) {
+    existing[idx] = { ...existing[idx], ...paymentObj };
+  } else {
+    existing.push(paymentObj);
+  }
+  await syncHrStore('payroll', 'hr_payroll', existing);
+
+  return { success: true, idPayroll, message: 'Status pembayaran gaji berhasil diperbarui' };
+}
+
+// ============================================================
+// 6. PEMULIHAN PIN & KEAMANAN
+// ============================================================
+
+export async function sbRecoverPin(emailInput: string): Promise<{ success: boolean; message: string }> {
+  const cleanEmail = String(emailInput || '').trim().toLowerCase();
+  if (!cleanEmail) {
+    return { success: false, message: 'Silakan masukkan alamat email manager Anda.' };
+  }
+
+  const sec = await sbGetSecuritySettings();
+  const regEmail = String(sec.emailManager || '').trim().toLowerCase();
+
+  if (!regEmail) {
+    return { success: false, message: 'Email Manager belum didaftarkan di sistem keamanan. Hubungi administrator.' };
+  }
+
+  if (cleanEmail !== regEmail) {
+    return { success: false, message: 'Alamat email tidak cocok dengan email Manager yang terdaftar.' };
+  }
+
+  const currentPin = sec.pinManager || '888888';
+  return {
+    success: true,
+    message: `Verifikasi email berhasil! PIN Manager Anda saat ini adalah: ${currentPin}. Harap segera login dan ganti PIN bila diperlukan.`,
+  };
+}
+
+// ============================================================
+// 7. BUKTI FOTO KAS KELUAR & EXPENSE
+// ============================================================
+
+export async function sbUploadExpensePhoto(
+  fileName: string,
+  fileData: string,
+  mimeType: string,
+  shiftId?: string
+): Promise<{ success: boolean; url: string; message?: string }> {
+  let photoUrl = fileData;
+  if (!photoUrl.startsWith('data:') && !photoUrl.startsWith('http')) {
+    photoUrl = `data:${mimeType || 'image/jpeg'};base64,${fileData}`;
+  }
+
+  if (shiftId) {
+    try {
+      const sb = getSupabase();
+      if (sb) {
+        await sb.from('kas_shift_pengeluaran').insert({
+          id_kas_shift: shiftId,
+          keterangan: fileName || 'Bukti Pengeluaran',
+          nominal: 0,
+          foto_nota: photoUrl,
+        });
+      }
+    } catch (e) {
+      console.warn('[sbUploadExpensePhoto] Gagal kaitkan ke kas_shift_pengeluaran:', e);
+    }
+  }
+
+  return { success: true, url: photoUrl, message: 'Foto bukti pengeluaran berhasil disimpan' };
+}
+
+// ============================================================
+// 8. HELPER ACTIONS (CARI PELANGGAN, RESOLVE CODES, IMPORT BATCH)
+// ============================================================
+
+export async function sbCariPelangganByHp(query: string): Promise<any> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const clean = normalizePhone(query);
+  const { data } = await sb
+    .from('pelanggan')
+    .select('*')
+    .or(`no_hp.ilike.%${clean}%,nama.ilike.%${query}%`)
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+  return {
+    id: data.id,
+    nama: data.nama,
+    noHp: data.no_hp,
+    alamat: data.alamat,
+    isMember: data.is_member,
+    saldoPoin: data.saldo_poin,
+    totalOrder: data.total_order,
+  };
+}
+
+export async function sbResolveDuplicateItemCodes(): Promise<{ success: boolean; message: string }> {
+  const res = await sbRegenerateProductCodes();
+  return { success: res.success, message: res.message || 'Kode produk berhasil disesuaikan' };
+}
+
+export async function sbImportTransaksiBatch(items: any[]): Promise<{ success: boolean; count: number }> {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase belum dikonfigurasi');
+  if (!Array.isArray(items) || items.length === 0) return { success: true, count: 0 };
+
+  let count = 0;
+  for (const t of items) {
+    try {
+      await sbSimpanTransaksi(t);
+      count++;
+    } catch (e) {
+      console.warn('[sbImportTransaksiBatch] Gagal import transaksi:', e);
+    }
+  }
+  return { success: true, count };
+}
+
+export async function sbGetPipelineSteps(noNota: string): Promise<any[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from('pipeline_steps')
+    .select('*')
+    .eq('no_nota', noNota)
+    .order('step', { ascending: true });
+
+  return (data || []).map((s: any) => ({
+    id: s.id,
+    noNota: s.no_nota,
+    step: s.step,
+    namaStep: s.nama_step,
+    selesai: s.selesai,
+    petugas: s.petugas,
+    waktuMulai: s.waktu_mulai,
+    waktuSelesai: s.waktu_selesai,
+    catatan: s.catatan,
+  }));
 }

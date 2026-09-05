@@ -302,6 +302,50 @@ export async function runBackend<T = any>(action: string, ...args: any[]): Promi
           return (await sb.sbBatchUbahKategoriLayanan(args[0], args[1])) as any;
         case 'regenerateProductCodes':
           return (await sb.sbRegenerateProductCodes()) as any;
+        case 'clockInPegawai':
+          return (await sb.sbClockInPegawai(args[0], args[1], args[2])) as any;
+        case 'clockOutPegawai':
+          return (await sb.sbClockOutPegawai(args[0], args[1])) as any;
+        case 'getStatusAbsensiHariIni':
+          return (await sb.sbGetStatusAbsensiHariIni(args[0])) as any;
+        case 'getRekapAbsensi':
+          return (await sb.sbGetRekapAbsensi(args[0], args[1])) as any;
+        case 'getJadwalKerjaList':
+          return (await sb.sbGetJadwalKerjaList(args[0])) as any;
+        case 'saveJadwalKerjaBatch':
+          return (await sb.sbSaveJadwalKerjaBatch(args[0])) as any;
+        case 'hapusJadwalKerja':
+          return (await sb.sbHapusJadwalKerja(args[0])) as any;
+        case 'getCutiList':
+          return (await sb.sbGetCutiList(args[0])) as any;
+        case 'tambahCuti':
+          return (await sb.sbTambahCuti(args[0])) as any;
+        case 'updateStatusCuti':
+          return (await sb.sbUpdateStatusCuti(args[0], args[1])) as any;
+        case 'hapusCuti':
+          return (await sb.sbHapusCuti(args[0])) as any;
+        case 'getHariLiburList':
+          return (await sb.sbGetHariLiburList(args[0])) as any;
+        case 'tambahHariLibur':
+          return (await sb.sbTambahHariLibur(args[0])) as any;
+        case 'hapusHariLibur':
+          return (await sb.sbHapusHariLibur(args[0])) as any;
+        case 'getPayrollSummary':
+          return (await sb.sbGetPayrollSummary(args[0])) as any;
+        case 'savePayrollPayment':
+          return (await sb.sbSavePayrollPayment(args[0], args[1], args[2])) as any;
+        case 'recoverPin':
+          return (await sb.sbRecoverPin(args[0])) as any;
+        case 'uploadExpensePhoto':
+          return (await sb.sbUploadExpensePhoto(args[0], args[1], args[2], args[3])) as any;
+        case 'cariPelangganByHp':
+          return (await sb.sbCariPelangganByHp(args[0])) as any;
+        case 'resolveDuplicateItemCodes':
+          return (await sb.sbResolveDuplicateItemCodes()) as any;
+        case 'importTransaksiBatch':
+          return (await sb.sbImportTransaksiBatch(args[0])) as any;
+        case 'getPipelineSteps':
+          return (await sb.sbGetPipelineSteps(args[0])) as any;
       }
     } catch (sbErr: any) {
       console.warn(`[Supabase Error] Action '${action}' gagal, fallback ke Google Apps Script:`, sbErr);
