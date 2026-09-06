@@ -895,34 +895,41 @@ export default function RekapView({ onNavigateTab }: { onNavigateTab?: (tab: str
             ) : (
               <div className="space-y-3 pt-1">
                 {omzetHarian.map((item, idx) => {
-                  const pct = Math.round((item.omzet / maxOmzetHarian) * 100);
+                  const pct = Math.round((item.omzet / (maxOmzetHarian || 1)) * 100);
                   const dayName = getIndonesianDayName(item.tanggal);
                   const formattedDate = formatShortDateId(item.tanggal);
-                  const isInside = pct >= 28;
+                  const hasOmzet = (item.omzet || 0) > 0;
 
                   return (
-                    <div key={idx} className="flex items-center gap-2 sm:gap-3 text-xs group">
+                    <div 
+                      key={item.tanggal || idx} 
+                      className="flex items-center gap-2 sm:gap-3 text-xs group"
+                      style={{ isolation: 'isolate' }}
+                    >
                       {/* Tanggal & Hari */}
                       <div className="w-24 sm:w-28 shrink-0 flex flex-col">
                         <span className="font-bold text-slate-800 text-xs truncate">{formattedDate}</span>
                         <span className="text-[10px] text-slate-400 font-medium">{dayName}</span>
                       </div>
 
-                      {/* Bar Container yang Luas (h-7.5) & Teks Bebas Glitch */}
+                      {/* Bar Container yang Luas (h-7.5) & Teks Konsisten di Dalam Bar */}
                       <div className="flex-1 bg-slate-100 h-7.5 rounded-xl overflow-hidden relative flex items-center p-0.5 border border-slate-200/70">
                         <div 
-                          className="bg-gradient-to-r from-[#1E4648] to-teal-700 h-full rounded-lg transition-all duration-500 flex items-center" 
-                          style={{ width: `${Math.max(pct, 6)}%` }}
+                          className="bg-gradient-to-r from-[#1E4648] via-teal-700 to-teal-600 h-full rounded-lg transition-all duration-300 flex items-center shadow-xs shrink-0" 
+                          style={{ 
+                            width: hasOmzet ? `${Math.max(pct, 14)}%` : '0%',
+                            minWidth: hasOmzet ? '95px' : '0px'
+                          }}
                         >
-                          {isInside && (
+                          {hasOmzet && (
                             <span className="pl-3 text-xs font-bold font-mono text-white whitespace-nowrap drop-shadow-xs truncate">
                               Rp {(item?.omzet || 0).toLocaleString('id-ID')}
                             </span>
                           )}
                         </div>
-                        {!isInside && (
-                          <span className="pl-2 text-xs font-bold font-mono text-teal-900 whitespace-nowrap truncate">
-                            Rp {(item?.omzet || 0).toLocaleString('id-ID')}
+                        {!hasOmzet && (
+                          <span className="pl-2.5 text-xs font-bold font-mono text-slate-400 whitespace-nowrap">
+                            Rp 0
                           </span>
                         )}
                       </div>
