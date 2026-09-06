@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   BarChart3, Calendar, RefreshCw, TrendingUp, TrendingDown, ShoppingBag, Award, 
   ShieldAlert, CheckCircle, XCircle, FileSpreadsheet, Printer, Download, Clock, History, AlertCircle,
@@ -113,7 +113,7 @@ function getPreviousPeriodRange(startStr: string, endStr: string): { prevStartSt
   }
 }
 
-export default function RekapView() {
+export default function RekapView({ onNavigateTab }: { onNavigateTab?: (tab: string) => void }) {
   const { showAlert, showConfirm, showPrompt } = useDialog();
 
   // Presets & Dates state (Default 7D agar langsung sinkron dengan database)
@@ -127,6 +127,39 @@ export default function RekapView() {
   const [prevData, setPrevData] = useState<LaporanResponse | null>(null);
   const [layananList, setLayananList] = useState<any[]>([]);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Filter & Eksplorasi Produk / Varian Terlaris (Point 4)
+  const [showAllProducts, setShowAllProducts] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
+  const [productMarginFilter, setProductMarginFilter] = useState<'SEMUA' | 'MARGIN_TIPIS' | 'TOP'>('SEMUA');
+
+  // Handler Navigasi ke Master Produk / Layanan (Point 3)
+  const handleNavigateToProduk = () => {
+    if (onNavigateTab) {
+      onNavigateTab('produk');
+    } else {
+      try {
+        localStorage.setItem('duasisi_last_active_tab', 'produk');
+        window.location.reload();
+      } catch (e) {}
+    }
+  };
+
+  // Close dropdown on click outside (Point 6)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setShowExportDropdown(false);
+      }
+    };
+    if (showExportDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportDropdown]);
 
   const [activeTab, setActiveTabState] = useState<'Laporan' | 'ApprovalVoid' | 'AuditTrail' | 'KasShift'>(() => {
     if (typeof window !== 'undefined') {

@@ -296,7 +296,7 @@ export default function PosAppRoot() {
               {currentTab === 'shift' && <ShiftView currentRole={currentRole} />}
 
               {currentTab === 'menu' && <MenuGeneratorView />}
-              {currentTab === 'rekap' && <RekapView />}
+              {currentTab === 'rekap' && <RekapView onNavigateTab={handleTabChange} />}
               {currentTab === 'arsip_laporan' && <MonthlyReportsArchiveView currentRole={currentRole} />}
               {currentTab === 'keamanan' && <KeamananView currentRole={currentRole} />}
             </main>

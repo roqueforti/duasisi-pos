@@ -3303,8 +3303,7 @@ export async function sbGetLaporanRange(startDate: string, endDate: string) {
 
   const layananTerlaris = Array.from(layananMap.entries())
     .map(([layanan, val]) => ({ layanan, qty: val.qty, omzet: val.omzet }))
-    .sort((a, b) => b.omzet - a.omzet)
-    .slice(0, 15);
+    .sort((a, b) => b.omzet - a.omzet);
 
   return {
     ringkasan: {
