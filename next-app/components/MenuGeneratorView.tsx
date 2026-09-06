@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Download, 
   Printer, 
   RefreshCw, 
   Sparkles, 
-  Palette, 
   ZoomIn, 
   ZoomOut, 
   Image as ImageIcon,
@@ -17,13 +16,13 @@ import {
   Zap,
   Droplets,
   Award,
-  Layers,
   Loader2,
-  Star,
-  Check,
-  Flame,
   Shirt,
-  ShoppingBag
+  ShoppingBag,
+  Maximize2,
+  SlidersHorizontal,
+  Layers,
+  Sparkle
 } from 'lucide-react';
 import { toPng, toJpeg } from 'html-to-image';
 import { runBackend } from '@/lib/api';
@@ -40,47 +39,50 @@ interface LayananItemBackend {
 }
 
 const FORMATS = [
-  { id: 'a4-portrait', name: 'A4 / Poster (Potret)', width: 794, height: 1123, defaultCols: 1 },
-  { id: 'a4-landscape', name: 'A4 / TV Display (Lanskap)', width: 1123, height: 794, defaultCols: 2 },
   { id: 'ig-feed', name: 'Instagram Feed (1:1)', width: 1080, height: 1080, defaultCols: 2 },
-  { id: 'ig-story', name: 'IG Story / WhatsApp (9:16)', width: 1080, height: 1920, defaultCols: 1 }
+  { id: 'ig-story', name: 'IG Story / WhatsApp (9:16)', width: 1080, height: 1920, defaultCols: 1 },
+  { id: 'a4-portrait', name: 'A4 Poster Dinding (Potret)', width: 794, height: 1123, defaultCols: 2 },
+  { id: 'a4-landscape', name: 'A4 / TV Display Outlet (Lanskap)', width: 1123, height: 794, defaultCols: 4 },
+  { id: 'auto-fit', name: 'Auto Fit (Panjang Sesuai Isi)', width: 1080, height: 'auto', defaultCols: 2 }
 ];
 
 const THEMES = [
   {
-    id: 'neo-studio',
-    name: 'Studio Neo-Poster (Teal & Gold)',
-    bg: 'bg-[#0c1f21]',
-    bgPattern: 'radial-gradient(circle at 50% 0%, rgba(30,70,72,0.8) 0%, rgba(12,31,33,1) 75%)',
-    frameBorder: 'border-white/15',
+    id: 'dua-sisi-signature',
+    name: 'Dua Sisi Signature (Teal & Gold)',
+    bg: 'bg-[#0D2324]',
+    bgPattern: 'radial-gradient(circle at 50% 10%, rgba(30,70,72,0.6) 0%, rgba(13,35,36,1) 80%)',
+    frameBorder: 'border-teal-500/20',
     headerTitleColor: 'text-white',
-    subRibbonBg: 'bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 text-slate-950 shadow-amber-950/40',
+    headerSubtitleColor: 'text-teal-200/80',
+    pillBg: 'bg-white/10 text-teal-100 border-white/10',
     categoryRibbons: {
-      self: 'bg-gradient-to-r from-[#FF9500] to-[#E07A00] text-white',
+      self: 'bg-gradient-to-r from-[#FF9500] to-[#D97706] text-white',
       drop: 'bg-gradient-to-r from-[#0284C7] to-[#0369A1] text-white',
       addon: 'bg-gradient-to-r from-[#10B981] to-[#047857] text-white',
       fnb: 'bg-gradient-to-r from-[#8B5CF6] to-[#6D28D9] text-white',
       default: 'bg-gradient-to-r from-[#1E4648] to-[#11292B] text-white',
     },
-    cardContainer: 'bg-[#142d30]/90 backdrop-blur-md border border-teal-500/20 shadow-2xl',
+    cardContainer: 'bg-[#143236]/90 border border-teal-500/20 shadow-xl',
     itemRow: 'bg-white/5 hover:bg-white/10 border-white/5 text-white',
-    numberBadge: 'bg-amber-400 text-slate-950 font-black shadow-xs',
+    numberBadge: 'bg-amber-400 text-slate-950 font-black',
     itemName: 'text-white font-bold',
     itemUnit: 'text-teal-200/70',
-    dottedLine: 'border-teal-400/25',
-    priceTag: 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black shadow-md border border-amber-300',
-    footerBg: 'bg-[#081516] border-teal-500/20 text-teal-100/80',
+    dottedLine: 'border-teal-400/20',
+    priceTag: 'bg-amber-400 text-slate-950 font-black shadow-xs',
+    footerBg: 'bg-[#091A1B] border-teal-500/20 text-teal-200/80',
     logoSrc: './assets/logo-full-white.svg',
-    stampBorder: 'border-amber-400/30 text-amber-300 bg-amber-400/10'
+    stampBorder: 'border-amber-400/40 text-amber-300 bg-amber-400/10'
   },
   {
-    id: 'fresh-minimal',
-    name: 'Scandinavian Clean (Warm Cream & Teal)',
-    bg: 'bg-[#F9F7F2]',
-    bgPattern: 'radial-gradient(circle at 50% 0%, #FFFFFF 0%, #F4F0E8 85%)',
-    frameBorder: 'border-[#1E4648]/20',
+    id: 'scandinavian-light',
+    name: 'Scandinavian Clean (Putih Minimalist)',
+    bg: 'bg-[#FFFFFF]',
+    bgPattern: 'radial-gradient(circle at 50% 0%, #FFFFFF 0%, #F8FAFC 85%)',
+    frameBorder: 'border-slate-200',
     headerTitleColor: 'text-[#1E4648]',
-    subRibbonBg: 'bg-[#1E4648] text-white shadow-slate-400/30',
+    headerSubtitleColor: 'text-slate-500',
+    pillBg: 'bg-slate-100 text-slate-700 border-slate-200',
     categoryRibbons: {
       self: 'bg-[#1E4648] text-white',
       drop: 'bg-[#0F766E] text-white',
@@ -88,43 +90,52 @@ const THEMES = [
       fnb: 'bg-[#D97706] text-white',
       default: 'bg-[#1E4648] text-white',
     },
-    cardContainer: 'bg-white border-2 border-[#1E4648]/15 shadow-xl',
-    itemRow: 'bg-slate-50/80 hover:bg-slate-100/80 border-slate-200/60 text-slate-800',
-    numberBadge: 'bg-[#1E4648] text-white font-black shadow-xs',
+    cardContainer: 'bg-[#F8FAFC] border border-slate-200 shadow-sm',
+    itemRow: 'bg-white hover:bg-slate-50 border-slate-100 text-slate-800',
+    numberBadge: 'bg-[#1E4648] text-white font-black',
     itemName: 'text-slate-900 font-bold',
-    itemUnit: 'text-slate-500',
-    dottedLine: 'border-slate-300',
-    priceTag: 'bg-[#1E4648] text-white font-black shadow-sm border border-[#1E4648]',
-    footerBg: 'bg-[#EFECE4] border-[#1E4648]/20 text-slate-700',
+    itemUnit: 'text-slate-400',
+    dottedLine: 'border-slate-200',
+    priceTag: 'bg-[#1E4648] text-white font-black shadow-xs',
+    footerBg: 'bg-slate-100 border-slate-200 text-slate-600',
     logoSrc: './assets/logo-full-teal.svg',
     stampBorder: 'border-[#1E4648]/30 text-[#1E4648] bg-[#1E4648]/5'
   },
   {
-    id: 'cyber-dark',
-    name: 'Cyber Express (Obsidian & Electric Cyan)',
-    bg: 'bg-[#0A0D14]',
-    bgPattern: 'radial-gradient(circle at 50% 0%, #151D2A 0%, #080A0F 85%)',
-    frameBorder: 'border-cyan-500/30',
+    id: 'minimal-slate',
+    name: 'Modern Slate (Obsidian & Gold)',
+    bg: 'bg-[#0F172A]',
+    bgPattern: 'radial-gradient(circle at 50% 0%, #1E293B 0%, #0F172A 85%)',
+    frameBorder: 'border-slate-700',
     headerTitleColor: 'text-white',
-    subRibbonBg: 'bg-gradient-to-r from-cyan-400 to-blue-500 text-slate-950 shadow-cyan-900/50',
+    headerSubtitleColor: 'text-slate-400',
+    pillBg: 'bg-slate-800 text-slate-300 border-slate-700',
     categoryRibbons: {
-      self: 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white',
-      drop: 'bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white',
-      addon: 'bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950',
-      fnb: 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950',
-      default: 'bg-gradient-to-r from-slate-700 to-slate-800 text-white',
+      self: 'bg-amber-500 text-slate-950',
+      drop: 'bg-teal-500 text-slate-950',
+      addon: 'bg-emerald-500 text-slate-950',
+      fnb: 'bg-purple-500 text-white',
+      default: 'bg-slate-700 text-white',
     },
-    cardContainer: 'bg-[#111622]/90 backdrop-blur-md border border-cyan-500/20 shadow-2xl shadow-cyan-950/40',
-    itemRow: 'bg-slate-900/80 hover:bg-slate-800/80 border-slate-800 text-slate-100',
-    numberBadge: 'bg-cyan-400 text-slate-950 font-black shadow-xs',
+    cardContainer: 'bg-[#1E293B]/90 border border-slate-700 shadow-xl',
+    itemRow: 'bg-slate-800/80 hover:bg-slate-700/80 border-slate-700 text-slate-100',
+    numberBadge: 'bg-amber-400 text-slate-950 font-black',
     itemName: 'text-slate-100 font-bold',
-    itemUnit: 'text-cyan-300/70',
-    dottedLine: 'border-cyan-500/30',
-    priceTag: 'bg-gradient-to-r from-cyan-400 to-teal-400 text-slate-950 font-black shadow-md border border-cyan-300',
-    footerBg: 'bg-[#07090E] border-cyan-500/20 text-slate-400',
+    itemUnit: 'text-slate-400',
+    dottedLine: 'border-slate-700',
+    priceTag: 'bg-amber-400 text-slate-950 font-black shadow-xs',
+    footerBg: 'bg-[#0A0F1D] border-slate-800 text-slate-400',
     logoSrc: './assets/logo-full-white.svg',
-    stampBorder: 'border-cyan-400/30 text-cyan-400 bg-cyan-400/10'
+    stampBorder: 'border-amber-400/30 text-amber-300 bg-amber-400/10'
   }
+];
+
+// Order of categories for laundromat business logic
+const CANONICAL_CATEGORY_ORDER = [
+  'Self Service',
+  'Drop Off',
+  'Add On',
+  'Makanan dan Minuman'
 ];
 
 export default function MenuGeneratorView() {
@@ -133,22 +144,54 @@ export default function MenuGeneratorView() {
   const [downloading, setDownloading] = useState<'png' | 'jpeg' | null>(null);
   const [format, setFormat] = useState(FORMATS[0]);
   const [theme, setTheme] = useState(THEMES[0]);
-  const [filterTipe, setFilterTipe] = useState<'Semua' | 'SelfService' | 'FullService'>('Semua');
+  const [filterTipe, setFilterTipe] = useState<'Semua' | 'SelfService' | 'FullService' | 'Retail'>('Semua');
+  const [density, setDensity] = useState<'compact' | 'normal'>('compact');
+  const [columnCount, setColumnCount] = useState<number>(2);
   const [showUnit, setShowUnit] = useState(true);
   const [showFooter, setShowFooter] = useState(true);
-  const [showStamp, setShowStamp] = useState(true);
   const [zoom, setZoom] = useState(0.5);
-  const [columnCount, setColumnCount] = useState<1 | 2>(1);
 
   const printRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await runBackend<LayananItemBackend[]>('getLayananListAll');
-      if (Array.isArray(data)) {
-        setLayananList(data.filter(d => d.aktif === 'Y'));
+      // Ambil layanan & produk
+      const [layData, invData] = await Promise.all([
+        runBackend<LayananItemBackend[]>('getLayananListAll').catch(() => []),
+        runBackend<any[]>('getInventoryList').catch(() => [])
+      ]);
+
+      const items: LayananItemBackend[] = [];
+      const seenNames = new Set<string>();
+
+      if (Array.isArray(layData)) {
+        layData.filter(d => d.aktif === 'Y').forEach(item => {
+          items.push(item);
+          seenNames.add(item.nama.toLowerCase().trim());
+        });
       }
+
+      // Gabungkan jika ada item inventory yang dijual langsung dan belum terdaftar di layanan
+      if (Array.isArray(invData)) {
+        invData.forEach(inv => {
+          if (inv.is_dijual && inv.harga_jual > 0 && !seenNames.has(inv.nama.toLowerCase().trim())) {
+            items.push({
+              id: inv.id,
+              nama: inv.nama,
+              harga: Number(inv.harga_jual) || 0,
+              satuan: inv.satuan || 'pcs',
+              aktif: 'Y',
+              tipe: '',
+              kategori: inv.kategori || 'Makanan dan Minuman'
+            });
+            seenNames.add(inv.nama.toLowerCase().trim());
+          }
+        });
+      }
+
+      setLayananList(items);
     } catch (err) {
       console.error('Gagal memuat katalog:', err);
     } finally {
@@ -160,8 +203,25 @@ export default function MenuGeneratorView() {
     loadData();
   }, []);
 
+  // Update column count based on format
   useEffect(() => {
-    setColumnCount(format.defaultCols as 1 | 2);
+    if (format.defaultCols) {
+      setColumnCount(format.defaultCols);
+    }
+  }, [format]);
+
+  // Auto-fit zoom to viewport on load / format change
+  const handleAutoFitZoom = () => {
+    if (!scrollAreaRef.current) return;
+    const containerW = scrollAreaRef.current.clientWidth - 48; // padding
+    const targetW = typeof format.width === 'number' ? format.width : 1080;
+    const calculated = Math.min(1, Math.max(0.25, containerW / targetW));
+    setZoom(Math.round(calculated * 100) / 100);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(handleAutoFitZoom, 200);
+    return () => clearTimeout(timer);
   }, [format]);
 
   const handlePrint = () => {
@@ -199,19 +259,74 @@ export default function MenuGeneratorView() {
     }
   };
 
-  // Grouping logic
-  const filteredData = layananList.filter(
-    item => filterTipe === 'Semua' || item.tipe === filterTipe
-  );
+  // Filter items
+  const filteredData = useMemo(() => {
+    return layananList.filter(item => {
+      if (filterTipe === 'Semua') return true;
+      if (filterTipe === 'SelfService') return item.tipe === 'SelfService' && item.kategori === 'Self Service';
+      if (filterTipe === 'FullService') return item.tipe === 'FullService' || item.kategori === 'Drop Off';
+      if (filterTipe === 'Retail') return item.kategori === 'Add On' || item.kategori === 'Makanan dan Minuman';
+      return true;
+    });
+  }, [layananList, filterTipe]);
 
-  const groups: Record<string, LayananItemBackend[]> = {};
-  filteredData.forEach(item => {
-    const kat = item.kategori || (item.tipe === 'SelfService' ? 'Self Service' : item.tipe === 'FullService' ? 'Drop Off' : 'Layanan');
-    if (!groups[kat]) {
-      groups[kat] = [];
+  // Group items by category in canonical business order
+  const categorizedGroups = useMemo(() => {
+    const map: Record<string, LayananItemBackend[]> = {};
+    
+    filteredData.forEach(item => {
+      let kat = item.kategori;
+      if (!kat) {
+        if (item.tipe === 'SelfService') kat = 'Self Service';
+        else if (item.tipe === 'FullService') kat = 'Drop Off';
+        else kat = 'Layanan Lainnya';
+      }
+      if (!map[kat]) map[kat] = [];
+      map[kat].push(item);
+    });
+
+    // Sort categories canonically
+    const sortedKeys = Object.keys(map).sort((a, b) => {
+      const idxA = CANONICAL_CATEGORY_ORDER.indexOf(a);
+      const idxB = CANONICAL_CATEGORY_ORDER.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    return sortedKeys.map(key => ({
+      name: key,
+      items: map[key]
+    }));
+  }, [filteredData]);
+
+  // Balance into columns when columnCount === 2
+  // Col 1: Self Service + Drop Off
+  // Col 2: Add On + Makanan & Minuman
+  const twoColumnLayout = useMemo(() => {
+    const col1: typeof categorizedGroups = [];
+    const col2: typeof categorizedGroups = [];
+
+    categorizedGroups.forEach(group => {
+      const lower = group.name.toLowerCase();
+      if (lower.includes('self') || lower.includes('drop') || lower.includes('cuci')) {
+        col1.push(group);
+      } else {
+        col2.push(group);
+      }
+    });
+
+    // Fallback if imbalanced
+    if (col1.length === 0 && col2.length > 0) {
+      return { col1: col2.slice(0, Math.ceil(col2.length / 2)), col2: col2.slice(Math.ceil(col2.length / 2)) };
     }
-    groups[kat].push(item);
-  });
+    if (col2.length === 0 && col1.length > 0) {
+      return { col1: col1.slice(0, Math.ceil(col1.length / 2)), col2: col1.slice(Math.ceil(col1.length / 2)) };
+    }
+
+    return { col1, col2 };
+  }, [categorizedGroups]);
 
   const getCategoryRibbon = (katName: string) => {
     const k = katName.toLowerCase();
@@ -224,28 +339,89 @@ export default function MenuGeneratorView() {
 
   const getCategoryIcon = (katName: string) => {
     const k = katName.toLowerCase();
-    if (k.includes('self') || k.includes('koin')) return <Zap className="w-4 h-4" />;
-    if (k.includes('drop') || k.includes('full') || k.includes('cuci')) return <Shirt className="w-4 h-4" />;
-    if (k.includes('add') || k.includes('deterjen') || k.includes('parfum')) return <Sparkles className="w-4 h-4" />;
-    if (k.includes('makan') || k.includes('minum')) return <ShoppingBag className="w-4 h-4" />;
-    return <Star className="w-4 h-4" />;
+    if (k.includes('self') || k.includes('koin')) return <Zap className="w-3.5 h-3.5" />;
+    if (k.includes('drop') || k.includes('full') || k.includes('cuci')) return <Shirt className="w-3.5 h-3.5" />;
+    if (k.includes('add') || k.includes('deterjen') || k.includes('parfum')) return <Sparkles className="w-3.5 h-3.5" />;
+    if (k.includes('makan') || k.includes('minum')) return <ShoppingBag className="w-3.5 h-3.5" />;
+    return <Sparkle className="w-3.5 h-3.5" />;
   };
 
+  const isAutoHeight = format.id === 'auto-fit';
+  const computedCanvasHeight = isAutoHeight ? 'auto' : `${format.height}px`;
+
+  // Render a single category card with ultra-clean minimalist styling
+  const renderCategoryCard = (group: { name: string; items: LayananItemBackend[] }) => (
+    <div 
+      key={group.name} 
+      className={`rounded-2xl p-3.5 sm:p-4 relative transition-all ${theme.cardContainer}`}
+    >
+      {/* Category Header */}
+      <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/10">
+        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold text-xs sm:text-sm tracking-wide uppercase ${getCategoryRibbon(group.name)}`}>
+          {getCategoryIcon(group.name)}
+          <span>{group.name}</span>
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-white/10 text-white/90">
+          {group.items.length} Menu
+        </span>
+      </div>
+
+      {/* Items List */}
+      <div className={density === 'compact' ? 'space-y-1.5' : 'space-y-2'}>
+        {group.items.map((item, index) => (
+          <div 
+            key={item.id} 
+            className={`flex items-center gap-2 px-2.5 py-1 rounded-xl border transition-all ${theme.itemRow} ${
+              density === 'compact' ? 'text-xs' : 'text-sm py-1.5'
+            }`}
+          >
+            {/* Number */}
+            <span className={`w-4.5 h-4.5 rounded-md flex items-center justify-center text-[10px] shrink-0 font-bold ${theme.numberBadge}`}>
+              {index + 1}
+            </span>
+
+            {/* Name & Unit */}
+            <div className="flex items-baseline gap-1.5 min-w-0 truncate">
+              <span className={`truncate leading-snug ${theme.itemName} ${density === 'compact' ? 'text-xs' : 'text-sm'}`}>
+                {item.nama}
+              </span>
+              {showUnit && item.satuan && (
+                <span className={`text-[10px] shrink-0 font-medium ${theme.itemUnit}`}>
+                  /{item.satuan}
+                </span>
+              )}
+            </div>
+
+            {/* Leader line dots */}
+            <div className={`flex-1 border-b border-dotted ${theme.dottedLine} min-w-2`} />
+
+            {/* Price Tag */}
+            <div className={`px-2.5 py-0.5 rounded-lg shrink-0 text-xs font-black tracking-tight ${theme.priceTag}`}>
+              Rp {item.harga.toLocaleString('id-ID')}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="flex flex-col h-full bg-slate-50 text-slate-800 p-4 lg:p-6 print:p-0 print:bg-white print:text-black print:block">
+    <div className="flex flex-col h-full bg-slate-50 text-slate-800 p-3 sm:p-4 lg:p-6 print:p-0 print:bg-white print:text-black print:block">
       
-      {/* Control Panel Header (Hidden on print) */}
-      <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-200 mb-5 print:hidden flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
+      {/* ========================================================================= */}
+      {/* RESPONSIVE TOOLBAR CONTROLS (Hidden on print)                              */}
+      {/* ========================================================================= */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl shadow-xs border border-slate-200 mb-4 print:hidden flex flex-col xl:flex-row gap-3 items-start xl:items-center justify-between">
         
-        {/* Filter & Customization Controls */}
-        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+        {/* Left Toolbar: Customization Dropdowns & Presets */}
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full xl:w-auto">
           {/* Format / Ukuran */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">Ukuran / Format</label>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Ukuran / Format</label>
             <select 
               value={format.id}
               onChange={e => setFormat(FORMATS.find(f => f.id === e.target.value) || FORMATS[0])}
-              className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-slate-50 focus:outline-none focus:border-[#1E4648]"
+              className="px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-slate-50 focus:outline-none focus:border-[#1E4648]"
             >
               {FORMATS.map(f => (
                 <option key={f.id} value={f.id}>{f.name}</option>
@@ -253,13 +429,13 @@ export default function MenuGeneratorView() {
             </select>
           </div>
 
-          {/* Gaya Desain Poster */}
+          {/* Gaya Desain Minimalis */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">Gaya Desain Poster</label>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Gaya Desain</label>
             <select 
               value={theme.id}
               onChange={e => setTheme(THEMES.find(t => t.id === e.target.value) || THEMES[0])}
-              className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-slate-50 focus:outline-none focus:border-[#1E4648]"
+              className="px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-slate-50 focus:outline-none focus:border-[#1E4648]"
             >
               {THEMES.map(t => (
                 <option key={t.id} value={t.id}>{t.name}</option>
@@ -269,79 +445,106 @@ export default function MenuGeneratorView() {
 
           {/* Filter Kategori */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">Filter Kategori</label>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Filter Kategori</label>
             <select 
               value={filterTipe}
               onChange={e => setFilterTipe(e.target.value as any)}
-              className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-slate-50 focus:outline-none focus:border-[#1E4648]"
+              className="px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-slate-50 focus:outline-none focus:border-[#1E4648]"
             >
-              <option value="Semua">Semua Kategori</option>
+              <option value="Semua">Semua Layanan & Produk ({layananList.length})</option>
               <option value="SelfService">Khusus Self Service</option>
               <option value="FullService">Khusus Drop Off</option>
+              <option value="Retail">Khusus Add-On & Snack</option>
             </select>
           </div>
 
           {/* Kolom Layout */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">Kolom</label>
-            <div className="inline-flex rounded-xl border border-slate-200 p-0.5 bg-slate-100">
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Kolom</label>
+            <div className="inline-flex rounded-xl border border-slate-200 p-0.5 bg-slate-100 text-xs font-bold">
               <button
                 onClick={() => setColumnCount(1)}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition ${columnCount === 1 ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${columnCount === 1 ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 1 Kolom
               </button>
               <button
                 onClick={() => setColumnCount(2)}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition ${columnCount === 2 ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${columnCount === 2 ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 2 Kolom
               </button>
+              {format.width >= 1000 && (
+                <button
+                  onClick={() => setColumnCount(4)}
+                  className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${columnCount === 4 ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
+                >
+                  4 Kolom
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Toggles */}
-          <div className="flex items-center gap-3 pt-4 sm:pt-0">
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer select-none">
-              <input 
-                type="checkbox" 
-                checked={showStamp} 
-                onChange={e => setShowStamp(e.target.checked)}
-                className="rounded text-[#1E4648] focus:ring-[#1E4648]" 
-              />
-              <span>Stempel Garansi</span>
-            </label>
-          </div>
-
-          {/* Zoom Slider */}
-          <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
-            <ZoomOut className="w-3.5 h-3.5 text-slate-400" />
-            <input 
-              type="range" min="0.25" max="1.25" step="0.05" 
-              value={zoom} onChange={e => setZoom(Number(e.target.value))}
-              className="w-20 accent-[#1E4648]"
-              title={`Zoom: ${Math.round(zoom * 100)}%`}
-            />
-            <ZoomIn className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-[11px] font-bold text-slate-600 w-10">{Math.round(zoom * 100)}%</span>
+          {/* Kepadatan (Density) */}
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Kepadatan Baris</label>
+            <div className="inline-flex rounded-xl border border-slate-200 p-0.5 bg-slate-100 text-xs font-bold">
+              <button
+                onClick={() => setDensity('compact')}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${density === 'compact' ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
+                title="Rapat agar seluruh 30+ menu muat tanpa terpotong"
+              >
+                Rapat (Muat Semua)
+              </button>
+              <button
+                onClick={() => setDensity('normal')}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${density === 'normal' ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                Normal
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Action Buttons: Download JPEG, PNG, Print */}
-        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-end">
+        {/* Right Toolbar: Zoom & Export Actions */}
+        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-end pt-2 xl:pt-0 border-t xl:border-t-0 border-slate-100">
+          {/* Auto Fit Zoom Button */}
+          <button
+            onClick={handleAutoFitZoom}
+            className="flex items-center gap-1 px-2.5 py-1.5 border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+            title="Sesuaikan ukuran preview ke layar Anda"
+          >
+            <Maximize2 className="w-3.5 h-3.5 text-teal-700" />
+            <span>Fit Layar</span>
+          </button>
+
+          {/* Zoom Slider */}
+          <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-xl border border-slate-200">
+            <ZoomOut className="w-3.5 h-3.5 text-slate-400" />
+            <input 
+              type="range" min="0.2" max="1.2" step="0.05" 
+              value={zoom} onChange={e => setZoom(Number(e.target.value))}
+              className="w-16 accent-[#1E4648] cursor-pointer"
+              title={`Zoom: ${Math.round(zoom * 100)}%`}
+            />
+            <ZoomIn className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-[10px] font-extrabold text-slate-600 w-8">{Math.round(zoom * 100)}%</span>
+          </div>
+
+          {/* Refresh */}
           <button 
             onClick={loadData} 
-            title="Muat Ulang Katalog Layanan"
-            className="p-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition"
+            title="Muat Ulang Katalog Layanan & Produk"
+            className="p-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition cursor-pointer"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
 
           {/* Download PNG */}
           <button
             onClick={() => handleDownload('png')}
             disabled={downloading !== null}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
           >
             {downloading === 'png' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
             <span>Download PNG (HD)</span>
@@ -351,16 +554,16 @@ export default function MenuGeneratorView() {
           <button
             onClick={() => handleDownload('jpeg')}
             disabled={downloading !== null}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#FF9500] hover:bg-amber-600 active:bg-amber-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF9500] hover:bg-amber-600 active:bg-amber-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
           >
             {downloading === 'jpeg' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
-            <span>Download JPEG (HD)</span>
+            <span>JPEG</span>
           </button>
 
           {/* Print / PDF */}
           <button 
             onClick={handlePrint}
-            className="flex items-center gap-1.5 bg-[#1E4648] hover:bg-[#163536] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs"
+            className="flex items-center gap-1.5 bg-[#1E4648] hover:bg-[#163536] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Cetak / PDF</span>
@@ -368,180 +571,126 @@ export default function MenuGeneratorView() {
         </div>
       </div>
 
-      {/* Canvas Scroll Area */}
-      <div className="flex-1 overflow-auto flex justify-center items-start print:overflow-visible print:block bg-slate-200/60 p-4 lg:p-8 rounded-3xl border border-slate-200 shadow-inner">
-        
+      {/* ========================================================================= */}
+      {/* CANVAS SCROLL & RESPONSIVE PREVIEW AREA                                   */}
+      {/* ========================================================================= */}
+      <div 
+        ref={scrollAreaRef}
+        className="flex-1 overflow-auto flex justify-center items-start print:overflow-visible print:block bg-slate-200/50 p-2 sm:p-4 lg:p-6 rounded-3xl border border-slate-200 shadow-inner"
+      >
         {/* Dynamic Print Styles */}
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
-            @page { size: ${format.width}px ${format.height}px; margin: 0; }
+            @page { size: ${format.width}px ${format.height === 'auto' ? 'auto' : `${format.height}px`}; margin: 0; }
             body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: transparent; }
           }
         `}} />
 
         {/* Scaled Preview Wrapper */}
         <div 
-          style={{ width: format.width * zoom, height: format.height * zoom }} 
+          style={{ 
+            width: typeof format.width === 'number' ? format.width * zoom : 'auto', 
+            height: isAutoHeight ? 'auto' : (format.height as number) * zoom 
+          }} 
           className="print:w-auto print:h-auto shrink-0 transition-all duration-150"
         >
           {/* THE ACTUAL GRAPHIC DESIGN POSTER CANVAS */}
           <div 
             ref={printRef}
-            className={`relative overflow-hidden shadow-2xl print:shadow-none mx-auto origin-top-left flex flex-col justify-between ${theme.bg}`}
+            className={`relative overflow-hidden shadow-xl print:shadow-none mx-auto origin-top-left flex flex-col justify-between ${theme.bg}`}
             style={{ 
               width: `${format.width}px`, 
-              height: `${format.height}px`,
+              height: computedCanvasHeight,
+              minHeight: isAutoHeight ? '1080px' : undefined,
               background: theme.bgPattern,
               transform: `scale(${zoom})`, 
               fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" 
             }}
           >
-            {/* POSTER GRAPHIC FRAMING & ACCENT CORNERS */}
-            <div className={`absolute inset-4 sm:inset-6 border-2 ${theme.frameBorder} rounded-3xl pointer-events-none z-20`}>
-              {/* Corner Crosshairs / Accents */}
-              <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-amber-400 rounded-full shadow-xs" />
-              <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-amber-400 rounded-full shadow-xs" />
-              <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-amber-400 rounded-full shadow-xs" />
-              <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-amber-400 rounded-full shadow-xs" />
-            </div>
+            {/* Minimalist Framing Border */}
+            <div className={`absolute inset-3 sm:inset-4 border ${theme.frameBorder} rounded-2xl pointer-events-none z-20`} />
 
-            {/* BACKGROUND ABSTRACT GRAPHIC SHAPES */}
-            <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-teal-500/10 blur-[90px] pointer-events-none" />
-            <div className="absolute top-1/2 -right-32 w-[450px] h-[450px] rounded-full bg-amber-500/10 blur-[100px] pointer-events-none" />
-            <div className="absolute -bottom-32 left-1/3 w-96 h-96 rounded-full bg-cyan-500/10 blur-[90px] pointer-events-none" />
-
-            {/* MAIN POSTER CONTENT CONTAINER */}
-            <div className="relative z-10 p-8 sm:p-12 flex flex-col h-full w-full justify-between">
+            {/* ==================== CONTENT CONTAINER ==================== */}
+            <div className="relative z-10 p-5 sm:p-7 flex flex-col h-full w-full justify-between gap-3">
               
-              {/* ==================== HERO HEADER SECTION ==================== */}
-              <div className="relative flex flex-col items-center text-center pt-2">
-                
-                {/* Circular Guarantee Stamp (Floating Top Right) */}
-                {showStamp && (
-                  <div className={`absolute -top-2 right-0 sm:right-2 hidden sm:flex flex-col items-center justify-center w-24 h-24 rounded-full border-2 border-dashed ${theme.stampBorder} transform rotate-12 shadow-lg backdrop-blur-xs select-none`}>
-                    <Award className="w-6 h-6 mb-0.5" />
-                    <span className="text-[8px] font-black uppercase tracking-wider text-center leading-tight">
-                      100% HIGIENIS<br />& BERSIH
-                    </span>
-                  </div>
-                )}
-
-                {/* Official Logo Banner */}
-                <div className="mb-4">
+              {/* HEADER SECTION (Clean, Minimalist & Compact) */}
+              <div className="flex flex-col items-center text-center pt-1 pb-1">
+                {/* Logo */}
+                <div className="mb-2">
                   <img 
                     src={theme.logoSrc} 
-                    className="h-16 sm:h-20 w-auto object-contain drop-shadow-md mx-auto" 
+                    className="h-9 sm:h-11 w-auto object-contain mx-auto" 
                     alt="Dua Sisi Laundry" 
                   />
                 </div>
 
-                {/* High-Impact Graphic Title Block */}
-                <div className="relative inline-block mb-3">
-                  <h1 className={`text-4xl sm:text-5xl font-black uppercase tracking-tighter ${theme.headerTitleColor} drop-shadow-lg`}>
-                    DAFTAR HARGA
-                  </h1>
-                </div>
+                {/* Minimalist Title */}
+                <h1 className={`text-2xl sm:text-3xl font-black uppercase tracking-tight ${theme.headerTitleColor}`}>
+                  DAFTAR HARGA & LAYANAN
+                </h1>
+                
+                {/* Tagline Subtitle */}
+                <p className={`text-xs font-semibold mt-0.5 ${theme.headerSubtitleColor}`}>
+                  Dua Sisi Laundromat • Self Service & Drop Off Express
+                </p>
 
-                {/* Skewed Ribbon Banner */}
-                <div className={`inline-flex items-center gap-2 px-6 py-2 rounded-xl font-black text-sm sm:text-base uppercase tracking-widest transform -rotate-1 shadow-lg ${theme.subRibbonBg}`}>
-                  <Sparkles className="w-4 h-4" />
-                  <span>LAUNDRY SERVICE & COIN EXPRESS</span>
-                  <Sparkles className="w-4 h-4" />
-                </div>
-
-                {/* Key Benefits Pills Bar */}
-                <div className="flex flex-wrap items-center justify-center gap-2 mt-4 text-[11px] font-extrabold uppercase tracking-wider text-white/90">
-                  <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 inline-flex items-center gap-1.5">
-                    <Zap className="w-3.5 h-3.5 text-amber-400" /> Selesai Cepat & Tepat
+                {/* Key Benefits Minimalist Chips */}
+                <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2.5 text-[10px] font-bold uppercase tracking-wider">
+                  <span className={`px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 ${theme.pillBg}`}>
+                    <Droplets className="w-3 h-3 text-cyan-400" /> Air Higienis 3 Tahap
                   </span>
-                  <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 inline-flex items-center gap-1.5">
-                    <Droplets className="w-3.5 h-3.5 text-cyan-400" /> Air Higienis 3 Tahap
+                  <span className={`px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 ${theme.pillBg}`}>
+                    <Sparkles className="w-3 h-3 text-amber-400" /> Sabun & Pewangi Premium
                   </span>
-                  <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 inline-flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Sabun & Pewangi Premium
+                  <span className={`px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 ${theme.pillBg}`}>
+                    <Zap className="w-3 h-3 text-emerald-400" /> Selesai Cepat & Tepat
                   </span>
-                </div>
-
-                {/* Divider Line */}
-                <div className="w-32 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent mt-5 mb-4 rounded-full opacity-80" />
-              </div>
-
-              {/* ==================== PRICELIST CATEGORIES GRID ==================== */}
-              <div className="flex-1 w-full max-w-5xl mx-auto z-10 flex flex-col justify-center my-2">
-                <div className={`grid ${columnCount === 2 ? 'grid-cols-2 gap-5' : 'grid-cols-1 gap-5'} w-full`}>
-                  {Object.entries(groups).map(([groupName, items]) => {
-                    if (items.length === 0) return null;
-                    return (
-                      <div 
-                        key={groupName} 
-                        className={`rounded-3xl p-5 sm:p-6 relative overflow-hidden transition-all ${theme.cardContainer}`}
-                      >
-                        {/* CATEGORY SECTION HEADER RIBBON */}
-                        <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-white/10">
-                          <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl font-black text-sm sm:text-base tracking-wide uppercase shadow-md ${getCategoryRibbon(groupName)}`}>
-                            {getCategoryIcon(groupName)}
-                            <span>{groupName}</span>
-                          </div>
-                          <span className="text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-lg bg-white/10 text-white/90 border border-white/10">
-                            {items.length} Menu
-                          </span>
-                        </div>
-
-                        {/* ITEMS LIST */}
-                        <div className="space-y-2.5">
-                          {items.map((item, index) => (
-                            <div 
-                              key={item.id} 
-                              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-2xl border transition-all ${theme.itemRow}`}
-                            >
-                              {/* Number Badge */}
-                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs shrink-0 ${theme.numberBadge}`}>
-                                {index + 1}
-                              </div>
-
-                              {/* Service Name & Subtitle Unit */}
-                              <div className="flex flex-col min-w-0">
-                                <span className={`text-sm sm:text-base leading-snug truncate ${theme.itemName}`}>
-                                  {item.nama}
-                                </span>
-                                {showUnit && item.satuan && (
-                                  <span className={`text-[10px] font-semibold -mt-0.5 ${theme.itemUnit}`}>
-                                    Satuan: {item.satuan}
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Leader Dots */}
-                              <div className={`flex-1 border-b-2 border-dotted ${theme.dottedLine} relative top-0.5 min-w-4`} />
-
-                              {/* Bold Price Sticker Tag */}
-                              <div className={`text-sm sm:text-base px-3.5 py-1 rounded-xl shrink-0 whitespace-nowrap leading-tight tracking-tight ${theme.priceTag}`}>
-                                Rp {item.harga.toLocaleString('id-ID')}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
 
-              {/* ==================== FOOTER BRANDING & OPERATIONAL INFO ==================== */}
+              {/* CATEGORIES GRID (Smart Multi-Column Layout) */}
+              <div className="flex-1 w-full my-auto">
+                {columnCount === 2 ? (
+                  /* 2-Column Balanced Layout (Laundry Left, Retail/Add-on Right) */
+                  <div className="grid grid-cols-2 gap-3.5 w-full items-start">
+                    {/* Column 1: Laundry Services (Self Service & Drop Off) */}
+                    <div className="flex flex-col gap-3">
+                      {twoColumnLayout.col1.map(renderCategoryCard)}
+                    </div>
+
+                    {/* Column 2: Add-On & Retail Goods (Snacks & Supplies) */}
+                    <div className="flex flex-col gap-3">
+                      {twoColumnLayout.col2.map(renderCategoryCard)}
+                    </div>
+                  </div>
+                ) : columnCount === 4 ? (
+                  /* 4-Column Layout (e.g. A4 Landscape / TV Display) */
+                  <div className="grid grid-cols-4 gap-3 w-full items-start">
+                    {categorizedGroups.map(renderCategoryCard)}
+                  </div>
+                ) : (
+                  /* 1-Column Layout (e.g. IG Story / A4 Portrait) */
+                  <div className="flex flex-col gap-3 w-full">
+                    {categorizedGroups.map(renderCategoryCard)}
+                  </div>
+                )}
+              </div>
+
+              {/* FOOTER SECTION (Clean Operational Info) */}
               {showFooter && (
-                <div className={`mt-6 p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold ${theme.footerBg}`}>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>Jam Operasional: <strong>07.00 - 23.00 WIB (Buka Tiap Hari)</strong></span>
+                <div className={`mt-2 p-2.5 sm:p-3 rounded-xl border flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] sm:text-[11px] font-semibold ${theme.footerBg}`}>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Jam Operasional: <strong>07.00 - 23.00 WIB (Buka Setiap Hari)</strong></span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span>Dua Sisi Laundry — <strong>Cepat • Bersih • Wangi</strong></span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <div className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                     <span>Customer Service: <strong>Hubungi Kasir Outlet</strong></span>
                   </div>
                 </div>

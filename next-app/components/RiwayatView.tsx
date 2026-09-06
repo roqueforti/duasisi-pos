@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, AlertTriangle, Check, Download, Upload, Calendar, ArrowRight, Coins, Smartphone, CreditCard, Banknote, CheckCircle2, Clock, History, UserCheck, Edit3, Ban, ClipboardList, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Receipt, User } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Search, Printer, Send, Eye, RefreshCw, X, FileText, Plus, ShieldAlert, AlertTriangle, Check, Download, Upload, Calendar, ArrowRight, Coins, Smartphone, CreditCard, Banknote, CheckCircle2, Clock, History, UserCheck, Edit3, Ban, ClipboardList, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Receipt, User, ChevronDown, RotateCcw } from 'lucide-react';
 import { Transaksi } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { clearCache } from '@/lib/cache';
@@ -24,6 +24,19 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
   const [activeShift, setActiveShift] = useState<any>(null);
   const [recordedShifts, setRecordedShifts] = useState<any[]>([]);
   const [shiftGroupMode, setShiftGroupMode] = useState<'date' | 'time' | 'kasir'>('date');
+  const [isShiftDropdownOpen, setIsShiftDropdownOpen] = useState(false);
+  const shiftDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (shiftDropdownRef.current && !shiftDropdownRef.current.contains(e.target as Node)) {
+        setIsShiftDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [search, setSearch] = useState('');
   const [txList, setTxList] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(true);
@@ -413,7 +426,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
         return timeA - timeB;
       });
 
-      let label = `📅 ${dateKey} (${shifts.length} Shift)`;
+      let label = `${dateKey} (${shifts.length} Shift)`;
       if (dateKey !== 'Lainnya') {
         const [yStr, mStr, dStr] = dateKey.split('-');
         const dObj = new Date(Number(yStr), Number(mStr) - 1, Number(dStr));
@@ -421,11 +434,11 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
         const formatted = `${dayNames[dObj.getDay()]}, ${String(dObj.getDate()).padStart(2, '0')} ${monthNames[dObj.getMonth()]} ${dObj.getFullYear()}`;
 
         if (dayTime === today) {
-          label = `📅 Hari Ini · ${formatted} (${shifts.length} Shift)`;
+          label = `Hari Ini · ${formatted} (${shifts.length} Shift)`;
         } else if (dayTime === yesterday) {
-          label = `📅 Kemarin · ${formatted} (${shifts.length} Shift)`;
+          label = `Kemarin · ${formatted} (${shifts.length} Shift)`;
         } else {
-          label = `📅 ${formatted} (${shifts.length} Shift)`;
+          label = `${formatted} (${shifts.length} Shift)`;
         }
       }
 
@@ -450,7 +463,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
     for (const [kasir, shifts] of kasirMap.entries()) {
       groups.push({
         kasir,
-        label: `👤 Kasir: ${kasir} (${shifts.length} Shift)`,
+        label: `Kasir: ${kasir} (${shifts.length} Shift)`,
         shifts,
       });
     }
@@ -1001,89 +1014,195 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
               </button>
             )}
 
-            {/* Select Dropdown: Shift Tercatat (Selesai/Tutup) dengan Pengelompokan & Urutan Waktu */}
+            {/* Custom Dropdown: Shift Tercatat (Selesai/Tutup) menggunakan Lucide Icons, zero emoji */}
             {recordedShifts.length > 0 && (
               <div className="flex items-center gap-1.5 flex-wrap">
-                <div className="relative flex items-center">
-                  <select
-                    value={selectedShiftId !== 'all' && selectedShiftId !== 'active' ? selectedShiftId : ''}
-                    onChange={(e) => {
-                      if (e.target.value) setSelectedShiftId(e.target.value);
-                      else setSelectedShiftId('all');
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border outline-none transition cursor-pointer max-w-full sm:max-w-md ${
+                <div className="relative" ref={shiftDropdownRef}>
+                  {/* Trigger Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsShiftDropdownOpen(!isShiftDropdownOpen)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-2 cursor-pointer max-w-full sm:max-w-md ${
                       selectedShiftId !== 'all' && selectedShiftId !== 'active'
                         ? 'bg-[#1E4648] text-white border-[#1E4648] shadow-2xs'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <option value="" className="text-slate-800 bg-white font-bold">
-                      {shiftGroupMode === 'date'
-                        ? `📅 Riwayat Shift Tercatat (${recordedShifts.length} Shift · Per Tanggal)...`
-                        : shiftGroupMode === 'time'
-                        ? `⏱️ Riwayat Shift Tercatat (${recordedShifts.length} Shift · Urutan Waktu)...`
-                        : `👤 Riwayat Shift Tercatat (${recordedShifts.length} Shift · Per Kasir)...`}
-                    </option>
+                    <Calendar className={`w-3.5 h-3.5 shrink-0 ${
+                      selectedShiftId !== 'all' && selectedShiftId !== 'active' ? 'text-teal-300' : 'text-teal-700'
+                    }`} />
+                    <span className="truncate">
+                      {selectedShiftId !== 'all' && selectedShiftId !== 'active' ? (
+                        (() => {
+                          const s = recordedShifts.find((sh) => sh.idShift === selectedShiftId);
+                          if (!s) return 'Pilih Shift Tercatat...';
+                          const start = formatDateTime(s.waktuBuka, { timeOnly: true });
+                          const end = s.waktuTutup ? formatDateTime(s.waktuTutup, { timeOnly: true }) : 'Berjalan';
+                          const dateShort = formatDateTime(s.waktuBuka, { dateOnly: true });
+                          return `${dateShort} · ${start} - ${end} (${s.namaKasir})`;
+                        })()
+                      ) : (
+                        `Riwayat Shift Tercatat (${recordedShifts.length} Shift)...`
+                      )}
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${
+                      isShiftDropdownOpen ? 'rotate-180' : ''
+                    } ${
+                      selectedShiftId !== 'all' && selectedShiftId !== 'active' ? 'text-white/70' : 'text-slate-400'
+                    }`} />
+                  </button>
 
-                    {/* Mode 1: Pengelompokan per Tanggal & Urutan Kronologis Shift (Pagi -> Malam) */}
-                    {shiftGroupMode === 'date' &&
-                      groupedByDateShifts.map((group) => (
-                        <optgroup
-                          key={group.dateKey}
-                          label={group.label}
-                          className="font-bold text-slate-900 bg-slate-100"
-                        >
-                          {group.shifts.map((s, idx) => {
-                            const start = formatDateTime(s.waktuBuka, { timeOnly: true });
-                            const end = s.waktuTutup ? formatDateTime(s.waktuTutup, { timeOnly: true }) : 'Berjalan';
-                            const shiftNum = group.shifts.length > 1 ? `Shift ${idx + 1} ` : '';
-                            const dateShort = formatDateTime(s.waktuBuka, { dateOnly: true });
-                            const shortId = s.idShift ? `[#${s.idShift.replace(/^(SHIFT-|KAS-)/i, '')}]` : '';
-                            return (
-                              <option key={s.idShift} value={s.idShift} className="text-slate-800 bg-white font-normal">
-                                {`${shiftNum}(${start} - ${end}) · ${s.namaKasir} · ${dateShort} ${shortId}`.trim()}
-                              </option>
-                            );
-                          })}
-                        </optgroup>
-                      ))}
+                  {/* Dropdown Menu Popover */}
+                  {isShiftDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 z-50 w-80 sm:w-96 max-h-80 overflow-y-auto bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 space-y-1">
+                      {/* Option: Tampilkan Semua Shift */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedShiftId('all');
+                          setIsShiftDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition flex items-center justify-between cursor-pointer ${
+                          selectedShiftId === 'all'
+                            ? 'bg-teal-50 text-[#1E4648]'
+                            : 'text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <RotateCcw className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                          <span>Tampilkan Semua Shift Tercatat</span>
+                        </div>
+                        {selectedShiftId === 'all' && (
+                          <Check className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                        )}
+                      </button>
 
-                    {/* Mode 2: Urutan Waktu Kronologis Murni (Terbaru -> Terlama) */}
-                    {shiftGroupMode === 'time' &&
-                      sortedShifts.map((s) => {
-                        const dateStr = formatDateTime(s.waktuBuka, { dateOnly: true });
-                        const start = formatDateTime(s.waktuBuka, { timeOnly: true });
-                        const end = s.waktuTutup ? formatDateTime(s.waktuTutup, { timeOnly: true }) : 'Berjalan';
-                        const shortId = s.idShift ? `[#${s.idShift.replace(/^(SHIFT-|KAS-)/i, '')}]` : '';
-                        return (
-                          <option key={s.idShift} value={s.idShift} className="text-slate-800 bg-white font-normal">
-                            {`${dateStr} · ${start} - ${end} · ${s.namaKasir} ${shortId}`.trim()}
-                          </option>
-                        );
-                      })}
+                      <div className="h-px bg-slate-100 my-1" />
 
-                    {/* Mode 3: Pengelompokan per Kasir */}
-                    {shiftGroupMode === 'kasir' &&
-                      groupedByKasirShifts.map((group) => (
-                        <optgroup
-                          key={group.kasir}
-                          label={group.label}
-                          className="font-bold text-slate-900 bg-slate-100"
-                        >
-                          {group.shifts.map((s) => {
+                      {/* Mode 1: Pengelompokan per Tanggal & Urutan Kronologis Shift */}
+                      {shiftGroupMode === 'date' &&
+                        groupedByDateShifts.map((group) => (
+                          <div key={group.dateKey} className="pt-1">
+                            <div className="px-2.5 py-1 text-[11px] font-bold text-slate-800 bg-slate-100 rounded-md flex items-center gap-1.5 mb-1">
+                              <Calendar className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                              <span>{group.label}</span>
+                            </div>
+                            <div className="space-y-0.5">
+                              {group.shifts.map((s, idx) => {
+                                const start = formatDateTime(s.waktuBuka, { timeOnly: true });
+                                const end = s.waktuTutup ? formatDateTime(s.waktuTutup, { timeOnly: true }) : 'Berjalan';
+                                const shiftNum = group.shifts.length > 1 ? `Shift ${idx + 1} ` : '';
+                                const dateShort = formatDateTime(s.waktuBuka, { dateOnly: true });
+                                const shortId = s.idShift ? `[#${s.idShift.replace(/^(SHIFT-|KAS-)/i, '')}]` : '';
+                                const isSelected = selectedShiftId === s.idShift;
+                                return (
+                                  <button
+                                    key={s.idShift}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedShiftId(s.idShift);
+                                      setIsShiftDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition flex items-center justify-between cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-[#1E4648] text-white font-bold'
+                                        : 'text-slate-700 hover:bg-slate-100 font-medium'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-1.5 truncate">
+                                      <Clock className={`w-3 h-3 shrink-0 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`} />
+                                      <span className="truncate">
+                                        {shiftNum}({start} - {end}) · {s.namaKasir} · {dateShort} {shortId}
+                                      </span>
+                                    </div>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-teal-300 shrink-0 ml-1.5" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+
+                      {/* Mode 2: Urutan Waktu Kronologis Murni */}
+                      {shiftGroupMode === 'time' && (
+                        <div className="space-y-0.5">
+                          <div className="px-2.5 py-1 text-[11px] font-bold text-slate-800 bg-slate-100 rounded-md flex items-center gap-1.5 mb-1">
+                            <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                            <span>Urutan Waktu Terbaru (Kronologis)</span>
+                          </div>
+                          {sortedShifts.map((s) => {
                             const dateStr = formatDateTime(s.waktuBuka, { dateOnly: true });
                             const start = formatDateTime(s.waktuBuka, { timeOnly: true });
                             const end = s.waktuTutup ? formatDateTime(s.waktuTutup, { timeOnly: true }) : 'Berjalan';
                             const shortId = s.idShift ? `[#${s.idShift.replace(/^(SHIFT-|KAS-)/i, '')}]` : '';
+                            const isSelected = selectedShiftId === s.idShift;
                             return (
-                              <option key={s.idShift} value={s.idShift} className="text-slate-800 bg-white font-normal">
-                                {`${dateStr} (${start} - ${end}) · ${s.namaKasir} ${shortId}`.trim()}
-                              </option>
+                              <button
+                                key={s.idShift}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedShiftId(s.idShift);
+                                  setIsShiftDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition flex items-center justify-between cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-[#1E4648] text-white font-bold'
+                                    : 'text-slate-700 hover:bg-slate-100 font-medium'
+                                }`}
+                              >
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <Clock className={`w-3 h-3 shrink-0 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`} />
+                                  <span className="truncate">{dateStr} · {start} - {end} · {s.namaKasir} {shortId}</span>
+                                </div>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-teal-300 shrink-0 ml-1.5" />}
+                              </button>
                             );
                           })}
-                        </optgroup>
-                      ))}
-                  </select>
+                        </div>
+                      )}
+
+                      {/* Mode 3: Pengelompokan per Kasir */}
+                      {shiftGroupMode === 'kasir' &&
+                        groupedByKasirShifts.map((group) => (
+                          <div key={group.kasir} className="pt-1">
+                            <div className="px-2.5 py-1 text-[11px] font-bold text-slate-800 bg-slate-100 rounded-md flex items-center gap-1.5 mb-1">
+                              <User className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                              <span>{group.label}</span>
+                            </div>
+                            <div className="space-y-0.5">
+                              {group.shifts.map((s) => {
+                                const dateStr = formatDateTime(s.waktuBuka, { dateOnly: true });
+                                const start = formatDateTime(s.waktuBuka, { timeOnly: true });
+                                const end = s.waktuTutup ? formatDateTime(s.waktuTutup, { timeOnly: true }) : 'Berjalan';
+                                const shortId = s.idShift ? `[#${s.idShift.replace(/^(SHIFT-|KAS-)/i, '')}]` : '';
+                                const isSelected = selectedShiftId === s.idShift;
+                                return (
+                                  <button
+                                    key={s.idShift}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedShiftId(s.idShift);
+                                      setIsShiftDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition flex items-center justify-between cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-[#1E4648] text-white font-bold'
+                                        : 'text-slate-700 hover:bg-slate-100 font-medium'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-1.5 truncate">
+                                      <Clock className={`w-3 h-3 shrink-0 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`} />
+                                      <span className="truncate">{dateStr} ({start} - {end}) · {s.namaKasir} {shortId}</span>
+                                    </div>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-teal-300 shrink-0 ml-1.5" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Mode Selector Pill: Per Tanggal | Urutan Waktu | Per Kasir */}

@@ -494,4 +494,19 @@ input::placeholder, textarea::placeholder {
   animation: sparkle-twinkle 2.8s ease-in-out infinite;
 }
 
+@keyframes eye-blink {
+  0%, 90%, 100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+.animate-eye-blink {
+  animation: eye-blink 4s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+
+
 
