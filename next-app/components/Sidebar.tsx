@@ -357,6 +357,7 @@ export default function Sidebar({
             size="md"
             shape="squircle"
             className="shrink-0"
+            bubblePlacement="left"
           />
           
           {/* Text is always visible in Mobile/Tablet Drawer, and hidden on desktop ONLY if isCollapsed */}

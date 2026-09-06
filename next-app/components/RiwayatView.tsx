@@ -1054,7 +1054,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
 
                   {/* Dropdown Menu Popover */}
                   {isShiftDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1 z-50 w-80 sm:w-96 max-h-80 overflow-y-auto bg-white rounded-xl border border-slate-200 shadow-xl p-1.5 space-y-1">
+                    <div className="absolute top-full left-0 mt-1 z-50 w-full min-w-[360px] sm:min-w-[430px] max-w-lg max-h-84 overflow-y-auto bg-white rounded-2xl border border-slate-200 shadow-2xl p-2 space-y-1.5 animate-pop-scale">
                       {/* Option: Tampilkan Semua Shift */}
                       <button
                         type="button"
@@ -1062,10 +1062,10 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                           setSelectedShiftId('all');
                           setIsShiftDropdownOpen(false);
                         }}
-                        className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-bold transition flex items-center justify-between cursor-pointer ${
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between cursor-pointer ${
                           selectedShiftId === 'all'
-                            ? 'bg-teal-50 text-[#1E4648]'
-                            : 'text-slate-700 hover:bg-slate-100'
+                            ? 'bg-teal-50 text-[#1E4648] border border-teal-200'
+                            : 'text-slate-700 hover:bg-slate-50'
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -1073,7 +1073,7 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                           <span>Tampilkan Semua Shift Tercatat</span>
                         </div>
                         {selectedShiftId === 'all' && (
-                          <Check className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                          <Check className="w-4 h-4 text-teal-600 shrink-0" />
                         )}
                       </button>
 
@@ -1083,17 +1083,17 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                       {shiftGroupMode === 'date' &&
                         groupedByDateShifts.map((group) => (
                           <div key={group.dateKey} className="pt-1">
-                            <div className="px-2.5 py-1 text-[11px] font-bold text-slate-800 bg-slate-100 rounded-md flex items-center gap-1.5 mb-1">
-                              <Calendar className="w-3.5 h-3.5 text-teal-700 shrink-0" />
-                              <span>{group.label}</span>
+                            <div className="px-2.5 py-1 text-[11px] font-extrabold text-slate-800 bg-slate-100/90 rounded-lg flex items-center justify-between mb-1 border border-slate-200/60">
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                                <span>{group.label}</span>
+                              </div>
                             </div>
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                               {group.shifts.map((s, idx) => {
                                 const start = formatDateTime(s.waktuBuka, { timeOnly: true });
                                 const end = s.waktuTutup ? formatDateTime(s.waktuTutup, { timeOnly: true }) : 'Berjalan';
-                                const shiftNum = group.shifts.length > 1 ? `Shift ${idx + 1} ` : '';
-                                const dateShort = formatDateTime(s.waktuBuka, { dateOnly: true });
-                                const shortId = s.idShift ? `[#${s.idShift.replace(/^(SHIFT-|KAS-)/i, '')}]` : '';
+                                const shiftNum = group.shifts.length > 1 ? `Shift ${idx + 1}` : 'Shift 1';
                                 const isSelected = selectedShiftId === s.idShift;
                                 return (
                                   <button
@@ -1103,19 +1103,36 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                                       setSelectedShiftId(s.idShift);
                                       setIsShiftDropdownOpen(false);
                                     }}
-                                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition flex items-center justify-between cursor-pointer ${
+                                    className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs transition flex items-center justify-between gap-2 cursor-pointer border ${
                                       isSelected
-                                        ? 'bg-[#1E4648] text-white font-bold'
-                                        : 'text-slate-700 hover:bg-slate-100 font-medium'
+                                        ? 'bg-[#1E4648] text-white font-bold border-[#1E4648] shadow-xs'
+                                        : 'text-slate-700 hover:bg-slate-50 border-transparent font-medium'
                                     }`}
                                   >
-                                    <div className="flex items-center gap-1.5 truncate">
-                                      <Clock className={`w-3 h-3 shrink-0 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`} />
-                                      <span className="truncate">
-                                        {shiftNum}({start} - {end}) · {s.namaKasir} · {dateShort} {shortId}
-                                      </span>
+                                    {/* Left: Shift Name & Time */}
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <Clock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-teal-300' : 'text-teal-600'}`} />
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <span className={`font-bold text-xs shrink-0 ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                                          {shiftNum}
+                                        </span>
+                                        <span className={`text-[11px] truncate ${isSelected ? 'text-teal-100' : 'text-slate-500 font-semibold'}`}>
+                                          ({start} – {end})
+                                        </span>
+                                      </div>
                                     </div>
-                                    {isSelected && <Check className="w-3.5 h-3.5 text-teal-300 shrink-0 ml-1.5" />}
+
+                                    {/* Right: Kasir Badge & Checkmark */}
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                        isSelected 
+                                          ? 'bg-teal-800 text-teal-100 border border-teal-600' 
+                                          : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                      }`}>
+                                        {s.namaKasir}
+                                      </span>
+                                      {isSelected && <Check className="w-3.5 h-3.5 text-teal-300 shrink-0" />}
+                                    </div>
                                   </button>
                                 );
                               })}
@@ -1125,8 +1142,8 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
 
                       {/* Mode 2: Urutan Waktu Kronologis Murni */}
                       {shiftGroupMode === 'time' && (
-                        <div className="space-y-0.5">
-                          <div className="px-2.5 py-1 text-[11px] font-bold text-slate-800 bg-slate-100 rounded-md flex items-center gap-1.5 mb-1">
+                        <div className="space-y-1">
+                          <div className="px-2.5 py-1 text-[11px] font-extrabold text-slate-800 bg-slate-100/90 rounded-lg flex items-center gap-1.5 mb-1 border border-slate-200/60">
                             <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                             <span>Urutan Waktu Terbaru (Kronologis)</span>
                           </div>
@@ -1134,7 +1151,6 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                             const dateStr = formatDateTime(s.waktuBuka, { dateOnly: true });
                             const start = formatDateTime(s.waktuBuka, { timeOnly: true });
                             const end = s.waktuTutup ? formatDateTime(s.waktuTutup, { timeOnly: true }) : 'Berjalan';
-                            const shortId = s.idShift ? `[#${s.idShift.replace(/^(SHIFT-|KAS-)/i, '')}]` : '';
                             const isSelected = selectedShiftId === s.idShift;
                             return (
                               <button
@@ -1144,17 +1160,33 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                                   setSelectedShiftId(s.idShift);
                                   setIsShiftDropdownOpen(false);
                                 }}
-                                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition flex items-center justify-between cursor-pointer ${
+                                className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs transition flex items-center justify-between gap-2 cursor-pointer border ${
                                   isSelected
-                                    ? 'bg-[#1E4648] text-white font-bold'
-                                    : 'text-slate-700 hover:bg-slate-100 font-medium'
+                                    ? 'bg-[#1E4648] text-white font-bold border-[#1E4648] shadow-xs'
+                                    : 'text-slate-700 hover:bg-slate-50 border-transparent font-medium'
                                 }`}
                               >
-                                <div className="flex items-center gap-1.5 truncate">
-                                  <Clock className={`w-3 h-3 shrink-0 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`} />
-                                  <span className="truncate">{dateStr} · {start} - {end} · {s.namaKasir} {shortId}</span>
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Clock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`} />
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className={`font-bold text-xs shrink-0 ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                                      {dateStr}
+                                    </span>
+                                    <span className={`text-[11px] truncate ${isSelected ? 'text-teal-100' : 'text-slate-500 font-semibold'}`}>
+                                      ({start} – {end})
+                                    </span>
+                                  </div>
                                 </div>
-                                {isSelected && <Check className="w-3.5 h-3.5 text-teal-300 shrink-0 ml-1.5" />}
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                    isSelected 
+                                      ? 'bg-teal-800 text-teal-100 border border-teal-600' 
+                                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                  }`}>
+                                    {s.namaKasir}
+                                  </span>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-teal-300 shrink-0" />}
+                                </div>
                               </button>
                             );
                           })}
@@ -1165,16 +1197,15 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                       {shiftGroupMode === 'kasir' &&
                         groupedByKasirShifts.map((group) => (
                           <div key={group.kasir} className="pt-1">
-                            <div className="px-2.5 py-1 text-[11px] font-bold text-slate-800 bg-slate-100 rounded-md flex items-center gap-1.5 mb-1">
+                            <div className="px-2.5 py-1 text-[11px] font-extrabold text-slate-800 bg-slate-100/90 rounded-lg flex items-center gap-1.5 mb-1 border border-slate-200/60">
                               <User className="w-3.5 h-3.5 text-teal-700 shrink-0" />
                               <span>{group.label}</span>
                             </div>
-                            <div className="space-y-0.5">
+                            <div className="space-y-1">
                               {group.shifts.map((s) => {
                                 const dateStr = formatDateTime(s.waktuBuka, { dateOnly: true });
                                 const start = formatDateTime(s.waktuBuka, { timeOnly: true });
                                 const end = s.waktuTutup ? formatDateTime(s.waktuTutup, { timeOnly: true }) : 'Berjalan';
-                                const shortId = s.idShift ? `[#${s.idShift.replace(/^(SHIFT-|KAS-)/i, '')}]` : '';
                                 const isSelected = selectedShiftId === s.idShift;
                                 return (
                                   <button
@@ -1184,15 +1215,20 @@ export default function RiwayatView({ currentRole }: { currentRole?: UserRole } 
                                       setSelectedShiftId(s.idShift);
                                       setIsShiftDropdownOpen(false);
                                     }}
-                                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition flex items-center justify-between cursor-pointer ${
+                                    className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs transition flex items-center justify-between gap-2 cursor-pointer border ${
                                       isSelected
-                                        ? 'bg-[#1E4648] text-white font-bold'
-                                        : 'text-slate-700 hover:bg-slate-100 font-medium'
+                                        ? 'bg-[#1E4648] text-white font-bold border-[#1E4648] shadow-xs'
+                                        : 'text-slate-700 hover:bg-slate-50 border-transparent font-medium'
                                     }`}
                                   >
-                                    <div className="flex items-center gap-1.5 truncate">
-                                      <Clock className={`w-3 h-3 shrink-0 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`} />
-                                      <span className="truncate">{dateStr} ({start} - {end}) · {s.namaKasir} {shortId}</span>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <Clock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-teal-300' : 'text-slate-400'}`} />
+                                      <span className={`font-bold text-xs shrink-0 ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                                        {dateStr}
+                                      </span>
+                                      <span className={`text-[11px] truncate ${isSelected ? 'text-teal-100' : 'text-slate-500 font-semibold'}`}>
+                                        ({start} – {end})
+                                      </span>
                                     </div>
                                     {isSelected && <Check className="w-3.5 h-3.5 text-teal-300 shrink-0 ml-1.5" />}
                                   </button>

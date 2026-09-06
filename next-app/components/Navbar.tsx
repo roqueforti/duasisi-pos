@@ -370,6 +370,7 @@ export default function Navbar({
               size="sm" 
               shape="circle" 
               className="shrink-0"
+              bubblePlacement="right"
             />
             <span className="hidden md:inline text-xs font-bold text-slate-600">
               {currentRole === 'MANAGER' ? 'Manager' : 'Kasir 1'}

@@ -4,9 +4,7 @@ import React, { useState } from 'react';
 import { 
   Crown, 
   Sparkles, 
-  Store, 
-  MessageCircleHeart,
-  Shield
+  MessageCircleHeart
 } from 'lucide-react';
 
 export interface CuteRoleAvatarProps {
@@ -18,6 +16,7 @@ export interface CuteRoleAvatarProps {
   showFloatingBubbles?: boolean;
   showSparkle?: boolean;
   interactive?: boolean;
+  bubblePlacement?: 'left' | 'right' | 'center';
   onClick?: () => void;
 }
 
@@ -30,6 +29,7 @@ export default function CuteRoleAvatar({
   showFloatingBubbles = true,
   showSparkle = true,
   interactive = true,
+  bubblePlacement = 'left',
   onClick
 }: CuteRoleAvatarProps) {
   const isManager = (role || '').toUpperCase().includes('MANAGER') || (role || '').toUpperCase().includes('OWNER');
@@ -48,16 +48,17 @@ export default function CuteRoleAvatar({
 
   const shapeClass = shape === 'circle' ? 'rounded-full' : 'rounded-xl';
 
-  // Role info
+  // Role info & punchy cheer messages
   const roleInfo = isManager
     ? {
         name: 'Manager Outlet',
         badgeColor: 'bg-gradient-to-r from-amber-500 to-orange-500',
         ringColor: 'ring-2 ring-amber-400/80 shadow-amber-500/20',
         cheers: [
-          'Outlet bersih, cuan lancar!',
-          'Halo Manager! Semangat monitoring ya.',
-          'Dua Sisi Laundromat siap prima hari ini!'
+          'Outlet prima, cuan lancar!',
+          'Semangat pantau outlet!',
+          'Dua Sisi siap prima!',
+          'Performa tim mantap!'
         ]
       }
     : {
@@ -65,9 +66,10 @@ export default function CuteRoleAvatar({
         badgeColor: 'bg-gradient-to-r from-teal-500 to-emerald-500',
         ringColor: 'ring-2 ring-teal-400/80 shadow-teal-500/20',
         cheers: [
-          'Hai kak! Siap melayani pelanggan.',
+          'Hai! Siap layani pelanggan.',
           'Baju wangi, pelanggan hepi!',
-          'Semangat layani antrean kasir hari ini!'
+          'Semangat transaksi kasir!',
+          'Pelayanan bersih & cepat!'
         ]
       };
 
@@ -92,12 +94,29 @@ export default function CuteRoleAvatar({
       onClick={interactive ? handleClick : undefined}
       title={`${roleInfo.name} (Klik untuk interaksi!)`}
     >
-      {/* Floating Interactive Speech Bubble */}
+      {/* Floating Interactive Speech Bubble - Clamped position prevents edge cut-off */}
       {speechBubble && (
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-xl border border-slate-700 whitespace-nowrap animate-bounce flex items-center gap-1 pointer-events-none">
-          <MessageCircleHeart className="w-3 h-3 text-amber-400 shrink-0" />
+        <div 
+          className={`absolute -top-9 z-50 bg-slate-900/95 backdrop-blur-xs text-white text-[11px] font-bold px-3 py-1 rounded-lg shadow-xl border border-slate-700/80 whitespace-nowrap animate-bounce flex items-center gap-1.5 pointer-events-none ${
+            bubblePlacement === 'right' 
+              ? 'right-0' 
+              : bubblePlacement === 'center' 
+              ? 'left-1/2 -translate-x-1/2' 
+              : 'left-0'
+          }`}
+        >
+          <MessageCircleHeart className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           <span>{speechBubble}</span>
-          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45 border-r border-b border-slate-700" />
+          {/* Pointer indicator arrow directly aligned to avatar */}
+          <div 
+            className={`absolute -bottom-1 w-2 h-2 bg-slate-900 rotate-45 border-r border-b border-slate-700 ${
+              bubblePlacement === 'right' 
+                ? 'right-3.5' 
+                : bubblePlacement === 'center' 
+                ? 'left-1/2 -translate-x-1/2' 
+                : 'left-3.5'
+            }`} 
+          />
         </div>
       )}
 
@@ -155,140 +174,162 @@ export default function CuteRoleAvatar({
       >
         {isManager ? (
           /* ============================================================ */
-          /* HUMAN VECTOR ASSET: MANAGER OUTLET (100% Clean Vector SVG)   */
+          /* HUMAN VECTOR ASSET: MANAGER OUTLET (Modern, Warm, Refined)   */
           /* ============================================================ */
           <svg viewBox="0 0 64 64" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <linearGradient id="mgr-vector-bg" x1="0" y1="0" x2="64" y2="64">
+              <linearGradient id="mgr-vector-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
                 <stop offset="0%" stopColor="#FFA726" />
-                <stop offset="50%" stopColor="#FB8C00" />
+                <stop offset="55%" stopColor="#FB8C00" />
                 <stop offset="100%" stopColor="#E65100" />
+              </linearGradient>
+              <linearGradient id="mgr-suit-grad" x1="0" y1="45" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#1E293B" />
+                <stop offset="100%" stopColor="#0F172A" />
+              </linearGradient>
+              <linearGradient id="mgr-tie-grad" x1="0" y1="48" x2="0" y2="63" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#FBBF24" />
+                <stop offset="100%" stopColor="#D97706" />
               </linearGradient>
             </defs>
 
             {/* Background */}
             <rect width="64" height="64" fill="url(#mgr-vector-bg)" />
 
-            {/* Subtle light aura */}
-            <circle cx="32" cy="28" r="22" fill="#FFFFFF" fillOpacity="0.15" />
+            {/* Subtle luminous aura */}
+            <circle cx="32" cy="27" r="23" fill="#FFFFFF" fillOpacity="0.14" />
 
-            {/* Shoulders / Blazer */}
-            <path d="M 12 64 C 12 50, 20 46, 32 46 C 44 46, 52 50, 52 64 Z" fill="#1E293B" />
+            {/* Shoulders / Tailored Suit */}
+            <path d="M 10 64 C 10 49, 18 45, 32 45 C 46 45, 54 49, 54 64 Z" fill="url(#mgr-suit-grad)" />
 
-            {/* White Shirt Collar */}
-            <path d="M 27 46 L 32 55 L 37 46 Z" fill="#FFFFFF" />
+            {/* Crisp White Shirt Collar */}
+            <path d="M 26 45 L 32 55 L 38 45 Z" fill="#FFFFFF" />
 
-            {/* Gold / Amber Tie */}
-            <path d="M 30.5 49 L 33.5 49 L 34.5 59 L 32 63 L 29.5 59 Z" fill="#F59E0B" stroke="#D97706" strokeWidth="0.6" />
+            {/* Golden Amber Tie */}
+            <path d="M 30.5 48.5 L 33.5 48.5 L 34.5 58 L 32 63 L 29.5 58 Z" fill="url(#mgr-tie-grad)" stroke="#B45309" strokeWidth="0.5" />
 
-            {/* Manager Gold Star Badge on Lapel */}
-            <polygon points="21,51 22,53 24,53 22.5,54.5 23,56.5 21,55 19,56.5 19.5,54.5 18,53 20,53" fill="#FDE047" stroke="#B45309" strokeWidth="0.4" />
+            {/* Lapel Lines */}
+            <path d="M 22 46 L 27 57 L 27 64" stroke="#334155" strokeWidth="1" strokeLinecap="round" fill="none" />
+            <path d="M 42 46 L 37 57 L 37 64" stroke="#334155" strokeWidth="1" strokeLinecap="round" fill="none" />
+
+            {/* Manager Gold Lapel Star Pin */}
+            <polygon points="19,51 20,52.5 22,52.5 20.5,53.8 21,55.5 19,54.2 17,55.5 17.5,53.8 16,52.5 18,52.5" fill="#FDE047" stroke="#B45309" strokeWidth="0.4" />
 
             {/* Neck */}
-            <rect x="29" y="39" width="6" height="8" rx="2" fill="#FED7AA" />
+            <rect x="29" y="38" width="6" height="9" rx="2" fill="#F7CEB6" />
+            <path d="M 29 42 Q 32 45 35 42" stroke="#EAA886" strokeWidth="1" fill="none" opacity="0.6" />
 
             {/* Ears */}
-            <circle cx="21" cy="32" r="3" fill="#FED7AA" />
-            <circle cx="43" cy="32" r="3" fill="#FED7AA" />
+            <circle cx="20.5" cy="31" r="2.8" fill="#F7CEB6" />
+            <circle cx="20.5" cy="31" r="1.4" fill="#EAA886" opacity="0.4" />
+            <circle cx="43.5" cy="31" r="2.8" fill="#F7CEB6" />
+            <circle cx="43.5" cy="31" r="1.4" fill="#EAA886" opacity="0.4" />
 
-            {/* Face */}
-            <path d="M 22 28 C 22 18, 42 18, 42 28 C 42 39, 37 44, 32 44 C 27 44, 22 39, 22 28 Z" fill="#FDE68A" />
+            {/* Head / Natural Warm Skin Tone */}
+            <path d="M 22 27 C 22 17, 42 17, 42 27 C 42 38, 37 43, 32 43 C 27 43, 22 38, 22 27 Z" fill="#FBD5B5" />
 
-            {/* Rosy Cheeks */}
-            <circle cx="25" cy="35" r="2.5" fill="#FB7185" opacity="0.4" />
-            <circle cx="39" cy="35" r="2.5" fill="#FB7185" opacity="0.4" />
+            {/* Subtle Rosy Cheeks */}
+            <ellipse cx="25" cy="34" rx="2.5" ry="1.5" fill="#FB7185" opacity="0.32" />
+            <ellipse cx="39" cy="34" rx="2.5" ry="1.5" fill="#FB7185" opacity="0.32" />
 
             {/* Eyes with CSS Blinking Animation */}
             <g className="animate-eye-blink">
-              <circle cx="27" cy="30" r="2.2" fill="#1E293B" />
-              <circle cx="37" cy="30" r="2.2" fill="#1E293B" />
-              <circle cx="26.3" cy="29.2" r="0.8" fill="#FFFFFF" />
-              <circle cx="36.3" cy="29.2" r="0.8" fill="#FFFFFF" />
+              <ellipse cx="27" cy="29.5" rx="2" ry="2.3" fill="#1E293B" />
+              <ellipse cx="37" cy="29.5" rx="2" ry="2.3" fill="#1E293B" />
+              <circle cx="26.3" cy="28.8" r="0.75" fill="#FFFFFF" />
+              <circle cx="36.3" cy="28.8" r="0.75" fill="#FFFFFF" />
             </g>
 
-            {/* Eyebrows */}
-            <path d="M 25 26 Q 27 25 29 26" stroke="#451A03" strokeWidth="1.2" strokeLinecap="round" />
-            <path d="M 35 26 Q 37 25 39 26" stroke="#451A03" strokeWidth="1.2" strokeLinecap="round" />
+            {/* Refined Eyebrows */}
+            <path d="M 24.5 25.5 Q 27 24.5 29.5 25.5" stroke="#292524" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+            <path d="M 34.5 25.5 Q 37 24.5 39.5 25.5" stroke="#292524" strokeWidth="1.2" strokeLinecap="round" fill="none" />
 
             {/* Friendly Confident Smile */}
-            <path d="M 29 37 Q 32 40 35 37" stroke="#78350F" strokeWidth="1.4" strokeLinecap="round" fill="none" />
+            <path d="M 29.5 36 Q 32 38.8 34.5 36" stroke="#9A3412" strokeWidth="1.3" strokeLinecap="round" fill="none" />
 
-            {/* Professional Hair */}
-            <path d="M 20 28 C 18 19, 22 12, 33 12 C 43 12, 45 18, 44 26 C 42 22, 38 19, 33 19 C 27 19, 23 23, 20 28 Z" fill="#292524" />
-            <path d="M 20 24 C 20 21, 23 18, 28 17" stroke="#44403C" strokeWidth="1" strokeLinecap="round" fill="none" />
+            {/* Sleek Modern Haircut */}
+            <path d="M 19.5 27 C 18 18, 23 11, 33 11 C 42 11, 45 17, 44 26 C 42 21, 37 18.5, 31 18.5 C 26 18.5, 22 22, 19.5 27 Z" fill="#292524" />
+            <path d="M 22 17 C 25 14.5, 31 14, 37 15" stroke="#44403C" strokeWidth="1.2" strokeLinecap="round" fill="none" />
           </svg>
         ) : (
           /* ============================================================ */
-          /* HUMAN VECTOR ASSET: KASIR / STAFF (100% Clean Vector SVG)   */
+          /* HUMAN VECTOR ASSET: KASIR / STAFF (Modern, Warm, Refined)    */
           /* ============================================================ */
           <svg viewBox="0 0 64 64" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <linearGradient id="ksr-vector-bg" x1="0" y1="0" x2="64" y2="64">
+              <linearGradient id="ksr-vector-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
                 <stop offset="0%" stopColor="#14B8A6" />
-                <stop offset="50%" stopColor="#0D9488" />
+                <stop offset="55%" stopColor="#0D9488" />
                 <stop offset="100%" stopColor="#0F766E" />
+              </linearGradient>
+              <linearGradient id="ksr-shirt-grad" x1="0" y1="45" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#0F766E" />
+                <stop offset="100%" stopColor="#115E59" />
               </linearGradient>
             </defs>
 
             {/* Background */}
             <rect width="64" height="64" fill="url(#ksr-vector-bg)" />
 
-            {/* Subtle light aura */}
-            <circle cx="32" cy="28" r="22" fill="#FFFFFF" fillOpacity="0.15" />
+            {/* Subtle luminous aura */}
+            <circle cx="32" cy="27" r="23" fill="#FFFFFF" fillOpacity="0.14" />
 
-            {/* Shoulders / Dua Sisi Teal Polo Uniform */}
-            <path d="M 12 64 C 12 50, 20 46, 32 46 C 44 46, 52 50, 52 64 Z" fill="#0F766E" />
+            {/* Shoulders / Dua Sisi Signature Teal Polo Uniform */}
+            <path d="M 10 64 C 10 49, 18 45, 32 45 C 46 45, 54 49, 54 64 Z" fill="url(#ksr-shirt-grad)" />
 
-            {/* Polo Collar */}
-            <path d="M 26 46 L 32 54 L 38 46" stroke="#134E4A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="#115E59" />
-            <circle cx="32" cy="56" r="0.8" fill="#FFFFFF" />
+            {/* Polo Collar & Placket */}
+            <path d="M 25 45 L 32 53 L 39 45" stroke="#134E4A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="#134E4A" />
+            <circle cx="32" cy="55.5" r="0.8" fill="#FFFFFF" />
             <circle cx="32" cy="59" r="0.8" fill="#FFFFFF" />
 
             {/* Dua Sisi Employee ID Badge on Chest */}
-            <rect x="20" y="52" width="6" height="7" rx="1.2" fill="#FFFFFF" stroke="#0D9488" strokeWidth="0.5" />
-            <rect x="21" y="53.5" width="4" height="2" rx="0.5" fill="#0D9488" />
+            <rect x="19" y="51" width="6.5" height="8" rx="1.2" fill="#FFFFFF" stroke="#0D9488" strokeWidth="0.5" />
+            <rect x="20.5" y="52.5" width="3.5" height="2" rx="0.5" fill="#0D9488" />
+            <line x1="20.5" y1="56" x2="24" y2="56" stroke="#94A3B8" strokeWidth="0.6" />
+            <line x1="20.5" y1="57.5" x2="23" y2="57.5" stroke="#94A3B8" strokeWidth="0.6" />
 
             {/* Neck */}
-            <rect x="29" y="39" width="6" height="8" rx="2" fill="#FED7AA" />
+            <rect x="29" y="38" width="6" height="9" rx="2" fill="#F7CEB6" />
+            <path d="M 29 42 Q 32 45 35 42" stroke="#EAA886" strokeWidth="1" fill="none" opacity="0.6" />
 
             {/* Ears */}
-            <circle cx="21" cy="32" r="3" fill="#FED7AA" />
-            <circle cx="43" cy="32" r="3" fill="#FED7AA" />
+            <circle cx="20.5" cy="31" r="2.8" fill="#F7CEB6" />
+            <circle cx="43.5" cy="31" r="2.8" fill="#F7CEB6" />
 
-            {/* Face */}
-            <path d="M 22 28 C 22 18, 42 18, 42 28 C 42 39, 37 44, 32 44 C 27 44, 22 39, 22 28 Z" fill="#FED7AA" />
+            {/* Face / Natural Warm Skin Tone */}
+            <path d="M 22 27 C 22 17, 42 17, 42 27 C 42 38, 37 43, 32 43 C 27 43, 22 38, 22 27 Z" fill="#FBD5B5" />
 
             {/* Cheerful Rosy Cheeks */}
-            <circle cx="24" cy="35" r="2.8" fill="#F43F5E" opacity="0.45" />
-            <circle cx="40" cy="35" r="2.8" fill="#F43F5E" opacity="0.45" />
+            <circle cx="24.5" cy="34.5" r="2.6" fill="#F43F5E" opacity="0.35" />
+            <circle cx="39.5" cy="34.5" r="2.6" fill="#F43F5E" opacity="0.35" />
 
-            {/* Big Friendly Eyes with Blinking Animation */}
+            {/* Big Friendly Sparkling Eyes with Blinking Animation */}
             <g className="animate-eye-blink">
-              <ellipse cx="27" cy="30" rx="2.2" ry="2.6" fill="#0F172A" />
-              <ellipse cx="37" cy="30" rx="2.2" ry="2.6" fill="#0F172A" />
-              <circle cx="26.3" cy="29" r="0.9" fill="#FFFFFF" />
-              <circle cx="36.3" cy="29" r="0.9" fill="#FFFFFF" />
-              <circle cx="27.8" cy="31" r="0.4" fill="#FFFFFF" />
-              <circle cx="37.8" cy="31" r="0.4" fill="#FFFFFF" />
+              <ellipse cx="27" cy="29.5" rx="2.2" ry="2.6" fill="#0F172A" />
+              <ellipse cx="37" cy="29.5" rx="2.2" ry="2.6" fill="#0F172A" />
+              <circle cx="26.2" cy="28.7" r="0.9" fill="#FFFFFF" />
+              <circle cx="36.2" cy="28.7" r="0.9" fill="#FFFFFF" />
+              <circle cx="27.8" cy="30.6" r="0.45" fill="#FFFFFF" />
+              <circle cx="37.8" cy="30.6" r="0.45" fill="#FFFFFF" />
             </g>
 
             {/* Eyelashes */}
-            <path d="M 24.5 28 Q 25.5 27 27 27.5" stroke="#0F172A" strokeWidth="1" strokeLinecap="round" />
-            <path d="M 39.5 28 Q 38.5 27 37 27.5" stroke="#0F172A" strokeWidth="1" strokeLinecap="round" />
+            <path d="M 24.5 27.5 Q 25.5 26.5 27 27" stroke="#0F172A" strokeWidth="1" strokeLinecap="round" />
+            <path d="M 39.5 27.5 Q 38.5 26.5 37 27" stroke="#0F172A" strokeWidth="1" strokeLinecap="round" />
 
             {/* Warm Smiling Mouth */}
-            <path d="M 28 36 Q 32 41 36 36" stroke="#991B1B" strokeWidth="1.6" strokeLinecap="round" fill="#FECDD3" />
+            <path d="M 28.5 35.5 Q 32 39.5 35.5 35.5" stroke="#991B1B" strokeWidth="1.5" strokeLinecap="round" fill="#FECDD3" />
 
             {/* Cute Hair with Side Ponytail */}
-            <path d="M 19 28 C 17 17, 24 11, 32 11 C 40 11, 47 17, 45 28 C 45 32, 43 35, 41 32 C 40 26, 38 21, 32 21 C 26 21, 24 26, 23 32 C 21 35, 19 32, 19 28 Z" fill="#451A03" />
-            <ellipse cx="45" cy="22" rx="4" ry="7" fill="#451A03" transform="rotate(25 45 22)" />
-            <circle cx="43" cy="18" r="2" fill="#14B8A6" />
+            <path d="M 19 27 C 17 16, 24 10.5, 32 10.5 C 40 10.5, 47 16, 45 27 C 45 31, 43 33.5, 41 31 C 40 25, 38 20.5, 32 20.5 C 26 20.5, 24 25, 23 31 C 21 33.5, 19 31, 19 27 Z" fill="#3B2014" />
+            <ellipse cx="44.5" cy="22" rx="3.8" ry="6.5" fill="#3B2014" transform="rotate(22 44.5 22)" />
+            <circle cx="43" cy="17.5" r="2.2" fill="#14B8A6" />
 
             {/* Front-Desk Cashier Headset */}
-            <path d="M 19 30 C 18 17, 45 17, 44 29" stroke="#E2E8F0" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-            <rect x="18" y="27" width="3.5" height="6" rx="1.5" fill="#0D9488" stroke="#FFFFFF" strokeWidth="0.8" />
-            <path d="M 19 32 Q 21 39 27 38" stroke="#CBD5E1" strokeWidth="1.3" fill="none" strokeLinecap="round" />
-            <circle cx="27.5" cy="38" r="1.6" fill="#10B981" />
+            <path d="M 19.5 29 C 19 18, 44.5 18, 44 29" stroke="#E2E8F0" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+            <rect x="18" y="27" width="3.2" height="5.5" rx="1.5" fill="#0D9488" stroke="#FFFFFF" strokeWidth="0.7" />
+            <path d="M 19.5 31 Q 21.5 37.5 27 37" stroke="#CBD5E1" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+            <circle cx="27.5" cy="37" r="1.5" fill="#10B981" />
           </svg>
         )}
       </div>
