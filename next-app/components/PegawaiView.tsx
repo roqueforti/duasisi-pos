@@ -424,19 +424,19 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
                           <div className="text-[10px] text-slate-400">{peg.pendidikanJenjang || 'SMA/SMK'}</div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-bold text-[#1E4648]">Rp {(peg.gajiPokok || 0).toLocaleString('id-ID')}</div>
-                          <div className="text-[10px] text-slate-400 truncate max-w-[130px]">
+                          <div className="font-bold text-[#1E4648] font-mono">Rp {(peg.gajiPokok || 0).toLocaleString('id-ID')}</div>
+                          <div className="text-[10px] text-slate-400 truncate max-w-[130px] font-mono">
                             {peg.bank ? `${peg.bank} ${peg.noRekening || ''}` : 'Belum diatur'}
                           </div>
                         </td>
                         <td className="py-3 px-4">
                           {kin ? (
                             <div>
-                              <div className="font-bold text-amber-700">{kin.totalTransaksi} Transaksi</div>
-                              <div className="text-[10px] text-slate-400">Rp {kin.totalOmzet.toLocaleString('id-ID')}</div>
+                              <div className="font-bold text-amber-700 font-mono">{kin.totalTransaksi} Transaksi</div>
+                              <div className="text-[10px] text-slate-400 font-mono">Rp {kin.totalOmzet.toLocaleString('id-ID')}</div>
                             </div>
                           ) : (
-                            <span className="text-slate-400">0 Trx</span>
+                            <span className="text-slate-400 font-mono">0 Trx</span>
                           )}
                         </td>
                         <td className="py-3 px-4">
@@ -562,7 +562,7 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
                       <span className="flex items-center gap-1 font-semibold">
                         <Award className="w-3.5 h-3.5 text-amber-600" /> Total Transaksi:
                       </span>
-                      <span className="font-bold">{kin.totalTransaksi} Trx (Rp {kin.totalOmzet.toLocaleString('id-ID')})</span>
+                      <span className="font-bold font-mono">{kin.totalTransaksi} Trx (Rp {kin.totalOmzet.toLocaleString('id-ID')})</span>
                     </div>
                   )}
                 </div>
@@ -1229,10 +1229,10 @@ export default function PegawaiView({ currentRole }: { currentRole?: UserRole } 
                   <CreditCard className="w-4 h-4 text-[#1E4648]" /> Payroll & Rekening
                 </h4>
                 <div className="grid grid-cols-2 gap-2 text-slate-600">
-                  <div><span className="text-slate-400">Gaji Pokok:</span> <strong>Rp {(selectedPegawai.gajiPokok || 0).toLocaleString('id-ID')}</strong></div>
-                  <div><span className="text-slate-400">Tunjangan:</span> <strong>Rp {(selectedPegawai.tunjangan || 0).toLocaleString('id-ID')}</strong></div>
-                  <div><span className="text-slate-400">Potongan:</span> <strong>Rp {(selectedPegawai.potongan || 0).toLocaleString('id-ID')}</strong></div>
-                  <div><span className="text-slate-400">Bank & No Rek:</span> <strong>{selectedPegawai.bank || '-'} {selectedPegawai.noRekening || ''}</strong></div>
+                  <div><span className="text-slate-400">Gaji Pokok:</span> <strong className="font-mono">Rp {(selectedPegawai.gajiPokok || 0).toLocaleString('id-ID')}</strong></div>
+                  <div><span className="text-slate-400">Tunjangan:</span> <strong className="font-mono">Rp {(selectedPegawai.tunjangan || 0).toLocaleString('id-ID')}</strong></div>
+                  <div><span className="text-slate-400">Potongan:</span> <strong className="font-mono">Rp {(selectedPegawai.potongan || 0).toLocaleString('id-ID')}</strong></div>
+                  <div><span className="text-slate-400">Bank & No Rek:</span> <strong className="font-mono">{selectedPegawai.bank || '-'} {selectedPegawai.noRekening || ''}</strong></div>
                   <div className="col-span-2"><span className="text-slate-400">Atas Nama:</span> <strong>{selectedPegawai.namaRekening || '-'}</strong></div>
                 </div>
               </div>

@@ -629,7 +629,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
             <RupiahIcon className="w-5 h-5 text-amber-300" />
           </div>
           <div>
-            <div className="text-2xl font-black tracking-tight">
+            <div className="text-2xl font-black tracking-tight font-mono">
               Rp {totalPengeluaranGajiComputed.toLocaleString('id-ID')}
             </div>
             <div className="text-[11px] text-teal-100/80 mt-1">
@@ -645,10 +645,10 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
             <TrendingUp className="w-5 h-5 text-emerald-600" />
           </div>
           <div>
-            <div className="text-xl font-bold text-slate-900">
+            <div className="text-xl font-bold text-slate-900 font-mono">
               Rp {(totalGajiPokokComputed + totalTunjanganComputed).toLocaleString('id-ID')}
             </div>
-            <div className="text-[11px] text-slate-400 mt-1 flex justify-between">
+            <div className="text-[11px] text-slate-400 mt-1 flex justify-between font-mono">
               <span>Pokok: Rp {totalGajiPokokComputed.toLocaleString('id-ID')}</span>
               <span>Tunj: Rp {totalTunjanganComputed.toLocaleString('id-ID')}</span>
             </div>
@@ -662,7 +662,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
             <Award className="w-5 h-5 text-amber-500" />
           </div>
           <div>
-            <div className="text-xl font-bold text-slate-900 flex items-baseline gap-2">
+            <div className="text-xl font-bold text-slate-900 flex items-baseline gap-2 font-mono">
               <span className="text-emerald-600 font-extrabold">+Rp {totalInsentifDropoffComputed.toLocaleString('id-ID')}</span>
               <span className="text-rose-500 text-sm font-semibold">-Rp {totalPotonganComputed.toLocaleString('id-ID')}</span>
             </div>
@@ -762,18 +762,18 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                   </td>
 
                   {/* Gaji Pokok */}
-                  <td className="py-3.5 px-3 text-right font-semibold text-slate-700">
+                  <td className="py-3.5 px-3 text-right font-semibold text-slate-700 font-mono">
                     Rp {item.gajiPokok.toLocaleString('id-ID')}
                   </td>
 
                   {/* Tunjangan Hadir */}
-                  <td className="py-3.5 px-3 text-right font-semibold text-slate-700">
+                  <td className="py-3.5 px-3 text-right font-semibold text-slate-700 font-mono">
                     <div>Rp {(item.tunjanganKehadiran || item.tunjangan).toLocaleString('id-ID')}</div>
                     <div className="text-[10px] text-slate-400 font-normal">{item.jumlahHadir} Hari Hadir</div>
                   </td>
 
                   {/* Insentif Drop Off */}
-                  <td className="py-3.5 px-3 text-right font-semibold text-emerald-600">
+                  <td className="py-3.5 px-3 text-right font-semibold text-emerald-600 font-mono">
                     <div className="font-extrabold text-sm">+Rp {(item.insentifDropOff || 0).toLocaleString('id-ID')}</div>
                     <div className="text-[10px] text-emerald-700 font-bold">{item.totalTahapKhusus || 0} Tahap Khusus</div>
                     {item.dropoffKhususBreakdown && Object.keys(item.dropoffKhususBreakdown).length > 0 && (
@@ -788,7 +788,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                               setShowInsentifModal(true);
                             }}
                             title={`Klik untuk lihat rincian ${st} oleh ${item.nama}`}
-                            className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.5 rounded border border-emerald-200/90 shadow-2xs transition cursor-pointer"
+                            className="inline-flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.5 rounded border border-emerald-200/90 shadow-2xs transition cursor-pointer font-mono"
                           >
                             <span>{st}: {data.count}x</span>
                             <span className="text-[8px] text-emerald-600 font-normal">(@Rp {data.rate.toLocaleString('id-ID')})</span>
@@ -797,29 +797,29 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                       </div>
                     )}
                     {item.dropoffUmumBreakdown && Object.keys(item.dropoffUmumBreakdown).length > 0 && (
-                      <div className="text-[9px] text-slate-400 mt-1 font-medium">
+                      <div className="text-[9px] text-slate-400 mt-1 font-medium font-sans">
                         Umum: {Object.values(item.dropoffUmumBreakdown).reduce((a, b) => a + b, 0)}x (Rp 0)
                       </div>
                     )}
                   </td>
 
                   {/* Potongan & Denda */}
-                  <td className="py-3.5 px-3 text-right font-semibold text-rose-500">
+                  <td className="py-3.5 px-3 text-right font-semibold text-rose-500 font-mono">
                     <div>-Rp {item.potongan.toLocaleString('id-ID')}</div>
                     {item.dendaTelat && item.dendaTelat > 0 ? (
-                      <div className="text-[10px] text-rose-600 font-normal">Denda: Rp {item.dendaTelat.toLocaleString('id-ID')}</div>
+                      <div className="text-[10px] text-rose-600 font-normal font-mono">Denda: Rp {item.dendaTelat.toLocaleString('id-ID')}</div>
                     ) : null}
                   </td>
 
                   {/* Total Bersih */}
-                  <td className="py-3.5 px-4 text-right font-black text-slate-900 text-sm">
+                  <td className="py-3.5 px-4 text-right font-black text-slate-900 text-sm font-mono">
                     Rp {item.totalGajiBersih.toLocaleString('id-ID')}
                   </td>
 
                   {/* Rekening */}
                   <td className="py-3.5 px-3">
                     <div className="font-semibold text-slate-700">{item.bank || 'Tunai'}</div>
-                    <div className="text-[10px] text-slate-400">{item.noRekening || '-'}</div>
+                    <div className="text-[10px] text-slate-400 font-mono">{item.noRekening || '-'}</div>
                   </td>
 
                   {/* Status Pembayaran */}
@@ -965,35 +965,35 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                   <div className="p-3 space-y-2 text-xs">
                     <div className="flex justify-between">
                       <span className="text-slate-600">Gaji Pokok</span>
-                      <span className="font-bold">Rp {activeSlipItem.gajiPokok.toLocaleString('id-ID')}</span>
+                      <span className="font-bold font-mono">Rp {activeSlipItem.gajiPokok.toLocaleString('id-ID')}</span>
                     </div>
                     <div className="flex justify-between">
                       <div>
                         <span className="text-slate-600">Tunjangan Kehadiran</span>
-                        <div className="text-[10px] text-slate-400 font-normal">{activeSlipItem.jumlahHadir} Hari Hadir</div>
+                        <div className="text-[10px] text-slate-400 font-normal font-mono">{activeSlipItem.jumlahHadir} Hari Hadir</div>
                       </div>
-                      <span className="font-bold">Rp {(activeSlipItem.tunjanganKehadiran || activeSlipItem.tunjangan).toLocaleString('id-ID')}</span>
+                      <span className="font-bold font-mono">Rp {(activeSlipItem.tunjanganKehadiran || activeSlipItem.tunjangan).toLocaleString('id-ID')}</span>
                     </div>
                     <div className="flex justify-between">
                       <div>
                         <span className="text-slate-600">Insentif Drop Off</span>
-                        <div className="text-[10px] text-emerald-600 font-normal">{activeSlipItem.totalTahapKhusus || 0} Tahap Khusus Selesai</div>
+                        <div className="text-[10px] text-emerald-600 font-normal font-mono">{activeSlipItem.totalTahapKhusus || 0} Tahap Khusus Selesai</div>
                       </div>
-                      <span className="font-bold text-emerald-600">+Rp {(activeSlipItem.insentifDropOff || 0).toLocaleString('id-ID')}</span>
+                      <span className="font-bold text-emerald-600 font-mono">+Rp {(activeSlipItem.insentifDropOff || 0).toLocaleString('id-ID')}</span>
                     </div>
                     {activeSlipItem.dropoffKhususBreakdown && Object.keys(activeSlipItem.dropoffKhususBreakdown).length > 0 && (
                       <div className="pl-2 border-l-2 border-emerald-200 text-[10px] text-slate-500 space-y-0.5">
                         {Object.entries(activeSlipItem.dropoffKhususBreakdown).map(([st, val]) => (
                           <div key={st} className="flex justify-between">
-                            <span>• {st} ({val.count}x @Rp {val.rate.toLocaleString('id-ID')})</span>
-                            <span className="font-medium text-slate-700">Rp {val.subtotal.toLocaleString('id-ID')}</span>
+                            <span>• {st} (<span className="font-mono">{val.count}x @Rp {val.rate.toLocaleString('id-ID')}</span>)</span>
+                            <span className="font-medium text-slate-700 font-mono">Rp {val.subtotal.toLocaleString('id-ID')}</span>
                           </div>
                         ))}
                       </div>
                     )}
                     <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-slate-800">
                       <span>Total Penerimaan</span>
-                      <span>Rp {(activeSlipItem.gajiPokok + (activeSlipItem.tunjanganKehadiran || activeSlipItem.tunjangan) + (activeSlipItem.insentifDropOff || 0)).toLocaleString('id-ID')}</span>
+                      <span className="font-mono">Rp {(activeSlipItem.gajiPokok + (activeSlipItem.tunjanganKehadiran || activeSlipItem.tunjangan) + (activeSlipItem.insentifDropOff || 0)).toLocaleString('id-ID')}</span>
                     </div>
                   </div>
                 </div>
@@ -1008,18 +1008,18 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                       <div className="flex justify-between">
                         <div>
                           <span className="text-slate-600">Denda Keterlambatan</span>
-                          <div className="text-[10px] text-rose-500 font-normal">{activeSlipItem.jumlahTelat}x Terlambat</div>
+                          <div className="text-[10px] text-rose-500 font-normal font-mono">{activeSlipItem.jumlahTelat}x Terlambat</div>
                         </div>
-                        <span className="font-bold text-rose-500">-Rp {activeSlipItem.dendaTelat.toLocaleString('id-ID')}</span>
+                        <span className="font-bold text-rose-500 font-mono">-Rp {activeSlipItem.dendaTelat.toLocaleString('id-ID')}</span>
                       </div>
                     ) : null}
                     <div className="flex justify-between">
                       <span className="text-slate-600">Potongan Rutin / BPJS / Kasbon</span>
-                      <span className="font-bold text-rose-500">-Rp {(activeSlipItem.potonganRutin || activeSlipItem.potongan || 0).toLocaleString('id-ID')}</span>
+                      <span className="font-bold text-rose-500 font-mono">-Rp {(activeSlipItem.potonganRutin || activeSlipItem.potongan || 0).toLocaleString('id-ID')}</span>
                     </div>
                     <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-slate-800">
                       <span>Total Potongan</span>
-                      <span className="text-rose-500">Rp {activeSlipItem.potongan.toLocaleString('id-ID')}</span>
+                      <span className="text-rose-500 font-mono">Rp {activeSlipItem.potongan.toLocaleString('id-ID')}</span>
                     </div>
                   </div>
                 </div>
@@ -1032,7 +1032,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                   <div className="text-[11px] text-teal-300 font-bold uppercase tracking-wider">GAJI BERSIH (TAKE HOME PAY)</div>
                   <div className="text-[10px] text-slate-400">Total penerimaan setelah dikurangi potongan</div>
                 </div>
-                <div className="text-xl font-black tracking-tight text-amber-300">
+                <div className="text-xl font-black tracking-tight text-amber-300 font-mono">
                   Rp {activeSlipItem.totalGajiBersih.toLocaleString('id-ID')}
                 </div>
               </div>
@@ -1330,19 +1330,19 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                           </>
                         ) : (
                           <>
-                            <td className="py-3 px-3.5 font-bold text-[#1E4648]">
+                            <td className="py-3 px-3.5 font-bold text-[#1E4648] font-mono">
                               Rp {(peg.gajiPokok || 0).toLocaleString('id-ID')}
                             </td>
-                            <td className="py-3 px-3.5 font-semibold text-emerald-700">
+                            <td className="py-3 px-3.5 font-semibold text-emerald-700 font-mono">
                               Rp {(peg.tunjangan || 0).toLocaleString('id-ID')}
                             </td>
-                            <td className="py-3 px-3.5 font-semibold text-rose-600">
+                            <td className="py-3 px-3.5 font-semibold text-rose-600 font-mono">
                               Rp {(peg.potongan || 0).toLocaleString('id-ID')}
                             </td>
                             <td className="py-3 px-3.5">
                               {peg.bank ? (
                                 <div>
-                                  <span className="font-bold text-slate-700">{peg.bank}</span> {peg.noRekening || '-'}
+                                  <span className="font-bold text-slate-700">{peg.bank}</span> <span className="font-mono">{peg.noRekening || '-'}</span>
                                   {peg.namaRekening && <div className="text-[10px] text-slate-400">a.n {peg.namaRekening}</div>}
                                 </div>
                               ) : (

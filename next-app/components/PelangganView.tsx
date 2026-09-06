@@ -472,15 +472,15 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
           </div>
           <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
             <span className="text-[11px] text-slate-500 block font-medium">Total Transaksi</span>
-            <span className="text-sm font-bold text-[#1E4648]">{selectedCust.totalOrder}x Order</span>
+            <span className="text-sm font-bold text-[#1E4648] font-mono">{selectedCust.totalOrder}x Order</span>
           </div>
           <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
             <span className="text-[11px] text-slate-500 block font-medium">Total Belanja (Spend)</span>
-            <span className="text-sm font-bold text-slate-900">Rp {(selectedCust.totalSpend || 0).toLocaleString('id-ID')}</span>
+            <span className="text-sm font-bold text-slate-900 font-mono">Rp {(selectedCust.totalSpend || 0).toLocaleString('id-ID')}</span>
           </div>
           <div className="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200 shadow-2xs">
             <span className="text-[11px] text-amber-800 block font-medium">Saldo Poin Loyalitas</span>
-            <span className="text-sm font-extrabold text-[#FF9500]">{selectedCust.saldoPoin || 0} Poin</span>
+            <span className="text-sm font-extrabold text-[#FF9500] font-mono">{selectedCust.saldoPoin || 0} Poin</span>
           </div>
         </div>
 
@@ -1023,7 +1023,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
           className={`bg-white p-3.5 rounded-xl border cursor-pointer transition shadow-2xs ${filterKategori === 'Semua' ? 'border-[#1E4648] ring-1 ring-[#1E4648]' : 'border-slate-200/80 hover:border-slate-300'}`}
         >
           <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Pelanggan</div>
-          <div className="text-xl font-black text-slate-800 mt-0.5">{(totalPelanggan || 0).toLocaleString('id-ID')}</div>
+          <div className="text-xl font-black text-slate-800 mt-0.5 font-mono">{(totalPelanggan || 0).toLocaleString('id-ID')}</div>
           <div className="text-[10px] text-slate-400 mt-0.5">Seluruh database</div>
         </div>
 
@@ -1034,7 +1034,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
           <div className="text-[11px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">
             <span>⭐ Member</span>
           </div>
-          <div className="text-xl font-black text-amber-900 mt-0.5">{(countMember || 0).toLocaleString('id-ID')}</div>
+          <div className="text-xl font-black text-amber-900 mt-0.5 font-mono">{(countMember || 0).toLocaleString('id-ID')}</div>
           <div className="text-[10px] text-amber-700/80 mt-0.5">Terdaftar resmi</div>
         </div>
 
@@ -1046,7 +1046,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
             <History className="w-3.5 h-3.5 text-teal-600" />
             <span>Pelanggan Lama</span>
           </div>
-          <div className="text-xl font-black text-teal-950 mt-0.5">{(countLama || 0).toLocaleString('id-ID')}</div>
+          <div className="text-xl font-black text-teal-950 mt-0.5 font-mono">{(countLama || 0).toLocaleString('id-ID')}</div>
           <div className="text-[10px] text-teal-700 mt-0.5">&gt; 1x Transaksi (Umum)</div>
         </div>
 
@@ -1058,7 +1058,7 @@ export default function PelangganView({ currentRole }: { currentRole?: UserRole 
             <Sparkles className="w-3.5 h-3.5 text-blue-500" />
             <span>Pelanggan Baru</span>
           </div>
-          <div className="text-xl font-black text-slate-800 mt-0.5">{(countBaru || 0).toLocaleString('id-ID')}</div>
+          <div className="text-xl font-black text-slate-800 mt-0.5 font-mono">{(countBaru || 0).toLocaleString('id-ID')}</div>
           <div className="text-[10px] text-slate-400 mt-0.5">1x Transaksi / Baru</div>
         </div>
       </div>

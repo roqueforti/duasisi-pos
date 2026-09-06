@@ -892,7 +892,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                       <td className="py-3.5 px-3.5">
                         <span className="font-bold text-slate-800 block text-xs">{item.nama}</span>
                         {item.isDijual && (
-                          <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-1.5 py-0.2 rounded border border-teal-100 inline-block mt-0.5">
+                          <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-1.5 py-0.2 rounded border border-teal-100 inline-block mt-0.5 font-mono">
                             Retail: Rp {(item.hargaJual || 0).toLocaleString('id-ID')}
                           </span>
                         )}
@@ -906,7 +906,7 @@ export default function InventoryView({ currentRole }: InventoryViewProps = {}) 
                           isLow ? 'bg-amber-50 text-amber-800 border border-amber-200' :
                           'bg-slate-100 text-slate-800'
                         }`}>
-                          <span>{formatStok(item.stok)}</span>
+                          <span className="font-mono">{formatStok(item.stok)}</span>
                           <span className="text-[10px] font-normal text-slate-500">{item.satuan}</span>
                         </div>
                       </td>
