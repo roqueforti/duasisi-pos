@@ -42,7 +42,13 @@ import {
   Truck,
   HelpCircle,
   BadgeAlert,
-  ArrowRight
+  ArrowRight,
+  Search,
+  Filter,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+  Check
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { UserRole, MonthlyTargets, FinancialMetrics, ServiceProfitability, QualityPerformance, ProcurementSummary, CustomerRetentionMetrics, LayananItem } from '@/lib/types';
@@ -232,6 +238,22 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
   // Queue View Tab
   const [queueTab, setQueueTab] = useState<'Semua' | 'SiapDiambil'>('Semua');
+
+  // Dashboard Section Tabs (Point 4)
+  const [activeDashboardTab, setActiveDashboardTab] = useState<'executive' | 'operations' | 'products' | 'inventory_quality' | 'all'>('executive');
+
+  // Profitability Table Controls (Point 1)
+  const [profitSearch, setProfitSearch] = useState<string>('');
+  const [profitFilterTab, setProfitFilterTab] = useState<'all' | 'top' | 'attention'>('all');
+  const [profitSortBy, setProfitSortBy] = useState<'kontribusi' | 'margin' | 'laba' | 'pendapatan' | 'totalOrder'>('kontribusi');
+  const [profitSortAsc, setProfitSortAsc] = useState<boolean>(false);
+  const [showLowContributionGroup, setShowLowContributionGroup] = useState<boolean>(false);
+
+  // Machine Detail Modal State (Point 5)
+  const [selectedMachineDetail, setSelectedMachineDetail] = useState<MesinItem | null>(null);
+
+  // Drilldown Cause Filter State (Point 2)
+  const [drilldownCauseFilter, setDrilldownCauseFilter] = useState<string>('all');
 
   // Interactive Hover/Touch on Daily Chart
   const [activeHoverDate, setActiveHoverDate] = useState<string | null>(null);
@@ -701,6 +723,83 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     };
   }, [periodTransactions, financials.pendapatan, layananModalMap]);
 
+  // Filtered & Sorted Profitability List (Point 1)
+  const processedProfitability = useMemo(() => {
+    let rawList = [...serviceProfitability.list];
+
+    // 1. Search filter
+    if (profitSearch.trim()) {
+      const q = profitSearch.toLowerCase().trim();
+      rawList = rawList.filter(s => s.layanan.toLowerCase().includes(q));
+    }
+
+    // 2. Tab filter
+    if (profitFilterTab === 'top') {
+      rawList = rawList.filter(s => s.margin >= 50 || s.kontribusi >= 5);
+    } else if (profitFilterTab === 'attention') {
+      rawList = rawList.filter(s => s.margin < 30 || s.laba <= 0);
+    }
+
+    // 3. Sorting
+    rawList.sort((a, b) => {
+      let valA = (a as any)[profitSortBy] || 0;
+      let valB = (b as any)[profitSortBy] || 0;
+      return profitSortAsc ? valA - valB : valB - valA;
+    });
+
+    // 4. Grouping items with low contribution (< 1%)
+    // Hanya lakukan grouping jika tidak sedang search dan tab 'all'
+    const isSearchingOrFiltering = profitSearch.trim().length > 0 || profitFilterTab !== 'all';
+    if (isSearchingOrFiltering) {
+      return {
+        mainList: rawList,
+        lowContributionItems: [],
+        lowContributionSummary: null,
+      };
+    }
+
+    const mainList = rawList.filter(s => s.kontribusi >= 1);
+    const lowContributionItems = rawList.filter(s => s.kontribusi < 1);
+
+    let lowContributionSummary: {
+      count: number;
+      totalOrder: number;
+      pendapatan: number;
+      hpp: number;
+      laba: number;
+      kontribusi: number;
+      margin: number;
+      totalKg: number;
+    } | null = null;
+
+    if (lowContributionItems.length > 0) {
+      const totalOrder = lowContributionItems.reduce((acc, s) => acc + s.totalOrder, 0);
+      const pendapatan = lowContributionItems.reduce((acc, s) => acc + s.pendapatan, 0);
+      const hpp = lowContributionItems.reduce((acc, s) => acc + s.hpp, 0);
+      const laba = lowContributionItems.reduce((acc, s) => acc + s.laba, 0);
+      const kontribusi = Math.round(lowContributionItems.reduce((acc, s) => acc + s.kontribusi, 0) * 10) / 10;
+      const margin = pendapatan > 0 ? Math.round((laba / pendapatan) * 1000) / 10 : 0;
+      const totalKg = Math.round(lowContributionItems.reduce((acc, s) => acc + s.kg, 0) * 10) / 10;
+
+      lowContributionSummary = {
+        count: lowContributionItems.length,
+        totalOrder,
+        pendapatan,
+        hpp,
+        laba,
+        kontribusi,
+        margin,
+        totalKg,
+      };
+    }
+
+    return {
+      mainList,
+      lowContributionItems,
+      lowContributionSummary,
+    };
+  }, [serviceProfitability.list, profitSearch, profitFilterTab, profitSortBy, profitSortAsc]);
+
   // =========================================================================
   // 7. QUALITY PERFORMANCE & DRILL-DOWN (P0.4)
   // =========================================================================
@@ -743,6 +842,46 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     const errorRate = Math.round((errorOrders.length / totalOrders) * 1000) / 10;
     const refundRate = Math.round(((refundTotal) / Math.max(1, financials.pendapatan)) * 1000) / 10;
 
+    // Hitung juga metrik periode sebelumnya untuk tren mini (MoM)
+    let prevCancelledCount = 0;
+    let prevRewashCount = 0;
+    let prevComplaintCount = 0;
+    let prevErrorCount = 0;
+    let prevRefundTotal = 0;
+    let prevRevenue = 0;
+
+    prevPeriodTransactions.forEach(t => {
+      const isVoid = t.status === 'Void' || t.status === 'Batal' || t.status === 'Dibatalkan' || t.statusVoid === 'Approved';
+      const notes = (t.catatan || '').toLowerCase();
+      prevRevenue += Number(t.total) || 0;
+      if (isVoid) {
+        prevCancelledCount++;
+        prevRefundTotal += Number(t.total) || 0;
+      }
+      if (notes.includes('rewash') || notes.includes('cuci ulang') || (t.items || []).some(it => (it.layanan || '').toLowerCase().includes('rewash'))) {
+        prevRewashCount++;
+      }
+      if (notes.includes('komplain') || notes.includes('keluhan') || notes.includes('rusak') || notes.includes('hilang') || notes.includes('luntur')) {
+        prevComplaintCount++;
+      }
+      if (notes.includes('salah') || notes.includes('keliru') || notes.includes('tertukar') || notes.includes('revisi')) {
+        prevErrorCount++;
+      }
+    });
+
+    const prevTotalOrders = Math.max(1, prevPeriodTransactions.length);
+    const prevCancellationRate = Math.round((prevCancelledCount / prevTotalOrders) * 1000) / 10;
+    const prevRewashRate = Math.round((prevRewashCount / prevTotalOrders) * 1000) / 10;
+    const prevComplaintRate = Math.round((prevComplaintCount / prevTotalOrders) * 1000) / 10;
+    const prevErrorRate = Math.round((prevErrorCount / prevTotalOrders) * 1000) / 10;
+    const prevRefundRate = Math.round((prevRefundTotal / Math.max(1, prevRevenue)) * 1000) / 10;
+
+    const deltaCancellation = Math.round((cancellationRate - prevCancellationRate) * 10) / 10;
+    const deltaRewash = Math.round((rewashRate - prevRewashRate) * 10) / 10;
+    const deltaComplaint = Math.round((complaintRate - prevComplaintRate) * 10) / 10;
+    const deltaError = Math.round((errorRate - prevErrorRate) * 10) / 10;
+    const deltaRefund = Math.round((refundRate - prevRefundRate) * 10) / 10;
+
     return {
       cancellationRate,
       rewashRate,
@@ -751,9 +890,16 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       refundRate,
       cancelledOrders,
       rewashOrders,
+      complaintOrders,
+      errorOrders,
       refundTotal,
+      deltaCancellation,
+      deltaRewash,
+      deltaComplaint,
+      deltaError,
+      deltaRefund,
     };
-  }, [periodTransactions.length, transaksiList, currentStart, currentEnd, financials.pendapatan]);
+  }, [periodTransactions.length, prevPeriodTransactions, transaksiList, currentStart, currentEnd, financials.pendapatan]);
 
   // =========================================================================
   // 8. OPERATIONAL PERFORMANCE & SLA (P1.6)
@@ -1448,15 +1594,61 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     }
   };
 
+  // Helper kategori penyebab pembatalan / komplain / error
+  const getOrderCauseCategory = (t: TransaksiItem) => {
+    const notes = (t.catatan || '').toLowerCase();
+    if (notes.includes('salah') || notes.includes('revisi') || notes.includes('keliru') || notes.includes('batal nota') || notes.includes('salah input') || notes.includes('salah entri') || notes.includes('salah harga')) {
+      return 'Kesalahan Input / Revisi Nota';
+    }
+    if (notes.includes('rusak') || notes.includes('luntur') || notes.includes('kotor') || notes.includes('bau') || notes.includes('cuci ulang') || notes.includes('sobek') || notes.includes('hilang') || notes.includes('kualitas')) {
+      return 'Kualitas Pengerjaan / Rusak / Luntur';
+    }
+    if (notes.includes('pelanggan') || notes.includes('tidak jadi') || notes.includes('kemahalan') || notes.includes('buru-buru') || notes.includes('lama') || notes.includes('batal')) {
+      return 'Pembatalan Pelanggan / Tidak Jadi';
+    }
+    return 'Void / Koreksi Kasir';
+  };
+
   // Drilldown Orders List Getter
-  const drilldownOrders = useMemo(() => {
+  const rawDrilldownOrders = useMemo(() => {
     if (!drilldownType) return [];
-    if (drilldownType === 'cancellation') return qualityPerformance.cancelledOrders;
-    if (drilldownType === 'rewash') return qualityPerformance.rewashOrders;
-    if (drilldownType === 'late') return operationalPerformance.lateOrdersList;
-    if (drilldownType === 'refund') return qualityPerformance.cancelledOrders;
+    if (drilldownType === 'cancellation') return qualityPerformance.cancelledOrders || [];
+    if (drilldownType === 'rewash') return qualityPerformance.rewashOrders || [];
+    if (drilldownType === 'complaint') return qualityPerformance.complaintOrders || [];
+    if (drilldownType === 'error') return qualityPerformance.errorOrders || [];
+    if (drilldownType === 'late') return operationalPerformance.lateOrdersList || [];
+    if (drilldownType === 'refund') return qualityPerformance.cancelledOrders || [];
     return [];
   }, [drilldownType, qualityPerformance, operationalPerformance]);
+
+  // Breakdown penyebab untuk drill-down modal
+  const drilldownCauseBreakdown = useMemo(() => {
+    if (!drilldownType || (drilldownType !== 'cancellation' && drilldownType !== 'refund' && drilldownType !== 'complaint' && drilldownType !== 'error')) {
+      return [];
+    }
+    const catMap: Record<string, { label: string; count: number; totalNominal: number }> = {
+      'Kesalahan Input / Revisi Nota': { label: 'Kesalahan Input / Revisi Nota', count: 0, totalNominal: 0 },
+      'Kualitas Pengerjaan / Rusak / Luntur': { label: 'Kualitas Pengerjaan / Rusak / Luntur', count: 0, totalNominal: 0 },
+      'Pembatalan Pelanggan / Tidak Jadi': { label: 'Pembatalan Pelanggan / Tidak Jadi', count: 0, totalNominal: 0 },
+      'Void / Koreksi Kasir': { label: 'Void / Koreksi Kasir', count: 0, totalNominal: 0 },
+    };
+
+    rawDrilldownOrders.forEach(t => {
+      const cat = getOrderCauseCategory(t);
+      if (!catMap[cat]) {
+        catMap[cat] = { label: cat, count: 0, totalNominal: 0 };
+      }
+      catMap[cat].count += 1;
+      catMap[cat].totalNominal += Number(t.total) || 0;
+    });
+
+    return Object.values(catMap);
+  }, [drilldownType, rawDrilldownOrders]);
+
+  const drilldownOrders = useMemo(() => {
+    if (drilldownCauseFilter === 'all') return rawDrilldownOrders;
+    return rawDrilldownOrders.filter(t => getOrderCauseCategory(t) === drilldownCauseFilter);
+  }, [rawDrilldownOrders, drilldownCauseFilter]);
 
   const activeOrders = useMemo(() => {
     return (transaksiList || []).filter(t => {
@@ -1661,11 +1853,144 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       )}
 
       {/* ========================================================================= */}
+      {/* EXECUTIVE DASHBOARD SECTION TABS (Point 4)                                */}
+      {/* ========================================================================= */}
+      {isManager && (
+        <div className="bg-white p-1.5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+          {[
+            { 
+              id: 'executive', 
+              label: 'Ringkasan Eksekutif', 
+              icon: Sparkles, 
+              badge: categorizedInsights.critical.length > 0 ? `${categorizedInsights.critical.length} Kritis` : undefined, 
+              badgeColor: 'bg-rose-500 text-white' 
+            },
+            { 
+              id: 'operations', 
+              label: 'Operasional & Mesin', 
+              icon: Cpu, 
+              badge: operationalPerformance.lateCount > 0 ? `${operationalPerformance.lateCount} Telat` : undefined, 
+              badgeColor: 'bg-amber-500 text-white' 
+            },
+            { 
+              id: 'products', 
+              label: 'Produk & Profitabilitas', 
+              icon: Layers 
+            },
+            { 
+              id: 'inventory_quality', 
+              label: 'Inventori & Kualitas', 
+              icon: ShieldCheck, 
+              badge: (inventoryValuation.criticalCount + inventoryValuation.minusCount) > 0 ? `${inventoryValuation.criticalCount + inventoryValuation.minusCount}` : undefined, 
+              badgeColor: 'bg-rose-500 text-white' 
+            },
+            { 
+              id: 'all', 
+              label: 'Semua Tampilan', 
+              icon: LayoutDashboard 
+            },
+          ].map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeDashboardTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveDashboardTab(tab.id as any)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
+                  isActive 
+                    ? 'bg-[#1E4648] text-white shadow-xs' 
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-amber-300' : 'text-slate-500'}`} />
+                <span>{tab.label}</span>
+                {tab.badge && (
+                  <span className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full ${tab.badgeColor}`}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* SECTION 12 (MOVED TO TOP): EXECUTIVE BUSINESS INTELLIGENCE & INSIGHTS (Point 4) */}
+      {isManager && (activeDashboardTab === 'executive' || activeDashboardTab === 'all') && (
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0 border border-amber-200/60">
+                <Lightbulb className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-800">Executive Business Intelligence &amp; Insights</h2>
+                <p className="text-[11px] text-slate-400">Diagnosis analitik otomatis: Pencapaian Positif, Perlu Perhatian &amp; Tindakan Kritis</p>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold text-slate-400">Ringkasan Prioritas</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* 🟢 Positif */}
+            <div className="p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-xl space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <span>Pencapaian &amp; Positif</span>
+              </div>
+              <div className="space-y-1.5">
+                {categorizedInsights.positive.map((ins, idx) => (
+                  <div key={idx} className="text-xs text-slate-700 leading-relaxed font-medium">
+                    &bull; {ins}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 🟡 Perhatian */}
+            <div className="p-3.5 bg-amber-50/60 border border-amber-200 rounded-xl space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                <span>Perlu Perhatian</span>
+              </div>
+              <div className="space-y-1.5">
+                {categorizedInsights.attention.map((ins, idx) => (
+                  <div key={idx} className="text-xs text-slate-700 leading-relaxed font-medium">
+                    &bull; {ins}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 🔴 Kritis */}
+            <div className="p-3.5 bg-rose-50/60 border border-rose-200 rounded-xl space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                <span>Tindakan Kritis</span>
+              </div>
+              <div className="space-y-1.5">
+                {categorizedInsights.critical.length > 0 ? (
+                  categorizedInsights.critical.map((ins, idx) => (
+                    <div key={idx} className="text-xs text-rose-900 leading-relaxed font-semibold">
+                      &bull; {ins}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-slate-400 italic">Tidak ada anomali kritis saat ini. Operasional berjalan lancar.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* SECTION 1: EXECUTIVE FINANCIAL & PROFITABILITY KPI (P0.1 + P0.2)          */}
       {/* Alur: Pendapatan -> HPP -> Laba Kotor -> Margin                           */}
       {/* ========================================================================= */}
       {isManager ? (
-        <div className="space-y-3">
+        (activeDashboardTab === 'executive' || activeDashboardTab === 'all') && (
+          <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             
             {/* 1. Total Pendapatan */}
@@ -1848,6 +2173,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
           </div>
         </div>
+        )
       ) : (
         /* KASIR VIEW CARDS */
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
@@ -1896,7 +2222,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       {/* ========================================================================= */}
       {/* SECTION 2: FINANCIAL PERFORMANCE PANEL & BREAKDOWN (P0.1)                 */}
       {/* ========================================================================= */}
-      {isManager && (
+      {isManager && (activeDashboardTab === 'executive' || activeDashboardTab === 'all') && (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
@@ -1999,7 +2325,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       {/* ========================================================================= */}
       {/* SECTION 3: DAILY SALES TREND & FORECAST (P2)                              */}
       {/* ========================================================================= */}
-      {isManager && (
+      {isManager && (activeDashboardTab === 'executive' || activeDashboardTab === 'all') && (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
@@ -2023,68 +2349,83 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             </div>
           </div>
 
-          {/* Interactive Bar Chart with Real Date Strings */}
+          {/* Interactive Bar Chart with Clear Horizontal Scroll & Layout Isolation */}
           <div className="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 space-y-3">
-            <div className="flex justify-between items-end h-44 pt-4 px-2 border-b border-slate-200 gap-1 sm:gap-2">
-              {dailyPerformance.trendList.length > 0 ? (
-                dailyPerformance.trendList.map((d, idx) => {
-                  const todayKey = formatLocalDateIso(new Date());
-                  const isToday = d.dateIso === todayKey;
-                  const heightPercent = d.revenue > 0 
-                    ? Math.max(8, Math.round((d.revenue / Math.max(1, dailyPerformance.maxRev)) * 88)) 
-                    : 4;
-                  const isHovered = activeHoverDate === d.dateIso;
+            <div className="overflow-x-auto pb-2 scrollbar-thin">
+              <div className="min-w-[620px] sm:min-w-full">
+                {/* Bar Area: Isolated Height */}
+                <div className="flex justify-between items-end h-36 pt-6 px-1 gap-1 sm:gap-2">
+                  {dailyPerformance.trendList.length > 0 ? (
+                    dailyPerformance.trendList.map((d, idx) => {
+                      const todayKey = formatLocalDateIso(new Date());
+                      const isToday = d.dateIso === todayKey;
+                      const heightPercent = d.revenue > 0 
+                        ? Math.max(8, Math.round((d.revenue / Math.max(1, dailyPerformance.maxRev)) * 92)) 
+                        : 4;
+                      const isHovered = activeHoverDate === d.dateIso;
 
-                  return (
-                    <div 
-                      key={idx} 
-                      className="flex-1 h-full flex flex-col justify-end items-center gap-1 group relative cursor-pointer"
-                      onMouseEnter={() => setActiveHoverDate(d.dateIso)}
-                      onMouseLeave={() => setActiveHoverDate(null)}
-                      onClick={() => setActiveHoverDate(d.dateIso)}
-                    >
-                      {/* Rich Tooltip on Hover / Touch */}
-                      {(isHovered || false) && (
-                        <div className="absolute -top-16 opacity-100 transition-opacity pointer-events-none bg-slate-900 text-white text-[10px] font-mono py-2 px-3 rounded-xl shadow-2xl whitespace-nowrap z-30 border border-slate-700">
-                          <div className="font-bold text-amber-300">{d.fullDate}</div>
-                          <div className="text-slate-200 mt-0.5">Pendapatan: <strong>{formatRupiahId(d.revenue)}</strong></div>
-                          <div className="text-slate-300">{d.orders} Total Order • {d.kg} Kg Cucian</div>
+                      return (
+                        <div 
+                          key={idx} 
+                          className="flex-1 h-full flex flex-col justify-end items-center group relative cursor-pointer"
+                          onMouseEnter={() => setActiveHoverDate(d.dateIso)}
+                          onMouseLeave={() => setActiveHoverDate(null)}
+                          onClick={() => setActiveHoverDate(d.dateIso)}
+                        >
+                          {/* Rich Tooltip on Hover / Touch */}
+                          {(isHovered || false) && (
+                            <div className="absolute -top-14 opacity-100 pointer-events-none bg-slate-900 text-white text-[10px] font-mono py-1.5 px-3 rounded-xl shadow-2xl whitespace-nowrap z-40 border border-slate-700">
+                              <div className="font-bold text-amber-300">{d.fullDate}</div>
+                              <div className="text-slate-200 mt-0.5">Pendapatan: <strong>{formatRupiahId(d.revenue)}</strong></div>
+                              <div className="text-slate-300">{d.orders} Order • {d.kg} Kg</div>
+                            </div>
+                          )}
+
+                          {/* Bar Graphic */}
+                          <div 
+                            style={{ height: `${heightPercent}%` }} 
+                            className={`w-full max-w-[28px] rounded-t-md transition-all duration-200 ${
+                              d.revenue === 0
+                                ? isToday
+                                  ? 'bg-emerald-100 border border-emerald-300'
+                                  : 'bg-slate-200/80 hover:bg-slate-300'
+                                : isToday 
+                                ? 'bg-gradient-to-t from-teal-800 via-teal-600 to-emerald-500 shadow-sm ring-2 ring-emerald-300/60' 
+                                : 'bg-gradient-to-t from-[#1E4648] to-teal-500 hover:from-teal-600 hover:to-teal-400'
+                            }`} 
+                          />
                         </div>
-                      )}
-
-                      {/* Bar Representation */}
-                      <div 
-                        style={{ height: `${heightPercent}%` }} 
-                        className={`w-full max-w-[32px] rounded-t-lg transition-all duration-300 ${
-                          d.revenue === 0
-                            ? isToday
-                              ? 'bg-emerald-100 border border-emerald-300'
-                              : 'bg-slate-200/80 hover:bg-slate-300'
-                            : isToday 
-                            ? 'bg-gradient-to-t from-teal-800 via-teal-600 to-emerald-500 shadow-sm ring-2 ring-emerald-300/60' 
-                            : 'bg-gradient-to-t from-[#1E4648] to-teal-500 hover:from-teal-600 hover:to-teal-400'
-                        }`} 
-                      />
-
-                      {/* Actual Date String Label ("1 Sep", "2 Sep", ...) */}
-                      <span className={`text-[9px] sm:text-[10px] font-mono truncate max-w-[42px] ${
-                        isToday ? 'font-black text-teal-900 underline decoration-teal-500 decoration-2' : 'text-slate-500 font-medium'
-                      }`}>
-                        {d.labelDate}
-                      </span>
+                      );
+                    })
+                  ) : (
+                    <div className="w-full text-center text-slate-400 my-auto text-xs font-medium">
+                      Belum ada data order pada rentang periode ini.
                     </div>
-                  );
-                })
-              ) : (
-                <div className="w-full text-center text-slate-400 my-auto text-xs font-medium">
-                  Belum ada data order pada rentang periode ini.
+                  )}
                 </div>
-              )}
+
+                {/* Dedicated Dates Row under the border */}
+                <div className="flex justify-between items-center border-t border-slate-200 pt-2 px-1 gap-1 sm:gap-2">
+                  {dailyPerformance.trendList.map((d, idx) => {
+                    const todayKey = formatLocalDateIso(new Date());
+                    const isToday = d.dateIso === todayKey;
+                    return (
+                      <div key={idx} className="flex-1 text-center truncate">
+                        <span className={`text-[9px] font-mono ${
+                          isToday ? 'font-black text-teal-900 underline decoration-teal-500 decoration-2' : 'text-slate-500 font-medium'
+                        }`}>
+                          {d.labelDate}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 px-1 gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 px-1 pt-1 gap-2 border-t border-slate-100">
               <span>Arahkan kursor atau sentuh diagram untuk melihat detail order, pendapatan &amp; berat cucian</span>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#1E4648]" /> Periode Aktif</span>
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-emerald-500" /> Hari Ini</span>
               </div>
@@ -2092,15 +2433,15 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
           </div>
 
           {/* Sales Forecast Run-rate strip */}
-          <div className="p-3 bg-teal-50/60 border border-teal-200/80 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-2 text-xs">
+          <div className="p-3 bg-teal-50/70 border border-teal-200/80 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-2 text-xs mt-2">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-teal-700 shrink-0" />
-              <span>
-                <strong>Run-Rate Sales Forecast:</strong> Rata-rata pendapatan harian berada di level <strong>{formatRupiahId(dailyPerformance.avgDailyRevenue)}/hari</strong>. Proyeksi akhir bulan mencapai <strong>{formatRupiahId(dailyPerformance.projectedMonthlyRevenue)}</strong>.
+              <span className="leading-relaxed">
+                <strong>Run-Rate Sales Forecast:</strong> Rata-rata pendapatan harian <strong>{formatRupiahId(dailyPerformance.avgDailyRevenue)}/hari</strong>. Proyeksi akhir bulan mencapai <strong>{formatRupiahId(dailyPerformance.projectedMonthlyRevenue)}</strong>.
               </span>
             </div>
-            <span className={`px-2 py-0.5 rounded-md font-extrabold shrink-0 text-[11px] ${
-              dailyPerformance.forecastRatio >= 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+            <span className={`px-2.5 py-1 rounded-lg font-extrabold shrink-0 text-[11px] ${
+              dailyPerformance.forecastRatio >= 100 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'
             }`}>
               {dailyPerformance.forecastRatio}% Target Tercapai
             </span>
@@ -2109,26 +2450,75 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 4: PROFITABILITAS PER LAYANAN & PRODUK (P0.3)                     */}
+      {/* SECTION 4: PROFITABILITAS PER LAYANAN & PRODUK (P0.3 - Point 1)           */}
       {/* ========================================================================= */}
-      {isManager && (
+      {isManager && (activeDashboardTab === 'products' || activeDashboardTab === 'all') && (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-slate-800">Profitabilitas per Layanan &amp; Produk</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-sm font-bold text-slate-800">Profitabilitas per Layanan &amp; Produk</h2>
+                  <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
+                    {serviceProfitability.list.length} Varian Terdaftar
+                  </span>
+                </div>
                 <p className="text-[11px] text-slate-400">Analisis margin &amp; profit per varian: Layanan omzet besar belum tentu paling menguntungkan</p>
               </div>
             </div>
 
             {serviceProfitability.topProfitMarginService && (
-              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-200 px-2 py-0.5 rounded-md">
+              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-1 rounded-lg self-start lg:self-auto">
                 Margin Tertinggi: {serviceProfitability.topProfitMarginService.layanan} ({serviceProfitability.topProfitMarginService.margin}%)
               </span>
             )}
+          </div>
+
+          {/* Search Bar & Category Filter Tabs */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80">
+            {/* Search Bar */}
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={profitSearch}
+                onChange={(e) => setProfitSearch(e.target.value)}
+                placeholder="Cari nama layanan atau produk..."
+                className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-[#1E4648] transition"
+              />
+              {profitSearch && (
+                <button
+                  onClick={() => setProfitSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex bg-white p-0.5 rounded-lg border border-slate-200 text-xs font-bold shrink-0">
+              {[
+                { id: 'all', label: 'Semua Produk' },
+                { id: 'top', label: 'Top Performer' },
+                { id: 'attention', label: 'Perlu Perhatian' },
+              ].map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setProfitFilterTab(t.id as any)}
+                  className={`px-3 py-1 rounded-md text-[11px] transition cursor-pointer ${
+                    profitFilterTab === t.id
+                      ? 'bg-[#1E4648] text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -2136,45 +2526,161 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
               <thead>
                 <tr className="bg-slate-50 text-slate-600 font-bold uppercase text-[9.5px] tracking-wider border-b border-slate-200">
                   <th className="py-2.5 px-3">Layanan / Produk</th>
-                  <th className="py-2.5 px-2 text-center">Total Order</th>
-                  <th className="py-2.5 px-2 text-right">Pendapatan</th>
+                  <th 
+                    onClick={() => {
+                      if (profitSortBy === 'totalOrder') setProfitSortAsc(!profitSortAsc);
+                      else { setProfitSortBy('totalOrder'); setProfitSortAsc(false); }
+                    }}
+                    className="py-2.5 px-2 text-center cursor-pointer hover:bg-slate-100 transition select-none"
+                  >
+                    <span className="inline-flex items-center gap-1">Total Order {profitSortBy === 'totalOrder' && (profitSortAsc ? '▲' : '▼')}</span>
+                  </th>
+                  <th 
+                    onClick={() => {
+                      if (profitSortBy === 'pendapatan') setProfitSortAsc(!profitSortAsc);
+                      else { setProfitSortBy('pendapatan'); setProfitSortAsc(false); }
+                    }}
+                    className="py-2.5 px-2 text-right cursor-pointer hover:bg-slate-100 transition select-none"
+                  >
+                    <span className="inline-flex items-center gap-1">Pendapatan {profitSortBy === 'pendapatan' && (profitSortAsc ? '▲' : '▼')}</span>
+                  </th>
                   <th className="py-2.5 px-2 text-right">HPP</th>
-                  <th className="py-2.5 px-2 text-right">Profit (Laba)</th>
-                  <th className="py-2.5 px-2 text-center">Margin (%)</th>
-                  <th className="py-2.5 px-2 text-center">Kontribusi</th>
+                  <th 
+                    onClick={() => {
+                      if (profitSortBy === 'laba') setProfitSortAsc(!profitSortAsc);
+                      else { setProfitSortBy('laba'); setProfitSortAsc(false); }
+                    }}
+                    className="py-2.5 px-2 text-right cursor-pointer hover:bg-slate-100 transition select-none"
+                  >
+                    <span className="inline-flex items-center gap-1">Profit (Laba) {profitSortBy === 'laba' && (profitSortAsc ? '▲' : '▼')}</span>
+                  </th>
+                  <th 
+                    onClick={() => {
+                      if (profitSortBy === 'margin') setProfitSortAsc(!profitSortAsc);
+                      else { setProfitSortBy('margin'); setProfitSortAsc(false); }
+                    }}
+                    className="py-2.5 px-2 text-center cursor-pointer hover:bg-slate-100 transition select-none"
+                  >
+                    <span className="inline-flex items-center gap-1">Margin (%) {profitSortBy === 'margin' && (profitSortAsc ? '▲' : '▼')}</span>
+                  </th>
+                  <th 
+                    onClick={() => {
+                      if (profitSortBy === 'kontribusi') setProfitSortAsc(!profitSortAsc);
+                      else { setProfitSortBy('kontribusi'); setProfitSortAsc(false); }
+                    }}
+                    className="py-2.5 px-2 text-center cursor-pointer hover:bg-slate-100 transition select-none"
+                  >
+                    <span className="inline-flex items-center gap-1">Kontribusi {profitSortBy === 'kontribusi' && (profitSortAsc ? '▲' : '▼')}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {serviceProfitability.list.length === 0 ? (
+                {processedProfitability.mainList.length === 0 && (!processedProfitability.lowContributionSummary || showLowContributionGroup) ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-slate-400 font-medium">Belum ada data layanan terjual</td>
+                    <td colSpan={7} className="text-center py-8 text-slate-400 font-medium">
+                      Tidak ada data produk yang cocok dengan pencarian / filter
+                    </td>
                   </tr>
                 ) : (
-                  serviceProfitability.list.map((s, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-2.5 px-3">
-                        <div className="font-bold text-slate-800 truncate max-w-[200px]">{s.layanan}</div>
-                        <div className="text-[10px] text-slate-400 font-mono">
-                          {s.kg > 0 ? `${s.kg} Kg Volume` : 'Add-on / Satuan'}
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-2 text-center font-bold text-slate-700">{s.totalOrder}</td>
-                      <td className="py-2.5 px-2 text-right font-bold text-slate-900 font-mono">{formatRupiahId(s.pendapatan)}</td>
-                      <td className="py-2.5 px-2 text-right text-slate-500 font-mono">{formatRupiahId(s.hpp)}</td>
-                      <td className="py-2.5 px-2 text-right font-black text-emerald-800 font-mono">{formatRupiahId(s.laba)}</td>
-                      <td className="py-2.5 px-2 text-center">
-                        <span className={`px-2 py-0.5 rounded font-bold text-[10.5px] font-mono ${
-                          s.margin >= 65 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                          s.margin >= 45 ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'
-                        }`}>
-                          {s.margin}%
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2 text-center font-mono font-semibold text-slate-600">
-                        {s.kontribusi}%
-                      </td>
-                    </tr>
-                  ))
+                  <>
+                    {processedProfitability.mainList.map((s, idx) => {
+                      const isNegative = s.laba < 0 || s.margin < 0;
+                      const isLowMargin = s.margin < 30 && !isNegative;
+                      const isHighMargin = s.margin >= 60;
+
+                      return (
+                        <tr 
+                          key={idx} 
+                          className={`transition-colors ${
+                            isNegative ? 'bg-rose-50/70 hover:bg-rose-100/60 border-l-4 border-l-rose-500' :
+                            isLowMargin ? 'hover:bg-amber-50/40' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-slate-800 truncate max-w-[220px]">{s.layanan}</span>
+                              {isNegative && (
+                                <span className="text-[9px] font-black bg-rose-600 text-white px-1.5 py-0.2 rounded shrink-0">Rugi</span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              {s.kg > 0 ? `${s.kg} Kg Volume` : 'Add-on / Satuan'}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2 text-center font-bold text-slate-700">{s.totalOrder}</td>
+                          <td className="py-2.5 px-2 text-right font-bold text-slate-900 font-mono">{formatRupiahId(s.pendapatan)}</td>
+                          <td className="py-2.5 px-2 text-right text-slate-500 font-mono">{formatRupiahId(s.hpp)}</td>
+                          <td className={`py-2.5 px-2 text-right font-black font-mono ${isNegative ? 'text-rose-700' : 'text-emerald-800'}`}>
+                            {formatRupiahId(s.laba)}
+                          </td>
+                          <td className="py-2.5 px-2 text-center">
+                            <span className={`px-2 py-0.5 rounded font-bold text-[10.5px] font-mono ${
+                              isNegative ? 'bg-rose-100 text-rose-800 border border-rose-300' :
+                              isHighMargin ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                              s.margin >= 45 ? 'bg-teal-50 text-teal-700' : 'bg-amber-100 text-amber-800 border border-amber-300'
+                            }`}>
+                              {s.margin}%
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-2 text-center font-mono font-semibold text-slate-600">
+                            {s.kontribusi}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {/* Expandable Group Row for Low Contribution Items (< 1%) */}
+                    {processedProfitability.lowContributionSummary && (
+                      <>
+                        <tr 
+                          onClick={() => setShowLowContributionGroup(!showLowContributionGroup)}
+                          className="bg-slate-100/80 hover:bg-slate-200/80 cursor-pointer font-semibold text-slate-700 transition border-t border-b border-slate-200 select-none"
+                        >
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-md bg-white border border-slate-300 flex items-center justify-center shrink-0">
+                                {showLowContributionGroup ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              </span>
+                              <div>
+                                <span className="font-bold text-slate-900 text-xs">
+                                  Lainnya ({processedProfitability.lowContributionSummary.count} Varian &lt; 1% Kontribusi)
+                                </span>
+                                <span className="text-[10px] text-slate-500 block font-normal">
+                                  {showLowContributionGroup ? 'Klik untuk menciutkan baris' : 'Klik untuk melihat rincian produk bervolume kecil'}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-2 text-center font-bold">{processedProfitability.lowContributionSummary.totalOrder}</td>
+                          <td className="py-3 px-2 text-right font-mono font-bold">{formatRupiahId(processedProfitability.lowContributionSummary.pendapatan)}</td>
+                          <td className="py-3 px-2 text-right font-mono text-slate-500">{formatRupiahId(processedProfitability.lowContributionSummary.hpp)}</td>
+                          <td className="py-3 px-2 text-right font-mono font-black text-emerald-800">{formatRupiahId(processedProfitability.lowContributionSummary.laba)}</td>
+                          <td className="py-3 px-2 text-center">
+                            <span className="px-2 py-0.5 rounded font-mono font-bold text-[10.5px] bg-slate-200 text-slate-800">
+                              {processedProfitability.lowContributionSummary.margin}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-2 text-center font-mono font-bold text-slate-600">
+                            {processedProfitability.lowContributionSummary.kontribusi}%
+                          </td>
+                        </tr>
+
+                        {showLowContributionGroup && processedProfitability.lowContributionItems.map((s, idx) => (
+                          <tr key={`low-${idx}`} className="bg-slate-50/50 hover:bg-slate-100/60 transition-colors">
+                            <td className="py-2 px-3 pl-10 text-slate-600">
+                              <div className="font-medium truncate max-w-[200px]">&bull; {s.layanan}</div>
+                            </td>
+                            <td className="py-2 px-2 text-center text-slate-600 font-mono">{s.totalOrder}</td>
+                            <td className="py-2 px-2 text-right text-slate-700 font-mono">{formatRupiahId(s.pendapatan)}</td>
+                            <td className="py-2 px-2 text-right text-slate-400 font-mono">{formatRupiahId(s.hpp)}</td>
+                            <td className="py-2 px-2 text-right font-mono text-emerald-700">{formatRupiahId(s.laba)}</td>
+                            <td className="py-2 px-2 text-center font-mono text-slate-600 text-[10.5px]">{s.margin}%</td>
+                            <td className="py-2 px-2 text-center font-mono text-slate-500 text-[10.5px]">{s.kontribusi}%</td>
+                          </tr>
+                        ))}
+                      </>
+                    )}
+                  </>
                 )}
               </tbody>
             </table>
@@ -2183,9 +2689,9 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 5: QUALITY PERFORMANCE & DRILL-DOWN (P0.4)                        */}
+      {/* SECTION 5: QUALITY PERFORMANCE & DRILL-DOWN (P0.4 - Point 2)              */}
       {/* ========================================================================= */}
-      {isManager && (
+      {isManager && (activeDashboardTab === 'inventory_quality' || activeDashboardTab === 'all') && (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
@@ -2194,21 +2700,37 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
               </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-800">Quality Performance (Kualitas &amp; Retensi Layanan)</h2>
-                <p className="text-[11px] text-slate-400">Tingkat komplain, cuci ulang (rewash), error &amp; refund. Klik metrik untuk melihat daftar order.</p>
+                <p className="text-[11px] text-slate-400">Tingkat komplain, cuci ulang, error &amp; refund dengan tren MoM. Klik metrik untuk melihat akar penyebab.</p>
               </div>
             </div>
 
-            <span className="text-[11px] font-bold text-slate-500">Klik kartu metrik untuk drill-down</span>
+            <span className="text-[11px] font-bold text-slate-500">Klik kartu untuk drill-down penyebab</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             
             {/* Cancellation Rate */}
             <div 
-              onClick={() => setDrilldownType('cancellation')}
-              className="p-3.5 bg-slate-50 hover:bg-rose-50/60 border border-slate-200 hover:border-rose-300 rounded-xl space-y-1 transition cursor-pointer"
+              onClick={() => {
+                setDrilldownCauseFilter('all');
+                setDrilldownType('cancellation');
+              }}
+              className="p-3.5 bg-slate-50 hover:bg-rose-50/60 border border-slate-200 hover:border-rose-300 rounded-xl space-y-1.5 transition cursor-pointer"
             >
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Cancellation Rate</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase">Cancellation</span>
+                {qualityPerformance.deltaCancellation !== undefined && (
+                  <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                    qualityPerformance.deltaCancellation > 0 
+                      ? 'bg-rose-100 text-rose-800' 
+                      : qualityPerformance.deltaCancellation < 0 
+                      ? 'bg-emerald-100 text-emerald-800' 
+                      : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {qualityPerformance.deltaCancellation > 0 ? `+${qualityPerformance.deltaCancellation}%` : `${qualityPerformance.deltaCancellation}%`}
+                  </span>
+                )}
+              </div>
               <div className="text-2xl font-black text-rose-700 font-mono">{qualityPerformance.cancellationRate}%</div>
               <div className="text-[10px] text-slate-500 font-medium">
                 {qualityPerformance.cancelledOrders.length} Order Batal / Void
@@ -2217,10 +2739,26 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
             {/* Rewash Rate */}
             <div 
-              onClick={() => setDrilldownType('rewash')}
-              className="p-3.5 bg-slate-50 hover:bg-amber-50/60 border border-slate-200 hover:border-amber-300 rounded-xl space-y-1 transition cursor-pointer"
+              onClick={() => {
+                setDrilldownCauseFilter('all');
+                setDrilldownType('rewash');
+              }}
+              className="p-3.5 bg-slate-50 hover:bg-amber-50/60 border border-slate-200 hover:border-amber-300 rounded-xl space-y-1.5 transition cursor-pointer"
             >
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Rewash Rate</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase">Rewash Rate</span>
+                {qualityPerformance.deltaRewash !== undefined && (
+                  <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                    qualityPerformance.deltaRewash > 0 
+                      ? 'bg-rose-100 text-rose-800' 
+                      : qualityPerformance.deltaRewash < 0 
+                      ? 'bg-emerald-100 text-emerald-800' 
+                      : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {qualityPerformance.deltaRewash > 0 ? `+${qualityPerformance.deltaRewash}%` : `${qualityPerformance.deltaRewash}%`}
+                  </span>
+                )}
+              </div>
               <div className="text-2xl font-black text-amber-700 font-mono">{qualityPerformance.rewashRate}%</div>
               <div className="text-[10px] text-slate-500 font-medium">
                 {qualityPerformance.rewashOrders.length} Cuci Ulang Terdaftar
@@ -2229,37 +2767,85 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
             {/* Complaint Rate */}
             <div 
-              onClick={() => setDrilldownType('cancellation')}
-              className="p-3.5 bg-slate-50 hover:bg-teal-50/60 border border-slate-200 hover:border-teal-300 rounded-xl space-y-1 transition cursor-pointer"
+              onClick={() => {
+                setDrilldownCauseFilter('all');
+                setDrilldownType('complaint');
+              }}
+              className="p-3.5 bg-slate-50 hover:bg-teal-50/60 border border-slate-200 hover:border-teal-300 rounded-xl space-y-1.5 transition cursor-pointer"
             >
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Complaint Rate</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase">Complaint</span>
+                {qualityPerformance.deltaComplaint !== undefined && (
+                  <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                    qualityPerformance.deltaComplaint > 0 
+                      ? 'bg-rose-100 text-rose-800' 
+                      : qualityPerformance.deltaComplaint < 0 
+                      ? 'bg-emerald-100 text-emerald-800' 
+                      : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {qualityPerformance.deltaComplaint > 0 ? `+${qualityPerformance.deltaComplaint}%` : `${qualityPerformance.deltaComplaint}%`}
+                  </span>
+                )}
+              </div>
               <div className="text-2xl font-black text-teal-800 font-mono">{qualityPerformance.complaintRate}%</div>
               <div className="text-[10px] text-slate-500 font-medium">
-                Catatan komplain pelanggan
+                {qualityPerformance.complaintOrders?.length || 0} Catatan Keluhan
               </div>
             </div>
 
             {/* Order Error Rate */}
             <div 
-              onClick={() => setDrilldownType('cancellation')}
-              className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl space-y-1 transition cursor-pointer"
+              onClick={() => {
+                setDrilldownCauseFilter('all');
+                setDrilldownType('error');
+              }}
+              className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl space-y-1.5 transition cursor-pointer"
             >
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Order Error Rate</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase">Order Error</span>
+                {qualityPerformance.deltaError !== undefined && (
+                  <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                    qualityPerformance.deltaError > 0 
+                      ? 'bg-rose-100 text-rose-800' 
+                      : qualityPerformance.deltaError < 0 
+                      ? 'bg-emerald-100 text-emerald-800' 
+                      : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {qualityPerformance.deltaError > 0 ? `+${qualityPerformance.deltaError}%` : `${qualityPerformance.deltaError}%`}
+                  </span>
+                )}
+              </div>
               <div className="text-2xl font-black text-slate-800 font-mono">{qualityPerformance.errorRate}%</div>
               <div className="text-[10px] text-slate-500 font-medium">
-                Koreksi nota / salah entri
+                {qualityPerformance.errorOrders?.length || 0} Salah Entri / Revisi
               </div>
             </div>
 
             {/* Refund Rate */}
             <div 
-              onClick={() => setDrilldownType('refund')}
-              className="p-3.5 bg-slate-50 hover:bg-rose-50/60 border border-slate-200 hover:border-rose-300 rounded-xl space-y-1 transition cursor-pointer"
+              onClick={() => {
+                setDrilldownCauseFilter('all');
+                setDrilldownType('refund');
+              }}
+              className="p-3.5 bg-slate-50 hover:bg-rose-50/60 border border-slate-200 hover:border-rose-300 rounded-xl space-y-1.5 transition cursor-pointer"
             >
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase">Refund Rate</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase">Refund Rate</span>
+                {qualityPerformance.deltaRefund !== undefined && (
+                  <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                    qualityPerformance.deltaRefund > 0 
+                      ? 'bg-rose-100 text-rose-800' 
+                      : qualityPerformance.deltaRefund < 0 
+                      ? 'bg-emerald-100 text-emerald-800' 
+                      : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {qualityPerformance.deltaRefund > 0 ? `+${qualityPerformance.deltaRefund}%` : `${qualityPerformance.deltaRefund}%`}
+                  </span>
+                )}
+              </div>
               <div className="text-2xl font-black text-rose-800 font-mono">{qualityPerformance.refundRate}%</div>
               <div className="text-[10px] text-slate-500 font-medium">
-                {formatRupiahId(qualityPerformance.refundTotal)}
+                {formatRupiahId(qualityPerformance.refundTotal)} Total
               </div>
             </div>
 
@@ -2270,7 +2856,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       {/* ========================================================================= */}
       {/* SECTION 6: PURCHASE & PROCUREMENT (P0.5)                                  */}
       {/* ========================================================================= */}
-      {isManager && (
+      {isManager && (activeDashboardTab === 'products' || activeDashboardTab === 'all') && (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
@@ -2317,7 +2903,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       {/* ========================================================================= */}
       {/* SECTION 7 & 8: OPERATIONAL PERFORMANCE & EMPLOYEE PRODUCTIVITY (P1.6, P1.7)*/}
       {/* ========================================================================= */}
-      {isManager && (
+      {isManager && (activeDashboardTab === 'operations' || activeDashboardTab === 'all') && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           
           {/* Kolom Kiri: Operational Performance & SLA */}
@@ -2454,7 +3040,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       {/* ========================================================================= */}
       {/* SECTION 9: CUSTOMER RETENTION FUNNEL & CLV (P1.9)                          */}
       {/* ========================================================================= */}
-      {isManager && (
+      {isManager && (activeDashboardTab === 'inventory_quality' || activeDashboardTab === 'all') && (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2.5">
@@ -2522,353 +3108,306 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         </div>
       )}
 
+
       {/* ========================================================================= */}
-      {/* SECTION 10 & 11: MACHINE UTILIZATION & INVENTORY VALUATION (P1.8, P1.10)  */}
+      {/* SECTION 10: MACHINE UTILIZATION & QUEUE (OPERATIONS TAB)                   */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        
-        {/* Status Mesin & Utilisasi (2 Cols) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
-                <Cpu className="w-4 h-4" />
+      {(!isManager || activeDashboardTab === 'operations' || activeDashboardTab === 'all') && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          
+          {/* Status Mesin & Utilisasi Compact Grid (2 Cols) */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
+                  <Cpu className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-800">Machine Utilization &amp; Status</h2>
+                  <p className="text-[11px] text-slate-400">Monitoring indikator mesin, utilisasi operasional &amp; jadwal perawatan</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-sm font-bold text-slate-800">Machine Utilization &amp; Maintenance</h2>
-                <p className="text-[11px] text-slate-400">Monitoring utilisasi washer/dryer &amp; siklus jadwal pemeliharaan</p>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-teal-900 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200/80">
+                  Utilisasi: {mesinList.length > 0 ? Math.round((mesinList.filter(m => m.status === 'Digunakan').length / mesinList.length) * 100) : 0}%
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200/60">
+                  {mesinList.filter(m => m.status === 'Digunakan').length} Aktif • {mesinList.filter(m => m.status !== 'Digunakan' && m.status !== 'Maintenance').length} Siap
+                </span>
               </div>
             </div>
-            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-              Utilisasi: {mesinList.length > 0 ? Math.round((mesinList.filter(m => m.status === 'Digunakan').length / mesinList.length) * 100) : 0}%
-            </span>
+
+            {/* Compact Indicator Grid (3 Columns) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {mesinList.map((m) => {
+                const isUsed = m.status === 'Digunakan';
+                const isMaint = m.status === 'Maintenance';
+                const isWasher = m.tipe === 'Washer';
+
+                return (
+                  <button 
+                    key={m.id}
+                    onClick={() => setSelectedMachineDetail(m)}
+                    type="button"
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer group flex flex-col justify-between min-h-[64px] ${
+                      isMaint 
+                        ? 'bg-rose-50/70 border-rose-200 hover:border-rose-400 hover:bg-rose-50' 
+                        : isUsed 
+                        ? 'bg-amber-50/60 border-amber-300 hover:border-amber-400 hover:bg-amber-50' 
+                        : 'bg-slate-50/80 border-slate-200/80 hover:border-teal-300 hover:bg-teal-50/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1.5 w-full">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                          isWasher ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {isWasher ? <WashingMachine className="w-3.5 h-3.5" /> : <Flame className="w-3.5 h-3.5" />}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-bold text-xs text-slate-800 truncate block group-hover:text-teal-900">{m.nama}</span>
+                          <span className="text-[10px] text-slate-400 font-medium truncate block">{m.tipe}</span>
+                        </div>
+                      </div>
+
+                      {/* LED Dot & Status Pill */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className={`w-2 h-2 rounded-full ${
+                          isMaint ? 'bg-rose-500' :
+                          isUsed ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
+                        }`} />
+                        <span className={`text-[10px] font-black uppercase px-1.5 py-0.5 rounded ${
+                          isMaint ? 'bg-rose-100 text-rose-800' :
+                          isUsed ? 'bg-amber-100 text-amber-900 font-mono' : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {isMaint ? 'Maint' : isUsed ? (m.sisaWaktuMenit ? `${m.sisaWaktuMenit}m` : 'Aktif') : 'Siap'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Bottom row: active order snippet or subtle ready prompt */}
+                    {isUsed ? (
+                      <div className="mt-1.5 pt-1 border-t border-amber-200/60 flex items-center justify-between text-[10px] text-slate-600 w-full">
+                        <span className="truncate max-w-[110px] font-medium">
+                          {m.namaPelanggan ? m.namaPelanggan : (m.noNota || 'Order Aktif')}
+                        </span>
+                        <span className="font-bold text-amber-800 shrink-0 font-mono">
+                          {m.sisaWaktuMenit ? `${m.sisaWaktuMenit} mnt` : 'Berjalan'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="mt-1.5 pt-1 border-t border-slate-200/50 flex items-center justify-between text-[10px] text-slate-400 w-full">
+                        <span>{isMaint ? 'Dalam perbaikan' : 'Siap cuci/kering'}</span>
+                        <span className="text-[9px] text-teal-700 font-semibold group-hover:underline">Detail &rarr;</span>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 text-[10.5px] text-slate-400 flex items-center justify-between border-t border-slate-100">
+              <span>Klik kartu mesin untuk melihat rincian siklus pengerjaan &amp; data pelanggan.</span>
+              <span className="text-[10px] font-mono text-slate-400">Jadwal Maint: Terjadwal Aman</span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {mesinList.map((m) => {
-              const isUsed = m.status === 'Digunakan';
-              const isMaint = m.status === 'Maintenance';
-              const isWasher = m.tipe === 'Washer';
+          {/* Antrean Pesanan Berjalan (1 Col) */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0 border border-amber-200/60">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-800">Antrean Pengerjaan</h2>
+                    <p className="text-[11px] text-slate-400">Status pesanan berjalan</p>
+                  </div>
+                </div>
 
+                <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+                  <button
+                    onClick={() => setQueueTab('Semua')}
+                    className={`px-2 py-1 rounded-md transition ${queueTab === 'Semua' ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600'}`}
+                  >
+                    Semua ({activeOrders.length})
+                  </button>
+                  <button
+                    onClick={() => setQueueTab('SiapDiambil')}
+                    className={`px-2 py-1 rounded-md transition ${queueTab === 'SiapDiambil' ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600'}`}
+                  >
+                    Di Rak ({readyPickupOrders.length})
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2 max-h-[310px] overflow-y-auto pr-1">
+                {(queueTab === 'SiapDiambil' ? readyPickupOrders : activeOrders).length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-xs font-medium space-y-1.5">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+                    <p>Tidak ada antrean {queueTab === 'SiapDiambil' ? 'siap di-pickup' : 'aktif saat ini'}.</p>
+                  </div>
+                ) : (
+                  (queueTab === 'SiapDiambil' ? readyPickupOrders : activeOrders).slice(0, 7).map((tx) => {
+                    const isSiap = (tx.status || '').toLowerCase().includes('siap');
+                    return (
+                      <div key={tx.noNota} className="p-3 bg-slate-50/80 hover:bg-teal-50/40 border border-slate-200 rounded-xl flex justify-between items-center text-xs transition">
+                        <div className="min-w-0 pr-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-slate-800 text-xs">{tx.noNota}</span>
+                            <span className="text-[10px] text-slate-400">• {formatWibDateShort(tx.rawTanggal || tx.tanggal)}</span>
+                          </div>
+                          <div className="font-bold text-slate-700 text-xs truncate mt-0.5">{tx.namaPelanggan}</div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide border inline-block ${
+                            isSiap ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-teal-100 text-teal-800 border-teal-300'
+                          }`}>
+                            {tx.status}
+                          </span>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            {formatRupiahId(Number(tx.total) || 0)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2 text-[10px] text-slate-400 text-center font-medium border-t border-slate-100">
+              Diurutkan berdasarkan antrean pesanan aktif terbaru
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 11: INVENTORY VALUATION & ESTIMATED DAYS UNTIL EMPTY (P1.10)       */}
+      {/* ========================================================================= */}
+      {isManager && (activeDashboardTab === 'inventory_quality' || activeDashboardTab === 'all') && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
+                <Package className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-800">Inventory Valuation &amp; Stock Health</h2>
+                  <span className="text-xs font-mono font-bold text-teal-900 bg-teal-100 px-2.5 py-0.5 rounded-lg">
+                    Total Nilai: {formatRupiahId(inventoryValuation.totalValuation)}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Estimasi habis pakai (EDUE) berdasarkan rata-rata pemakaian harian aktual
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex bg-slate-100 p-0.5 rounded-xl text-xs font-bold border border-slate-200/60">
+                {(['Semua', 'Kritis', 'Menipis', 'Aman'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setInventoryFilterTab(tab)}
+                    className={`px-2.5 py-1 rounded-lg text-xs transition cursor-pointer ${
+                      inventoryFilterTab === tab ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Warning Banner if any items are negative */}
+          {inventoryValuation.minusCount > 0 && (
+            <div className="flex items-center justify-between bg-rose-50 border border-rose-200 rounded-xl px-4 py-2.5 text-xs text-rose-800">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>
+                  Terdapat <strong>{inventoryValuation.minusCount} barang inventaris</strong> bernilai minus di bawah 0. Lakukan stok opname fisik dan penyesuaian.
+                </span>
+              </div>
+              <span className="font-bold text-[11px] bg-rose-100 text-rose-900 px-2 py-0.5 rounded">
+                Audit Prioritas
+              </span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {inventoryValuation.items.filter(item => {
+              if (inventoryFilterTab === 'Kritis') return item.isMinus || item.isZero;
+              if (inventoryFilterTab === 'Menipis') return item.isLow;
+              if (inventoryFilterTab === 'Aman') return !item.isMinus && !item.isZero && !item.isLow;
+              return true;
+            }).map((i) => {
               return (
                 <div 
-                  key={m.id}
-                  className={`p-3.5 rounded-xl border transition-all ${
-                    isMaint ? 'bg-rose-50/70 border-rose-200' :
-                    isUsed ? 'bg-amber-50/50 border-amber-300 shadow-xs' : 'bg-slate-50/80 border-slate-200 hover:border-teal-300'
+                  key={i.id}
+                  className={`p-3.5 rounded-xl border text-xs space-y-2 transition-all ${
+                    i.isMinus ? 'bg-rose-50/90 border-rose-300 shadow-2xs' :
+                    i.isZero ? 'bg-rose-50/70 border-rose-200' :
+                    i.isLow ? 'bg-amber-50/70 border-amber-300' : 'bg-slate-50/80 border-slate-200'
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                        isWasher ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        {isWasher ? <WashingMachine className="w-4 h-4" /> : <Flame className="w-4 h-4" />}
-                      </div>
-                      <div>
-                        <span className="font-bold text-xs text-slate-800 block leading-tight">{m.nama}</span>
-                        <span className="text-[10px] text-slate-400 font-medium">{m.tipe}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-2 h-2 rounded-full ${
-                        isMaint ? 'bg-rose-500' :
-                        isUsed ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
-                      }`} />
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
-                        isMaint ? 'bg-rose-100 text-rose-800' :
-                        isUsed ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
-                      }`}>
-                        {isMaint ? 'Maintenance' : isUsed ? 'Digunakan' : 'Kosong / Siap'}
-                      </span>
-                    </div>
+                  <div className="flex justify-between items-start gap-1">
+                    <span className="font-bold text-slate-800 text-xs truncate">{i.nama}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shrink-0 ${
+                      i.isMinus ? 'bg-rose-600 text-white' :
+                      i.isZero ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                      i.isLow ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {i.isMinus ? 'Minus' : i.isZero ? 'Habis' : i.isLow ? 'Menipis' : 'Aman'}
+                    </span>
                   </div>
 
-                  {isUsed ? (
-                    <div className="space-y-1.5 text-[11px] pt-1 border-t border-amber-200/60">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-500 font-medium truncate max-w-[150px]">
-                          {m.namaPelanggan ? `Pelanggan: ${m.namaPelanggan}` : (m.catatan || 'Proses Cucian')}
-                        </span>
-                        {m.noNota && (
-                          <span className="font-mono text-[10px] font-bold text-teal-800 bg-teal-100/60 px-1.5 py-0.2 rounded">
-                            {m.noNota}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex justify-between text-slate-600 font-semibold text-[10.5px]">
-                        <span>Mulai: {m.waktuMulai ? formatWibTimeOnly(m.waktuMulai) : '-'}</span>
-                        <span className="text-amber-800 font-bold">
-                          {m.sisaWaktuMenit ? `${m.sisaWaktuMenit} Mnt Sisa` : (m.estimasiSelesai ? `Est: ${formatWibTimeOnly(m.estimasiSelesai)}` : 'Berjalan')}
-                        </span>
+                  <div className="flex justify-between items-end pt-1">
+                    <div>
+                      <span className={`text-base font-black font-mono ${i.isMinus ? 'text-rose-600' : 'text-slate-800'}`}>
+                        {formatDecimal(i.stokVal)}
+                      </span>
+                      <span className="text-slate-500 font-semibold text-[11px] ml-1">{i.satuan}</span>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        Est. Habis: <strong>{i.daysUntilEmpty > 0 ? `${i.daysUntilEmpty} Hari` : 'Hari Ini'}</strong>
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-[11px] text-slate-400 font-medium py-1 flex justify-between items-center">
-                      <span>{isMaint ? 'Sedang perbaikan teknis' : 'Mesin siap untuk siklus baru'}</span>
-                      <span className="text-[10px] font-mono text-slate-400">Jadwal Maint: Aman</span>
-                    </div>
-                  )}
+                    
+                    {/* Restock CTA: Only show prominent button on Menipis/Kritis/Minus, show clean badge on Aman */}
+                    {isManager && (
+                      (i.isMinus || i.isZero || i.isLow) ? (
+                        <button
+                          onClick={() => {
+                            setSelectedRestockItem(i);
+                            setRestockQty('10');
+                          }}
+                          className="tactile-btn px-2.5 py-1 bg-[#1E4648] hover:bg-teal-900 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Restock</span>
+                        </button>
+                      ) : (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span>Cukup</span>
+                        </span>
+                      )
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
-
-        {/* Antrean Pesanan Berjalan (1 Col) */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0 border border-amber-200/60">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-slate-800">Antrean Pengerjaan</h2>
-                  <p className="text-[11px] text-slate-400">Status pesanan berjalan</p>
-                </div>
-              </div>
-
-              <div className="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
-                <button
-                  onClick={() => setQueueTab('Semua')}
-                  className={`px-2 py-1 rounded-md transition ${queueTab === 'Semua' ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600'}`}
-                >
-                  Semua ({activeOrders.length})
-                </button>
-                <button
-                  onClick={() => setQueueTab('SiapDiambil')}
-                  className={`px-2 py-1 rounded-md transition ${queueTab === 'SiapDiambil' ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600'}`}
-                >
-                  Di Rak ({readyPickupOrders.length})
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2 max-h-[310px] overflow-y-auto pr-1">
-              {(queueTab === 'SiapDiambil' ? readyPickupOrders : activeOrders).length === 0 ? (
-                <div className="py-12 text-center text-slate-400 text-xs font-medium space-y-1.5">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
-                  <p>Tidak ada antrean {queueTab === 'SiapDiambil' ? 'siap di-pickup' : 'aktif saat ini'}.</p>
-                </div>
-              ) : (
-                (queueTab === 'SiapDiambil' ? readyPickupOrders : activeOrders).slice(0, 7).map((tx) => {
-                  const isSiap = (tx.status || '').toLowerCase().includes('siap');
-                  return (
-                    <div key={tx.noNota} className="p-3 bg-slate-50/80 hover:bg-teal-50/40 border border-slate-200 rounded-xl flex justify-between items-center text-xs transition">
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-bold text-slate-800 text-xs">{tx.noNota}</span>
-                          <span className="text-[10px] text-slate-400">• {formatWibDateShort(tx.rawTanggal || tx.tanggal)}</span>
-                        </div>
-                        <div className="font-bold text-slate-700 text-xs truncate mt-0.5">{tx.namaPelanggan}</div>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wide border inline-block ${
-                          isSiap ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-teal-100 text-teal-800 border-teal-300'
-                        }`}>
-                          {tx.status}
-                        </span>
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          {formatRupiahId(Number(tx.total) || 0)}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          <div className="pt-2 text-[10px] text-slate-400 text-center font-medium border-t border-slate-100">
-            Diurutkan berdasarkan antrean pesanan aktif terbaru
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* SECTION 11: INVENTORY VALUATION & ESTIMATED DAYS UNTIL EMPTY (P1.10)       */}
-      {/* ========================================================================= */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center shrink-0 border border-teal-200/60">
-              <Package className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-slate-800">Inventory Valuation &amp; Stock Health</h2>
-                <span className="text-xs font-mono font-bold text-teal-900 bg-teal-100 px-2.5 py-0.5 rounded-lg">
-                  Total Nilai: {formatRupiahId(inventoryValuation.totalValuation)}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Estimasi habis pakai (EDUE) berdasarkan rata-rata pemakaian harian aktual
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex bg-slate-100 p-0.5 rounded-xl text-xs font-bold border border-slate-200/60">
-              {(['Semua', 'Kritis', 'Menipis', 'Aman'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setInventoryFilterTab(tab)}
-                  className={`px-2.5 py-1 rounded-lg text-xs transition cursor-pointer ${
-                    inventoryFilterTab === tab ? 'bg-[#1E4648] text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Warning Banner if any items are negative */}
-        {inventoryValuation.minusCount > 0 && (
-          <div className="flex items-center justify-between bg-rose-50 border border-rose-200 rounded-xl px-4 py-2.5 text-xs text-rose-800">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>
-                Terdapat <strong>{inventoryValuation.minusCount} barang inventaris</strong> bernilai minus di bawah 0. Lakukan stok opname fisik dan penyesuaian.
-              </span>
-            </div>
-            <span className="font-bold text-[11px] bg-rose-100 text-rose-900 px-2 py-0.5 rounded">
-              Audit Prioritas
-            </span>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {inventoryValuation.items.filter(item => {
-            if (inventoryFilterTab === 'Kritis') return item.isMinus || item.isZero;
-            if (inventoryFilterTab === 'Menipis') return item.isLow;
-            if (inventoryFilterTab === 'Aman') return !item.isMinus && !item.isZero && !item.isLow;
-            return true;
-          }).map((i) => {
-            return (
-              <div 
-                key={i.id}
-                className={`p-3.5 rounded-xl border text-xs space-y-2 transition-all ${
-                  i.isMinus ? 'bg-rose-50/90 border-rose-300 shadow-2xs' :
-                  i.isZero ? 'bg-rose-50/70 border-rose-200' :
-                  i.isLow ? 'bg-amber-50/70 border-amber-300' : 'bg-slate-50/80 border-slate-200'
-                }`}
-              >
-                <div className="flex justify-between items-start gap-1">
-                  <span className="font-bold text-slate-800 text-xs truncate">{i.nama}</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shrink-0 ${
-                    i.isMinus ? 'bg-rose-600 text-white' :
-                    i.isZero ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                    i.isLow ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800'
-                  }`}>
-                    {i.isMinus ? 'Minus' : i.isZero ? 'Habis' : i.isLow ? 'Menipis' : 'Aman'}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-end pt-1">
-                  <div>
-                    <span className={`text-base font-black font-mono ${i.isMinus ? 'text-rose-600' : 'text-slate-800'}`}>
-                      {formatDecimal(i.stokVal)}
-                    </span>
-                    <span className="text-slate-500 font-semibold text-[11px] ml-1">{i.satuan}</span>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
-                      Est. Habis: <strong>{i.daysUntilEmpty > 0 ? `${i.daysUntilEmpty} Hari` : 'Hari Ini'}</strong>
-                    </div>
-                  </div>
-                  
-                  {isManager && (
-                    <button
-                      onClick={() => {
-                        setSelectedRestockItem(i);
-                        setRestockQty('10');
-                      }}
-                      className="tactile-btn px-2.5 py-1 bg-[#1E4648] hover:bg-teal-900 text-white font-bold rounded-lg text-xs flex items-center gap-1 transition cursor-pointer shadow-2xs"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Restock</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* SECTION 12: CATEGORIZED BUSINESS INSIGHTS (P2)                            */}
-      {/* ========================================================================= */}
-      {isManager && (
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs space-y-4">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center shrink-0 border border-amber-200/60">
-              <Lightbulb className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-800">Executive Business Intelligence &amp; Insights</h2>
-              <p className="text-[11px] text-slate-400">Diagnosis analitik otomatis terbagi dalam kategori Positif, Perhatian &amp; Kritis</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            
-            {/* 🟢 Positif */}
-            <div className="p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-xl space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span>Pencapaian &amp; Positif</span>
-              </div>
-              <div className="space-y-1.5">
-                {categorizedInsights.positive.map((ins, idx) => (
-                  <div key={idx} className="text-xs text-slate-700 leading-relaxed font-medium">
-                    &bull; {ins}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 🟡 Perhatian */}
-            <div className="p-3.5 bg-amber-50/60 border border-amber-200 rounded-xl space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                <span>Perlu Perhatian</span>
-              </div>
-              <div className="space-y-1.5">
-                {categorizedInsights.attention.map((ins, idx) => (
-                  <div key={idx} className="text-xs text-slate-700 leading-relaxed font-medium">
-                    &bull; {ins}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 🔴 Kritis */}
-            <div className="p-3.5 bg-rose-50/60 border border-rose-200 rounded-xl space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                <span>Tindakan Kritis</span>
-              </div>
-              <div className="space-y-1.5">
-                {categorizedInsights.critical.length > 0 ? (
-                  categorizedInsights.critical.map((ins, idx) => (
-                    <div key={idx} className="text-xs text-rose-900 leading-relaxed font-semibold">
-                      &bull; {ins}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-xs text-slate-400 italic">Tidak ada anomali kritis saat ini. Operasional berjalan lancar.</div>
-                )}
-              </div>
-            </div>
-
-          </div>
-        </div>
       )}
+
+
 
       {/* ========================================================================= */}
       {/* MODAL 1: ATUR TARGET BULANAN (P0.2)                                       */}
@@ -2976,36 +3515,85 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                   <h3 className="font-bold text-slate-900 text-sm">
                     Daftar Order: {drilldownType.toUpperCase()}
                   </h3>
-                  <p className="text-[11px] text-slate-400">Rincian order terdampak untuk evaluasi kualitas</p>
+                  <p className="text-[11px] text-slate-400">Rincian order terdampak &amp; diagnosis akar masalah mutu</p>
                 </div>
               </div>
-              <button onClick={() => setDrilldownType(null)} className="text-slate-400 hover:text-slate-700">
+              <button 
+                onClick={() => {
+                  setDrilldownType(null);
+                  setDrilldownCauseFilter('all');
+                }} 
+                className="text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {/* Root Cause Category Filters */}
+            {drilldownCauseBreakdown.length > 0 && (
+              <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-slate-700">Breakdown Faktor Penyebab ({rawDrilldownOrders.length} Order Terdampak):</span>
+                  <span className="text-slate-400 text-[10px]">Filter per akar masalah</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => setDrilldownCauseFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      drilldownCauseFilter === 'all'
+                        ? 'bg-[#1E4648] text-white shadow-2xs'
+                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Semua ({rawDrilldownOrders.length})
+                  </button>
+                  {drilldownCauseBreakdown.map((b) => (
+                    <button
+                      key={b.label}
+                      onClick={() => setDrilldownCauseFilter(b.label)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                        drilldownCauseFilter === b.label
+                          ? 'bg-rose-700 text-white shadow-2xs'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-rose-50 hover:text-rose-800'
+                      }`}
+                    >
+                      <span>{b.label}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black ${
+                        drilldownCauseFilter === b.label ? 'bg-rose-900/60 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {b.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="overflow-y-auto space-y-2 flex-1 pr-1">
               {drilldownOrders.length === 0 ? (
                 <div className="text-center py-10 text-slate-400 text-xs">
-                  Tidak ada order pada kategori ini.
+                  Tidak ada order pada kategori filter ini.
                 </div>
               ) : (
                 drilldownOrders.map(t => (
-                  <div key={t.noNota} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
-                    <div className="flex justify-between items-center">
+                  <div key={t.noNota} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
+                    <div className="flex justify-between items-center flex-wrap gap-1">
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-slate-900">{t.noNota}</span>
-                        <span className="text-[10px] text-slate-400">{formatWibDateShort(t.rawTanggal || t.tanggal)}</span>
+                        <span className="text-[10px] text-slate-400">• {formatWibDateShort(t.rawTanggal || t.tanggal)}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-700">
+                          {getOrderCauseCategory(t)}
+                        </span>
                       </div>
-                      <span className="font-mono font-bold text-slate-700">{formatRupiahId(Number(t.total) || 0)}</span>
+                      <span className="font-mono font-bold text-slate-800">{formatRupiahId(Number(t.total) || 0)}</span>
                     </div>
                     <div className="flex justify-between text-slate-600">
                       <span>Pelanggan: <strong>{t.namaPelanggan}</strong> ({t.noHp || '-'})</span>
                       <span>Petugas: {t.petugas}</span>
                     </div>
                     {t.catatan && (
-                      <div className="text-[11px] text-amber-800 bg-amber-50 p-1.5 rounded mt-1">
-                        Catatan: {t.catatan}
+                      <div className="text-[11px] text-amber-900 bg-amber-50/80 border border-amber-200/60 p-2 rounded-lg mt-1">
+                        <strong>Catatan/Keterangan:</strong> {t.catatan}
                       </div>
                     )}
                   </div>
@@ -3013,10 +3601,16 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
               )}
             </div>
 
-            <div className="pt-2 border-t border-slate-100 text-right">
+            <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+              <span className="text-slate-400 text-[11px]">
+                Menampilkan {drilldownOrders.length} dari {rawDrilldownOrders.length} order
+              </span>
               <button 
-                onClick={() => setDrilldownType(null)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200"
+                onClick={() => {
+                  setDrilldownType(null);
+                  setDrilldownCauseFilter('all');
+                }}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 cursor-pointer"
               >
                 Tutup
               </button>
@@ -3344,6 +3938,104 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                 className="flex-1 py-2 bg-[#1E4648] hover:bg-teal-900 text-white rounded-xl text-xs font-bold"
               >
                 Simpan Restock
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 6: MACHINE DETAIL POPUP (POINT 5)                                   */}
+      {/* ========================================================================= */}
+      {selectedMachineDetail && (
+        <div className="fixed inset-0 z-[600] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  selectedMachineDetail.tipe === 'Washer' ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {selectedMachineDetail.tipe === 'Washer' ? <WashingMachine className="w-5 h-5" /> : <Flame className="w-5 h-5" />}
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">{selectedMachineDetail.nama}</h3>
+                  <p className="text-[11px] text-slate-400">{selectedMachineDetail.tipe} • ID: {selectedMachineDetail.id}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedMachineDetail(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
+                <span className="text-slate-500 font-medium">Status Operasional:</span>
+                <span className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                  selectedMachineDetail.status === 'Maintenance' ? 'bg-rose-100 text-rose-800' :
+                  selectedMachineDetail.status === 'Digunakan' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    selectedMachineDetail.status === 'Maintenance' ? 'bg-rose-500' :
+                    selectedMachineDetail.status === 'Digunakan' ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
+                  }`} />
+                  {selectedMachineDetail.status === 'Maintenance' ? 'Dalam Pemeliharaan' : selectedMachineDetail.status === 'Digunakan' ? 'Sedang Beroperasi' : 'Siap / Kosong'}
+                </span>
+              </div>
+
+              {selectedMachineDetail.status === 'Digunakan' ? (
+                <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3 space-y-2">
+                  <div className="text-[11px] font-bold text-amber-900 uppercase tracking-wider">
+                    Detail Pengerjaan Berjalan
+                  </div>
+                  <div className="space-y-1.5 text-slate-700">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Pelanggan:</span>
+                      <span className="font-bold text-slate-800">{selectedMachineDetail.namaPelanggan || '-'}</span>
+                    </div>
+                    {selectedMachineDetail.noNota && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">No. Nota:</span>
+                        <span className="font-mono font-bold text-teal-900 bg-teal-100/70 px-1.5 py-0.5 rounded text-[11px]">
+                          {selectedMachineDetail.noNota}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Waktu Mulai:</span>
+                      <span className="font-mono font-semibold">
+                        {selectedMachineDetail.waktuMulai ? formatWibTimeOnly(selectedMachineDetail.waktuMulai) : '-'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Sisa Waktu:</span>
+                      <span className="font-bold text-amber-900 font-mono">
+                        {selectedMachineDetail.sisaWaktuMenit ? `${selectedMachineDetail.sisaWaktuMenit} Menit` : (selectedMachineDetail.estimasiSelesai ? `Est. ${formatWibTimeOnly(selectedMachineDetail.estimasiSelesai)}` : 'Sedang berjalan')}
+                      </span>
+                    </div>
+                    {selectedMachineDetail.catatan && (
+                      <div className="text-[11px] text-slate-600 bg-white/80 p-2 rounded-lg border border-amber-200/60 mt-1">
+                        <strong>Catatan:</strong> {selectedMachineDetail.catatan}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : selectedMachineDetail.status === 'Maintenance' ? (
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-rose-800 text-xs leading-relaxed">
+                  <strong>Peringatan Pemeliharaan:</strong> Mesin ini sedang ditandai dalam status perbaikan teknis. Pastikan teknisi memeriksa komponen drum, kelistrikan, dan filter sebelum mengaktifkan kembali.
+                </div>
+              ) : (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-emerald-800 text-xs leading-relaxed">
+                  <strong>Mesin Tersedia:</strong> Unit ini siap digunakan kasir/operator untuk siklus pengerjaan cucian baru berikutnya.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <button 
+                onClick={() => setSelectedMachineDetail(null)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 cursor-pointer"
+              >
+                Tutup
               </button>
             </div>
           </div>

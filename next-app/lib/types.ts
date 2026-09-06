@@ -576,7 +576,14 @@ export interface QualityPerformance {
   refundRate: number;
   cancelledOrders: any[];
   rewashOrders: any[];
+  complaintOrders?: any[];
+  errorOrders?: any[];
   refundTotal: number;
+  deltaCancellation?: number;
+  deltaRewash?: number;
+  deltaRefund?: number;
+  deltaComplaint?: number;
+  deltaError?: number;
 }
 
 export interface ProcurementSummary {
