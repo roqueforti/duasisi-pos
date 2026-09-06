@@ -479,18 +479,18 @@ export default function RekapView({ onNavigateTab }: { onNavigateTab?: (tab: str
   const ringkasan = data?.ringkasan || { totalOmzet: 0, jumlahTransaksi: 0, rataRata: 0, selfCount: 0, fullCount: 0 };
   const prevRingkasan = prevData?.ringkasan || null;
 
-  // Delta Kinerja vs Periode Sebelumnya
+  // Delta Kinerja vs Periode Sebelumnya (Pola badge konsisten dengan Dashboard Utama)
   const deltaOmzet = prevRingkasan && prevRingkasan.totalOmzet > 0 
     ? Math.round(((ringkasan.totalOmzet - prevRingkasan.totalOmzet) / prevRingkasan.totalOmzet) * 100) 
-    : null;
+    : (ringkasan.totalOmzet > 0 ? 100 : 0);
 
   const deltaTrx = prevRingkasan && prevRingkasan.jumlahTransaksi > 0 
     ? Math.round(((ringkasan.jumlahTransaksi - prevRingkasan.jumlahTransaksi) / prevRingkasan.jumlahTransaksi) * 100) 
-    : null;
+    : (ringkasan.jumlahTransaksi > 0 ? 100 : 0);
 
   const deltaAov = prevRingkasan && prevRingkasan.rataRata > 0 
     ? Math.round(((ringkasan.rataRata - prevRingkasan.rataRata) / prevRingkasan.rataRata) * 100) 
-    : null;
+    : (ringkasan.rataRata > 0 ? 100 : 0);
 
   const totalTrxCurrent = ringkasan.selfCount + ringkasan.fullCount;
   const dropOffRatioCurrent = totalTrxCurrent > 0 ? (ringkasan.fullCount / totalTrxCurrent) * 100 : 0;
