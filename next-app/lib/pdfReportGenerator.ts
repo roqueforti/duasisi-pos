@@ -6,6 +6,10 @@ export interface ReportDataPayload {
   periodeLabel: string;
   startDateStr: string;
   endDateStr: string;
+  startDateTimeStr?: string;
+  endDateTimeStr?: string;
+  firstTxTime?: string;
+  lastTxTime?: string;
   outletName: string;
   generatedBy: string;
   generatedAt: string;
@@ -205,9 +209,12 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
         doc.text('EXECUTIVE BUSINESS PERFORMANCE & PROFITABILITY REPORT', textX, 17);
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.2);
+        doc.setFontSize(6.8);
         doc.setTextColor(226, 232, 240);
-        doc.text(`Periode: ${data.periodeLabel}  |  Outlet: ${data.outletName}  |  Dibuat oleh: ${data.generatedBy}`, textX, 23.5);
+        const timeRangeLabel = data.startDateTimeStr && data.endDateTimeStr
+          ? `Rentang Cut-off: ${data.startDateTimeStr} s/d ${data.endDateTimeStr}`
+          : `Periode: ${data.startDateStr} s/d ${data.endDateStr}`;
+        doc.text(`Periode: ${data.periodeLabel} (${timeRangeLabel})  |  Outlet: ${data.outletName}  |  Dibuat: ${data.generatedAt}`, textX, 23.5);
       } else {
         // Halaman lanjutan: logo kecil di kiri
         if (logoSrc) {
@@ -638,7 +645,8 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
       doc.setTextColor(primaryDarkTeal[0], primaryDarkTeal[1], primaryDarkTeal[2]);
-      doc.text(`${formatPercentId(s.percentage)} (${formatRupiahId(s.revenue)})`, pBarX + pBarW + 2, rowY + 2.2);
+      const sRev = s.revenue ?? (s as any).totalRevenue ?? 0;
+      doc.text(`${formatPercentId(s.percentage ?? 0)} (${formatRupiahId(sRev)})`, pBarX + pBarW + 2, rowY + 2.2);
     });
 
     curY += serviceCardH + 4;
@@ -647,10 +655,10 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
   // Service Table
   const serviceTableBody = data.serviceRows.map(s => [
     s.layanan,
-    s.transactions.toString(),
-    s.kg > 0 ? `${s.kg} Kg` : '-',
-    formatRupiahId(s.revenue),
-    formatPercentId(s.percentage)
+    (s.transactions ?? (s as any).orderCount ?? (s as any).count ?? 0).toString(),
+    (s.kg && s.kg > 0) ? `${s.kg} Kg` : '-',
+    formatRupiahId(s.revenue ?? (s as any).totalRevenue ?? 0),
+    formatPercentId(s.percentage ?? 0)
   ]);
 
   autoTable(doc, {
@@ -830,8 +838,8 @@ export async function generateBusinessPerformancePdf(data: ReportDataPayload): P
     `#${idx + 1}`,
     c.nama,
     maskPhoneNumber(c.noHp),
-    `${c.totalOrder}x Order`,
-    formatRupiahId(c.totalSpend)
+    `${c.totalOrder ?? (c as any).orderCount ?? (c as any).count ?? 0}x Order`,
+    formatRupiahId(c.totalSpend ?? (c as any).revenue ?? (c as any).total ?? 0)
   ]);
 
   autoTable(doc, {

@@ -40,7 +40,6 @@ import {
   RotateCcw,
   MessageCircle,
   Truck,
-  DollarSign,
   HelpCircle,
   BadgeAlert,
   ArrowRight

@@ -601,6 +601,10 @@ export interface SavedMonthlyReport {
   periodeLabel: string; // "September 2026"
   startDateStr: string;
   endDateStr: string;
+  startDateTimeStr?: string;
+  endDateTimeStr?: string;
+  firstTxTime?: string;
+  lastTxTime?: string;
   status: 'FINAL' | 'BERJALAN';
   createdAt: string;
   updatedAt: string;

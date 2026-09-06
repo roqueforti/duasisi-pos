@@ -4,7 +4,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Clock3,
   Columns3,
   Table,
@@ -120,6 +123,15 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
   const [waReminders, setWaReminders] = useState<Record<string, string>>({});
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState(false);
   const [txToPrint, setTxToPrint] = useState<Transaksi | null>(null);
+
+  // Pagination & Page Size State untuk Tab Sudah Diambil (Riwayat) - default 16
+  const [completedPageSize, setCompletedPageSize] = useState<number | 'all'>(16);
+  const [completedCurrentPage, setCompletedCurrentPage] = useState<number>(1);
+
+  // Reset ke halaman 1 jika filter prioritas, kata kunci cari, tab, atau page size berubah
+  useEffect(() => {
+    setCompletedCurrentPage(1);
+  }, [priority, query, filterTab, completedPageSize]);
 
   useEffect(() => {
     if (initialFilterTab) {
@@ -533,11 +545,11 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
     });
   }, [orders, priority, query, filterTab, waReminders]);
 
-  // Filtered orders for completed / picked-up drop-off orders
+  // Filtered orders for completed / picked-up drop-off orders, diurutkan dari yang terbaru
   const filteredCompletedOrders = useMemo(() => {
     const keyword = query.trim().toLowerCase();
 
-    return completedOrders.filter((order) => {
+    const filtered = completedOrders.filter((order) => {
       const orderPriority = order.tingkatLayanan || 'Reguler';
       const priorityMatch = priority === 'Semua' || orderPriority.toLowerCase() === priority.toLowerCase();
       const searchMatch = !keyword
@@ -547,7 +559,43 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
 
       return priorityMatch && searchMatch;
     });
+
+    // Urutkan dari data transaksi paling baru (tanggal/updated_at terbaru)
+    return filtered.sort((a, b) => {
+      const dateA = (parseIndonesianDateTime((a as any).updated_at || a.tanggal) || new Date((a as any).updated_at || a.tanggal))?.getTime() || 0;
+      const dateB = (parseIndonesianDateTime((b as any).updated_at || b.tanggal) || new Date((b as any).updated_at || b.tanggal))?.getTime() || 0;
+      return dateB - dateA;
+    });
   }, [completedOrders, priority, query]);
+
+  // Perhitungan Pagination untuk Riwayat Drop-off Sudah Diambil
+  const totalCompletedItems = filteredCompletedOrders.length;
+  const totalCompletedPages = completedPageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalCompletedItems / completedPageSize));
+  const safeCompletedPage = Math.min(Math.max(1, completedCurrentPage), totalCompletedPages);
+
+  const paginatedCompletedOrders = useMemo(() => {
+    if (completedPageSize === 'all') return filteredCompletedOrders;
+    const start = (safeCompletedPage - 1) * completedPageSize;
+    return filteredCompletedOrders.slice(start, start + completedPageSize);
+  }, [filteredCompletedOrders, safeCompletedPage, completedPageSize]);
+
+  const completedStartIndex = totalCompletedItems === 0 ? 0 : completedPageSize === 'all' ? 1 : (safeCompletedPage - 1) * completedPageSize + 1;
+  const completedEndIndex = completedPageSize === 'all' ? totalCompletedItems : Math.min(safeCompletedPage * completedPageSize, totalCompletedItems);
+
+  const getCompletedPageNumbers = () => {
+    if (totalCompletedPages <= 7) {
+      return Array.from({ length: totalCompletedPages }, (_, i) => i + 1);
+    }
+    const pages: (number | string)[] = [];
+    if (safeCompletedPage <= 4) {
+      pages.push(1, 2, 3, 4, 5, '...', totalCompletedPages);
+    } else if (safeCompletedPage >= totalCompletedPages - 3) {
+      pages.push(1, '...', totalCompletedPages - 4, totalCompletedPages - 3, totalCompletedPages - 2, totalCompletedPages - 1, totalCompletedPages);
+    } else {
+      pages.push(1, '...', safeCompletedPage - 1, safeCompletedPage, safeCompletedPage + 1, '...', totalCompletedPages);
+    }
+    return pages;
+  };
 
   const targetStatus = selected ? getNextStatusForOrder(selected) : null;
   const isTargetWasher = targetStatus?.toLowerCase().includes('cuci');
@@ -868,55 +916,67 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
 
     const sisaTagihan = Number(order.sisaTagihan) || 0;
     const isLunas = sisaTagihan <= 0;
+    const itemsSummary = order.items && order.items.length > 0
+      ? order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')
+      : 'Drop Off Service';
 
     return (
       <article 
         key={order.noNota} 
         onClick={() => setDetailModalOrder(order)}
-        className="glass-card card-hover-lift p-4 space-y-3 border-emerald-200/80 cursor-pointer transition hover:shadow-md hover:border-emerald-300 relative group"
+        className="glass-card card-hover-lift p-4 flex flex-col justify-between border-emerald-200/80 cursor-pointer transition hover:shadow-md hover:border-emerald-300 relative group h-full select-none"
       >
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="truncate text-xs font-black text-slate-800 font-mono tracking-tight">{order.noNota}</p>
-              <span className="badge-glow-emerald flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full">
-                <Check className="w-3 h-3 stroke-[3]" /> Sudah Diambil
+        <div className="space-y-3">
+          {/* 1. Header: No Nota, Status Badge, Nama Pelanggan, No HP, Prioritas */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className="truncate text-xs font-black text-slate-800 font-mono tracking-tight">{order.noNota}</p>
+                <span className="badge-glow-emerald flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full shrink-0">
+                  <Check className="w-3 h-3 stroke-[3]" /> Sudah Diambil
+                </span>
+              </div>
+              <p className="mt-1 truncate text-xs font-bold text-slate-700" title={order.namaPelanggan}>{order.namaPelanggan}</p>
+              <p className="text-[10.5px] font-mono text-slate-400 truncate h-3.5 leading-tight mt-0.5">
+                {order.noHp ? order.noHp : <span className="text-slate-300">-</span>}
+              </p>
+            </div>
+            <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border shadow-2xs ${badgeWarna}`}>
+              {orderPriority}
+            </span>
+          </div>
+
+          {/* 2. Info Box: Waktu Diambil & Petugas Penyerah (Selalu 2 baris konsisten) */}
+          <div className="bg-slate-50/90 rounded-xl p-2.5 border border-slate-200/80 space-y-1.5">
+            <div className="flex items-center justify-between text-[10.5px]">
+              <span className="text-slate-500 font-medium flex items-center gap-1 shrink-0">
+                <Clock3 className="h-3 w-3 text-emerald-600 shrink-0" />
+                <span>Waktu Diambil:</span>
+              </span>
+              <span className="font-bold text-slate-700 font-mono text-[10.5px] shrink-0">{waktuSelesaiStr}</span>
+            </div>
+            <div className="flex items-center justify-between text-[10.5px] pt-1.5 border-t border-slate-200/60">
+              <span className="text-slate-500 font-medium flex items-center gap-1 shrink-0">
+                <User className="h-3 w-3 text-slate-400 shrink-0" />
+                <span>Petugas Penyerah:</span>
+              </span>
+              <span className="font-bold text-slate-700 truncate max-w-[130px]" title={order.petugas || 'Kasir Outlet'}>
+                {order.petugas || 'Kasir Outlet'}
               </span>
             </div>
-            <p className="mt-1 truncate text-xs font-bold text-slate-700">{order.namaPelanggan}</p>
-            {order.noHp && (
-              <p className="text-[10px] font-mono text-slate-400">{order.noHp}</p>
-            )}
           </div>
-          <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold border shadow-2xs ${badgeWarna}`}>
-            {orderPriority}
-          </span>
+
+          {/* 3. Detail Item & Layanan (Fixed Height 36px / 2 lines clamp agar sejajar) */}
+          <div className="h-9 flex items-center">
+            <p className="line-clamp-2 text-slate-600 font-medium text-xs leading-snug" title={itemsSummary}>
+              {itemsSummary}
+            </p>
+          </div>
         </div>
 
-        <div className="space-y-2 text-[11px] text-slate-500">
-          <div className="bg-slate-50/90 rounded-lg p-2.5 border border-slate-200/80 space-y-1.5">
-            <div className="flex items-center justify-between text-[10.5px]">
-              <span className="text-slate-500 font-medium flex items-center gap-1">
-                <Clock3 className="h-3 w-3 text-emerald-600" />
-                <span>Waktu Selesai / Diambil:</span>
-              </span>
-              <span className="font-bold text-slate-700 font-mono text-[10.5px]">{waktuSelesaiStr}</span>
-            </div>
-            {order.petugas && (
-              <div className="flex items-center justify-between text-[10.5px] pt-1 border-t border-slate-200/60">
-                <span className="text-slate-500 font-medium">Petugas Penyerah:</span>
-                <span className="font-bold text-slate-700">{order.petugas}</span>
-              </div>
-            )}
-          </div>
-
-          <p className="line-clamp-2 text-slate-600 font-medium pt-0.5 text-xs">
-            {order.items && order.items.length > 0
-              ? order.items.map((item) => `${item.layanan} ×${item.qty}`).join(', ')
-              : 'Drop Off Service'}
-          </p>
-
-          <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
+        {/* 4. Bagian Bawah (Pinned to Bottom agar Total Biaya & Tombol Rata Horizontal) */}
+        <div className="mt-auto pt-2 space-y-2 border-t border-slate-100">
+          <div className="flex items-center justify-between text-[11px]">
             <span className="font-medium text-slate-500">Total Biaya:</span>
             <div className="text-right">
               <span className="font-black text-slate-900 text-xs font-mono">
@@ -927,57 +987,57 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
               </span>
             </div>
           </div>
-        </div>
 
-        {/* Tombol Aksi Langsung ke Detail Riwayat Pipeline */}
-        <div className="pt-0.5">
-          <div className="w-full py-1.5 px-2.5 rounded-xl bg-slate-50 group-hover:bg-teal-50/80 text-[#1E4648] border border-slate-200/80 group-hover:border-teal-300 text-[11px] font-bold flex items-center justify-between transition">
-            <span className="flex items-center gap-1.5">
-              <Workflow className="w-3.5 h-3.5 text-teal-700" />
-              <span>Detail Riwayat Pipeline & Petugas</span>
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+          {/* Tombol Aksi Langsung ke Detail Riwayat Pipeline */}
+          <div>
+            <div className="w-full py-1.5 px-2.5 rounded-xl bg-slate-50 group-hover:bg-teal-50/80 text-[#1E4648] border border-slate-200/80 group-hover:border-teal-300 text-[11px] font-bold flex items-center justify-between transition">
+              <span className="flex items-center gap-1.5">
+                <Workflow className="w-3.5 h-3.5 text-teal-700 shrink-0" />
+                <span>Detail Riwayat Pipeline & Petugas</span>
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </div>
           </div>
-        </div>
 
-        {/* Quick Actions: Cetak Struk, e-Nota, WhatsApp */}
-        <div className="pt-2 border-t border-slate-100 grid grid-cols-3 gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setTxToPrint(order);
-              setIsPrinterModalOpen(true);
-            }}
-            className="tactile-btn flex items-center justify-center gap-1 rounded-xl bg-slate-100 hover:bg-slate-200 py-2 px-2 text-[10px] font-bold text-slate-700 transition cursor-pointer"
-            title="Cetak Struk Thermal"
-          >
-            <Printer className="w-3.5 h-3.5 text-slate-600" />
-            <span>Struk</span>
-          </button>
+          {/* Quick Actions: Cetak Struk, e-Nota, WhatsApp */}
+          <div className="pt-1.5 border-t border-slate-100 grid grid-cols-3 gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setTxToPrint(order);
+                setIsPrinterModalOpen(true);
+              }}
+              className="tactile-btn flex items-center justify-center gap-1 rounded-xl bg-slate-100 hover:bg-slate-200 py-2 px-2 text-[10px] font-bold text-slate-700 transition cursor-pointer"
+              title="Cetak Struk Thermal"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-600" />
+              <span>Struk</span>
+            </button>
 
-          <a
-            href={eNotaUrl(order.noNota)}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="tactile-btn flex items-center justify-center gap-1 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 py-2 px-2 text-[10px] font-bold transition cursor-pointer"
-            title="Lihat e-Nota Digital"
-          >
-            <ExternalLink className="w-3.5 h-3.5 text-teal-700" />
-            <span>e-Nota</span>
-          </a>
+            <a
+              href={eNotaUrl(order.noNota)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="tactile-btn flex items-center justify-center gap-1 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 py-2 px-2 text-[10px] font-bold transition cursor-pointer"
+              title="Lihat e-Nota Digital"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-teal-700" />
+              <span>e-Nota</span>
+            </a>
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleSendTerimaKasihWA(order, e);
-            }}
-            className="tactile-btn flex items-center justify-center gap-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-2 px-2 text-[10px] font-bold transition cursor-pointer"
-            title="Kirim WA Terima Kasih"
-          >
-            <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
-            <span>WA</span>
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSendTerimaKasihWA(order, e);
+              }}
+              className="tactile-btn flex items-center justify-center gap-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 py-2 px-2 text-[10px] font-bold transition cursor-pointer"
+              title="Kirim WA Terima Kasih"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+              <span>WA</span>
+            </button>
+          </div>
         </div>
       </article>
     );
@@ -1555,11 +1615,141 @@ export default function PesananView({ initialFilterTab }: PesananViewProps = {})
             <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
             Tidak ada riwayat pesanan drop-off yang sudah diambil pada filter ini.
           </div>
-        ) : isTableView ? (
-          renderCompletedTable(filteredCompletedOrders)
         ) : (
-          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-            {filteredCompletedOrders.map(renderCompletedCard)}
+          <div className="space-y-4">
+            {isTableView ? (
+              renderCompletedTable(paginatedCompletedOrders)
+            ) : (
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 items-stretch">
+                {paginatedCompletedOrders.map(renderCompletedCard)}
+              </div>
+            )}
+
+            {/* Pagination Controls Bar */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-between w-full sm:w-auto">
+                {/* Selector Jumlah Tampil: 16, 32, 64, Semua */}
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-slate-500">Tampilkan:</span>
+                  <div className="inline-flex rounded-lg bg-slate-50 p-0.5 border border-slate-200 shadow-2xs">
+                    {([16, 32, 64, 'all'] as const).map((opt) => {
+                      const isSelected = completedPageSize === opt;
+                      const label = opt === 'all' ? 'Semua' : opt.toString();
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setCompletedPageSize(opt)}
+                          className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-700 text-white shadow-2xs'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Info Rentang Data */}
+                <div className="text-slate-500 font-medium text-[11px]">
+                  {totalCompletedItems > 0 ? (
+                    <span>
+                      Menampilkan <strong className="text-slate-800 font-bold">{completedStartIndex}–{completedEndIndex}</strong> dari <strong className="text-slate-800 font-bold">{totalCompletedItems}</strong> pesanan riwayat
+                    </span>
+                  ) : (
+                    <span>0 pesanan</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Tombol Navigasi Halaman */}
+              {completedPageSize !== 'all' && totalCompletedPages > 1 && (
+                <div className="flex items-center gap-1 flex-wrap justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCompletedCurrentPage(1);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    disabled={safeCompletedPage <= 1}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-35 disabled:cursor-not-allowed transition shadow-2xs cursor-pointer"
+                    title="Halaman Pertama"
+                  >
+                    <ChevronsLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCompletedCurrentPage((p) => Math.max(1, p - 1));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    disabled={safeCompletedPage <= 1}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-35 disabled:cursor-not-allowed transition shadow-2xs cursor-pointer"
+                    title="Halaman Sebelumnya"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="flex items-center gap-1 mx-0.5">
+                    {getCompletedPageNumbers().map((p, idx) => {
+                      if (typeof p === 'string') {
+                        return (
+                          <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 font-bold select-none">
+                            ...
+                          </span>
+                        );
+                      }
+                      const isActive = p === safeCompletedPage;
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => {
+                            setCompletedCurrentPage(p as number);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className={`min-w-[28px] h-7 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                            isActive
+                              ? 'bg-emerald-700 text-white shadow-2xs ring-2 ring-emerald-700/20'
+                              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 shadow-2xs'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCompletedCurrentPage((p) => Math.min(totalCompletedPages, p + 1));
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    disabled={safeCompletedPage >= totalCompletedPages}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-35 disabled:cursor-not-allowed transition shadow-2xs cursor-pointer"
+                    title="Halaman Berikutnya"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCompletedCurrentPage(totalCompletedPages);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    disabled={safeCompletedPage >= totalCompletedPages}
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-35 disabled:cursor-not-allowed transition shadow-2xs cursor-pointer"
+                    title="Halaman Terakhir"
+                  >
+                    <ChevronsRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )
       ) : filteredOrders.length === 0 ? (

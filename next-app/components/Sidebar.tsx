@@ -31,8 +31,11 @@ import {
   CheckCheck,
   Lock,
   ChevronsDown,
-  ChevronsUp
+  ChevronsUp,
+  HelpCircle,
+  FileSpreadsheet
 } from 'lucide-react';
+import CuteRoleAvatar from './CuteRoleAvatar';
 import RupiahIcon from '@/components/RupiahIcon';
 import { useDialog } from '@/components/DialogProvider';
 import { useDisplaySettings } from '@/components/DisplaySettingsContext';
@@ -349,11 +352,12 @@ export default function Sidebar({
         <div className={`px-3.5 py-3 border-b border-slate-100 flex items-center ${
           isCollapsed ? 'lg:justify-center' : 'gap-3'
         }`}>
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs ${
-            currentRole === 'MANAGER' ? 'bg-[#FF9500]' : 'bg-[#1E4648]'
-          }`}>
-            {currentRole === 'MANAGER' ? 'M' : 'S'}
-          </div>
+          <CuteRoleAvatar
+            role={currentRole}
+            size="md"
+            shape="squircle"
+            className="shrink-0"
+          />
           
           {/* Text is always visible in Mobile/Tablet Drawer, and hidden on desktop ONLY if isCollapsed */}
           <div className={`min-w-0 ${isCollapsed ? 'lg:hidden' : 'block'}`}>

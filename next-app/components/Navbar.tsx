@@ -23,6 +23,7 @@ import { UserRole } from '@/lib/types';
 import PrinterModal from '@/components/PrinterModal';
 import DisplaySettingsModal from '@/components/DisplaySettingsModal';
 import { useDisplaySettings } from '@/components/DisplaySettingsContext';
+import CuteRoleAvatar from '@/components/CuteRoleAvatar';
 import { getActiveDeviceInfo } from '@/lib/bluetoothPrinter';
 import { useDialog } from '@/components/DialogProvider';
 import { GlobalNotificationItem } from '@/lib/useGlobalNotifications';
@@ -364,11 +365,12 @@ export default function Navbar({
 
           {/* User Profile */}
           <div className="flex items-center gap-1.5 sm:gap-2 pl-1.5 sm:pl-2 border-l border-slate-200 shrink-0">
-            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-2xs shrink-0 ${
-              currentRole === 'MANAGER' ? 'bg-[#FF9500]' : 'bg-[#1E4648]'
-            }`}>
-              {currentRole === 'MANAGER' ? 'M' : 'S'}
-            </div>
+            <CuteRoleAvatar 
+              role={currentRole} 
+              size="sm" 
+              shape="circle" 
+              className="shrink-0"
+            />
             <span className="hidden md:inline text-xs font-bold text-slate-600">
               {currentRole === 'MANAGER' ? 'Manager' : 'Kasir 1'}
             </span>
