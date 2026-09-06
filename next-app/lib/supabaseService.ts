@@ -1516,8 +1516,22 @@ export async function sbUpdateDropoffStatus(noNota: string | any, newStatus?: st
 
     if (steps && steps.length > 0) {
       const nowIso = new Date().toISOString();
+      const activeStep = steps.find((s: any) => s.status === 'Aktif');
+      const completingStaff = (activeStep && activeStep.assigned_staff) ? activeStep.assigned_staff : (targetPetugas || 'Kasir');
+
       if (targetStatus === 'Selesai') {
         // Tandai step aktif yang diselesaikan oleh petugas penyerah
+        await sb
+          .from('pipeline_steps')
+          .update({ 
+            status: 'Selesai', 
+            waktu_selesai: nowIso,
+            assigned_staff: completingStaff
+          })
+          .eq('no_nota', targetNota)
+          .eq('status', 'Aktif');
+
+        // Pastikan semua step lainnya juga berstatus Selesai
         await sb
           .from('pipeline_steps')
           .update({ 
@@ -1526,18 +1540,15 @@ export async function sbUpdateDropoffStatus(noNota: string | any, newStatus?: st
             assigned_staff: targetPetugas || 'Kasir'
           })
           .eq('no_nota', targetNota)
-          .eq('status', 'Aktif');
-
-        // Pastikan semua step lainnya juga berstatus Selesai
-        await sb
-          .from('pipeline_steps')
-          .update({ status: 'Selesai', waktu_selesai: nowIso })
-          .eq('no_nota', targetNota)
           .neq('status', 'Selesai');
       } else {
         await sb
           .from('pipeline_steps')
-          .update({ status: 'Selesai', waktu_selesai: nowIso })
+          .update({ 
+            status: 'Selesai', 
+            waktu_selesai: nowIso,
+            assigned_staff: completingStaff
+          })
           .eq('no_nota', targetNota)
           .eq('status', 'Aktif');
 
@@ -5419,28 +5430,73 @@ export async function sbGetPayrollSummary(periodeStr?: string): Promise<any> {
 
   const dropoffTasksMap: Record<string, any[]> = {};
   try {
-    const { data: stepRows } = await sb
+    // 1. Ambil langkah pipeline yang telah selesai pada periode ini
+    // Di schema Supabase, kolomnya adalah 'status' ('Selesai') dan 'assigned_staff'
+    const { data: stepRows, error: stepErr } = await sb
       .from('pipeline_steps')
       .select('*')
       .gte('waktu_selesai', `${startDateStr}T00:00:00Z`)
       .lte('waktu_selesai', `${endDateStr}T23:59:59Z`)
-      .eq('selesai', true);
+      .eq('status', 'Selesai');
 
-    if (Array.isArray(stepRows)) {
-      stepRows.forEach((step: any) => {
-        const staff = step.petugas || '';
-        if (staff) {
-          if (!dropoffTasksMap[staff]) dropoffTasksMap[staff] = [];
-          dropoffTasksMap[staff].push({
-            id: step.id,
-            noNota: step.no_nota,
-            step: step.step,
-            namaStep: step.nama_step,
-            waktuSelesai: step.waktu_selesai,
-            catatan: step.catatan,
-          });
-        }
-      });
+    if (stepErr) {
+      console.warn('[sbGetPayrollSummary] Error query pipeline_steps with status filter:', stepErr);
+    }
+
+    const validSteps = Array.isArray(stepRows) ? stepRows : [];
+    validSteps.forEach((step: any) => {
+      const staff = (step.assigned_staff || step.petugas || step.operator || step.staff || '').trim();
+      if (staff) {
+        if (!dropoffTasksMap[staff]) dropoffTasksMap[staff] = [];
+        dropoffTasksMap[staff].push({
+          id: step.id,
+          noNota: step.no_nota,
+          step: step.step,
+          namaStep: step.nama_step,
+          waktuSelesai: step.waktu_selesai || step.waktu_mulai,
+          catatan: step.catatan,
+        });
+      }
+    });
+
+    // 2. Fallback untuk transaksi Drop Off yang selesai namun belum terdata di pipeline_steps
+    try {
+      const existingStepNotas = new Set(validSteps.map((s: any) => s.no_nota));
+      const { data: completedDropoffTx } = await sb
+        .from('transaksi')
+        .select('no_nota, tipe, status, petugas, tanggal, transaksi_items(*)')
+        .in('tipe', ['FullService', 'Drop Off', 'DropOff'])
+        .neq('status', 'Void')
+        .gte('tanggal', `${startDateStr}T00:00:00Z`)
+        .lte('tanggal', `${endDateStr}T23:59:59Z`);
+
+      if (Array.isArray(completedDropoffTx)) {
+        completedDropoffTx.forEach((tx: any) => {
+          if (!existingStepNotas.has(tx.no_nota) && (tx.status === 'Selesai' || tx.status === 'Siap Diambil')) {
+            const staff = (tx.petugas || '').trim();
+            if (!staff) return;
+            const items = tx.transaksi_items || [];
+            const allNames = items.map((i: any) => String(i.layanan || '').toLowerCase()).join(' ');
+            let steps = ['Diterima', 'Dicuci', 'Dikeringkan', 'Siap Diambil'];
+            if (allNames.includes('setrika')) steps = ['Diterima', 'Disetrika', 'Siap Diambil'];
+            else if (allNames.includes('lipat')) steps = ['Diterima', 'Dicuci', 'Dikeringkan', 'Lipat & Packing', 'Siap Diambil'];
+
+            steps.forEach((stName, sIdx) => {
+              if (!dropoffTasksMap[staff]) dropoffTasksMap[staff] = [];
+              dropoffTasksMap[staff].push({
+                id: `${tx.no_nota}-${sIdx}`,
+                noNota: tx.no_nota,
+                step: sIdx + 1,
+                namaStep: stName,
+                waktuSelesai: tx.tanggal,
+                catatan: 'Pesanan Selesai (Auto-deduksi)',
+              });
+            });
+          }
+        });
+      }
+    } catch (fallbackErr) {
+      console.warn('[sbGetPayrollSummary] Error fallback dropoff orders:', fallbackErr);
     }
   } catch (err) {
     console.warn('[sbGetPayrollSummary] Error load pipeline_steps:', err);
@@ -5470,7 +5526,24 @@ export async function sbGetPayrollSummary(periodeStr?: string): Promise<any> {
     const totalOmzet = empKin ? empKin.totalOmzet : 0;
     const totalTransaksi = empKin ? empKin.totalTransaksi : 0;
 
-    const empTasks = (dropoffTasksMap[peg.nama] || []).concat(dropoffTasksMap[peg.id] || []);
+    // Matching tasks secara fleksibel (nama lengkap, ID, nama panggilan, atau substring)
+    const empMatchKeys = [
+      peg.nama?.toLowerCase().trim(),
+      peg.id?.toLowerCase().trim(),
+      peg.namaPanggilan?.toLowerCase().trim(),
+    ].filter(Boolean) as string[];
+
+    let empTasks: any[] = [];
+    Object.entries(dropoffTasksMap).forEach(([staffKey, tasks]) => {
+      const sk = staffKey.toLowerCase().trim();
+      const isMatch = empMatchKeys.some(target => {
+        if (!target) return false;
+        return sk === target || sk.includes(target) || target.includes(sk);
+      });
+      if (isMatch) {
+        empTasks = empTasks.concat(tasks);
+      }
+    });
     let totalTahapKhusus = 0;
     let insentifDropOff = 0;
     const dropoffBreakdown: Record<string, number> = {};
