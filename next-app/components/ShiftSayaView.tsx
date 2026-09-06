@@ -1095,36 +1095,18 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
                           <UserCheck className="w-4 h-4 text-[#1E4648]" />
                           <h3 className="text-sm font-bold text-slate-800">1. Konfirmasi Kehadiran Kasir</h3>
                         </div>
-                        {todayClockIn ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Sudah Clock In</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                            <span>Belum Clock In Hari Ini</span>
-                          </span>
-                        )}
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Otomatis via Buka Shift</span>
+                        </span>
                       </div>
 
-                      {!todayClockIn && (
-                        <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                          <div className="text-amber-950">
-                            <p className="font-bold">Lakukan Clock In cepat untuk memulai shift:</p>
-                            <p className="text-[11px] text-amber-800 mt-0.5">Sistem otomatis mencatat jam hadir Anda di data Presensi.</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleQuickClockIn}
-                            disabled={submitting}
-                            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>{submitting ? 'Memproses...' : 'Quick Clock In Sekarang'}</span>
-                          </button>
-                        </div>
-                      )}
+                      <div className="bg-teal-50/70 border border-teal-200/80 rounded-xl p-3 flex items-center gap-2.5 text-xs text-teal-950">
+                        <CheckCircle2 className="w-4 h-4 text-teal-700 shrink-0" />
+                        <p className="leading-snug text-[11px] text-teal-900">
+                          <strong>Presensi Terintegrasi:</strong> Jam kehadiran kasir otomatis dicatat oleh sistem saat Anda membuka kas shift ini.
+                        </p>
+                      </div>
 
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1.5">Penanggung Jawab Kasir *</label>

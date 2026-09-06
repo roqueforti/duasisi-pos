@@ -1909,129 +1909,84 @@ export default function PosView({
               <Lock className="w-8 h-8 text-teal-100" />
             </div>
             <h2 className="text-xl font-bold mb-1">Layar Terkunci</h2>
-            <p className="text-teal-100 text-sm">Selesaikan {lockScreenStep === 1 ? 'Absensi' : 'Kas Awal'} untuk membuka POS</p>
+            <p className="text-teal-100 text-sm">Buka kas shift untuk mulai transaksi (presensi kasir otomatis tercatat)</p>
           </div>
 
           <div className="p-6">
-            {/* Progress Indicator */}
-            <div className="flex items-center gap-2 mb-8 px-4">
-              <div className={`flex-1 h-1.5 rounded-full ${lockScreenStep >= 1 ? 'bg-[#1E4648]' : 'bg-slate-200'}`} />
-              <div className={`flex-1 h-1.5 rounded-full transition-colors duration-500 ${lockScreenStep === 2 ? 'bg-[#1E4648]' : 'bg-slate-200'}`} />
+            <div className="space-y-4 animate-fade-in">
+              <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-3 text-amber-900 text-xs font-medium leading-relaxed flex gap-2 items-start">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                <p>Hitung uang fisik di laci kasir dan periksa saldo awal aplikasi merchant sebelum membuka shift operasional.</p>
+              </div>
+
+              {/* Nama Kasir */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Penanggung Jawab Kasir *</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <select
+                    value={namaKasirInput}
+                    onChange={(e) => setNamaKasirInput(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all appearance-none"
+                  >
+                    {staffList.map((s) => (
+                      <option key={s.id} value={s.nama}>{s.nama} {s.jabatan ? `— ${s.jabatan}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Uang Fisik Kasir */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
+                  <span>1. Uang Fisik Kasir (Laci Kas)</span>
+                  <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded">Tunai</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">Rp</div>
+                  <input
+                    type="number"
+                    value={kasAwalInput}
+                    onChange={(e) => setKasAwalInput(e.target.value)}
+                    placeholder="Contoh: 100000"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Saldo Aplikasi Merchant */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
+                  <span>2. Saldo Aplikasi Merchant</span>
+                  <span className="text-[10px] text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded">QRIS / EDC</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">Rp</div>
+                  <input
+                    type="number"
+                    value={saldoMerchantAwalInput}
+                    onChange={(e) => setSaldoMerchantAwalInput(e.target.value)}
+                    placeholder="Contoh: 0"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleOpenShift}
+                disabled={shiftSubmitting}
+                className="w-full mt-4 bg-[#1E4648] hover:bg-[#163536] disabled:opacity-50 text-white rounded-xl text-sm font-bold py-3.5 shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {shiftSubmitting ? (
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <Unlock className="w-5 h-5" />
+                    <span>Buka POS & Kas Shift Sekarang</span>
+                  </>
+                )}
+              </button>
             </div>
-
-            {lockScreenStep === 1 ? (
-              <div className="space-y-4 animate-fade-in">
-                <h3 className="font-bold text-slate-700 text-center mb-6">Langkah 1: Absensi (Clock In)</h3>
-                
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Nama Kasir</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <select
-                      value={namaKasirInput}
-                      onChange={(e) => setNamaKasirInput(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all appearance-none"
-                    >
-                      {staffList.map((s) => (
-                        <option key={s.id} value={s.nama}>{s.nama} {s.jabatan ? `— ${s.jabatan}` : ''}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Jadwal Shift</label>
-                  <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <select
-                      value={clockInShift}
-                      onChange={(e) => setClockInShift(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all appearance-none"
-                    >
-                      <option value="Pagi">Shift 1 Pagi (07:00 - 15:00)</option>
-                      <option value="Sore">Shift 2 Sore / Malam (15:00 - 23:00)</option>
-                      <option value="Full Day">Shift Full Day (07:00 - 23:00)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleClockIn}
-                  disabled={clockInSubmitting}
-                  className="w-full mt-6 bg-[#1E4648] hover:bg-[#163536] disabled:opacity-50 text-white rounded-xl text-sm font-bold py-3.5 shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
-                >
-                  {clockInSubmitting ? (
-                    <RefreshCw className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      <span>Lanjut Clock In</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4 animate-fade-in">
-                <div className="flex items-center gap-2 mb-4 cursor-pointer" onClick={() => setLockScreenStep(1)}>
-                  <button className="p-1.5 hover:bg-slate-100 rounded-lg transition"><ArrowRight className="w-4 h-4 text-slate-400 rotate-180" /></button>
-                  <h3 className="font-bold text-slate-700">Langkah 2: Cek Uang Kasir & Merchant</h3>
-                </div>
-                
-                <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-3.5 text-amber-800 text-xs font-medium leading-relaxed mb-3 flex gap-2.5 items-start">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-500 mt-0.5" />
-                  <p>Harap hitung fisik uang di laci kasir dan periksa saldo awal di aplikasi merchant (QRIS/EDC/E-Wallet) sebelum memulai shift.</p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
-                    <span>1. Uang Fisik Kasir (Laci Kas)</span>
-                    <span className="text-[10px] text-teal-700 font-semibold bg-teal-50 px-2 py-0.5 rounded">Tunai</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">Rp</div>
-                    <input
-                      type="number"
-                      value={kasAwalInput}
-                      onChange={(e) => setKasAwalInput(e.target.value)}
-                      placeholder="Contoh: 150000"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center justify-between">
-                    <span>2. Saldo Aplikasi Merchant</span>
-                    <span className="text-[10px] text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded">QRIS / EDC / E-Wallet</span>
-                  </label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">Rp</div>
-                    <input
-                      type="number"
-                      value={saldoMerchantAwalInput}
-                      onChange={(e) => setSaldoMerchantAwalInput(e.target.value)}
-                      placeholder="Contoh: 0 atau saldo awal merchant"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold text-slate-700 outline-none focus:border-[#1E4648] focus:ring-2 focus:ring-[#1E4648]/20 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleOpenShift}
-                  disabled={shiftSubmitting}
-                  className="w-full mt-4 bg-[#FF9500] hover:bg-[#E58600] disabled:opacity-50 text-white rounded-xl text-sm font-bold py-3.5 shadow-md hover:shadow-lg transition flex items-center justify-center gap-2"
-                >
-                  {shiftSubmitting ? (
-                    <RefreshCw className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Unlock className="w-5 h-5" />
-                      <span>Buka POS Sekarang</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>

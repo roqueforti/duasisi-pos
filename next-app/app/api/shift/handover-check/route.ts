@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     if (!body.shiftId) throw new HttpError(400, 'shiftId wajib diisi');
     if (!body.replacementEmployeeId) throw new HttpError(400, 'replacementEmployeeId wajib diisi');
     const data = await runBackend('handoverCheckKasShift', body);
-    if (!data?.clockedIn) throw new HttpError(409, 'Staf pengganti belum Clock In');
+    if (data && (data as any).eligible === false) throw new HttpError(409, (data as any).message || 'Staf pengganti tidak memenuhi syarat');
     return NextResponse.json({ data });
   } catch (error) { return respondError(error); }
 }
