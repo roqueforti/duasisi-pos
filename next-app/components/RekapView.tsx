@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  BarChart3, Calendar, RefreshCw, TrendingUp, ShoppingBag, Award, 
+  BarChart3, Calendar, RefreshCw, TrendingUp, TrendingDown, ShoppingBag, Award, 
   ShieldAlert, CheckCircle, XCircle, FileSpreadsheet, Printer, Download, Clock, History, AlertCircle,
   Eye, Receipt, Search, Filter, ArrowRight, ExternalLink, FileText, CheckCircle2, AlertTriangle, 
-  Tag, Package, User, CreditCard, Sparkles, Layers, X, ChevronRight, HelpCircle, Globe, Send
+  Tag, Package, User, CreditCard, Sparkles, Layers, X, ChevronRight, ChevronDown, SlidersHorizontal, HelpCircle, Globe, Send
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { runBackend } from '@/lib/api';
@@ -26,6 +26,9 @@ interface LaporanResponse {
     tanggal: string;
     omzet: number;
     jumlahTransaksi: number;
+    selfCount?: number;
+    dropOffCount?: number;
+    rataRata?: number;
   }>;
   layananTerlaris: Array<{
     layanan: string;
@@ -35,19 +38,95 @@ interface LaporanResponse {
   transaksiList: Array<Transaksi>;
 }
 
+export type RekapPeriodPreset = 'TODAY' | '7D' | '30D' | 'THIS_MONTH' | 'LAST_MONTH' | 'CUSTOM';
+
+function formatLocalDateIso(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getIndonesianDayName(dateStr: string): string {
+  try {
+    const d = new Date(`${dateStr}T00:00:00`);
+    if (isNaN(d.getTime())) return '';
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    return days[d.getDay()];
+  } catch {
+    return '';
+  }
+}
+
+function formatShortDateId(dateStr: string): string {
+  try {
+    const d = new Date(`${dateStr}T00:00:00`);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
+function getPresetDates(preset: RekapPeriodPreset): { startStr: string; endStr: string; label: string } {
+  const now = new Date();
+  const todayStr = formatLocalDateIso(now);
+
+  if (preset === 'TODAY') {
+    return { startStr: todayStr, endStr: todayStr, label: 'Hari Ini' };
+  } else if (preset === '7D') {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 6);
+    return { startStr: formatLocalDateIso(d), endStr: todayStr, label: '7 Hari Terakhir' };
+  } else if (preset === '30D') {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 29);
+    return { startStr: formatLocalDateIso(d), endStr: todayStr, label: '30 Hari Terakhir' };
+  } else if (preset === 'THIS_MONTH') {
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { startStr: formatLocalDateIso(startOfMonth), endStr: todayStr, label: 'Bulan Ini' };
+  } else if (preset === 'LAST_MONTH') {
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    return { 
+      startStr: formatLocalDateIso(startOfLastMonth), 
+      endStr: formatLocalDateIso(endOfLastMonth), 
+      label: 'Bulan Lalu' 
+    };
+  }
+  return { startStr: todayStr, endStr: todayStr, label: 'Kustom' };
+}
+
+function getPreviousPeriodRange(startStr: string, endStr: string): { prevStartStr: string; prevEndStr: string } {
+  try {
+    const s = new Date(`${startStr}T00:00:00`);
+    const e = new Date(`${endStr}T23:59:59`);
+    const duration = e.getTime() - s.getTime() + 1;
+    const pEnd = new Date(s.getTime() - 1);
+    const pStart = new Date(pEnd.getTime() - duration + 1);
+    return {
+      prevStartStr: formatLocalDateIso(pStart),
+      prevEndStr: formatLocalDateIso(pEnd)
+    };
+  } catch {
+    return { prevStartStr: startStr, prevEndStr: endStr };
+  }
+}
+
 export default function RekapView() {
   const { showAlert, showConfirm, showPrompt } = useDialog();
-  const todayObj = new Date();
-  const todayStr = todayObj.toISOString().substring(0, 10);
-  
-  const sixMonthsAgoObj = new Date();
-  sixMonthsAgoObj.setMonth(sixMonthsAgoObj.getMonth() - 6);
-  const sixMonthsAgoStr = sixMonthsAgoObj.toISOString().substring(0, 10);
 
-  const [startDate, setStartDate] = useState(sixMonthsAgoStr);
-  const [endDate, setEndDate] = useState(todayStr);
+  // Presets & Dates state (Default 7D agar langsung sinkron dengan database)
+  const [periodPreset, setPeriodPreset] = useState<RekapPeriodPreset>('7D');
+  const initialDates = getPresetDates('7D');
+  const [startDate, setStartDate] = useState(initialDates.startStr);
+  const [endDate, setEndDate] = useState(initialDates.endStr);
+
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<LaporanResponse | null>(null);
+  const [prevData, setPrevData] = useState<LaporanResponse | null>(null);
+  const [layananList, setLayananList] = useState<any[]>([]);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   const [activeTab, setActiveTabState] = useState<'Laporan' | 'ApprovalVoid' | 'AuditTrail' | 'KasShift'>(() => {
     if (typeof window !== 'undefined') {
@@ -113,10 +192,16 @@ export default function RekapView() {
     }
   };
 
-  const loadLaporan = async () => {
+  const loadLaporan = async (targetStart = startDate, targetEnd = endDate) => {
     setLoading(true);
     try {
-      const res = await runBackend<LaporanResponse>('getLaporanRange', startDate, endDate);
+      const { prevStartStr, prevEndStr } = getPreviousPeriodRange(targetStart, targetEnd);
+      const [res, prevRes, masterLayanan] = await Promise.all([
+        runBackend<LaporanResponse>('getLaporanRange', targetStart, targetEnd),
+        runBackend<LaporanResponse>('getLaporanRange', prevStartStr, prevEndStr).catch(() => null),
+        runBackend<any[]>('getLayananListAll').catch(() => [])
+      ]);
+
       if (res && res.ringkasan) {
         setData(res);
         if (Array.isArray(res.transaksiList)) {
@@ -131,10 +216,28 @@ export default function RekapView() {
           }
         }
       }
+      if (prevRes && prevRes.ringkasan) {
+        setPrevData(prevRes);
+      } else {
+        setPrevData(null);
+      }
+      if (Array.isArray(masterLayanan)) {
+        setLayananList(masterLayanan);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('loadLaporan error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelectPreset = (preset: RekapPeriodPreset) => {
+    setPeriodPreset(preset);
+    if (preset !== 'CUSTOM') {
+      const { startStr, endStr } = getPresetDates(preset);
+      setStartDate(startStr);
+      setEndDate(endStr);
+      loadLaporan(startStr, endStr);
     }
   };
 
@@ -215,37 +318,194 @@ export default function RekapView() {
     }
   };
 
-  const handleExportCSV = () => {
+  // Trigger File Download
+  const triggerDownload = (content: string, filename: string) => {
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + content;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // 1. Ekspor Transaksi Detail (CSV)
+  const handleExportTransaksiDetail = () => {
     if (!data?.transaksiList || data.transaksiList.length === 0) {
       showAlert('Tidak ada data transaksi untuk diekspor pada rentang tanggal ini.', 'warning');
       return;
     }
-    const headers = ['No Nota', 'Tanggal', 'Pelanggan', 'No HP', 'Petugas', 'Metode Bayar', 'Status Bayar', 'Status Pengerjaan', 'Total (Rp)'];
+    const headers = ['No Nota', 'Tanggal', 'Pelanggan', 'No HP', 'Petugas', 'Tipe Layanan', 'Metode Bayar', 'Status Bayar', 'Status Pengerjaan', 'Total (Rp)'];
     const rows = data.transaksiList.map(t => [
       `"${t.noNota}"`,
       `"${t.tanggal}"`,
       `"${t.namaPelanggan}"`,
       `"${t.noHp || '-'}"`,
       `"${t.petugas}"`,
+      `"${t.tipe === 'FullService' ? 'Drop-off' : 'Self-Service'}"`,
       `"${t.metodeBayar || 'Tunai'}"`,
       `"${t.statusPembayaran || 'Lunas'}"`,
       `"${t.status}"`,
       t.total || 0
     ]);
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Laporan_Transaksi_${startDate}_sd_${endDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const content = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    triggerDownload(content, `Laporan_Transaksi_Detail_${startDate}_sd_${endDate}.csv`);
+    setShowExportDropdown(false);
+  };
+
+  // 2. Ekspor Rekap Omzet Harian (CSV)
+  const handleExportRekapHarian = () => {
+    if (!omzetHarian || omzetHarian.length === 0) {
+      showAlert('Tidak ada data omzet harian pada rentang tanggal ini.', 'warning');
+      return;
+    }
+    const headers = ['Tanggal', 'Hari', 'Total Omzet (Rp)', 'Jumlah Transaksi', 'Rata-rata Nota (AOV)', 'Self-Service', 'Drop-off', 'Kontribusi (%)'];
+    const totalOmzet = ringkasan.totalOmzet || 1;
+    const rows = omzetHarian.map(item => {
+      const aov = item.jumlahTransaksi > 0 ? Math.round(item.omzet / item.jumlahTransaksi) : 0;
+      const pct = ((item.omzet / totalOmzet) * 100).toFixed(1);
+      const day = getIndonesianDayName(item.tanggal);
+      return [
+        `"${item.tanggal}"`,
+        `"${day}"`,
+        item.omzet,
+        item.jumlahTransaksi,
+        aov,
+        item.selfCount ?? 0,
+        item.dropOffCount ?? 0,
+        `"${pct}%"`
+      ];
+    });
+    const content = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    triggerDownload(content, `Rekap_Omzet_Harian_${startDate}_sd_${endDate}.csv`);
+    setShowExportDropdown(false);
+  };
+
+  // 3. Ekspor Produk & Margin Terlaris (CSV)
+  const handleExportProdukTerlaris = () => {
+    if (!enrichedLayananTerlaris || enrichedLayananTerlaris.length === 0) {
+      showAlert('Tidak ada data produk/layanan pada rentang tanggal ini.', 'warning');
+      return;
+    }
+    const headers = ['Nama Layanan / Produk', 'Terjual (Qty)', 'Total Omzet (Rp)', 'Estimasi HPP (Rp)', 'Laba Kotor (Rp)', 'Margin (%)', 'Kontribusi Omzet (%)'];
+    const rows = enrichedLayananTerlaris.map(l => [
+      `"${l.layanan}"`,
+      l.qty,
+      l.omzet,
+      l.hpp,
+      l.labaKotor,
+      `"${l.margin}%"`,
+      `"${l.kontribusiPct}%"`
+    ]);
+    const content = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    triggerDownload(content, `Rekap_Produk_Margin_${startDate}_sd_${endDate}.csv`);
+    setShowExportDropdown(false);
+  };
+
+  // 4. Ekspor Semua Rekap Terkonsolidasi (CSV)
+  const handleExportAllConsolidated = () => {
+    if (!data) {
+      showAlert('Belum ada data laporan yang dimuat.', 'warning');
+      return;
+    }
+    const sections: string[] = [];
+
+    // Bagian 1: Ringkasan KPI
+    sections.push('# RINGKASAN EKSEKUTIF OMZET & PENJUALAN');
+    sections.push(`"Periode Laporan","${startDate} s/d ${endDate}"`);
+    sections.push(`"Total Omzet","Rp ${ringkasan.totalOmzet.toLocaleString('id-ID')}"`);
+    sections.push(`"Jumlah Transaksi","${ringkasan.jumlahTransaksi} Nota"`);
+    sections.push(`"Rata-rata Nilai Nota","Rp ${ringkasan.rataRata.toLocaleString('id-ID')}"`);
+    sections.push(`"Self-Service","${ringkasan.selfCount} Nota (${selfRatioCurrent.toFixed(1)}%)"`);
+    sections.push(`"Drop-off","${ringkasan.fullCount} Nota (${dropOffRatioCurrent.toFixed(1)}%)"`);
+    sections.push('');
+
+    // Bagian 2: Rekap Harian
+    sections.push('# RINCIAN OMZET HARIAN');
+    sections.push('Tanggal,Hari,Total Omzet (Rp),Jumlah Transaksi,Rata-rata Nota,Self-Service,Drop-off,Kontribusi (%)');
+    omzetHarian.forEach(item => {
+      const aov = item.jumlahTransaksi > 0 ? Math.round(item.omzet / item.jumlahTransaksi) : 0;
+      const pct = ((item.omzet / (ringkasan.totalOmzet || 1)) * 100).toFixed(1);
+      const day = getIndonesianDayName(item.tanggal);
+      sections.push(`"${item.tanggal}","${day}",${item.omzet},${item.jumlahTransaksi},${aov},${item.selfCount ?? 0},${item.dropOffCount ?? 0},"${pct}%"`);
+    });
+    sections.push('');
+
+    // Bagian 3: Produk Terlaris & Margin
+    sections.push('# PRODUK & LAYANAN TERLARIS (PROFITABILITAS)');
+    sections.push('Nama Layanan / Produk,Terjual (Qty),Total Omzet (Rp),Estimasi HPP (Rp),Laba Kotor (Rp),Margin (%),Kontribusi Omzet (%)');
+    enrichedLayananTerlaris.forEach(l => {
+      sections.push(`"${l.layanan}",${l.qty},${l.omzet},${l.hpp},${l.labaKotor},"${l.margin}%","${l.kontribusiPct}%"`);
+    });
+
+    triggerDownload(sections.join('\n'), `Rekap_Laporan_Lengkap_${startDate}_sd_${endDate}.csv`);
+    setShowExportDropdown(false);
   };
 
   const ringkasan = data?.ringkasan || { totalOmzet: 0, jumlahTransaksi: 0, rataRata: 0, selfCount: 0, fullCount: 0 };
+  const prevRingkasan = prevData?.ringkasan || null;
+
+  // Delta Kinerja vs Periode Sebelumnya
+  const deltaOmzet = prevRingkasan && prevRingkasan.totalOmzet > 0 
+    ? Math.round(((ringkasan.totalOmzet - prevRingkasan.totalOmzet) / prevRingkasan.totalOmzet) * 100) 
+    : null;
+
+  const deltaTrx = prevRingkasan && prevRingkasan.jumlahTransaksi > 0 
+    ? Math.round(((ringkasan.jumlahTransaksi - prevRingkasan.jumlahTransaksi) / prevRingkasan.jumlahTransaksi) * 100) 
+    : null;
+
+  const deltaAov = prevRingkasan && prevRingkasan.rataRata > 0 
+    ? Math.round(((ringkasan.rataRata - prevRingkasan.rataRata) / prevRingkasan.rataRata) * 100) 
+    : null;
+
+  const totalTrxCurrent = ringkasan.selfCount + ringkasan.fullCount;
+  const dropOffRatioCurrent = totalTrxCurrent > 0 ? (ringkasan.fullCount / totalTrxCurrent) * 100 : 0;
+  const selfRatioCurrent = totalTrxCurrent > 0 ? (ringkasan.selfCount / totalTrxCurrent) * 100 : 0;
+
+  const totalTrxPrev = prevRingkasan ? prevRingkasan.selfCount + prevRingkasan.fullCount : 0;
+  const dropOffRatioPrev = totalTrxPrev > 0 ? (prevRingkasan!.fullCount / totalTrxPrev) * 100 : null;
+  const deltaDropOffRatio = dropOffRatioPrev !== null ? Math.round(dropOffRatioCurrent - dropOffRatioPrev) : null;
+
   const omzetHarian = data?.omzetHarian || [];
   const maxOmzetHarian = Math.max(...omzetHarian.map(d => d.omzet), 1);
   const layananTerlaris = data?.layananTerlaris || [];
+
+  // Map Layanan ke Harga Modal (HPP)
+  const layananModalMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    (layananList || []).forEach(l => {
+      const name = (l.nama || l.layanan || '').trim().toLowerCase();
+      if (name) {
+        map[name] = Number(l.hargaModal) || 0;
+      }
+    });
+    return map;
+  }, [layananList]);
+
+  // Layanan Terlaris dengan Estimasi Margin & HPP
+  const enrichedLayananTerlaris = useMemo(() => {
+    const totalOmzet = ringkasan.totalOmzet || 1;
+    return (data?.layananTerlaris || []).map(l => {
+      const cleanName = l.layanan.trim().toLowerCase();
+      let modalPerUnit = layananModalMap[cleanName];
+      if (modalPerUnit === undefined || modalPerUnit === 0) {
+        // Fallback wajar estimasi HPP bahan ~25%
+        modalPerUnit = Math.round((l.omzet / (l.qty || 1)) * 0.25);
+      }
+      const hpp = modalPerUnit * l.qty;
+      const labaKotor = Math.max(l.omzet - hpp, 0);
+      const margin = l.omzet > 0 ? Math.round((labaKotor / l.omzet) * 100) : 0;
+      const kontribusiPct = ((l.omzet / totalOmzet) * 100).toFixed(1);
+      return {
+        ...l,
+        hpp,
+        labaKotor,
+        margin,
+        kontribusiPct
+      };
+    });
+  }, [data?.layananTerlaris, layananModalMap, ringkasan.totalOmzet]);
 
   const filteredAuditLogs = auditLogs.filter((log) => {
     const act = (log.jenisAktivitas || '').toLowerCase();
@@ -304,7 +564,7 @@ export default function RekapView() {
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
-              <span>Analitik & Omzet</span>
+              <span>Analitik &amp; Omzet</span>
             </button>
             <button
               onClick={() => setActiveTab('KasShift')}
@@ -348,7 +608,7 @@ export default function RekapView() {
           <button
             onClick={() => { loadLaporan(); loadAuditLogs(); loadKasShift(); loadPendingVoid(); }}
             disabled={loading || voidLoading}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${(loading || voidLoading) ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Refresh Data</span>
@@ -359,96 +619,290 @@ export default function RekapView() {
       {activeTab === 'Laporan' && (
         <div className="space-y-4">
           
-          <div className="glass-panel p-4 sm:p-5 rounded-2xl flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-teal-800" /> Rentang:
+          {/* Filter Bar with Presets & Date Range (Points 1 & 6 & 8) */}
+          <div className="glass-panel p-4 sm:p-5 rounded-2xl flex flex-col gap-3 shadow-xs">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              
+              {/* Presets Shortcuts */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold text-slate-500 mr-1 flex items-center gap-1">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-teal-800" />
+                  <span>Periode Cepat:</span>
+                </span>
+                {[
+                  { id: 'TODAY', label: 'Hari Ini' },
+                  { id: '7D', label: '7 Hari Terakhir' },
+                  { id: '30D', label: '30 Hari Terakhir' },
+                  { id: 'THIS_MONTH', label: 'Bulan Ini' },
+                  { id: 'LAST_MONTH', label: 'Bulan Lalu' },
+                  { id: 'CUSTOM', label: 'Kustom' },
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleSelectPreset(p.id as RekapPeriodPreset)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      periodPreset === p.id 
+                        ? 'bg-[#1E4648] text-white shadow-xs' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Export Dropdown Button (Point 8) */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportDropdown(prev => !prev)}
+                  className="tactile-btn px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Ekspor CSV</span>
+                  <ChevronDown className="w-3.5 h-3.5 opacity-80" />
+                </button>
+
+                {showExportDropdown && (
+                  <div className="absolute right-0 top-full mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 space-y-1 animate-in zoom-in-95">
+                    <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                      Pilihan Unduh Format CSV
+                    </div>
+                    <button
+                      onClick={handleExportTransaksiDetail}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition flex items-start gap-2 cursor-pointer"
+                    >
+                      <Receipt className="w-4 h-4 text-teal-700 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-bold">Transaksi Detail (.csv)</div>
+                        <div className="text-[10.5px] text-slate-400 font-normal">Daftar nota, pelanggan, kasir, total</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleExportRekapHarian}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition flex items-start gap-2 cursor-pointer"
+                    >
+                      <TrendingUp className="w-4 h-4 text-teal-700 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-bold">Rekap Omzet Harian (.csv)</div>
+                        <div className="text-[10.5px] text-slate-400 font-normal">Omzet harian, transaksi, AOV, rasio Self/Drop</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleExportProdukTerlaris}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-teal-50 hover:text-teal-900 transition flex items-start gap-2 cursor-pointer"
+                    >
+                      <ShoppingBag className="w-4 h-4 text-teal-700 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-bold">Produk &amp; Margin Terlaris (.csv)</div>
+                        <div className="text-[10.5px] text-slate-400 font-normal">Qty terjual, omzet, modal HPP, margin %</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleExportAllConsolidated}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 transition flex items-start gap-2 cursor-pointer border-t border-slate-100"
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-700 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-bold text-emerald-800">Rekap Lengkap Terkonsolidasi (.csv)</div>
+                        <div className="text-[10.5px] text-slate-400 font-normal">Seluruh ringkasan KPI, harian &amp; produk dalam 1 berkas</div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Date Pickers (Shown for Custom or verification) */}
+            <div className="flex items-center gap-2.5 flex-wrap pt-2 border-t border-slate-100 text-xs">
+              <span className="font-bold text-slate-600 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-teal-800" /> Rentang Aktif:
               </span>
               <input
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setPeriodPreset('CUSTOM');
+                }}
                 className="input-glow px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 outline-none"
               />
-              <span className="text-xs font-bold text-slate-400">s/d</span>
+              <span className="font-bold text-slate-400">s/d</span>
               <input
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setPeriodPreset('CUSTOM');
+                }}
                 className="input-glow px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 outline-none"
               />
               <button
-                onClick={loadLaporan}
+                onClick={() => loadLaporan(startDate, endDate)}
                 className="tactile-btn btn-glow-emerald px-4 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
                 Terapkan
               </button>
+              <span className="text-[11px] text-slate-400 font-medium ml-auto">
+                Menampilkan data tanggal {formatShortDateId(startDate)} s/d {formatShortDateId(endDate)}
+              </span>
             </div>
-
-            <button
-              onClick={handleExportCSV}
-              className="tactile-btn px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" /> Ekspor CSV
-            </button>
           </div>
 
+          {/* Top 4 KPI Cards with Previous Period Comparison & Consistent Labeling (Points 4 & 5) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            
+            {/* Card 1: Total Omzet */}
             <div className="glass-stat-card card-hover-lift p-4 sm:p-5">
-              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">Total Omzet Penjualan</div>
+              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">
+                Total Omzet Penjualan
+              </div>
               <div className="text-lg sm:text-xl font-black text-teal-800 font-mono truncate">
                 Rp {(ringkasan?.totalOmzet || 0).toLocaleString('id-ID')}
               </div>
+              {deltaOmzet !== null ? (
+                <div className="flex items-center gap-1 mt-1 text-[11px] font-bold">
+                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full ${
+                    deltaOmzet >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                  }`}>
+                    {deltaOmzet >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    <span>{deltaOmzet >= 0 ? `+${deltaOmzet}%` : `${deltaOmzet}%`} vs periode lalu</span>
+                  </span>
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-400 mt-1 font-medium">Periode acuan</div>
+              )}
             </div>
 
+            {/* Card 2: Jumlah Transaksi */}
             <div className="glass-stat-card card-hover-lift p-4 sm:p-5">
-              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">Jumlah Transaksi</div>
+              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">
+                Jumlah Transaksi
+              </div>
               <div className="text-lg sm:text-xl font-black text-slate-800 font-mono truncate">
                 {ringkasan.jumlahTransaksi} <span className="text-xs font-semibold text-slate-400">nota</span>
               </div>
+              {deltaTrx !== null ? (
+                <div className="flex items-center gap-1 mt-1 text-[11px] font-bold">
+                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full ${
+                    deltaTrx >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                  }`}>
+                    {deltaTrx >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    <span>{deltaTrx >= 0 ? `+${deltaTrx}%` : `${deltaTrx}%`} vs periode lalu</span>
+                  </span>
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-400 mt-1 font-medium">Periode acuan</div>
+              )}
             </div>
 
+            {/* Card 3: Rata-rata Nilai Nota */}
             <div className="glass-stat-card card-hover-lift p-4 sm:p-5">
-              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">Rata-rata Nilai Nota</div>
+              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">
+                Rata-rata Nilai Nota
+              </div>
               <div className="text-lg sm:text-xl font-black text-slate-800 font-mono truncate">
                 Rp {(ringkasan?.rataRata || 0).toLocaleString('id-ID')}
               </div>
+              {deltaAov !== null ? (
+                <div className="flex items-center gap-1 mt-1 text-[11px] font-bold">
+                  <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full ${
+                    deltaAov >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                  }`}>
+                    {deltaAov >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    <span>{deltaAov >= 0 ? `+${deltaAov}%` : `${deltaAov}%`} vs periode lalu</span>
+                  </span>
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-400 mt-1 font-medium">Periode acuan</div>
+              )}
             </div>
 
+            {/* Card 4: Self vs Drop Off (Konsisten: Drop-off, bukan Full) */}
             <div className="glass-stat-card card-hover-lift p-4 sm:p-5">
-              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">Self vs Drop Off</div>
-              <div className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-2 mt-1">
-                <span className="badge-glow-teal px-2 py-0.5 rounded-full">{ringkasan.selfCount} Self</span>
-                <span className="badge-glow-amber px-2 py-0.5 rounded-full">{ringkasan.fullCount} Full</span>
+              <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-wider mb-1 truncate">
+                Self-Service vs Drop-off
               </div>
+              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                <span className="badge-glow-teal px-2 py-0.5 rounded-full text-xs font-bold">
+                  {ringkasan.selfCount} Self ({selfRatioCurrent.toFixed(0)}%)
+                </span>
+                <span className="badge-glow-amber px-2 py-0.5 rounded-full text-xs font-bold">
+                  {ringkasan.fullCount} Drop-off ({dropOffRatioCurrent.toFixed(0)}%)
+                </span>
+              </div>
+              {deltaDropOffRatio !== null ? (
+                <div className="text-[10.5px] text-slate-500 font-medium mt-1">
+                  Drop-off {deltaDropOffRatio >= 0 ? `+${deltaDropOffRatio}%` : `${deltaDropOffRatio}%`} vs periode lalu
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-400 mt-1 font-medium">Rasio layanan cucian</div>
+              )}
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-3.5 sm:p-4 shadow-2xs space-y-2.5">
-            <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5 text-[#1E4648]" />
-              <span>Grafik Visual Tren Omzet Harian</span>
-            </h3>
+          {/* Glitch-Free Horizontal Bar Chart (Point 2) */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-[#1E4648]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Grafik Visual Tren Omzet Harian</h3>
+                  <p className="text-[11px] text-slate-400">Distribusi perolehan omzet dan kuantitas nota per hari</p>
+                </div>
+              </div>
+              <div className="text-xs font-mono font-bold text-teal-900 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200/80">
+                Puncak: Rp {maxOmzetHarian.toLocaleString('id-ID')}
+              </div>
+            </div>
 
             {omzetHarian.length === 0 ? (
-              <div className="text-center text-xs text-slate-400 py-6">Tidak ada data tren harian untuk periode terpilih</div>
+              <div className="text-center text-xs text-slate-400 py-10">Tidak ada data tren harian untuk periode terpilih</div>
             ) : (
-              <div className="space-y-1.5 pt-1">
+              <div className="space-y-3 pt-1">
                 {omzetHarian.map((item, idx) => {
                   const pct = Math.round((item.omzet / maxOmzetHarian) * 100);
+                  const dayName = getIndonesianDayName(item.tanggal);
+                  const formattedDate = formatShortDateId(item.tanggal);
+                  const isInside = pct >= 28;
+
                   return (
-                    <div key={idx} className="flex items-center gap-2.5 text-xs">
-                      <div className="w-20 sm:w-24 text-slate-600 font-semibold text-[11px] shrink-0">{item.tanggal}</div>
-                      <div className="flex-1 bg-slate-100 h-4 sm:h-5 rounded-md overflow-hidden relative">
+                    <div key={idx} className="flex items-center gap-2 sm:gap-3 text-xs group">
+                      {/* Tanggal & Hari */}
+                      <div className="w-24 sm:w-28 shrink-0 flex flex-col">
+                        <span className="font-bold text-slate-800 text-xs truncate">{formattedDate}</span>
+                        <span className="text-[10px] text-slate-400 font-medium">{dayName}</span>
+                      </div>
+
+                      {/* Bar Container yang Luas (h-7.5) & Teks Bebas Glitch */}
+                      <div className="flex-1 bg-slate-100 h-7.5 rounded-xl overflow-hidden relative flex items-center p-0.5 border border-slate-200/70">
                         <div 
-                          className="bg-[#1E4648] h-full rounded-md transition-all duration-500" 
-                          style={{ width: `${Math.max(pct, 5)}%` }}
-                        />
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] sm:text-[10px] font-bold text-white drop-shadow-xs">
-                          Rp {(item?.omzet || 0).toLocaleString('id-ID')}
+                          className="bg-gradient-to-r from-[#1E4648] to-teal-700 h-full rounded-lg transition-all duration-500 flex items-center" 
+                          style={{ width: `${Math.max(pct, 6)}%` }}
+                        >
+                          {isInside && (
+                            <span className="pl-3 text-xs font-bold font-mono text-white whitespace-nowrap drop-shadow-xs truncate">
+                              Rp {(item?.omzet || 0).toLocaleString('id-ID')}
+                            </span>
+                          )}
+                        </div>
+                        {!isInside && (
+                          <span className="pl-2 text-xs font-bold font-mono text-teal-900 whitespace-nowrap truncate">
+                            Rp {(item?.omzet || 0).toLocaleString('id-ID')}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Info Samping Kanan */}
+                      <div className="w-28 sm:w-36 text-right shrink-0 flex flex-col items-end">
+                        <span className="font-bold text-slate-700 text-xs font-mono">
+                          {item.jumlahTransaksi} nota
+                        </span>
+                        <span className="text-[10.5px] text-slate-400 font-mono">
+                          AOV: Rp {Math.round(item.omzet / (item.jumlahTransaksi || 1)).toLocaleString('id-ID')}
                         </span>
                       </div>
-                      <div className="w-14 sm:w-16 text-right font-medium text-slate-500 text-[11px] shrink-0">{item.jumlahTransaksi} nota</div>
                     </div>
                   );
                 })}
@@ -456,66 +910,162 @@ export default function RekapView() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
-              <div className="px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-700">
-                Rincian Tabel Omzet Harian
+          {/* Detail Tables (Points 3 & 7) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            
+            {/* Tabel 1: Rincian Tabel Omzet Harian (Diperkaya dengan AOV, Self vs Drop, & Kontribusi) */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-xs text-slate-800">Rincian Tabel Omzet Harian</h3>
+                    <p className="text-[11px] text-slate-400">Detail operasional, rata-rata nota (AOV) &amp; proporsi pesanan</p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                    {omzetHarian.length} Hari
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold text-[11px]">
+                        <th className="py-2.5 px-3">Tanggal</th>
+                        <th className="py-2.5 px-3 text-right">Total Omzet</th>
+                        <th className="py-2.5 px-3 text-center">Transaksi</th>
+                        <th className="py-2.5 px-3 text-right">AOV</th>
+                        <th className="py-2.5 px-3 text-center">Self / Drop</th>
+                        <th className="py-2.5 px-3 text-right">Kontribusi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {omzetHarian.length === 0 ? (
+                        <tr><td colSpan={6} className="py-8 text-center text-slate-400">Belum ada data transaksi</td></tr>
+                      ) : (
+                        omzetHarian.map((item, idx) => {
+                          const aov = item.jumlahTransaksi > 0 ? Math.round(item.omzet / item.jumlahTransaksi) : 0;
+                          const pct = ringkasan.totalOmzet > 0 ? ((item.omzet / ringkasan.totalOmzet) * 100).toFixed(1) : '0';
+                          const dayName = getIndonesianDayName(item.tanggal);
+
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/80 transition">
+                              <td className="py-2.5 px-3 font-semibold text-slate-700">
+                                <div>{item.tanggal}</div>
+                                <div className="text-[10px] text-slate-400 font-normal">{dayName}</div>
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-teal-900">
+                                Rp {(item?.omzet || 0).toLocaleString('id-ID')}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-mono text-slate-600">
+                                {item.jumlahTransaksi}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono text-slate-600">
+                                Rp {aov.toLocaleString('id-ID')}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200/60">
+                                    {item.selfCount ?? '-'} S
+                                  </span>
+                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/60">
+                                    {item.dropOffCount ?? '-'} D
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-500">
+                                {pct}%
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                      <th className="py-2.5 px-4">Tanggal</th>
-                      <th className="py-2.5 px-4">Jumlah Transaksi</th>
-                      <th className="py-2.5 px-4 text-right">Total Omzet</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {omzetHarian.length === 0 ? (
-                      <tr><td colSpan={3} className="py-8 text-center text-slate-400">Belum ada data transaksi</td></tr>
-                    ) : (
-                      omzetHarian.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 transition">
-                          <td className="py-2.5 px-4 font-semibold text-slate-700">{item.tanggal}</td>
-                          <td className="py-2.5 px-4 text-slate-600">{item.jumlahTransaksi} Transaksi</td>
-                          <td className="py-2.5 px-4 text-right font-bold text-[#1E4648]">Rp {(item?.omzet || 0).toLocaleString('id-ID')}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              {/* Tfoot Total Ringkasan */}
+              {omzetHarian.length > 0 && (
+                <div className="bg-slate-50/90 border-t border-slate-200 px-4 py-2.5 flex items-center justify-between text-xs font-bold text-slate-700">
+                  <span>Total Periode ({omzetHarian.length} Hari)</span>
+                  <div className="flex items-center gap-3 font-mono">
+                    <span className="text-teal-900">Rp {ringkasan.totalOmzet.toLocaleString('id-ID')}</span>
+                    <span className="text-slate-500">• {ringkasan.jumlahTransaksi} Nota</span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
-              <div className="px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-700">
-                Layanan & Produk Terlaris
+            {/* Tabel 2: Layanan & Produk Terlaris (Diperkaya dengan Estimasi HPP, Laba & Margin %) */}
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs flex flex-col justify-between">
+              <div>
+                <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-xs text-slate-800">Layanan &amp; Produk Terlaris</h3>
+                    <p className="text-[11px] text-slate-400">Analisis volume, perolehan omzet &amp; estimasi margin profitabilitas</p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                    Top {enrichedLayananTerlaris.length} Varian
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold text-[11px]">
+                        <th className="py-2.5 px-3">Nama Layanan / Produk</th>
+                        <th className="py-2.5 px-3 text-center">Terjual</th>
+                        <th className="py-2.5 px-3 text-right">Omzet</th>
+                        <th className="py-2.5 px-3 text-right">Est. HPP</th>
+                        <th className="py-2.5 px-3 text-right">Laba &amp; Margin</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {enrichedLayananTerlaris.length === 0 ? (
+                        <tr><td colSpan={5} className="py-8 text-center text-slate-400">Belum ada data penjualan layanan</td></tr>
+                      ) : (
+                        enrichedLayananTerlaris.map((l, idx) => {
+                          const isHighMargin = l.margin >= 50;
+                          const isLowMargin = l.margin < 30;
+
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/80 transition">
+                              <td className="py-2.5 px-3 font-semibold text-slate-800">
+                                <div>{l.layanan}</div>
+                                <div className="text-[10px] text-slate-400 font-normal">Kontribusi: {l.kontribusiPct}%</div>
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-mono text-slate-600">
+                                {l.qty}x
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-teal-900">
+                                Rp {(l?.omzet || 0).toLocaleString('id-ID')}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono text-slate-500">
+                                Rp {l.hpp.toLocaleString('id-ID')}
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                <div className="font-mono font-bold text-slate-800">
+                                  Rp {l.labaKotor.toLocaleString('id-ID')}
+                                </div>
+                                <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold font-mono mt-0.5 ${
+                                  isHighMargin ? 'bg-emerald-100 text-emerald-800' :
+                                  isLowMargin ? 'bg-rose-100 text-rose-800' : 'bg-teal-100 text-teal-800'
+                                }`}>
+                                  {l.margin}% Margin
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                      <th className="py-2.5 px-4">Nama Layanan</th>
-                      <th className="py-2.5 px-4">Terjual (Qty)</th>
-                      <th className="py-2.5 px-4 text-right">Kontribusi Omzet</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {layananTerlaris.length === 0 ? (
-                      <tr><td colSpan={3} className="py-8 text-center text-slate-400">Belum ada data penjualan layanan</td></tr>
-                    ) : (
-                      layananTerlaris.map((l, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 transition">
-                          <td className="py-2.5 px-4 font-semibold text-slate-700">{l.layanan}</td>
-                          <td className="py-2.5 px-4 text-slate-600">{l.qty} Transaksi</td>
-                          <td className="py-2.5 px-4 text-right font-bold text-[#1E4648]">Rp {(l?.omzet || 0).toLocaleString('id-ID')}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+              <div className="bg-slate-50/90 border-t border-slate-200 px-4 py-2.5 text-[10.5px] text-slate-500 flex items-center justify-between">
+                <span>HPP dihitung dari Master Layanan / perkiraan bahan baku</span>
+                <span className="font-mono font-bold text-teal-800">Rata-rata Margin: {enrichedLayananTerlaris.length > 0 ? Math.round(enrichedLayananTerlaris.reduce((acc, x) => acc + x.margin, 0) / enrichedLayananTerlaris.length) : 0}%</span>
               </div>
             </div>
           </div>

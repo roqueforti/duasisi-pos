@@ -3236,7 +3236,7 @@ export async function sbGetLaporanRange(startDate: string, endDate: string) {
   let selfCount = 0;
   let fullCount = 0;
   let activeTrxCount = 0;
-  const omzetHarianMap = new Map<string, { omzet: number; count: number }>();
+  const omzetHarianMap = new Map<string, { omzet: number; count: number; selfCount: number; dropOffCount: number }>();
   const layananMap = new Map<string, { qty: number; omzet: number }>();
 
   for (const t of trxList || []) {
@@ -3247,14 +3247,32 @@ export async function sbGetLaporanRange(startDate: string, endDate: string) {
     activeTrxCount++;
     const total = Number(t.total) || 0;
     totalOmzet += total;
-    if (t.tipe === 'FullService') fullCount++;
+    const isDropOff = t.tipe === 'FullService' || (t.tipe || '').toLowerCase().includes('drop');
+    if (isDropOff) fullCount++;
     else selfCount++;
 
-    const dateStr = t.tanggal ? t.tanggal.slice(0, 10) : '';
+    // Format tanggal transaksi ke zona waktu WIB (UTC+7) YYYY-MM-DD
+    let dateStr = '';
+    if (t.tanggal) {
+      try {
+        const d = new Date(t.tanggal);
+        if (!isNaN(d.getTime())) {
+          const wib = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+          dateStr = wib.toISOString().slice(0, 10);
+        } else {
+          dateStr = String(t.tanggal).slice(0, 10);
+        }
+      } catch (e) {
+        dateStr = String(t.tanggal).slice(0, 10);
+      }
+    }
+
     if (dateStr) {
-      const cur = omzetHarianMap.get(dateStr) || { omzet: 0, count: 0 };
+      const cur = omzetHarianMap.get(dateStr) || { omzet: 0, count: 0, selfCount: 0, dropOffCount: 0 };
       cur.omzet += total;
       cur.count += 1;
+      if (isDropOff) cur.dropOffCount += 1;
+      else cur.selfCount += 1;
       omzetHarianMap.set(dateStr, cur);
     }
 
@@ -3273,13 +3291,20 @@ export async function sbGetLaporanRange(startDate: string, endDate: string) {
   const rataRata = jumlahTransaksi > 0 ? Math.round(totalOmzet / jumlahTransaksi) : 0;
 
   const omzetHarian = Array.from(omzetHarianMap.entries())
-    .map(([tanggal, val]) => ({ tanggal, omzet: val.omzet, jumlahTransaksi: val.count }))
+    .map(([tanggal, val]) => ({ 
+      tanggal, 
+      omzet: val.omzet, 
+      jumlahTransaksi: val.count,
+      selfCount: val.selfCount,
+      dropOffCount: val.dropOffCount,
+      rataRata: val.count > 0 ? Math.round(val.omzet / val.count) : 0,
+    }))
     .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 
   const layananTerlaris = Array.from(layananMap.entries())
     .map(([layanan, val]) => ({ layanan, qty: val.qty, omzet: val.omzet }))
     .sort((a, b) => b.omzet - a.omzet)
-    .slice(0, 10);
+    .slice(0, 15);
 
   return {
     ringkasan: {
