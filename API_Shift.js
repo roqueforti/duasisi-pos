@@ -1239,6 +1239,15 @@ function openKasShift(data) {
       ""
     ]);
     addAuditLog(data.namaKasir || data.userName || "Kasir", "Buka Kas Shift", id, "Outlet: " + outlet + "; kas laci Rp " + kasAwal.toLocaleString('id-ID') + "; saldo merchant Rp " + saldoMerchantAwal.toLocaleString('id-ID'));
+    
+    // Staf aktif shift otomatis dianggap sudah absen (Clock In)
+    const kasirNama = data.namaKasir || data.userName || "Kasir";
+    if (kasirNama && kasirNama !== "Kasir") {
+      try {
+        clockInPegawai(kasirNama, data.shiftName || "Shift Kasir", "[Auto-Absen via Buka Shift #" + id + "]");
+      } catch (eAbs) {}
+    }
+
     return { success: true, data: getKasShiftAktif(outlet) };
   } finally {
     lock.releaseLock();

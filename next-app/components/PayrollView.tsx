@@ -11,6 +11,7 @@ import {
   Clock, 
   AlertCircle, 
   User, 
+  UserCheck, 
   CreditCard, 
   Search, 
   Eye, 
@@ -79,6 +80,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
   const [editTunjangan, setEditTunjangan] = useState('');
   const [editBonus, setEditBonus] = useState('');
   const [editPotongan, setEditPotongan] = useState('');
+  const [editJumlahHadir, setEditJumlahHadir] = useState('');
   const [editMetode, setEditMetode] = useState('Transfer');
   const [editCatatan, setEditCatatan] = useState('');
   const [editSyncMaster, setEditSyncMaster] = useState(false);
@@ -272,6 +274,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
     setEditTunjangan(String(item.tunjangan || 0));
     setEditBonus(String(item.bonusKomisi || 0));
     setEditPotongan(String(item.potongan || 0));
+    setEditJumlahHadir(String(item.jumlahHadir ?? 0));
     setEditMetode(item.metodePembayaran || (item.bank ? 'Transfer' : 'Tunai'));
     setEditCatatan(item.catatan || '');
     setEditSyncMaster(false);
@@ -284,6 +287,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
     const tunj = Number(editTunjangan) || 0;
     const bon = Number(editBonus) || 0;
     const pot = Number(editPotongan) || 0;
+    const jHadir = Number(editJumlahHadir) >= 0 ? Number(editJumlahHadir) : editItem.jumlahHadir;
     const totalBersih = Math.max(0, (gPokok + tunj + bon) - pot);
 
     setLoading(true);
@@ -294,6 +298,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
         tunjangan: tunj,
         bonusKomisi: bon,
         potongan: pot,
+        jumlahHadir: jHadir,
         totalGajiBersih: totalBersih,
         metodePembayaran: editMetode,
         catatan: editCatatan
@@ -734,7 +739,14 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
 
                   {/* Absensi */}
                   <td className="py-3.5 px-3">
-                    <div className="font-semibold text-slate-700">{item.jumlahHadir} Hari</div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="font-semibold text-slate-700">{item.jumlahHadir} Hari</div>
+                      {item.isManualKehadiran && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200" title="Kehadiran disesuaikan manual di payroll">
+                          Koreksi
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[10px] text-slate-400">{item.totalJamKerja} Jam {item.jumlahTelat > 0 && `• ${item.jumlahTelat}x Telat`}</div>
                   </td>
 
@@ -917,7 +929,15 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                   <div><span className="text-slate-400">Status Kerja :</span> <strong>{activeSlipItem.statusKepegawaian || 'Tetap'}</strong></div>
                 </div>
                 <div className="space-y-1 text-right">
-                  <div><span className="text-slate-400">Kehadiran :</span> <strong>{activeSlipItem.jumlahHadir} Hari Kerja</strong></div>
+                  <div>
+                    <span className="text-slate-400">Kehadiran :</span>{' '}
+                    <strong>{activeSlipItem.jumlahHadir} Hari Kerja</strong>
+                    {activeSlipItem.isManualKehadiran && (
+                      <span className="ml-1 text-[10px] font-bold text-amber-800 bg-amber-100 px-1 py-0.5 rounded border border-amber-200">
+                        (Disesuaikan)
+                      </span>
+                    )}
+                  </div>
                   <div><span className="text-slate-400">Total Jam :</span> <strong>{activeSlipItem.totalJamKerja} Jam</strong></div>
                   <div><span className="text-slate-400">Metode    :</span> <strong>{activeSlipItem.bank || 'Tunai'} {activeSlipItem.noRekening || ''}</strong></div>
                 </div>
@@ -1043,6 +1063,33 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
             </div>
 
             <div className="space-y-3 text-xs">
+              {/* Field Koreksi Kehadiran / Absen */}
+              <div className="p-3 bg-teal-50/70 border border-teal-200/80 rounded-2xl">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <label className="font-bold text-teal-950 flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-teal-700" />
+                    <span>Kehadiran / Hari Hadir (Absen)</span>
+                  </label>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200">
+                    Koreksi Fleksibel
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="31"
+                    value={editJumlahHadir}
+                    onChange={e => setEditJumlahHadir(e.target.value)}
+                    className="w-20 px-3 py-1.5 bg-white border border-teal-300 rounded-xl font-bold text-slate-900 text-center text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 shadow-xs"
+                  />
+                  <span className="font-bold text-slate-700 text-xs">Hari</span>
+                  <div className="text-[11px] text-teal-900/80 leading-snug ml-1.5">
+                    Staf aktif shift otomatis dihitung hadir. Anda dapat mengoreksi jumlah hari hadir ini secara manual khusus untuk slip payroll periode ini.
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Gaji Pokok (Rp)</label>

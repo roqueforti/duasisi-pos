@@ -483,6 +483,14 @@ function closeKasShift(data) {
       (expenseDesc ? "; Belanja: " + expenseDesc + " (Rp " + expenseAmount.toLocaleString('id-ID') + ")" : "") + 
       (expensePhotos ? "; Foto nota tersimpan" : ""));
     
+    // Otomatis clock out staf jika masih ada sesi clock in aktif hari ini
+    const cashierName = data.userName || rows[rowIndex][2] || "Kasir";
+    if (cashierName && cashierName !== "Kasir") {
+      try {
+        clockOutPegawai(cashierName, "[Auto-Clockout via Tutup Shift #" + data.shiftId + "]");
+      } catch (eOut) {}
+    }
+
     return { 
       success: true, 
       idShift: data.shiftId, 

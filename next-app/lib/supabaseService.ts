@@ -1880,6 +1880,16 @@ export async function sbOpenKasShift(payload: any): Promise<any> {
     );
   } catch {}
 
+  // Staf aktif shift otomatis dianggap sudah absen (Clock In)
+  try {
+    const kasirNama = String(payload.namaKasir || '').trim();
+    if (kasirNama && kasirNama !== 'Kasir') {
+      await sbClockInPegawai(kasirNama, payload.shiftName || 'Shift Kasir', `[Auto-Absen via Buka Shift #${idShift}]`);
+    }
+  } catch (absErr) {
+    console.warn('[sbOpenKasShift] Auto-clockIn absensi info:', absErr);
+  }
+
   return { success: true, shift: data };
 }
 
@@ -1982,6 +1992,16 @@ export async function sbCloseKasShift(payload: any): Promise<any> {
       `Tutup kas shift ${idShift} (${modeTutup}) - Kas fisik ${kasAkhirStr}`
     );
   } catch {}
+
+  // Otomatis clock out staf jika masih ada sesi clock in aktif hari ini
+  try {
+    const shiftKasirName = String(shiftRow?.nama_kasir || payload.namaKasir || '').trim();
+    if (shiftKasirName && shiftKasirName !== 'Kasir') {
+      await sbClockOutPegawai(shiftKasirName, `[Auto-Clockout via Tutup Shift #${idShift}]`);
+    }
+  } catch (absOutErr) {
+    console.warn('[sbCloseKasShift] Auto-clockOut absensi info:', absOutErr);
+  }
 
   // Simpan rincian pengeluaran ke kas_shift_pengeluaran jika ada
   if (Array.isArray(payload.expenses) && payload.expenses.length > 0) {
@@ -4968,7 +4988,70 @@ export async function sbGetRekapAbsensi(startDateStr?: string, endDateStr?: stri
   const rawList = await fetchHrStore('absensi', 'hr_absensi');
   const config = await sbGetAbsensiConfig();
 
-  const filtered = rawList.filter((r: any) => {
+  // Ambil juga kas_shift untuk periode ini (staf aktif shift otomatis dihitung hadir)
+  const sb = getSupabase();
+  let shiftRecords: any[] = [];
+  if (sb) {
+    try {
+      let query = sb.from('kas_shift').select('*');
+      if (startDateStr) query = query.gte('waktu_buka', `${startDateStr}T00:00:00Z`);
+      if (endDateStr) query = query.lte('waktu_buka', `${endDateStr}T23:59:59Z`);
+      const { data } = await query;
+      if (Array.isArray(data)) shiftRecords = data;
+    } catch {}
+  }
+
+  // Gabungkan attendance: Jika pegawai bertugas di kas_shift pada tanggal tertentu tapi belum ada record di absensi
+  const existingKeys = new Set(
+    rawList.map((r: any) => {
+      const tglRaw = r.tanggal_raw || r.tanggal || (r.clock_in ? formatWib(r.clock_in, 'yyyy-MM-dd') : '');
+      const nama = String(r.nama_pegawai || r.namaPegawai || '').trim().toLowerCase();
+      return `${tglRaw}_${nama}`;
+    })
+  );
+
+  const combinedList = [...rawList];
+
+  shiftRecords.forEach((s: any) => {
+    const tglRaw = s.waktu_buka ? formatWib(s.waktu_buka, 'yyyy-MM-dd') : '';
+    const nama = String(s.nama_kasir || '').trim();
+    if (!tglRaw || !nama || nama.toLowerCase() === 'kasir') return;
+
+    const key = `${tglRaw}_${nama.toLowerCase()}`;
+    if (!existingKeys.has(key)) {
+      existingKeys.add(key);
+      const waktuBukaStr = formatWib(s.waktu_buka, 'full');
+      const waktuTutupStr = s.waktu_tutup ? formatWib(s.waktu_tutup, 'full') : (s.status === 'Buka' ? 'Shift Berjalan' : '-');
+      let durasiStr = '-';
+      if (s.waktu_buka && s.waktu_tutup) {
+        const diffMs = Math.max(0, new Date(s.waktu_tutup).getTime() - new Date(s.waktu_buka).getTime());
+        durasiStr = `${(diffMs / 3600000).toFixed(1)} Jam`;
+      } else if (s.status === 'Buka') {
+        durasiStr = 'Aktif';
+      }
+
+      combinedList.push({
+        id: `ABS-SHIFT-${s.id_shift}`,
+        tanggal: tglRaw,
+        tanggal_raw: tglRaw,
+        nama_pegawai: nama,
+        namaPegawai: nama,
+        shift: 'Shift Kasir',
+        clock_in: s.waktu_buka,
+        clockIn: waktuBukaStr,
+        clock_out: s.waktu_tutup || null,
+        clockOut: waktuTutupStr,
+        durasi: durasiStr,
+        catatan: `[Hadir via Shift Kasir #${s.id_shift}]`,
+        menit_telat: 0,
+        menitTelat: 0,
+        denda: 0,
+        isFromShift: true
+      });
+    }
+  });
+
+  const filtered = combinedList.filter((r: any) => {
     const tglRaw = r.tanggal_raw || r.tanggal || (r.clock_in ? formatWib(r.clock_in, 'yyyy-MM-dd') : '');
     if (!tglRaw) return false;
     return (!startDateStr || !endDateStr || (tglRaw >= startDateStr && tglRaw <= endDateStr));
@@ -5007,6 +5090,7 @@ export async function sbGetRekapAbsensi(startDateStr?: string, endDateStr?: stri
       catatan,
       menitTelat,
       denda,
+      isFromShift: r.isFromShift || false,
     };
   }).sort((a: any, b: any) => String(b.tanggalRaw).localeCompare(String(a.tanggalRaw)));
 }
@@ -5299,7 +5383,9 @@ export async function sbGetPayrollSummary(periodeStr?: string): Promise<any> {
   const paidMap: Record<string, any> = {};
   paidRaw.forEach((p: any) => {
     if (p.periode === targetPeriode) {
-      paidMap[p.id_pegawai || p.idPegawai] = {
+      const pKeyId = p.id_pegawai || p.idPegawai;
+      const pKeyName = p.nama_pegawai || p.namaPegawai;
+      const parsedPay = {
         idPayroll: p.id,
         status: p.status_pembayaran || p.statusPembayaran || 'Sudah Dibayar',
         tanggalBayar: p.tanggal_pembayaran || p.tanggalPembayaran || '',
@@ -5310,7 +5396,12 @@ export async function sbGetPayrollSummary(periodeStr?: string): Promise<any> {
         bonusKomisi: Number(p.bonus_komisi || p.bonusKomisi) || 0,
         potongan: Number(p.potongan) || 0,
         totalGajiBersih: Number(p.total_gaji_bersih || p.totalGajiBersih) || 0,
+        jumlahHadir: (p.jumlah_hadir !== undefined && p.jumlah_hadir !== null && p.jumlah_hadir !== '')
+          ? Number(p.jumlah_hadir)
+          : ((p.jumlahHadir !== undefined && p.jumlahHadir !== null && p.jumlahHadir !== '') ? Number(p.jumlahHadir) : undefined),
       };
+      if (pKeyId) paidMap[pKeyId] = parsedPay;
+      if (pKeyName) paidMap[pKeyName] = parsedPay;
     }
   });
 
@@ -5357,7 +5448,7 @@ export async function sbGetPayrollSummary(periodeStr?: string): Promise<any> {
 
   const items = pegawaiList.map((peg: any) => {
     const empAbs = absensiList.filter((a: any) => a.namaPegawai === peg.nama);
-    const jumlahHadir = empAbs.length;
+    const autoHadirCount = empAbs.length;
     let totalJamKerja = 0;
     let jumlahTelat = 0;
     let dendaTelat = 0;
@@ -5370,6 +5461,10 @@ export async function sbGetPayrollSummary(periodeStr?: string): Promise<any> {
       }
       dendaTelat += Number(a.denda) || 0;
     });
+
+    const savedPay = paidMap[peg.id] || paidMap[peg.nama];
+    const isManualKehadiran = savedPay && savedPay.jumlahHadir !== undefined;
+    const jumlahHadir = isManualKehadiran ? savedPay.jumlahHadir : autoHadirCount;
 
     const empKin = kinerjaList.find((k: any) => k.nama === peg.nama || k.id === peg.id);
     const totalOmzet = empKin ? empKin.totalOmzet : 0;
@@ -5420,7 +5515,6 @@ export async function sbGetPayrollSummary(periodeStr?: string): Promise<any> {
     const potonganRutin = Number(peg.potongan) || 0;
     const totalPotonganComputed = potonganRutin + dendaTelat;
 
-    const savedPay = paidMap[peg.id];
     const gajiPokok = savedPay ? savedPay.gajiPokok : (Number(peg.gajiPokok) || 0);
     const bonusKomisi = savedPay ? savedPay.bonusKomisi : insentifDropOff;
     const finalTunjangan = savedPay ? savedPay.tunjangan : defaultTunjangan;
@@ -5457,6 +5551,7 @@ export async function sbGetPayrollSummary(periodeStr?: string): Promise<any> {
       totalGajiBersih,
 
       jumlahHadir,
+      isManualKehadiran: !!isManualKehadiran,
       totalJamKerja: Math.round(totalJamKerja * 10) / 10,
       jumlahTelat,
       totalOmzetDihasilkan: totalOmzet,
@@ -5510,6 +5605,8 @@ export async function sbSavePayrollPayment(
     potongan: Number(payload.potongan) || 0,
     total_gaji_bersih: Number(payload.totalGajiBersih) || 0,
     totalGajiBersih: Number(payload.totalGajiBersih) || 0,
+    jumlah_hadir: (payload.jumlahHadir !== undefined && payload.jumlahHadir !== null) ? Number(payload.jumlahHadir) : undefined,
+    jumlahHadir: (payload.jumlahHadir !== undefined && payload.jumlahHadir !== null) ? Number(payload.jumlahHadir) : undefined,
     status_pembayaran: payload.statusPembayaran || 'Sudah Dibayar',
     statusPembayaran: payload.statusPembayaran || 'Sudah Dibayar',
     tanggal_pembayaran: payload.statusPembayaran === 'Belum Dibayar' ? '' : formatWib(now, 'full'),

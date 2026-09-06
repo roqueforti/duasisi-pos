@@ -57,6 +57,7 @@ interface AbsensiRecord {
   catatan: string;
   menitTelat?: number;
   denda?: number;
+  isFromShift?: boolean;
 }
 
 interface MasterShift {
@@ -741,6 +742,10 @@ export default function AbsensiView({ currentRole }: { currentRole?: UserRole } 
                               <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-[11px] border border-amber-200 inline-flex items-center gap-1">
                                 <span>Terlambat</span>
                                 {r.menitTelat ? <span className="font-normal">({r.menitTelat} mnt)</span> : null}
+                              </span>
+                            ) : r.isFromShift ? (
+                              <span className="bg-teal-50 text-teal-800 font-bold px-2 py-0.5 rounded text-[11px] border border-teal-200 inline-flex items-center gap-1">
+                                <span>Shift Kasir</span>
                               </span>
                             ) : (
                               <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded text-[11px] border border-emerald-200 inline-flex items-center gap-1">

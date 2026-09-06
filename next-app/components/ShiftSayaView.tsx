@@ -372,10 +372,18 @@ _Laporan otomatis dibuat dari Sistem POS Dua SiSi Laundry_`;
         }
       }
 
-      // 4. Check today's clock in status
-      if (Array.isArray(absensiRes) && absensiRes.length > 0) {
+      // 4. Check today's clock in status (staff aktif pada shift otomatis dianggap hadir)
+      const hasActiveShift = !!(activeRes && activeRes.idShift);
+      if (hasActiveShift) {
+        setTodayClockIn(true);
+      } else if (Array.isArray(absensiRes) && absensiRes.length > 0) {
         const todayStr = new Date().toLocaleDateString('id-ID');
-        const hasInToday = absensiRes.some(r => r.tanggal?.includes(todayStr) || r.clockIn);
+        const todayIso = new Date().toISOString().slice(0, 10);
+        const hasInToday = absensiRes.some(r => 
+          r.tanggal?.includes(todayStr) || 
+          r.tanggalRaw === todayIso || 
+          r.clockIn
+        );
         setTodayClockIn(hasInToday);
       }
 

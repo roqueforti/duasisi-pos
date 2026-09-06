@@ -430,6 +430,7 @@ export interface PayrollItem {
   totalGajiBersih: number;
 
   jumlahHadir: number;
+  isManualKehadiran?: boolean;
   totalJamKerja: number;
   jumlahTelat: number;
   totalOmzetDihasilkan?: number;
