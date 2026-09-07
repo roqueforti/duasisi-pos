@@ -1703,7 +1703,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
         </div>
 
         {/* Action Buttons & Export Report */}
-        <div className="flex items-center gap-2 flex-wrap self-end lg:self-auto">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap lg:flex-nowrap self-end lg:self-auto">
           {isManager && (
             <>
               <button
@@ -1723,22 +1723,13 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                 <FileDown className="w-4 h-4 text-amber-300" />
                 <span>Export Report</span>
               </button>
-
-              <button
-                onClick={() => setShowBackupModal(true)}
-                className="tactile-btn px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-emerald-300 shadow-2xs transition cursor-pointer"
-                title="Backup seluruh data Supabase ke Google Apps Script / Google Sheets"
-              >
-                <CloudUpload className="w-4 h-4 text-emerald-700" />
-                <span>Backup ke App Script</span>
-              </button>
             </>
           )}
 
           <button
             onClick={() => fetchDashboardData()}
             disabled={loading}
-            className="tactile-btn px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-slate-200 shadow-2xs transition cursor-pointer disabled:opacity-50"
+            className="tactile-btn px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-slate-200 shadow-2xs transition cursor-pointer disabled:opacity-50"
             title="Muat ulang seluruh data dashboard"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
@@ -1764,20 +1755,13 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             <span>Backup App Script</span>
           </button>
           <button
-            onClick={() => setShowTargetModal(true)}
-            className="px-2.5 py-1.5 bg-slate-50 hover:bg-teal-50 text-slate-700 hover:text-teal-900 rounded-xl text-xs font-semibold border border-slate-200 shrink-0 flex items-center gap-1.5 transition"
-          >
-            <Target className="w-3.5 h-3.5 text-teal-700" />
-            <span>Target Bulanan</span>
-          </button>
-          <button
             onClick={() => {
               if (inventoryList.length > 0) {
                 setSelectedRestockItem(inventoryList[0]);
                 setRestockQty('10');
               }
             }}
-            className="px-2.5 py-1.5 bg-slate-50 hover:bg-teal-50 text-slate-700 hover:text-teal-900 rounded-xl text-xs font-semibold border border-slate-200 shrink-0 flex items-center gap-1.5 transition"
+            className="px-2.5 py-1.5 bg-slate-50 hover:bg-teal-50 text-slate-700 hover:text-teal-900 rounded-xl text-xs font-semibold border border-slate-200 shrink-0 flex items-center gap-1.5 transition cursor-pointer"
           >
             <Package className="w-3.5 h-3.5 text-teal-700" />
             <span>Restock Bahan</span>
