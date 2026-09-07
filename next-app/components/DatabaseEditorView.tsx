@@ -547,9 +547,9 @@ export default function DatabaseEditorView({ currentRole }: DatabaseEditorViewPr
             </button>
           </form>
 
-          <div className="pt-2 border-t border-slate-800/80 text-center text-[11px] text-slate-400">
-            <span className="font-semibold text-teal-400">Petunjuk:</span> Kata sandi awal sistem adalah{' '}
-            <code className="bg-slate-800 text-amber-300 px-1.5 py-0.5 rounded font-mono font-bold">duasisi2026</code>
+          <div className="pt-2 border-t border-slate-800/80 text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-teal-500/80" />
+            <span>Akses terlindungi &amp; khusus otorisasi Manajer</span>
           </div>
         </div>
       </div>
