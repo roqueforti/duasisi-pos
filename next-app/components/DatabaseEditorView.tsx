@@ -234,10 +234,22 @@ export default function DatabaseEditorView({ currentRole }: DatabaseEditorViewPr
     }
   };
 
+  // Reset unlock state jika role hilang/berubah (misal logout akun)
+  useEffect(() => {
+    if (!currentRole || currentRole !== 'MANAGER') {
+      setIsUnlocked(false);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('duasisi_db_editor_unlocked');
+        localStorage.removeItem('duasisi_db_editor_unlocked');
+      }
+    }
+  }, [currentRole]);
+
   const handleLockSession = () => {
     setIsUnlocked(false);
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('duasisi_db_editor_unlocked');
+      localStorage.removeItem('duasisi_db_editor_unlocked');
     }
     setPasswordInput('');
   };

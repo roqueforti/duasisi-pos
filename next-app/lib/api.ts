@@ -41,6 +41,8 @@ export function clearBackendSession(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(ACTIVITY_KEY);
+    sessionStorage.removeItem('duasisi_db_editor_unlocked');
+    localStorage.removeItem('duasisi_db_editor_unlocked');
   }
 }
 

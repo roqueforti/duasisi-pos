@@ -150,6 +150,10 @@ export default function PosAppRoot() {
 
     // Subscribe to session expired events
     const unsubscribe = onSessionExpired((message) => {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('duasisi_db_editor_unlocked');
+        localStorage.removeItem('duasisi_db_editor_unlocked');
+      }
       setCurrentRole('');
       setSessionNotice(message);
     });
@@ -184,6 +188,11 @@ export default function PosAppRoot() {
   }, []);
 
   const handleLoginSuccess = (role: UserRole) => {
+    // Kunci kembali akses database editor tiap kali sesi/akun login baru
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('duasisi_db_editor_unlocked');
+      localStorage.removeItem('duasisi_db_editor_unlocked');
+    }
     setCurrentRole(role);
     setSessionNotice(null);
     checkShiftStatus();
@@ -202,6 +211,10 @@ export default function PosAppRoot() {
     hasCheckedDuplicatesRef.current = false;
     clearBackendSession();
     clearCache();
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('duasisi_db_editor_unlocked');
+      localStorage.removeItem('duasisi_db_editor_unlocked');
+    }
     setCurrentRole('');
     setSessionNotice(null);
     setIsShiftActive(false);
