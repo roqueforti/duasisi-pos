@@ -185,7 +185,7 @@ export default function Sidebar({
         { id: 'rekap', label: 'Laporan Rekap', icon: BarChart3, managerOnly: true },
         { id: 'arsip_laporan', label: 'Arsip Laporan Bulanan', icon: FolderArchive, managerOnly: true },
         { id: 'keamanan', label: 'Keamanan & Hak Akses', icon: ShieldCheck, managerOnly: true },
-        { id: 'database_editor', label: 'Database Editor (Supabase)', icon: Database, managerOnly: true },
+        { id: 'database_editor', label: 'Database Table Editor', icon: Database, managerOnly: true },
         { id: 'tampilan', label: 'Pengaturan Tampilan', icon: SlidersHorizontal }
       ]
     }

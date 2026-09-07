@@ -67,7 +67,7 @@ const tabTitles: Record<string, string> = {
   rekap: 'Laporan Rekap & Analytics',
   arsip_laporan: 'Arsip & Riwayat Laporan Bulanan',
   keamanan: 'Keamanan & Hak Akses PIN',
-  database_editor: 'Database Editor (Supabase Live Grid)',
+  database_editor: 'Database Table Editor (Live Grid)',
   tampilan: 'Pengaturan Tampilan & Font'
 };
 
