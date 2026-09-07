@@ -21,27 +21,32 @@ const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL || 'https://script.googl
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-async function callGas(action, ...args) {
-  // Autentikasi token via PIN Manager 888888
-  const authPayload = JSON.stringify({ action: 'verifikasiPin', args: ['888888'] });
-  let sessionToken = '';
+let cachedSessionToken = '';
+async function getSessionToken() {
+  if (cachedSessionToken) return cachedSessionToken;
   try {
     const authRes = await fetch(GAS_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: authPayload,
+      body: JSON.stringify({ action: 'verifikasiPin', args: ['888888'] }),
       redirect: 'follow',
     });
     const authJson = await authRes.json();
-    sessionToken = authJson.sessionToken || '';
+    if (authJson && authJson.sessionToken) {
+      cachedSessionToken = authJson.sessionToken;
+    }
   } catch (e) {
-    // continue if no token needed
+    console.warn('⚠️ Gagal verifikasi session token GAS:', e.message);
   }
+  return cachedSessionToken;
+}
 
+async function callGas(action, ...args) {
+  const sessionToken = await getSessionToken();
   const payload = JSON.stringify({
     action,
     args,
-    sessionToken,
+    sessionToken: sessionToken || undefined,
   });
 
   const res = await fetch(GAS_API_URL, {
@@ -134,9 +139,13 @@ async function runBackup() {
       }
     }
 
-    console.log(`📤 Mengirim ${importRows.length} baris detail transaksi ke Google Sheets...`);
-    const importRes = await callGas('importTransaksiBatch', importRows);
-    console.log('✅ Hasil backup transaksi:', importRes);
+    console.log(`📤 Mengirim ${importRows.length} baris detail transaksi ke Google Sheets (dalam batch aman)...`);
+    const CHUNK_SIZE = 40;
+    for (let i = 0; i < importRows.length; i += CHUNK_SIZE) {
+      const chunk = importRows.slice(i, i + CHUNK_SIZE);
+      const importRes = await callGas('importTransaksiBatch', chunk);
+      console.log(`✅ Batch ${Math.floor(i / CHUNK_SIZE) + 1}/${Math.ceil(importRows.length / CHUNK_SIZE)}:`, importRes?.importedCount || chunk.length, 'baris');
+    }
   }
 
   // 3. Cek Pelanggan Baru
@@ -167,8 +176,32 @@ async function runBackup() {
       stamps75: c.stamps_75,
       stamps45: c.stamps_45,
     }));
-    await callGas('importPelangganBatch', custPayload);
+    const CHUNK_CUST = 50;
+    for (let i = 0; i < custPayload.length; i += CHUNK_CUST) {
+      const chunk = custPayload.slice(i, i + CHUNK_CUST);
+      await callGas('importPelangganBatch', chunk);
+    }
     console.log('✅ Pelanggan baru berhasil dicadangkan.');
+  }
+
+  // Update app_settings di Supabase dengan riwayat backup
+  try {
+    await sb.from('app_settings').upsert({
+      key: 'gas_last_backup_info',
+      value: {
+        timestamp: new Date().toISOString(),
+        actor: 'GitHub Actions / Scheduler',
+        newTransactions: newTransactionsToBackup.length,
+        newCustomers: newCust.length,
+        totalSupabaseTransactions: (supabaseTrx || []).length,
+        totalSupabaseCustomers: (supabaseCust || []).length,
+        durationSeconds: Number(((Date.now() - startTime) / 1000).toFixed(1)),
+        status: 'success'
+      },
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'key' });
+  } catch (errSet) {
+    console.warn('⚠️ Gagal menyimpan log backup ke app_settings:', errSet.message);
   }
 
   const duration = ((Date.now() - startTime) / 1000).toFixed(1);

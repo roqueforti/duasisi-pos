@@ -48,9 +48,11 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
-  Check
+  Check,
+  CloudUpload
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
+import BackupGasModal from '@/components/BackupGasModal';
 import { UserRole, MonthlyTargets, FinancialMetrics, ServiceProfitability, QualityPerformance, ProcurementSummary, CustomerRetentionMetrics, LayananItem } from '@/lib/types';
 import { runBackend, runBackendCached } from '@/lib/api';
 import { useDialog } from '@/components/DialogProvider';
@@ -260,6 +262,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
   // Export PDF Report Modal State
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
+  const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
   const [exportPeriodPreset, setExportPeriodPreset] = useState<DashboardPeriodPreset>('THIS_MONTH');
   const [exportCustomStart, setExportCustomStart] = useState<string>(() => {
     const d = new Date();
@@ -1720,6 +1723,15 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                 <FileDown className="w-4 h-4 text-amber-300" />
                 <span>Export Report</span>
               </button>
+
+              <button
+                onClick={() => setShowBackupModal(true)}
+                className="tactile-btn px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-emerald-300 shadow-2xs transition cursor-pointer"
+                title="Backup seluruh data Supabase ke Google Apps Script / Google Sheets"
+              >
+                <CloudUpload className="w-4 h-4 text-emerald-700" />
+                <span>Backup ke App Script</span>
+              </button>
             </>
           )}
 
@@ -1743,6 +1755,14 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
           <span className="text-[11px] font-bold text-slate-400 shrink-0 uppercase tracking-wider flex items-center gap-1 mr-1">
             <Zap className="w-3.5 h-3.5 text-amber-500" /> Quick Actions:
           </span>
+          <button
+            onClick={() => setShowBackupModal(true)}
+            className="px-2.5 py-1.5 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-950 rounded-xl text-xs font-semibold border border-emerald-300/90 shrink-0 flex items-center gap-1.5 transition cursor-pointer"
+            title="Backup data ke Google Apps Script / Google Sheets"
+          >
+            <CloudUpload className="w-3.5 h-3.5 text-emerald-700" />
+            <span>Backup App Script</span>
+          </button>
           <button
             onClick={() => setShowTargetModal(true)}
             className="px-2.5 py-1.5 bg-slate-50 hover:bg-teal-50 text-slate-700 hover:text-teal-900 rounded-xl text-xs font-semibold border border-slate-200 shrink-0 flex items-center gap-1.5 transition"
@@ -4041,6 +4061,15 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
           </div>
         </div>
       )}
+
+      {/* Modal Backup Data ke Google Apps Script (Khusus Manajer) */}
+      <BackupGasModal
+        isOpen={showBackupModal}
+        onClose={() => setShowBackupModal(false)}
+        onSuccess={() => {
+          fetchDashboardData();
+        }}
+      />
 
     </div>
   );

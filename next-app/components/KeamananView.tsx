@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { runBackend } from '@/lib/api';
 import { UserRole } from '@/lib/types';
-import { ShieldCheck, KeyRound, Save, Mail } from 'lucide-react';
+import { ShieldCheck, KeyRound, Save, Mail, CloudUpload, FileSpreadsheet, Database } from 'lucide-react';
 import { useDialog } from '@/components/DialogProvider';
+import BackupGasModal from '@/components/BackupGasModal';
 
 export default function KeamananView({ currentRole }: { currentRole?: UserRole }) {
   const { showAlert } = useDialog();
@@ -17,6 +18,9 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
   
   // Staff PIN State
   const [newStaffPin, setNewStaffPin] = useState('');
+
+  // Backup Modal State
+  const [showBackupModal, setShowBackupModal] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -207,7 +211,67 @@ export default function KeamananView({ currentRole }: { currentRole?: UserRole }
           </button>
         </div>
 
+        {/* Cloud-to-Cloud Backup Card (Google Apps Script / Sheets) */}
+        <div className="lg:col-span-2 bg-gradient-to-br from-white to-teal-50/40 rounded-xl shadow-sm border border-teal-200/90 p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-teal-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center shrink-0">
+                <CloudUpload className="w-5 h-5 text-[#1E4648]" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <span>Sinkronisasi &amp; Cadangan Google Apps Script</span>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase">
+                    Cloud Safety Net
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Sinkronkan seluruh data transaksi dan pelanggan dari database Supabase ke Google Sheets secara on-demand.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowBackupModal(true)}
+              className="tactile-btn px-4 py-2 bg-gradient-to-r from-[#1E4648] to-teal-800 hover:from-teal-900 hover:to-[#1E4648] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs transition cursor-pointer shrink-0 border border-teal-700/50"
+            >
+              <CloudUpload className="w-4 h-4 text-amber-300" />
+              <span>Backup Data Sekarang</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="bg-white p-3 rounded-xl border border-slate-200">
+              <span className="text-[10px] text-slate-400 block font-semibold">Tujuan Sinkronisasi</span>
+              <span className="font-bold text-slate-800 flex items-center gap-1.5 mt-0.5">
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                Google Sheets POS
+              </span>
+            </div>
+            <div className="bg-white p-3 rounded-xl border border-slate-200">
+              <span className="text-[10px] text-slate-400 block font-semibold">Jadwal Otomatis</span>
+              <span className="font-bold text-slate-800 flex items-center gap-1.5 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Tiap 02:00 WIB (GitHub Actions)
+              </span>
+            </div>
+            <div className="bg-white p-3 rounded-xl border border-slate-200">
+              <span className="text-[10px] text-slate-400 block font-semibold">Metode Proteksi</span>
+              <span className="font-bold text-slate-800 flex items-center gap-1.5 mt-0.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                Idempotent (Anti-Duplikasi)
+              </span>
+            </div>
+          </div>
+        </div>
+
       </div>
+
+      {/* Modal Backup */}
+      <BackupGasModal
+        isOpen={showBackupModal}
+        onClose={() => setShowBackupModal(false)}
+      />
     </div>
   );
 }

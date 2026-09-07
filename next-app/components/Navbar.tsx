@@ -17,11 +17,13 @@ import {
   X,
   ExternalLink,
   ChevronRight,
-  SlidersHorizontal
+  SlidersHorizontal,
+  CloudUpload
 } from 'lucide-react';
 import { UserRole } from '@/lib/types';
 import PrinterModal from '@/components/PrinterModal';
 import DisplaySettingsModal from '@/components/DisplaySettingsModal';
+import BackupGasModal from '@/components/BackupGasModal';
 import { useDisplaySettings } from '@/components/DisplaySettingsContext';
 import CuteRoleAvatar from '@/components/CuteRoleAvatar';
 import { getActiveDeviceInfo } from '@/lib/bluetoothPrinter';
@@ -65,6 +67,7 @@ const tabTitles: Record<string, string> = {
   rekap: 'Laporan Rekap & Analytics',
   arsip_laporan: 'Arsip & Riwayat Laporan Bulanan',
   keamanan: 'Keamanan & Hak Akses PIN',
+  database_editor: 'Database Editor (Supabase Live Grid)',
   tampilan: 'Pengaturan Tampilan & Font'
 };
 
@@ -89,6 +92,7 @@ export default function Navbar({
   const [isPrinterModalOpen, setIsPrinterModalOpen] = useState<boolean>(false);
   const [printerConnected, setPrinterConnected] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState<boolean>(false);
   const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -229,6 +233,18 @@ export default function Navbar({
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-teal-700' : 'text-slate-500'}`} />
               <span className="hidden md:inline">{isRefreshing ? 'Memuat...' : 'Refresh Data'}</span>
+            </button>
+          )}
+
+          {/* Manager Quick Backup Button */}
+          {currentRole === 'MANAGER' && (
+            <button
+              onClick={() => setIsBackupModalOpen(true)}
+              className="flex items-center gap-1.5 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-950 border border-emerald-300/80 px-2.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0 tactile-btn cursor-pointer"
+              title="Backup Data Supabase ke Google Apps Script (Google Sheets)"
+            >
+              <CloudUpload className="w-3.5 h-3.5 text-emerald-700" />
+              <span className="hidden lg:inline">Backup GAS</span>
             </button>
           )}
 
@@ -396,6 +412,13 @@ export default function Navbar({
       <DisplaySettingsModal
         isOpen={isModalOpen}
         onClose={closeSettingsModal}
+      />
+
+      {/* Backup Data Modal (Khusus Manager) */}
+      <BackupGasModal
+        isOpen={isBackupModalOpen}
+        onClose={() => setIsBackupModalOpen(false)}
+        onSuccess={onRefresh}
       />
     </>
   );

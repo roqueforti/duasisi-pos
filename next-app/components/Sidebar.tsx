@@ -33,7 +33,8 @@ import {
   ChevronsDown,
   ChevronsUp,
   HelpCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Database
 } from 'lucide-react';
 import CuteRoleAvatar from './CuteRoleAvatar';
 import RupiahIcon from '@/components/RupiahIcon';
@@ -111,7 +112,7 @@ export default function Sidebar({
       await showAlert('Fitur POS Kasir hanya untuk Staff/Kasir', 'warning');
       return;
     }
-    if (['pegawai', 'payroll', 'produk', 'kategori', 'shift', 'rekap', 'arsip_laporan', 'keamanan', 'menu', 'langkah', 'loyalty_card'].includes(tabKey) && currentRole !== 'MANAGER') {
+    if (['pegawai', 'payroll', 'produk', 'kategori', 'shift', 'rekap', 'arsip_laporan', 'keamanan', 'database_editor', 'menu', 'langkah', 'loyalty_card'].includes(tabKey) && currentRole !== 'MANAGER') {
       await showAlert('Akses Ditolak — Khusus Manager/Owner', 'error');
       return;
     }
@@ -184,6 +185,7 @@ export default function Sidebar({
         { id: 'rekap', label: 'Laporan Rekap', icon: BarChart3, managerOnly: true },
         { id: 'arsip_laporan', label: 'Arsip Laporan Bulanan', icon: FolderArchive, managerOnly: true },
         { id: 'keamanan', label: 'Keamanan & Hak Akses', icon: ShieldCheck, managerOnly: true },
+        { id: 'database_editor', label: 'Database Editor (Supabase)', icon: Database, managerOnly: true },
         { id: 'tampilan', label: 'Pengaturan Tampilan', icon: SlidersHorizontal }
       ]
     }
