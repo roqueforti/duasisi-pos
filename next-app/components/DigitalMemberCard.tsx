@@ -25,20 +25,86 @@ interface DigitalMemberCardProps {
   canEdit?: boolean;
 }
 
-const STAMP_COORDS = [
+export interface StampCoordItem {
+  slot: number;
+  cx: number;
+  cy: number;
+  rot: number;
+  r?: number;
+}
+
+export const STAMP_COORDS_10: StampCoordItem[] = [
   // Row 1 (y = 1121)
-  { slot: 1, cx: 534, cy: 1121, rot: -4 },
-  { slot: 2, cx: 1104, cy: 1121, rot: 5 },
-  { slot: 3, cx: 1674, cy: 1121, rot: -3 },
-  { slot: 4, cx: 2244, cy: 1121, rot: 4 },
-  { slot: 5, cx: 2814, cy: 1121, rot: -5 },
+  { slot: 1, cx: 534, cy: 1121, rot: -4, r: 215 },
+  { slot: 2, cx: 1104, cy: 1121, rot: 5, r: 215 },
+  { slot: 3, cx: 1674, cy: 1121, rot: -3, r: 215 },
+  { slot: 4, cx: 2244, cy: 1121, rot: 4, r: 215 },
+  { slot: 5, cx: 2814, cy: 1121, rot: -5, r: 215 },
   // Row 2 (y = 1649)
-  { slot: 6, cx: 534, cy: 1649, rot: 6 },
-  { slot: 7, cx: 1104, cy: 1649, rot: -4 },
-  { slot: 8, cx: 1674, cy: 1649, rot: 5 },
-  { slot: 9, cx: 2244, cy: 1649, rot: -3 },
-  { slot: 10, cx: 2814, cy: 1649, rot: 0 },
+  { slot: 6, cx: 534, cy: 1649, rot: 6, r: 215 },
+  { slot: 7, cx: 1104, cy: 1649, rot: -4, r: 215 },
+  { slot: 8, cx: 1674, cy: 1649, rot: 5, r: 215 },
+  { slot: 9, cx: 2244, cy: 1649, rot: -3, r: 215 },
+  { slot: 10, cx: 2814, cy: 1649, rot: 0, r: 215 },
 ];
+
+export function getStampCoords(totalStamps: number = 10): StampCoordItem[] {
+  if (totalStamps === 10) return STAMP_COORDS_10;
+  
+  const rotPattern = [-4, 5, -3, 4, -5, 6, -4, 5, -3, 3, -2, 4, -4, 5, -3, 4];
+  const startX = 534;
+  const endX = 2814;
+  const slots: StampCoordItem[] = [];
+
+  // Single row layout for small stamps count (<= 6)
+  if (totalStamps <= 6) {
+    const stepX = totalStamps > 1 ? (endX - startX) / (totalStamps - 1) : 0;
+    const r = totalStamps <= 4 ? 240 : 215;
+    for (let i = 0; i < totalStamps; i++) {
+      const cx = totalStamps === 1 ? 1674 : Math.round(startX + i * stepX);
+      slots.push({
+        slot: i + 1,
+        cx,
+        cy: 1385,
+        rot: rotPattern[i % rotPattern.length],
+        r
+      });
+    }
+    return slots;
+  }
+
+  // 2 rows layout (> 6 stamps)
+  const row1Count = Math.ceil(totalStamps / 2);
+  const row2Count = totalStamps - row1Count;
+  const stepX1 = row1Count > 1 ? (endX - startX) / (row1Count - 1) : 0;
+  const stepX2 = row2Count > 1 ? (endX - startX) / (row2Count - 1) : 0;
+  const maxPerRow = Math.max(row1Count, row2Count);
+  const r = maxPerRow > 5 ? Math.max(160, Math.floor(215 * (5 / maxPerRow))) : 215;
+
+  for (let i = 0; i < row1Count; i++) {
+    const cx = row1Count === 1 ? 1674 : Math.round(startX + i * stepX1);
+    slots.push({
+      slot: i + 1,
+      cx,
+      cy: 1121,
+      rot: rotPattern[i % rotPattern.length],
+      r
+    });
+  }
+
+  for (let i = 0; i < row2Count; i++) {
+    const cx = row2Count === 1 ? 1674 : Math.round(startX + i * stepX2);
+    slots.push({
+      slot: row1Count + i + 1,
+      cx,
+      cy: 1649,
+      rot: rotPattern[(row1Count + i) % rotPattern.length],
+      r
+    });
+  }
+
+  return slots;
+}
 
 export default function DigitalMemberCard({
   customer,
@@ -82,13 +148,18 @@ export default function DigitalMemberCard({
   const isLegacyClaim = currentProg.claimRule === 'FREE_ON_NTH';
   const remainingStamps = Math.max(0, targetStamps - currentStamps);
 
+  const prog75 = resolveCustomerProgram(customer, '75');
+  const prog45 = resolveCustomerProgram(customer, '45');
+  const target75 = prog75.totalStamps || 10;
+  const target45 = prog45.totalStamps || 10;
+
   const toggleCardSide = () => {
     setActiveCardType(prev => prev === '75' ? '45' : '75');
   };
 
   const handleAddStamp = async () => {
-    if (currentStamps >= 10) {
-      await showAlert(`Stempel Kartu ${activeCardType === '75' ? '7 KG' : '4 KG'} sudah penuh (10/10)! Silakan klaim reward cuci gratis terlebih dahulu.`, 'info');
+    if (currentStamps >= targetStamps) {
+      await showAlert(`Stempel Kartu ${activeCardType === '75' ? '7 KG' : '4 KG'} sudah penuh (${targetStamps}/${targetStamps})! Silakan klaim reward terlebih dahulu.`, 'info');
       return;
     }
     const nextVal = currentStamps + 1;
@@ -115,11 +186,16 @@ export default function DigitalMemberCard({
 
   const handleClaimReward = async () => {
     const cardTitle = `${currentProg.nama} (${activeCardType === '75' ? '7 KG' : '4 KG'})`;
-    const claimRuleText = isLegacyClaim 
-      ? 'Klaim Gratis Langsung di Stempel ke-10 (Member Lama)' 
-      : 'Klaim Cuci Gratis Transaksi ke-11 (10 Stamp Terkumpul)';
+    let claimRuleText = `Klaim Cuci Gratis Transaksi ke-${targetStamps + 1} (${targetStamps} Stamp Terkumpul)`;
+    if (isLegacyClaim) {
+      claimRuleText = `Klaim Gratis Langsung di Stempel ke-${targetStamps} (Member Lama)`;
+    } else if (currentProg.claimRule === 'FLEXIBLE_VOUCHER') {
+      claimRuleText = `Voucher Reward Bebas Dipakai Kapan Saja (${targetStamps} Stamp Terkumpul)`;
+    }
+
+    const rewardLabel = currentProg.rewardDeskripsi || '1x Cuci Gratis';
     const confirmed = await showConfirm(
-      `Klaim Reward Cuci Gratis untuk Kartu ${cardTitle} atas nama ${customer.nama}?\n\nAturan: ${claimRuleText}\n\nStempel kartu ini akan di-reset kembali ke 0.`,
+      `Klaim Reward "${rewardLabel}" untuk Kartu ${cardTitle} atas nama ${customer.nama}?\n\nAturan: ${claimRuleText}\n\nStempel kartu ini akan di-reset kembali ke 0.`,
       'Konfirmasi Klaim Reward'
     );
     if (!confirmed) return;
@@ -131,7 +207,7 @@ export default function DigitalMemberCard({
       setLocalStamps45(0);
       onUpdateStamps?.('45', 0);
     }
-    await showAlert(`Selamat! Reward 1x Cuci Gratis ${activeCardType === '75' ? '7 KG' : '4 KG'} (${claimRuleText}) berhasil diklaim dan kartu di-reset ke 0 stempel.`, 'success');
+    await showAlert(`Selamat! Reward ${rewardLabel} (${claimRuleText}) berhasil diklaim dan kartu di-reset ke 0 stempel.`, 'success');
   };
 
   const handleDownloadPNG = async () => {
@@ -164,14 +240,16 @@ export default function DigitalMemberCard({
   const handleShareWhatsApp = () => {
     const phone = (customer.noHp || '').replace(/[^0-9]/g, '');
     const targetPhone = phone.startsWith('0') ? '62' + phone.substring(1) : phone;
+    const reward75Desc = prog75.rewardDeskripsi || '1x Cuci Gratis';
+    const reward45Desc = prog45.rewardDeskripsi || '1x Cuci Gratis';
     const msg = [
       `Halo Kak *${customer.nama || 'Pelanggan'}*!`,
       `Berikut adalah update *Digital Member Loyalty Stamp Card* Anda di *Dua SiSi Laundry*:`,
       ``,
-      `• *Sisi Depan (Kartu 7 KG)*: *${localStamps75}/10 Stempel* ${localStamps75 >= 10 ? '(SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - localStamps75)} stempel lagi)`}`,
-      `• *Sisi Belakang (Kartu 4 KG)*: *${localStamps45}/10 Stempel* ${localStamps45 >= 10 ? '(SIAP KLAIM 1x CUCI GRATIS!)' : `(Kurang ${Math.max(0, 10 - localStamps45)} stempel lagi)`}`,
+      `• *Sisi Depan (${prog75.nama})*: *${localStamps75}/${target75} Stempel* ${localStamps75 >= target75 ? `(SIAP KLAIM ${reward75Desc.toUpperCase()}!)` : `(Kurang ${Math.max(0, target75 - localStamps75)} stempel lagi)`}`,
+      `• *Sisi Belakang (${prog45.nama})*: *${localStamps45}/${target45} Stempel* ${localStamps45 >= target45 ? `(SIAP KLAIM ${reward45Desc.toUpperCase()}!)` : `(Kurang ${Math.max(0, target45 - localStamps45)} stempel lagi)`}`,
       ``,
-      `Kumpulkan 10 stempel penuh untuk mendapatkan *1x Cuci GRATIS*! Tunjukkan pesan atau kartu digital ini saat berkunjung ke outlet.`,
+      `Kumpulkan stempel penuh untuk mendapatkan reward Anda! Tunjukkan pesan atau kartu digital ini saat berkunjung ke outlet.`,
       ``,
       `Terima kasih telah mempercayakan laundry Anda di Dua SiSi Laundry!`
     ].join('\n');
@@ -404,102 +482,139 @@ export default function DigitalMemberCard({
             {customer.maskedHp || customer.noHp || '-'}
           </text>
 
-          {/* 10. 10 STAMP CIRCLE SLOTS */}
-          {STAMP_COORDS.map(({ slot, cx, cy, rot }) => {
-            const isStamped = stamps >= slot;
-            const isReward = slot === 10;
+          {/* 10. DYNAMIC STAMP CIRCLE SLOTS */}
+          {(() => {
+            const cardProg = resolveCustomerProgram(customer, type);
+            const cardTargetStamps = cardProg.totalStamps || 10;
+            const coords = getStampCoords(cardTargetStamps);
 
-            return (
-              <g key={slot}>
-                {/* Clean slot base matching theme */}
-                {isReward ? (
-                  /* Reward Target Slot (10) */
-                  <g>
-                    <circle cx={cx} cy={cy} r="215" fill="rgba(45, 212, 191, 0.08)" stroke="#2DD4BF" strokeWidth="10" strokeDasharray="16 10" />
-                    <circle cx={cx} cy={cy} r="185" fill="rgba(4, 30, 32, 0.6)" stroke="rgba(45, 212, 191, 0.3)" strokeWidth="4" />
-                    <g transform={`translate(${cx}, ${cy - 26})`} fill="#5EEAD4">
-                      <polygon points="0,-12 3.7,-3.7 12,-3.7 5.3,1.8 7.8,10.2 0,4.8 -7.8,10.2 -5.3,1.8 -12,-3.7 -3.7,-3.7" transform="translate(-40, 0)" />
-                      <polygon points="0,-15 4.6,-4.6 15,-4.6 6.6,2.2 9.8,12.7 0,6 -9.8,12.7 -6.6,2.2 -15,-4.6 -4.6,-4.6" transform="translate(0, -2)" />
-                      <polygon points="0,-12 3.7,-3.7 12,-3.7 5.3,1.8 7.8,10.2 0,4.8 -7.8,10.2 -5.3,1.8 -12,-3.7 -3.7,-3.7" transform="translate(40, 0)" />
-                    </g>
-                    <text x={cx} y={cy + 38} textAnchor="middle" fill="#FFFFFF" fontSize="68" fontWeight="900" fontFamily="sans-serif">FREE</text>
-                    <text x={cx} y={cy + 96} textAnchor="middle" fill="#99F6E4" fontSize="36" fontWeight="800" letterSpacing="2">1x CUCI</text>
-                  </g>
-                ) : (
-                  /* Standard Stamp Target Slot (1-9) */
-                  <g>
-                    <circle cx={cx} cy={cy} r="215" fill="rgba(4, 20, 22, 0.65)" stroke="rgba(255, 255, 255, 0.18)" strokeWidth="8" strokeDasharray="16 10" />
-                    <circle cx={cx} cy={cy} r="185" fill="rgba(255, 255, 255, 0.03)" />
-                    <text x={cx} y={cy + 32} textAnchor="middle" fill="rgba(255, 255, 255, 0.4)" fontSize="100" fontWeight="900" fontFamily="sans-serif">{slot}</text>
-                    <text x={cx} y={cy + 96} textAnchor="middle" fill="rgba(94, 234, 212, 0.6)" fontSize="32" fontWeight="800" letterSpacing="3">STAMP</text>
-                  </g>
-                )}
+            // Determine reward visual texts
+            let rewardTopText = 'FREE';
+            let rewardBottomText = '1x CUCI';
+            if (cardProg.rewardType === 'DISCOUNT_PERCENT') {
+              rewardTopText = 'DISKON';
+              rewardBottomText = `${cardProg.rewardValue || 50}%`;
+            } else if (cardProg.rewardType === 'DISCOUNT_NOMINAL') {
+              rewardTopText = 'POTONGAN';
+              const val = cardProg.rewardValue || 0;
+              rewardBottomText = val >= 1000 ? `Rp ${Math.round(val / 1000)}rb` : `Rp ${val}`;
+            } else if (cardProg.rewardType === 'FREE_PRODUCT') {
+              rewardTopText = 'FREE';
+              rewardBottomText = (cardProg.rewardProdukNama || 'PRODUK').toUpperCase().slice(0, 10);
+            } else if (cardProg.rewardType === 'BONUS_POINTS') {
+              rewardTopText = 'BONUS';
+              rewardBottomText = `${cardProg.rewardValue || 100} PTS`;
+            } else if (cardProg.rewardDeskripsi) {
+              const parts = cardProg.rewardDeskripsi.trim().split(' ');
+              if (parts.length >= 2) {
+                rewardTopText = parts[0].toUpperCase();
+                rewardBottomText = parts.slice(1).join(' ').toUpperCase().slice(0, 11);
+              } else {
+                rewardBottomText = cardProg.rewardDeskripsi.toUpperCase().slice(0, 11);
+              }
+            }
 
-                {/* Dynamic Digital Stamp Overlay when Stamped */}
-                {isStamped && (
-                  isReward ? (
-                    /* Slot 10 Celebratory Reward Seal in Emerald / Luminous Mint & White */
-                    <g transform={`rotate(${rot}, ${cx}, ${cy})`}>
-                      <circle cx={cx} cy={cy} r="215" fill="#F0FDFA" stroke="#0D9488" strokeWidth="14" strokeDasharray="16 8" />
-                      <circle cx={cx} cy={cy} r="185" fill="#0F766E" stroke="#2DD4BF" strokeWidth="8" />
-                      <circle cx={cx} cy={cy} r="150" fill="#042628" />
-                      
-                      {/* Stars & Text */}
-                      <g transform={`translate(${cx}, ${cy - 80})`} fill="#5EEAD4">
-                        {[-56, -28, 0, 28, 56].map((offset, i) => (
-                          <polygon 
-                            key={i} 
-                            points="0,-11 3.4,-3.4 11,-3.4 4.8,1.6 7.2,9.3 0,4.4 -7.2,9.3 -4.8,1.6 -11,-3.4 -3.4,-3.4" 
-                            transform={`translate(${offset}, ${i === 2 ? -3 : 0})`} 
-                          />
-                        ))}
+            return coords.map(({ slot, cx, cy, rot, r = 215 }) => {
+              const isStamped = stamps >= slot;
+              const isReward = slot === cardTargetStamps;
+              const scale = r / 215;
+              const rInner = Math.round(r * (185 / 215));
+              const rCore = Math.round(r * (150 / 215));
+
+              return (
+                <g key={slot}>
+                  {/* Clean slot base matching theme */}
+                  {isReward ? (
+                    /* Reward Target Slot (Last Slot) */
+                    <g>
+                      <circle cx={cx} cy={cy} r={r} fill="rgba(45, 212, 191, 0.08)" stroke="#2DD4BF" strokeWidth={Math.max(6, Math.round(10 * scale))} strokeDasharray="16 10" />
+                      <circle cx={cx} cy={cy} r={rInner} fill="rgba(4, 30, 32, 0.6)" stroke="rgba(45, 212, 191, 0.3)" strokeWidth={Math.max(3, Math.round(4 * scale))} />
+                      <g transform={`translate(${cx}, ${cy - Math.round(26 * scale)}) scale(${scale})`} fill="#5EEAD4">
+                        <polygon points="0,-12 3.7,-3.7 12,-3.7 5.3,1.8 7.8,10.2 0,4.8 -7.8,10.2 -5.3,1.8 -12,-3.7 -3.7,-3.7" transform="translate(-40, 0)" />
+                        <polygon points="0,-15 4.6,-4.6 15,-4.6 6.6,2.2 9.8,12.7 0,6 -9.8,12.7 -6.6,2.2 -15,-4.6 -4.6,-4.6" transform="translate(0, -2)" />
+                        <polygon points="0,-12 3.7,-3.7 12,-3.7 5.3,1.8 7.8,10.2 0,4.8 -7.8,10.2 -5.3,1.8 -12,-3.7 -3.7,-3.7" transform="translate(40, 0)" />
                       </g>
-                      <text x={cx} y={cy - 18} textAnchor="middle" fill="#FFFFFF" fontSize="60" fontWeight="900" fontFamily="sans-serif">
-                        GRATIS
-                      </text>
-                      <text x={cx} y={cy + 42} textAnchor="middle" fill="#2DD4BF" fontSize="46" fontWeight="900" fontFamily="sans-serif">
-                        1x CUCI
-                      </text>
-                      <text x={cx} y={cy + 100} textAnchor="middle" fill="#CCFBF1" fontSize="34" fontWeight="800">
-                        DUA SISI LAUNDRY
-                      </text>
+                      <text x={cx} y={cy + Math.round(38 * scale)} textAnchor="middle" fill="#FFFFFF" fontSize={Math.round(68 * scale)} fontWeight="900" fontFamily="sans-serif">{rewardTopText}</text>
+                      <text x={cx} y={cy + Math.round(96 * scale)} textAnchor="middle" fill="#99F6E4" fontSize={Math.round(36 * scale)} fontWeight="800" letterSpacing="2">{rewardBottomText}</text>
                     </g>
                   ) : (
-                    /* Regular Stamped Seal (Slots 1-9) */
-                    <g transform={`rotate(${rot}, ${cx}, ${cy})`}>
-                      {/* Outer Seal Rings */}
-                      <circle cx={cx} cy={cy} r="215" fill="#E6FFFA" stroke="#0D9488" strokeWidth="12" strokeDasharray="14 6" />
-                      <circle cx={cx} cy={cy} r="185" fill="#0F3D40" stroke="#115E59" strokeWidth="6" />
-                      <circle cx={cx} cy={cy} r="155" fill="#062527" stroke="#2DD4BF" strokeWidth="4" />
-
-                      {/* Stamp Header Text */}
-                      <text x={cx} y={cy - 75} textAnchor="middle" fill="#99F6E4" fontSize="32" fontWeight="800" letterSpacing="3">
-                        DUA SISI LAUNDRY
-                      </text>
-
-                      {/* Stamp Checkmark */}
-                      <path 
-                        d={`M ${cx - 45} ${cy - 10} L ${cx - 15} ${cy + 25} L ${cx + 50} ${cy - 40}`} 
-                        fill="none" 
-                        stroke="#FFFFFF" 
-                        strokeWidth="16" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                      />
-
-                      {/* Stamp Verified Text */}
-                      <text x={cx} y={cy + 70} textAnchor="middle" fill="#FFFFFF" fontSize="40" fontWeight="900" letterSpacing="4">
-                        VALID
-                      </text>
-                      <text x={cx} y={cy + 112} textAnchor="middle" fill="#5EEAD4" fontSize="28" fontWeight="700">
-                        STAMP #{slot}
-                      </text>
+                    /* Standard Stamp Target Slot */
+                    <g>
+                      <circle cx={cx} cy={cy} r={r} fill="rgba(4, 20, 22, 0.65)" stroke="rgba(255, 255, 255, 0.18)" strokeWidth={Math.max(5, Math.round(8 * scale))} strokeDasharray="16 10" />
+                      <circle cx={cx} cy={cy} r={rInner} fill="rgba(255, 255, 255, 0.03)" />
+                      <text x={cx} y={cy + Math.round(32 * scale)} textAnchor="middle" fill="rgba(255, 255, 255, 0.4)" fontSize={Math.round(100 * scale)} fontWeight="900" fontFamily="sans-serif">{slot}</text>
+                      <text x={cx} y={cy + Math.round(96 * scale)} textAnchor="middle" fill="rgba(94, 234, 212, 0.6)" fontSize={Math.round(32 * scale)} fontWeight="800" letterSpacing="3">STAMP</text>
                     </g>
-                  )
-                )}
-              </g>
-            );
-          })}
+                  )}
+
+                  {/* Dynamic Digital Stamp Overlay when Stamped */}
+                  {isStamped && (
+                    isReward ? (
+                      /* Celebratory Reward Seal in Emerald / Luminous Mint & White */
+                      <g transform={`rotate(${rot}, ${cx}, ${cy})`}>
+                        <circle cx={cx} cy={cy} r={r} fill="#F0FDFA" stroke="#0D9488" strokeWidth={Math.max(8, Math.round(14 * scale))} strokeDasharray="16 8" />
+                        <circle cx={cx} cy={cy} r={rInner} fill="#0F766E" stroke="#2DD4BF" strokeWidth={Math.max(5, Math.round(8 * scale))} />
+                        <circle cx={cx} cy={cy} r={rCore} fill="#042628" />
+                        
+                        {/* Stars & Text */}
+                        <g transform={`translate(${cx}, ${cy - Math.round(80 * scale)}) scale(${scale})`} fill="#5EEAD4">
+                          {[-56, -28, 0, 28, 56].map((offset, i) => (
+                            <polygon 
+                              key={i} 
+                              points="0,-11 3.4,-3.4 11,-3.4 4.8,1.6 7.2,9.3 0,4.4 -7.2,9.3 -4.8,1.6 -11,-3.4 -3.4,-3.4" 
+                              transform={`translate(${offset}, ${i === 2 ? -3 : 0})`} 
+                            />
+                          ))}
+                        </g>
+                        <text x={cx} y={cy - Math.round(18 * scale)} textAnchor="middle" fill="#FFFFFF" fontSize={Math.round(58 * scale)} fontWeight="900" fontFamily="sans-serif">
+                          {rewardTopText}
+                        </text>
+                        <text x={cx} y={cy + Math.round(42 * scale)} textAnchor="middle" fill="#2DD4BF" fontSize={Math.round(44 * scale)} fontWeight="900" fontFamily="sans-serif">
+                          {rewardBottomText}
+                        </text>
+                        <text x={cx} y={cy + Math.round(100 * scale)} textAnchor="middle" fill="#CCFBF1" fontSize={Math.round(32 * scale)} fontWeight="800">
+                          DUA SISI LAUNDRY
+                        </text>
+                      </g>
+                    ) : (
+                      /* Regular Stamped Seal */
+                      <g transform={`rotate(${rot}, ${cx}, ${cy})`}>
+                        {/* Outer Seal Rings */}
+                        <circle cx={cx} cy={cy} r={r} fill="#E6FFFA" stroke="#0D9488" strokeWidth={Math.max(7, Math.round(12 * scale))} strokeDasharray="14 6" />
+                        <circle cx={cx} cy={cy} r={rInner} fill="#0F3D40" stroke="#115E59" strokeWidth={Math.max(4, Math.round(6 * scale))} />
+                        <circle cx={cx} cy={cy} r={Math.round(r * (155 / 215))} fill="#062527" stroke="#2DD4BF" strokeWidth={Math.max(3, Math.round(4 * scale))} />
+
+                        {/* Stamp Header Text */}
+                        <text x={cx} y={cy - Math.round(75 * scale)} textAnchor="middle" fill="#99F6E4" fontSize={Math.round(30 * scale)} fontWeight="800" letterSpacing="3">
+                          DUA SISI LAUNDRY
+                        </text>
+
+                        {/* Stamp Checkmark */}
+                        <g transform={`translate(${cx}, ${cy}) scale(${scale})`}>
+                          <path 
+                            d="M -45 -10 L -15 25 L 50 -40" 
+                            fill="none" 
+                            stroke="#FFFFFF" 
+                            strokeWidth="16" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                          />
+                        </g>
+
+                        {/* Stamp Verified Text */}
+                        <text x={cx} y={cy + Math.round(70 * scale)} textAnchor="middle" fill="#FFFFFF" fontSize={Math.round(38 * scale)} fontWeight="900" letterSpacing="4">
+                          VALID
+                        </text>
+                        <text x={cx} y={cy + Math.round(112 * scale)} textAnchor="middle" fill="#5EEAD4" fontSize={Math.round(26 * scale)} fontWeight="700">
+                          STAMP #{slot}
+                        </text>
+                      </g>
+                    )
+                  )}
+                </g>
+              );
+            });
+          })()}
 
         </svg>
       </div>
@@ -524,7 +639,7 @@ export default function DigitalMemberCard({
                   Anti-Pemalsuan
                 </span>
               </div>
-              <p className="dmc-subtitle">Kumpulkan 10 stempel untuk klaim 1x cuci gratis</p>
+              <p className="dmc-subtitle">Kumpulkan {targetStamps} stempel untuk klaim {currentProg.rewardDeskripsi || 'reward cuci gratis'}</p>
             </div>
           </div>
 
@@ -543,9 +658,9 @@ export default function DigitalMemberCard({
               onClick={() => setActiveCardType('75')}
               className={`dmc-tab-btn ${activeCardType === '75' ? 'active' : ''}`}
             >
-              <span>Kartu 7 KG</span>
+              <span>{prog75.nama}</span>
               <span className="dmc-tab-count">
-                {localStamps75}/10
+                {localStamps75}/{target75}
               </span>
             </button>
 
@@ -555,9 +670,9 @@ export default function DigitalMemberCard({
               onClick={() => setActiveCardType('45')}
               className={`dmc-tab-btn ${activeCardType === '45' ? 'active' : ''}`}
             >
-              <span>Kartu 4 KG</span>
+              <span>{prog45.nama}</span>
               <span className="dmc-tab-count">
-                {localStamps45}/10
+                {localStamps45}/{target45}
               </span>
             </button>
           </div>
@@ -574,8 +689,8 @@ export default function DigitalMemberCard({
               <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
               <span>
                 {activeCardType === '75' 
-                  ? `Sisi Depan: Kartu 7 KG (${localStamps75}/10 Stempel)` 
-                  : `Sisi Belakang: Kartu 4 KG (${localStamps45}/10 Stempel)`}
+                  ? `Sisi Depan: ${prog75.nama} (${localStamps75}/${target75} Stempel)` 
+                  : `Sisi Belakang: ${prog45.nama} (${localStamps45}/${target45} Stempel)`}
               </span>
             </div>
             
@@ -586,7 +701,7 @@ export default function DigitalMemberCard({
               title="Balik Kartu Member (3D Flip)"
             >
               <RotateCw className={`w-3.5 h-3.5 transition-transform duration-500 ${isFlipped ? 'rotate-180 text-teal-300' : 'text-teal-400'}`} />
-              <span>{activeCardType === '75' ? 'Balik ke Kartu 4 KG' : 'Balik ke Kartu 7 KG'}</span>
+              <span>{activeCardType === '75' ? `Balik ke ${prog45.nama}` : `Balik ke ${prog75.nama}`}</span>
             </button>
           </div>
 
@@ -621,14 +736,16 @@ export default function DigitalMemberCard({
                 <div className="text-sm font-black tracking-tight flex items-center gap-2 text-white">
                   <span>TARGET {targetStamps} STEMPEL TERCAPAI</span>
                   <span className="px-2 py-0.5 rounded-full bg-teal-500/20 border border-teal-400/30 text-teal-300 text-[10px] font-bold">
-                    {isLegacyClaim ? 'Free di ke-10' : 'Transaksi ke-11 Free'}
+                    {isLegacyClaim ? `Free di ke-${targetStamps}` : currentProg.claimRule === 'FLEXIBLE_VOUCHER' ? 'Voucher Siap' : `Transaksi ke-${targetStamps + 1} Free`}
                   </span>
                 </div>
                 <div className="text-xs font-semibold text-teal-100/80 mt-0.5">
                   {isLegacyClaim ? (
-                    <>Pelanggan berhak <strong>langsung cuci gratis</strong> pada transaksi stempel ke-{targetStamps} ini.</>
+                    <>Pelanggan berhak <strong>langsung klaim {currentProg.rewardDeskripsi || 'reward'}</strong> pada transaksi stempel ke-{targetStamps} ini.</>
+                  ) : currentProg.claimRule === 'FLEXIBLE_VOUCHER' ? (
+                    <>{targetStamps} Stempel penuh! Voucher <strong>{currentProg.rewardDeskripsi || 'reward'}</strong> siap diklaim kapan saja.</>
                   ) : (
-                    <>10 Stempel penuh! Pelanggan berhak <strong>1x Cuci Gratis</strong> pada <strong>transaksi berikutnya (kunjungan ke-11)</strong>.</>
+                    <>{targetStamps} Stempel penuh! Pelanggan berhak <strong>{currentProg.rewardDeskripsi || 'reward'}</strong> pada <strong>transaksi berikutnya (kunjungan ke-{targetStamps + 1})</strong>.</>
                   )}
                 </div>
               </div>
@@ -661,26 +778,26 @@ export default function DigitalMemberCard({
                   onClick={handleSubtractStamp}
                   disabled={currentStamps <= 0}
                   className="dmc-btn-stepper-minus"
-                  title={`Kurangi Stempel ${activeCardType === '75' ? '7 KG' : '4 KG'} (-1)`}
+                  title={`Kurangi Stempel ${currentProg.nama} (-1)`}
                 >
                   <Minus className="w-4 h-4" />
                 </button>
 
                 <div className="dmc-counter-pill">
                   <span className="dmc-counter-label">
-                    Kartu {activeCardType === '75' ? '7 KG' : '4 KG'}
+                    {currentProg.nama}
                   </span>
                   <span className="dmc-counter-val">
-                    {currentStamps} / 10
+                    {currentStamps} / {targetStamps}
                   </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleAddStamp}
-                  disabled={currentStamps >= 10}
+                  disabled={currentStamps >= targetStamps}
                   className="dmc-btn-stamp-add"
-                  title={`Tambah Stempel ${activeCardType === '75' ? '7 KG' : '4 KG'} (+1)`}
+                  title={`Tambah Stempel ${currentProg.nama} (+1)`}
                 >
                   <Plus className="w-4 h-4" />
                   <span>Beri Stempel (+1)</span>
@@ -695,7 +812,7 @@ export default function DigitalMemberCard({
               title="Balik Kartu Member (3D Flip)"
             >
               <RotateCw className={`w-3.5 h-3.5 transition-transform duration-500 ${isFlipped ? 'rotate-180 text-teal-300' : 'text-teal-400'}`} />
-              <span>{activeCardType === '75' ? 'Balik ke Kartu 4 KG' : 'Balik ke Kartu 7 KG'}</span>
+              <span>{activeCardType === '75' ? `Balik ke ${prog45.nama}` : `Balik ke ${prog75.nama}`}</span>
             </button>
           </div>
 

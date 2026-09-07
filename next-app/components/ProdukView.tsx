@@ -480,10 +480,13 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
         ? item.inventoryDeductionQty.toString()
         : '1'
     );
+    const isItemFullServiceOrDrop = validTipe === 'FullService' || (item.kategori || '').toLowerCase().includes('drop');
     setBahanBakuList(
-      Array.isArray(item.bahanBakuList) && item.bahanBakuList.length > 0
+      Array.isArray(item.bahanBakuList) && item.bahanBakuList.length > 0 && isItemFullServiceOrDrop
         ? item.bahanBakuList.map(b => ({ ...b, qty: parseDecimal(b.qty, 1) }))
-        : (item.idInventory && item.idInventory !== 'none' ? [{ idInventory: item.idInventory, qty: parseDecimal(item.inventoryDeductionQty, 1), tahap: 'Dicuci' }] : [])
+        : (isItemFullServiceOrDrop && item.idInventory && item.idInventory !== 'none' 
+            ? [{ idInventory: item.idInventory, qty: parseDecimal(item.inventoryDeductionQty, 1), tahap: 'Dicuci' }] 
+            : [])
     );
     let pSteps: CustomPipelineStep[] = [];
     if (Array.isArray(item.pipelineSteps) && item.pipelineSteps.length > 0) {
@@ -520,10 +523,10 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
     }
 
     const payloadPipeline = customPipelineSteps.map((s, i) => ({ ...s, step: i + 1 }));
-    const filteredBahan = bahanBakuList.filter(b => b.idInventory && b.idInventory.trim());
-    const isMultiBahan = tipe === 'FullService' || (kategori || '').toLowerCase().includes('drop') || filteredBahan.length > 0;
-    const cleanDedQty = parseDecimal(inventoryDeductionQty, 1);
     const isFullServiceOrDrop = tipe === 'FullService' || (kategori || '').toLowerCase().includes('drop');
+    const filteredBahan = isFullServiceOrDrop ? bahanBakuList.filter(b => b.idInventory && b.idInventory.trim()) : [];
+    const isMultiBahan = isFullServiceOrDrop && filteredBahan.length > 0;
+    const cleanDedQty = parseDecimal(inventoryDeductionQty, 1);
     const payload = {
         kode: kode.trim(),
         nama: nama.trim(),
@@ -2256,7 +2259,7 @@ export default function ProdukView({ currentRole }: ProdukViewProps = {}) {
                                         value={item.qty}
                                         onChange={(e) => {
                                           const newArr = [...bahanBakuList];
-                                          newArr[idx].qty = parseDecimal(e.target.value, 0);
+                                          newArr[idx].qty = e.target.value as any;
                                           setBahanBakuList(newArr);
                                         }}
                                         min="0"

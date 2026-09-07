@@ -226,9 +226,10 @@ export interface PromoVoucher {
   statusAktif: boolean;
 }
 
-export type LoyaltyClaimRule = 'FREE_ON_NTH' | 'FREE_ON_NEXT_TRX';
+export type LoyaltyClaimRule = 'FREE_ON_NTH' | 'FREE_ON_NEXT_TRX' | 'FLEXIBLE_VOUCHER';
 export type LoyaltyTargetKapasitas = '7kg' | '4kg' | 'all' | 'custom';
-export type LoyaltySyaratLayanan = 'washer_dryer' | 'washer_only' | 'all' | 'custom';
+export type LoyaltySyaratLayanan = 'washer_dryer' | 'washer_only' | 'min_transaksi' | 'all' | 'custom';
+export type LoyaltyRewardType = 'FREE_SERVICE' | 'DISCOUNT_PERCENT' | 'DISCOUNT_NOMINAL' | 'FREE_PRODUCT' | 'BONUS_POINTS';
 
 export interface LoyaltyProgram {
   id: string; // e.g. 'CARD_7KG_LEGACY', 'CARD_7KG_NEW', 'CARD_4KG'
@@ -236,15 +237,19 @@ export interface LoyaltyProgram {
   deskripsi?: string;
   kapasitas: LoyaltyTargetKapasitas;
   syaratLayanan: LoyaltySyaratLayanan;
+  minTransaksi?: number; // Minimal nominal transaksi untuk mendapatkan 1 stempel
   customLayananKeywords?: string[];
-  totalStamps: number; // default 10
-  claimRule: LoyaltyClaimRule; // FREE_ON_NTH vs FREE_ON_NEXT_TRX
-  rewardDeskripsi: string; // e.g. '1x Cuci Gratis'
-  rewardType: 'FREE_SERVICE' | 'DISCOUNT_PERCENT' | 'DISCOUNT_NOMINAL';
-  rewardValue?: number; // e.g. 100 for 100% discount
+  totalStamps: number; // fleksibel, e.g. 5, 8, 10, 12, etc.
+  claimRule: LoyaltyClaimRule; // FREE_ON_NTH vs FREE_ON_NEXT_TRX vs FLEXIBLE_VOUCHER
+  rewardDeskripsi: string; // e.g. '1x Cuci Gratis 7 KG', 'Diskon 50%', 'Potongan Rp 25.000'
+  rewardType: LoyaltyRewardType;
+  rewardValue?: number; // e.g. 100 for 100%, 50 for 50%, 25000 for Rp 25.000, 50 for 50 poin
+  rewardLayananNama?: string; // Layanan spesifik yang digratiskan (jika FREE_SERVICE)
+  rewardProdukNama?: string; // Produk fisik gratis (jika FREE_PRODUCT)
+  maxDiscountNominal?: number; // Cap maksimal diskon nominal jika rewardType = DISCOUNT_PERCENT
   warnaTema: 'emerald' | 'teal' | 'gold' | 'sapphire' | 'slate';
   isActive: boolean;
-  isDefault: boolean; // default untuk registrasi baru
+  isDefault: boolean; // default untuk registrasi baru pada kapasitas tersebut
   urutan?: number;
 }
 

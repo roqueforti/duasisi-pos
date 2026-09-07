@@ -281,7 +281,8 @@ function tambahLayanan(data) {
     const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : "";
     let idInv = data.idInventory || "";
     
-    if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
+    const isBOM = (data.tipe === "FullService" || String(data.kategori || "").toLowerCase().includes("drop"));
+    if (isBOM && Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
       const sanitizedBahan = data.bahanBakuList.map(function(b) {
         return {
           idInventory: String(b.idInventory || '').trim(),
@@ -473,7 +474,8 @@ function updateLayanan(id, data) {
         const pSteps = data.pipelineSteps ? JSON.stringify(data.pipelineSteps) : (rows[i][7] || "");
         let idInv = data.idInventory !== undefined ? data.idInventory : (rows[i][9] || "");
         
-        if (Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
+        const isBOM = (data.tipe === "FullService" || String(data.kategori || "").toLowerCase().includes("drop"));
+        if (isBOM && Array.isArray(data.bahanBakuList) && data.bahanBakuList.length > 0) {
           const sanitizedBahan = data.bahanBakuList.map(function(b) {
             return {
               idInventory: String(b.idInventory || '').trim(),

@@ -764,7 +764,7 @@ export async function sbGetLayananListAll(): Promise<any[]> {
     kategoriWarna: row.kategori_warna,
     kategoriIcon: row.kategori_icon,
     idInventory: row.id_inventory,
-    inventoryDeductionQty: Number(row.inventory_deduction_qty) || 1,
+    inventoryDeductionQty: row.inventory_deduction_qty !== null && row.inventory_deduction_qty !== undefined ? Number(row.inventory_deduction_qty) : 1,
     hargaModal: Number(row.harga_modal) || 0,
     aktif: row.aktif || 'Y',
     bahanBakuList: bomMap.get(row.id) || [],
@@ -789,7 +789,7 @@ export async function sbTambahLayanan(payload: any) {
     kategori_warna: payload.kategoriWarna || null,
     kategori_icon: payload.kategoriIcon || null,
     id_inventory: payload.idInventory && payload.idInventory !== 'none' ? payload.idInventory : null,
-    inventory_deduction_qty: payload.inventoryDeductionQty || 1,
+    inventory_deduction_qty: payload.inventoryDeductionQty !== null && payload.inventoryDeductionQty !== undefined ? Number(payload.inventoryDeductionQty) : 1,
     harga_modal: payload.hargaModal || 0,
     aktif: 'Y',
   });
@@ -865,7 +865,7 @@ export async function sbUpdateLayanan(id: string, payload: any) {
       kategori_warna: payload.kategoriWarna || null,
       kategori_icon: payload.kategoriIcon || null,
       id_inventory: payload.idInventory && payload.idInventory !== 'none' ? payload.idInventory : null,
-      inventory_deduction_qty: payload.inventoryDeductionQty || 1,
+      inventory_deduction_qty: payload.inventoryDeductionQty !== null && payload.inventoryDeductionQty !== undefined ? Number(payload.inventoryDeductionQty) : 1,
       harga_modal: payload.hargaModal || 0,
       updated_at: new Date().toISOString(),
     })
@@ -2119,6 +2119,10 @@ export async function sbGetLoyaltyPrograms(): Promise<any[]> {
     rewardDeskripsi: p.reward_deskripsi,
     rewardType: p.reward_type,
     rewardValue: Number(p.reward_value) || 100,
+    minTransaksi: p.min_transaksi ? Number(p.min_transaksi) : undefined,
+    rewardLayananNama: p.reward_layanan_nama || undefined,
+    rewardProdukNama: p.reward_produk_nama || undefined,
+    maxDiscountNominal: p.max_discount_nominal ? Number(p.max_discount_nominal) : undefined,
     warnaTema: p.warna_tema,
     isActive: Boolean(p.is_active),
     isDefault: Boolean(p.is_default),
@@ -2130,7 +2134,7 @@ export async function sbSaveLoyaltyProgram(program: any): Promise<any> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
-  const payload = {
+  const payload: any = {
     id: program.id,
     nama: program.nama,
     deskripsi: program.deskripsi || null,
