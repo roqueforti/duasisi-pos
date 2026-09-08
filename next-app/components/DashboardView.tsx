@@ -651,6 +651,11 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     };
   }, [todayTransactions, periodTransactions, currentStart, currentEnd, financials.pendapatan, monthlyTargets.targetRevenue]);
 
+  const hoveredTrendItem = useMemo(() => {
+    if (!activeHoverDate) return null;
+    return dailyPerformance.trendList.find(d => d.dateIso === activeHoverDate) || null;
+  }, [activeHoverDate, dailyPerformance.trendList]);
+
   // =========================================================================
   // 6. PROFITABILITAS PER LAYANAN & PRODUK (P0.3)
   // =========================================================================
@@ -2355,54 +2360,72 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
           {/* Interactive Bar Chart with Clear Horizontal Scroll & Layout Isolation */}
           <div className="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4 space-y-3">
-            <div className="overflow-x-auto pb-2 scrollbar-thin">
+            <div className="overflow-x-auto pt-3 pb-2 scrollbar-thin">
               <div className="min-w-[620px] sm:min-w-full">
-                {/* Bar Area: Isolated Height */}
-                <div className="flex justify-between items-end h-36 pt-6 px-1 gap-1 sm:gap-2">
+                {/* Bar Area: Isolated Height with Dedicated Tooltip Headroom */}
+                <div className="flex justify-between items-end h-48 px-1 sm:px-2 gap-1 sm:gap-2">
                   {dailyPerformance.trendList.length > 0 ? (
                     dailyPerformance.trendList.map((d, idx) => {
                       const todayKey = formatLocalDateIso(new Date());
                       const isToday = d.dateIso === todayKey;
                       const heightPercent = d.revenue > 0 
-                        ? Math.max(8, Math.round((d.revenue / Math.max(1, dailyPerformance.maxRev)) * 92)) 
+                        ? Math.max(8, Math.round((d.revenue / Math.max(1, dailyPerformance.maxRev)) * 95)) 
                         : 4;
                       const isHovered = activeHoverDate === d.dateIso;
+                      const totalItems = dailyPerformance.trendList.length;
+
+                      // Prevent horizontal tooltip clipping at left and right boundaries
+                      let tooltipPosClass = 'left-1/2 -translate-x-1/2';
+                      let arrowPosClass = 'left-1/2 -translate-x-1/2';
+                      if (idx <= 1 || (totalItems > 14 && idx <= 3)) {
+                        tooltipPosClass = 'left-0';
+                        arrowPosClass = 'left-4';
+                      } else if (idx >= totalItems - 2 || (totalItems > 14 && idx >= totalItems - 4)) {
+                        tooltipPosClass = 'right-0';
+                        arrowPosClass = 'right-4';
+                      }
 
                       return (
                         <div 
                           key={idx} 
-                          className="flex-1 h-full flex flex-col justify-end items-center group relative cursor-pointer"
+                          className={`flex-1 h-full flex flex-col justify-end items-center group relative cursor-pointer rounded-lg py-1 transition-colors ${
+                            isHovered ? 'bg-slate-200/60' : 'hover:bg-slate-100/60'
+                          }`}
                           onMouseEnter={() => setActiveHoverDate(d.dateIso)}
                           onMouseLeave={() => setActiveHoverDate(null)}
-                          onClick={() => setActiveHoverDate(d.dateIso)}
+                          onClick={() => setActiveHoverDate(activeHoverDate === d.dateIso ? null : d.dateIso)}
                         >
-                          {/* Rich Tooltip on Hover / Touch */}
-                          {(isHovered || false) && (
-                            <div className="absolute -top-14 opacity-100 pointer-events-none bg-slate-900 text-white text-[10px] font-mono py-1.5 px-3 rounded-xl shadow-2xl whitespace-nowrap z-40 border border-slate-700">
+                          {/* Rich Tooltip with Full Headroom - Guaranteed No Vertical or Horizontal Clipping */}
+                          {isHovered && (
+                            <div className={`absolute top-1.5 opacity-100 pointer-events-none bg-slate-900/95 backdrop-blur-xs text-white text-[10px] font-mono py-2 px-3 rounded-xl shadow-2xl whitespace-nowrap z-50 border border-slate-700/90 ${tooltipPosClass}`}>
                               <div className="font-bold text-amber-300">{d.fullDate}</div>
-                              <div className="text-slate-200 mt-0.5">Pendapatan: <strong>{formatRupiahId(d.revenue)}</strong></div>
+                              <div className="text-slate-100 mt-0.5">Pendapatan: <strong className="text-white font-bold">{formatRupiahId(d.revenue)}</strong></div>
                               <div className="text-slate-300">{d.orders} Order • {d.kg} Kg</div>
+                              {/* Caret arrow */}
+                              <div className={`absolute -bottom-1 w-2.5 h-2.5 bg-slate-900 border-r border-b border-slate-700 rotate-45 ${arrowPosClass}`} />
                             </div>
                           )}
 
-                          {/* Bar Graphic */}
-                          <div 
-                            style={{ height: `${heightPercent}%` }} 
-                            className={`w-full max-w-[28px] rounded-t-md transition-all duration-200 ${
-                              d.revenue === 0
-                                ? isToday
-                                  ? 'bg-emerald-100 border border-emerald-300'
-                                  : 'bg-slate-200/80 hover:bg-slate-300'
-                                : isToday 
-                                ? 'bg-gradient-to-t from-teal-800 via-teal-600 to-emerald-500 shadow-sm ring-2 ring-emerald-300/60' 
-                                : 'bg-gradient-to-t from-[#1E4648] to-teal-500 hover:from-teal-600 hover:to-teal-400'
-                            }`} 
-                          />
+                          {/* Bar Graphic with Protected Height */}
+                          <div className="w-full h-28 flex items-end justify-center px-0.5">
+                            <div 
+                              style={{ height: `${heightPercent}%` }} 
+                              className={`w-full max-w-[28px] rounded-t-md transition-all duration-200 ${
+                                d.revenue === 0
+                                  ? isToday
+                                    ? 'bg-emerald-100 border border-emerald-300'
+                                    : 'bg-slate-200/80 hover:bg-slate-300'
+                                  : isToday 
+                                  ? 'bg-gradient-to-t from-teal-800 via-teal-600 to-emerald-500 shadow-sm ring-2 ring-emerald-300/60' 
+                                  : 'bg-gradient-to-t from-[#1E4648] to-teal-500 hover:from-teal-600 hover:to-teal-400'
+                              } ${isHovered ? 'ring-2 ring-teal-400/80 brightness-110 shadow-md' : ''}`} 
+                            />
+                          </div>
                         </div>
                       );
                     })
                   ) : (
-                    <div className="w-full text-center text-slate-400 my-auto text-xs font-medium">
+                    <div className="w-full text-center text-slate-400 my-auto text-xs font-medium py-12">
                       Belum ada data order pada rentang periode ini.
                     </div>
                   )}
@@ -2413,10 +2436,19 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                   {dailyPerformance.trendList.map((d, idx) => {
                     const todayKey = formatLocalDateIso(new Date());
                     const isToday = d.dateIso === todayKey;
+                    const isHovered = activeHoverDate === d.dateIso;
                     return (
-                      <div key={idx} className="flex-1 text-center truncate">
-                        <span className={`text-[9px] font-mono ${
-                          isToday ? 'font-black text-teal-900 underline decoration-teal-500 decoration-2' : 'text-slate-500 font-medium'
+                      <div 
+                        key={idx} 
+                        className="flex-1 text-center truncate cursor-pointer"
+                        onClick={() => setActiveHoverDate(activeHoverDate === d.dateIso ? null : d.dateIso)}
+                      >
+                        <span className={`text-[9px] font-mono transition-colors ${
+                          isHovered 
+                            ? 'font-bold text-teal-900 bg-teal-100 px-1 py-0.5 rounded' 
+                            : isToday 
+                            ? 'font-black text-teal-900 underline decoration-teal-500 decoration-2' 
+                            : 'text-slate-500 font-medium hover:text-slate-800'
                         }`}>
                           {d.labelDate}
                         </span>
@@ -2428,7 +2460,16 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
             </div>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 px-1 pt-1 gap-2 border-t border-slate-100">
-              <span>Arahkan kursor atau sentuh diagram untuk melihat detail order, pendapatan &amp; berat cucian</span>
+              {hoveredTrendItem ? (
+                <div className="flex items-center gap-1.5 text-slate-700 font-mono text-[11px]">
+                  <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse shrink-0" />
+                  <span className="font-bold text-slate-900">{hoveredTrendItem.fullDate}:</span>
+                  <span className="text-teal-800 font-bold">{formatRupiahId(hoveredTrendItem.revenue)}</span>
+                  <span className="text-slate-500">({hoveredTrendItem.orders} Order • {hoveredTrendItem.kg} Kg)</span>
+                </div>
+              ) : (
+                <span>Arahkan kursor atau sentuh diagram untuk melihat detail order, pendapatan &amp; berat cucian</span>
+              )}
               <div className="flex items-center gap-3 shrink-0">
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#1E4648]" /> Periode Aktif</span>
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-emerald-500" /> Hari Ini</span>
