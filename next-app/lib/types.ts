@@ -583,6 +583,9 @@ export interface QualityPerformance {
   rewashOrders: any[];
   complaintOrders?: any[];
   errorOrders?: any[];
+  refundOrders?: any[];
+  voidCorrectionOrders?: any[];
+  voidCorrectionTotal?: number;
   refundTotal: number;
   deltaCancellation?: number;
   deltaRewash?: number;

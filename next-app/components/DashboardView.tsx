@@ -814,12 +814,15 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   const qualityPerformance = useMemo((): QualityPerformance => {
     const totalOrders = Math.max(1, periodTransactions.length);
 
-    // Kategori keluhan / rewash / pembatalan
+    // Kategori keluhan / rewash / pembatalan / koreksi
     const cancelledOrders: TransaksiItem[] = [];
     const rewashOrders: TransaksiItem[] = [];
     const complaintOrders: TransaksiItem[] = [];
     const errorOrders: TransaksiItem[] = [];
+    const refundOrders: TransaksiItem[] = [];
+    const voidCorrectionOrders: TransaksiItem[] = [];
     let refundTotal = 0;
+    let voidCorrectionTotal = 0;
 
     (transaksiList || []).forEach(t => {
       const d = parseSafeDate(t.rawTanggal || t.tanggal);
@@ -827,11 +830,21 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
       const isVoid = t.status === 'Void' || t.status === 'Batal' || t.status === 'Dibatalkan' || t.statusVoid === 'Approved';
       const notes = (t.catatan || '').toLowerCase();
-      const s = (t.status || '').toLowerCase();
+      const reason = (t.alasanVoid || '').toLowerCase();
+      const text = `${notes} ${reason}`;
+
+      // Deteksi refund nyata (uang dikembalikan ke konsumen) vs pembatalan karena salah klik entri kasir
+      const isActualRefund = text.includes('refund') || text.includes('kembali uang') || text.includes('pengembalian uang') || text.includes('retur');
 
       if (isVoid) {
         cancelledOrders.push(t);
-        refundTotal += Number(t.total) || 0;
+        if (isActualRefund) {
+          refundOrders.push(t);
+          refundTotal += Number(t.total) || 0;
+        } else {
+          voidCorrectionOrders.push(t);
+          voidCorrectionTotal += Number(t.total) || 0;
+        }
       }
       if (notes.includes('rewash') || notes.includes('cuci ulang') || (t.items || []).some(it => it.layanan.toLowerCase().includes('rewash'))) {
         rewashOrders.push(t);
@@ -839,7 +852,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       if (notes.includes('komplain') || notes.includes('keluhan') || notes.includes('rusak') || notes.includes('hilang') || notes.includes('luntur')) {
         complaintOrders.push(t);
       }
-      if (notes.includes('salah') || notes.includes('keliru') || notes.includes('tertukar') || notes.includes('revisi')) {
+      if (isVoid || notes.includes('salah') || notes.includes('keliru') || notes.includes('tertukar') || notes.includes('revisi') || reason.includes('salah') || reason.includes('revisi')) {
         errorOrders.push(t);
       }
     });
@@ -861,10 +874,16 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     prevPeriodTransactions.forEach(t => {
       const isVoid = t.status === 'Void' || t.status === 'Batal' || t.status === 'Dibatalkan' || t.statusVoid === 'Approved';
       const notes = (t.catatan || '').toLowerCase();
+      const reason = (t.alasanVoid || '').toLowerCase();
+      const text = `${notes} ${reason}`;
+      const isActualRefund = text.includes('refund') || text.includes('kembali uang') || text.includes('pengembalian uang') || text.includes('retur');
+
       prevRevenue += Number(t.total) || 0;
       if (isVoid) {
         prevCancelledCount++;
-        prevRefundTotal += Number(t.total) || 0;
+        if (isActualRefund) {
+          prevRefundTotal += Number(t.total) || 0;
+        }
       }
       if (notes.includes('rewash') || notes.includes('cuci ulang') || (t.items || []).some(it => (it.layanan || '').toLowerCase().includes('rewash'))) {
         prevRewashCount++;
@@ -872,7 +891,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       if (notes.includes('komplain') || notes.includes('keluhan') || notes.includes('rusak') || notes.includes('hilang') || notes.includes('luntur')) {
         prevComplaintCount++;
       }
-      if (notes.includes('salah') || notes.includes('keliru') || notes.includes('tertukar') || notes.includes('revisi')) {
+      if (isVoid || notes.includes('salah') || notes.includes('keliru') || notes.includes('tertukar') || notes.includes('revisi') || reason.includes('salah') || reason.includes('revisi')) {
         prevErrorCount++;
       }
     });
@@ -900,6 +919,9 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       rewashOrders,
       complaintOrders,
       errorOrders,
+      refundOrders,
+      voidCorrectionOrders,
+      voidCorrectionTotal,
       refundTotal,
       deltaCancellation,
       deltaRewash,
@@ -1605,16 +1627,19 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
   // Helper kategori penyebab pembatalan / komplain / error
   const getOrderCauseCategory = (t: TransaksiItem) => {
     const notes = (t.catatan || '').toLowerCase();
-    if (notes.includes('salah') || notes.includes('revisi') || notes.includes('keliru') || notes.includes('batal nota') || notes.includes('salah input') || notes.includes('salah entri') || notes.includes('salah harga')) {
-      return 'Kesalahan Input / Revisi Nota';
+    const reason = (t.alasanVoid || '').toLowerCase();
+    const text = `${notes} ${reason}`.trim();
+
+    if (text.includes('refund') || text.includes('kembali uang') || text.includes('retur')) {
+      return 'Klaim Refund Konsumen';
     }
-    if (notes.includes('rusak') || notes.includes('luntur') || notes.includes('kotor') || notes.includes('bau') || notes.includes('cuci ulang') || notes.includes('sobek') || notes.includes('hilang') || notes.includes('kualitas')) {
+    if (text.includes('rusak') || text.includes('luntur') || text.includes('kotor') || text.includes('bau') || text.includes('cuci ulang') || text.includes('sobek') || text.includes('hilang') || text.includes('kualitas')) {
       return 'Kualitas Pengerjaan / Rusak / Luntur';
     }
-    if (notes.includes('pelanggan') || notes.includes('tidak jadi') || notes.includes('kemahalan') || notes.includes('buru-buru') || notes.includes('lama') || notes.includes('batal')) {
+    if (text.includes('pelanggan') || text.includes('tidak jadi') || text.includes('kemahalan') || text.includes('buru-buru') || text.includes('lama')) {
       return 'Pembatalan Pelanggan / Tidak Jadi';
     }
-    return 'Void / Koreksi Kasir';
+    return 'Salah Klik / Koreksi Kasir';
   };
 
   // Drilldown Orders List Getter
@@ -1625,7 +1650,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
     if (drilldownType === 'complaint') return qualityPerformance.complaintOrders || [];
     if (drilldownType === 'error') return qualityPerformance.errorOrders || [];
     if (drilldownType === 'late') return operationalPerformance.lateOrdersList || [];
-    if (drilldownType === 'refund') return qualityPerformance.cancelledOrders || [];
+    if (drilldownType === 'refund') return qualityPerformance.refundOrders || [];
     return [];
   }, [drilldownType, qualityPerformance, operationalPerformance]);
 
@@ -1635,10 +1660,10 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       return [];
     }
     const catMap: Record<string, { label: string; count: number; totalNominal: number }> = {
-      'Kesalahan Input / Revisi Nota': { label: 'Kesalahan Input / Revisi Nota', count: 0, totalNominal: 0 },
-      'Kualitas Pengerjaan / Rusak / Luntur': { label: 'Kualitas Pengerjaan / Rusak / Luntur', count: 0, totalNominal: 0 },
+      'Salah Klik / Koreksi Kasir': { label: 'Salah Klik / Koreksi Kasir', count: 0, totalNominal: 0 },
       'Pembatalan Pelanggan / Tidak Jadi': { label: 'Pembatalan Pelanggan / Tidak Jadi', count: 0, totalNominal: 0 },
-      'Void / Koreksi Kasir': { label: 'Void / Koreksi Kasir', count: 0, totalNominal: 0 },
+      'Kualitas Pengerjaan / Rusak / Luntur': { label: 'Kualitas Pengerjaan / Rusak / Luntur', count: 0, totalNominal: 0 },
+      'Klaim Refund Konsumen': { label: 'Klaim Refund Konsumen', count: 0, totalNominal: 0 },
     };
 
     rawDrilldownOrders.forEach(t => {
@@ -1650,7 +1675,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
       catMap[cat].totalNominal += Number(t.total) || 0;
     });
 
-    return Object.values(catMap);
+    return Object.values(catMap).filter(b => b.count > 0);
   }, [drilldownType, rawDrilldownOrders]);
 
   const drilldownOrders = useMemo(() => {
@@ -2754,20 +2779,20 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
 
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             
-            {/* Cancellation Rate */}
+            {/* Cancellation / Void Koreksi Rate */}
             <div 
               onClick={() => {
                 setDrilldownCauseFilter('all');
                 setDrilldownType('cancellation');
               }}
-              className="p-3.5 bg-slate-50 hover:bg-rose-50/60 border border-slate-200 hover:border-rose-300 rounded-xl space-y-1.5 transition cursor-pointer"
+              className="p-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 rounded-xl space-y-1.5 transition cursor-pointer"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase">Cancellation</span>
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase">Void / Koreksi Kasir</span>
                 {qualityPerformance.deltaCancellation !== undefined && (
                   <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded ${
                     qualityPerformance.deltaCancellation > 0 
-                      ? 'bg-rose-100 text-rose-800' 
+                      ? 'bg-amber-100 text-amber-800' 
                       : qualityPerformance.deltaCancellation < 0 
                       ? 'bg-emerald-100 text-emerald-800' 
                       : 'bg-slate-100 text-slate-600'
@@ -2776,9 +2801,9 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                   </span>
                 )}
               </div>
-              <div className="text-2xl font-black text-rose-700 font-mono">{qualityPerformance.cancellationRate}%</div>
+              <div className="text-2xl font-black text-slate-700 font-mono">{qualityPerformance.cancellationRate}%</div>
               <div className="text-[10px] text-slate-500 font-medium">
-                {qualityPerformance.cancelledOrders.length} Order Batal / Void
+                {qualityPerformance.cancelledOrders.length} Salah Klik / Revisi Nota
               </div>
             </div>
 
@@ -2851,7 +2876,7 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                 {qualityPerformance.deltaError !== undefined && (
                   <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded ${
                     qualityPerformance.deltaError > 0 
-                      ? 'bg-rose-100 text-rose-800' 
+                      ? 'bg-amber-100 text-amber-800' 
                       : qualityPerformance.deltaError < 0 
                       ? 'bg-emerald-100 text-emerald-800' 
                       : 'bg-slate-100 text-slate-600'
@@ -2872,25 +2897,17 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
                 setDrilldownCauseFilter('all');
                 setDrilldownType('refund');
               }}
-              className="p-3.5 bg-slate-50 hover:bg-rose-50/60 border border-slate-200 hover:border-rose-300 rounded-xl space-y-1.5 transition cursor-pointer"
+              className="p-3.5 bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 rounded-xl space-y-1.5 transition cursor-pointer"
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase">Refund Rate</span>
-                {qualityPerformance.deltaRefund !== undefined && (
-                  <span className={`inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                    qualityPerformance.deltaRefund > 0 
-                      ? 'bg-rose-100 text-rose-800' 
-                      : qualityPerformance.deltaRefund < 0 
-                      ? 'bg-emerald-100 text-emerald-800' 
-                      : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {qualityPerformance.deltaRefund > 0 ? `+${qualityPerformance.deltaRefund}%` : `${qualityPerformance.deltaRefund}%`}
-                  </span>
-                )}
+                <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                  {qualityPerformance.refundRate === 0 ? '0% Nol Refund' : `${qualityPerformance.refundRate}%`}
+                </span>
               </div>
-              <div className="text-2xl font-black text-rose-800 font-mono">{qualityPerformance.refundRate}%</div>
+              <div className="text-2xl font-black text-emerald-700 font-mono">{qualityPerformance.refundRate}%</div>
               <div className="text-[10px] text-slate-500 font-medium">
-                {formatRupiahId(qualityPerformance.refundTotal)} Total
+                {qualityPerformance.refundTotal > 0 ? `${formatRupiahId(qualityPerformance.refundTotal)} Total` : 'Rp0 (Nol Pengembalian Dana)'}
               </div>
             </div>
 
@@ -3572,6 +3589,14 @@ export default function DashboardView({ currentRole }: DashboardViewProps) {
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Operational Clarification Note */}
+            <div className="p-3 bg-blue-50/80 border border-blue-200/80 rounded-xl text-xs text-blue-900 flex items-start gap-2.5">
+              <Lightbulb className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                <strong>Catatan Operasional:</strong> Transaksi void di toko merupakan koreksi salah klik kasir saat entri nota. <strong>Tidak ada uang kas yang dikeluarkan untuk refund konsumen</strong> karena pelanggan langsung membayar transaksi nota yang valid dan benar.
+              </div>
             </div>
 
             {/* Root Cause Category Filters */}
