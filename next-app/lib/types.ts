@@ -445,6 +445,8 @@ export interface PayrollItem {
   tanggalPembayaran?: string;
   metodePembayaran?: string;
   catatan?: string;
+  buktiTransfer?: string;
+  buktiTransferTimestamp?: string;
 }
 
 export interface PayrollSummary {

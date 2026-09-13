@@ -5429,6 +5429,7 @@ export async function sbGetPayrollSummary(periodeStr?: string): Promise<any> {
         status: p.status_pembayaran || p.statusPembayaran || 'Sudah Dibayar',
         tanggalBayar: p.tanggal_pembayaran || p.tanggalPembayaran || '',
         metodeBayar: p.metode_pembayaran || p.metodePembayaran || 'Transfer',
+        buktiTransfer: p.bukti_transfer || p.buktiTransfer || p.buktiTransferUrl || '',
         catatan: p.catatan || '',
         gajiPokok: Number(p.gaji_pokok || p.gajiPokok) || 0,
         tunjangan: Number(p.tunjangan) || 0,
@@ -5662,6 +5663,7 @@ export async function sbGetPayrollSummary(periodeStr?: string): Promise<any> {
       tanggalPembayaran: savedPay ? savedPay.tanggalBayar : '',
       metodePembayaran: savedPay ? savedPay.metodeBayar : (peg.bank ? 'Transfer' : 'Tunai'),
       catatan: savedPay ? savedPay.catatan : '',
+      buktiTransfer: savedPay ? (savedPay.buktiTransfer || '') : '',
     };
   });
 
@@ -5714,6 +5716,8 @@ export async function sbSavePayrollPayment(
     tanggalPembayaran: payload.statusPembayaran === 'Belum Dibayar' ? '' : formatWib(now, 'full'),
     metode_pembayaran: payload.metodePembayaran || 'Transfer',
     metodePembayaran: payload.metodePembayaran || 'Transfer',
+    bukti_transfer: payload.buktiTransfer || payload.bukti_transfer || '',
+    buktiTransfer: payload.buktiTransfer || payload.bukti_transfer || '',
     catatan: payload.catatan || '',
   };
 
@@ -5732,6 +5736,7 @@ export async function sbSavePayrollPayment(
       status_pembayaran: paymentObj.statusPembayaran,
       tanggal_pembayaran: paymentObj.tanggalPembayaran ? now.toISOString() : null,
       metode_pembayaran: paymentObj.metodePembayaran,
+      bukti_transfer: paymentObj.buktiTransfer,
       catatan: paymentObj.catatan,
     }, { onConflict: 'id' });
   } catch {}

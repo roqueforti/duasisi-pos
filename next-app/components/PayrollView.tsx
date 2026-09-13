@@ -36,6 +36,11 @@ import {
   ChevronRight,
   Info,
   Lightbulb,
+  Upload,
+  Image as ImageIcon,
+  Copy,
+  CheckCircle,
+  FileDown,
 } from 'lucide-react';
 import RupiahIcon from '@/components/RupiahIcon';
 import { runBackend } from '@/lib/api';
@@ -43,6 +48,7 @@ import { toCSV, downloadCSV } from '@/lib/csvUtils';
 import { UserRole, PayrollItem, PayrollSummary, PegawaiDetail, DropoffIncentiveConfig, DropoffDetailedTask } from '@/lib/types';
 import { formatWaPhone, formatDateTime } from '@/lib/utils';
 import { useDialog } from '@/components/DialogProvider';
+import { generateSlipGajiPdf, downloadSlipGajiPdf, angkaTerbilang } from '@/lib/pdfSlipGenerator';
 
 const BULAN_OPTIONS = [
   { value: '01', label: 'Januari' },
@@ -83,6 +89,17 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
   // Modal Detail Slip Gaji
   const [showSlipModal, setShowSlipModal] = useState(false);
   const [activeSlipItem, setActiveSlipItem] = useState<PayrollItem | null>(null);
+
+  // Modal Konfirmasi Pembayaran & Upload Bukti Transfer
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [activePaymentItem, setActivePaymentItem] = useState<PayrollItem | null>(null);
+  const [payMetode, setPayMetode] = useState('Transfer BCA');
+  const [payTanggal, setPayTanggal] = useState('');
+  const [payCatatan, setPayCatatan] = useState('');
+  const [payBuktiPreview, setPayBuktiPreview] = useState<string | null>(null);
+  const [copiedRekening, setCopiedRekening] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [previewBuktiModal, setPreviewBuktiModal] = useState<string | null>(null);
 
   // Modal Penyesuaian Gaji (Bonus / Potongan / Catatan)
   const [showEditPayModal, setShowEditPayModal] = useState(false);
@@ -349,9 +366,120 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
     }
   };
 
+  // Kompres gambar bukti transfer via canvas
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1024;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleCopyRekening = async (textToCopy: string) => {
+    if (!textToCopy) return;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(textToCopy);
+        setCopiedRekening(true);
+        setTimeout(() => setCopiedRekening(false), 2000);
+      }
+    } catch (e) {
+      console.warn('Gagal salin rekening:', e);
+    }
+  };
+
+  const openPaymentModal = (item: PayrollItem) => {
+    setActivePaymentItem(item);
+    const defaultMetode = item.bank && item.bank !== 'Tunai'
+      ? (item.bank.toLowerCase().startsWith('transfer') ? item.bank : `Transfer ${item.bank}`)
+      : (item.metodePembayaran || 'Transfer BCA');
+    setPayMetode(defaultMetode);
+
+    // Format tanggal ISO lokal YYYY-MM-DDTHH:mm
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const localIso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setPayTanggal(item.tanggalPembayaran || localIso);
+    setPayCatatan(item.catatan || '');
+    setPayBuktiPreview(item.buktiTransfer || null);
+    setCopiedRekening(false);
+    setShowPaymentModal(true);
+  };
+
+  const handleSavePayment = async () => {
+    if (!activePaymentItem) return;
+
+    setSavingPayment(true);
+    try {
+      const res = await runBackend<{ success: boolean; message?: string }>(
+        'savePayrollPayment',
+        activePaymentItem.idPegawai,
+        periodeQuery,
+        {
+          ...activePaymentItem,
+          statusPembayaran: 'Sudah Dibayar',
+          metodePembayaran: payMetode,
+          tanggalPembayaran: payTanggal,
+          catatan: payCatatan,
+          buktiTransfer: payBuktiPreview || '',
+        }
+      );
+      if (!res?.success) throw new Error(res?.message || 'Gagal menyimpan konfirmasi pembayaran');
+      
+      // Update item yang sedang dibuka di modal slip jika ada
+      if (activeSlipItem && activeSlipItem.idPegawai === activePaymentItem.idPegawai) {
+        setActiveSlipItem({
+          ...activeSlipItem,
+          statusPembayaran: 'Sudah Dibayar',
+          metodePembayaran: payMetode,
+          tanggalPembayaran: payTanggal,
+          buktiTransfer: payBuktiPreview || '',
+        });
+      }
+
+      await showAlert(`Pembayaran gaji untuk ${activePaymentItem.nama} berhasil dikonfirmasi!`, 'success');
+      setShowPaymentModal(false);
+      loadPayroll();
+    } catch (err) {
+      console.error(err);
+      await showAlert('Gagal menyimpan konfirmasi pembayaran.', 'error');
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
   const handleTogglePaymentStatus = async (item: PayrollItem) => {
-    const newStatus = item.statusPembayaran === 'Sudah Dibayar' ? 'Belum Dibayar' : 'Sudah Dibayar';
-    const confirm = await showConfirm(`Ubah status pembayaran gaji ${item.nama} menjadi "${newStatus}"?`);
+    if (item.statusPembayaran !== 'Sudah Dibayar') {
+      openPaymentModal(item);
+      return;
+    }
+
+    const confirm = await showConfirm(`Gaji ${item.nama} sudah berstatus "Sudah Dibayar". Ingin membatalkan dan mengubah kembali ke "Belum Dibayar" (Pending)?`);
     if (!confirm) return;
 
     setLoading(true);
@@ -362,12 +490,13 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
         periodeQuery,
         {
           ...item,
-          statusPembayaran: newStatus
+          statusPembayaran: 'Belum Dibayar',
+          buktiTransfer: '',
         }
       );
       if (!res?.success) throw new Error(res?.message || 'Gagal mengubah status bayar');
       loadPayroll();
-      await showAlert(`Status gaji ${item.nama} berhasil diubah ke ${newStatus}!`, 'success');
+      await showAlert(`Status gaji ${item.nama} berhasil diubah kembali ke Belum Dibayar.`, 'info');
     } catch (err) {
       console.error(err);
       await showAlert('Gagal mengubah status pembayaran.', 'error');
@@ -380,16 +509,34 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
     window.print();
   };
 
+  const handleDownloadSlipPdf = (item: PayrollItem) => {
+    const bulanLabel = BULAN_OPTIONS.find(b => b.value === selectedBulan)?.label || selectedBulan;
+    try {
+      downloadSlipGajiPdf(item, bulanLabel, selectedTahun);
+      showAlert(`Dokumen resmi Slip Gaji ${item.nama} berhasil diunduh!`, 'success');
+    } catch (err) {
+      console.error('Download PDF error:', err);
+      showAlert('Gagal mengunduh dokumen PDF slip gaji.', 'error');
+    }
+  };
+
   const handleSendSlipWhatsApp = (item: PayrollItem) => {
     const rawPhone = formatWaPhone(item.noHp);
-
     const bulanLabel = BULAN_OPTIONS.find(b => b.value === selectedBulan)?.label || selectedBulan;
 
+    // Otomatis download file PDF resmi agar langsung siap dilampirkan oleh admin di WhatsApp
+    try {
+      downloadSlipGajiPdf(item, bulanLabel, selectedTahun);
+    } catch (e) {
+      console.warn('Auto download PDF error:', e);
+    }
+
+    const isLunas = item.statusPembayaran === 'Sudah Dibayar';
     const msg = [
       `*SLIP GAJI KARYAWAN — DUA SISI LAUNDRY*`,
       `Periode: *${bulanLabel} ${selectedTahun}*`,
       `-----------------------------------------`,
-      `Nama Pegawai : *${item.nama}*`,
+      `Yth. *${item.nama}*`,
       `Jabatan      : ${item.jabatan}`,
       `Status Kerja : ${item.statusKepegawaian || 'Tetap'}`,
       `Kehadiran    : ${item.jumlahHadir} Hari (${item.totalJamKerja} Jam Kerja)`,
@@ -410,9 +557,15 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
       `*Rp ${item.totalGajiBersih.toLocaleString('id-ID')}*`,
       `-----------------------------------------`,
       `Rekening Tujuan : ${item.bank || 'Tunai'} ${item.noRekening || ''} (${item.namaRekening || item.nama})`,
-      `Status Bayar    : *${item.statusPembayaran.toUpperCase()}*`,
+      `Status Transfer : *${isLunas ? 'LUNAS / TELAH DITRANSFER' : 'PENDING / MENUNGGU TRANSFER'}*`,
+      isLunas && item.tanggalPembayaran ? `Waktu Transfer  : ${item.tanggalPembayaran}` : null,
+      isLunas && item.metodePembayaran ? `Metode          : ${item.metodePembayaran}` : null,
       ``,
-      `_Terima kasih atas kerja keras dan dedikasinya di Dua Sisi Laundry!_`
+      isLunas 
+        ? `_Catatan: Dokumen resmi PDF Slip Gaji & Bukti Transfer terlampir pada pesan ini._`
+        : `_Catatan: Pembayaran sedang diproses. Dokumen resmi PDF Slip Gaji terlampir._`,
+      ``,
+      `_Terima kasih atas dedikasi dan kerja kerasnya di Dua Sisi Laundry!_`
     ].filter(Boolean).join('\n');
 
     const url = rawPhone 
@@ -824,43 +977,73 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
 
                   {/* Status Pembayaran */}
                   <td className="py-3.5 px-3 text-center">
-                    <button
-                      onClick={() => handleTogglePaymentStatus(item)}
-                      title="Klik untuk ubah status pembayaran"
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold transition ${
-                        item.statusPembayaran === 'Sudah Dibayar'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
-                      }`}
-                    >
-                      {item.statusPembayaran === 'Sudah Dibayar' ? (
-                        <><Check className="w-3 h-3" /> Lunas</>
-                      ) : (
-                        <><Clock className="w-3 h-3" /> Pending</>
+                    <div className="flex flex-col items-center gap-1">
+                      <button
+                        onClick={() => handleTogglePaymentStatus(item)}
+                        title={item.statusPembayaran === 'Sudah Dibayar' ? 'Status Lunas. Klik jika ingin batalkan ke Pending' : 'Klik untuk bayar & upload bukti transfer'}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                          item.statusPembayaran === 'Sudah Dibayar'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100'
+                        }`}
+                      >
+                        {item.statusPembayaran === 'Sudah Dibayar' ? (
+                          <><Check className="w-3 h-3" /> Lunas</>
+                        ) : (
+                          <><Clock className="w-3 h-3" /> Pending</>
+                        )}
+                      </button>
+                      {item.buktiTransfer && (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewBuktiModal(item.buktiTransfer || null)}
+                          title="Lihat foto bukti transfer"
+                          className="inline-flex items-center gap-1 text-[9px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 px-1.5 py-0.5 rounded border border-teal-200 transition cursor-pointer"
+                        >
+                          <ImageIcon className="w-2.5 h-2.5" /> Bukti TF
+                        </button>
                       )}
-                    </button>
+                    </div>
                   </td>
 
                   {/* Action Buttons */}
                   <td className="py-3.5 px-4 text-center print:hidden">
                     <div className="flex items-center justify-center gap-1.5">
                       <button
+                        onClick={() => openPaymentModal(item)}
+                        className={`p-1.5 rounded-lg transition cursor-pointer ${
+                          item.statusPembayaran === 'Sudah Dibayar'
+                            ? 'text-teal-600 hover:text-teal-800 hover:bg-teal-50'
+                            : 'text-amber-600 hover:text-amber-800 hover:bg-amber-50'
+                        }`}
+                        title={item.statusPembayaran === 'Sudah Dibayar' ? "Perbarui Bukti Transfer / Data Bayar" : "Bayar Gaji & Upload Bukti TF"}
+                      >
+                        <CreditCard className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => openEditPayModal(item)}
-                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
                         title="Penyesuaian Bonus / Potongan"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => openSlipModal(item)}
-                        className="p-1.5 text-slate-400 hover:text-[#1E4648] hover:bg-slate-100 rounded-lg transition"
+                        className="p-1.5 text-slate-400 hover:text-[#1E4648] hover:bg-slate-100 rounded-lg transition cursor-pointer"
                         title="Lihat & Cetak Slip Gaji"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
+                        onClick={() => handleDownloadSlipPdf(item)}
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                        title="Unduh Dokumen PDF Resmi"
+                      >
+                        <FileDown className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => handleSendSlipWhatsApp(item)}
-                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
                         title="Kirim Slip via WhatsApp"
                       >
                         <Send className="w-4 h-4" />
@@ -890,21 +1073,36 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 my-6 print:shadow-none print:border-none print:p-0 print:max-w-none">
             
             {/* Modal Actions Bar (Hidden on print) */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6 print:hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4 mb-6 print:hidden">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-[#1E4648]" />
-                <h3 className="font-bold text-slate-800 text-base">Slip Gaji Karyawan</h3>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base leading-tight">Preview Slip Gaji Resmi</h3>
+                  <div className="text-[11px] text-slate-400">Format Dokumen Resmi A4</div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
-                  onClick={handlePrintSlip}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs"
+                  type="button"
+                  onClick={() => handleDownloadSlipPdf(activeSlipItem)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                  title="Unduh File Dokumen PDF Resmi"
                 >
-                  <Printer className="w-3.5 h-3.5" /> Cetak / PDF
+                  <FileDown className="w-3.5 h-3.5" /> Unduh PDF
                 </button>
                 <button
+                  type="button"
+                  onClick={handlePrintSlip}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                  title="Cetak langsung melalui printer"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Cetak
+                </button>
+                <button
+                  type="button"
                   onClick={() => handleSendSlipWhatsApp(activeSlipItem)}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                  title="Kirim slip & lampirkan PDF ke WhatsApp"
                 >
                   <Send className="w-3.5 h-3.5" /> WhatsApp
                 </button>
@@ -915,10 +1113,10 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
             </div>
 
             {/* PRINTABLE SLIP CONTENT */}
-            <div ref={printSlipRef} className="text-slate-800 text-xs space-y-5">
+            <div ref={printSlipRef} className="text-slate-800 text-xs space-y-4">
               
               {/* Slip Header */}
-              <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4">
+              <div className="flex items-center justify-between border-b-2 border-slate-800 pb-3">
                 <div className="flex items-center gap-3">
                   <img src="./assets/Asset 5.svg" alt="Dua Sisi" className="h-10 w-auto" />
                   <div>
@@ -927,14 +1125,15 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-black text-sm text-[#1E4648] uppercase tracking-wider">SLIP GAJI</div>
+                  <div className="font-black text-sm text-[#1E4648] uppercase tracking-wider">SLIP GAJI KARYAWAN</div>
                   <div className="text-[11px] font-bold text-slate-600">{bulanLabel} {selectedTahun}</div>
                 </div>
               </div>
 
               {/* Employee & Attendance Info */}
-              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 <div className="space-y-1">
+                  <div><span className="text-slate-400">No. Slip :</span> <strong className="font-mono text-slate-700">SLIP/DSL/{(activeSlipItem.periode || selectedTahun).replace('-', '')}/{activeSlipItem.idPegawai}</strong></div>
                   <div><span className="text-slate-400">Nama Pegawai :</span> <strong className="text-slate-800">{activeSlipItem.nama}</strong></div>
                   <div><span className="text-slate-400">Jabatan      :</span> <strong>{activeSlipItem.jabatan}</strong></div>
                   <div><span className="text-slate-400">Status Kerja :</span> <strong>{activeSlipItem.statusKepegawaian || 'Tetap'}</strong></div>
@@ -950,7 +1149,23 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                     )}
                   </div>
                   <div><span className="text-slate-400">Total Jam :</span> <strong>{activeSlipItem.totalJamKerja} Jam</strong></div>
-                  <div><span className="text-slate-400">Metode    :</span> <strong>{activeSlipItem.bank || 'Tunai'} {activeSlipItem.noRekening || ''}</strong></div>
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="text-slate-400">Rekening :</span>{' '}
+                    <strong className="font-mono text-[#1E4648] bg-teal-50 px-1 rounded">{activeSlipItem.bank || 'Tunai'} {activeSlipItem.noRekening || ''}</strong>
+                    {activeSlipItem.noRekening && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopyRekening(activeSlipItem.noRekening || '')}
+                        className="print:hidden p-0.5 text-slate-400 hover:text-teal-700 transition cursor-pointer"
+                        title="Salin Nomor Rekening"
+                      >
+                        {copiedRekening ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                      </button>
+                    )}
+                  </div>
+                  {activeSlipItem.namaRekening && (
+                    <div className="text-[10px] text-slate-400">a.n {activeSlipItem.namaRekening}</div>
+                  )}
                 </div>
               </div>
 
@@ -959,7 +1174,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
                 
                 {/* Penerimaan */}
                 <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <div className="bg-slate-100 px-3 py-2 font-bold text-slate-700 text-xs border-b border-slate-200">
+                  <div className="bg-slate-100 px-3 py-1.5 font-bold text-slate-700 text-xs border-b border-slate-200">
                     A. PENERIMAAN
                   </div>
                   <div className="p-3 space-y-2 text-xs">
@@ -1000,7 +1215,7 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
 
                 {/* Potongan */}
                 <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <div className="bg-slate-100 px-3 py-2 font-bold text-slate-700 text-xs border-b border-slate-200">
+                  <div className="bg-slate-100 px-3 py-1.5 font-bold text-slate-700 text-xs border-b border-slate-200">
                     B. POTONGAN
                   </div>
                   <div className="p-3 space-y-2 text-xs">
@@ -1027,26 +1242,104 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
               </div>
 
               {/* Total Take Home Pay Box */}
-              <div className="bg-slate-900 text-white p-4 rounded-xl flex items-center justify-between">
-                <div>
-                  <div className="text-[11px] text-teal-300 font-bold uppercase tracking-wider">GAJI BERSIH (TAKE HOME PAY)</div>
-                  <div className="text-[10px] text-slate-400">Total penerimaan setelah dikurangi potongan</div>
+              <div className="bg-slate-900 text-white p-4 rounded-xl space-y-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[11px] text-teal-300 font-bold uppercase tracking-wider">TOTAL GAJI BERSIH (TAKE HOME PAY)</div>
+                    <div className="text-[10px] text-slate-400">Total penerimaan setelah dikurangi seluruh potongan</div>
+                  </div>
+                  <div className="text-xl font-black tracking-tight text-amber-300 font-mono">
+                    Rp {activeSlipItem.totalGajiBersih.toLocaleString('id-ID')}
+                  </div>
                 </div>
-                <div className="text-xl font-black tracking-tight text-amber-300 font-mono">
-                  Rp {activeSlipItem.totalGajiBersih.toLocaleString('id-ID')}
+                <div className="text-[10px] text-teal-200/90 italic pt-1 border-t border-slate-800">
+                  Terbilang: # {angkaTerbilang(activeSlipItem.totalGajiBersih)} #
                 </div>
               </div>
 
+              {/* Banner Status Transfer & Bukti TF */}
+              {activeSlipItem.statusPembayaran === 'Sudah Dibayar' ? (
+                <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between text-xs">
+                  <div>
+                    <div className="font-bold text-emerald-800 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>STATUS: LUNAS / TELAH DITRANSFER</span>
+                    </div>
+                    <div className="text-[11px] text-emerald-700 mt-0.5">
+                      Metode: {activeSlipItem.metodePembayaran || 'Transfer'} {activeSlipItem.tanggalPembayaran && `• ${activeSlipItem.tanggalPembayaran}`}
+                    </div>
+                  </div>
+                  {activeSlipItem.buktiTransfer && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewBuktiModal(activeSlipItem.buktiTransfer || null)}
+                      className="print:hidden flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 rounded-lg font-bold border border-emerald-300 text-xs transition cursor-pointer"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5" /> Lihat Bukti TF
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-center justify-between text-xs">
+                  <div>
+                    <div className="font-bold text-amber-800 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-amber-600" />
+                      <span>STATUS: PENDING (DRAFT / MENUNGGU TRANSFER)</span>
+                    </div>
+                    <div className="text-[11px] text-amber-700 mt-0.5">
+                      Silakan transfer gaji sesuai rekening di atas sebelum mengirim slip via WhatsApp.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openPaymentModal(activeSlipItem)}
+                    className="print:hidden flex items-center gap-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-xs text-xs transition cursor-pointer"
+                  >
+                    <CreditCard className="w-3.5 h-3.5" /> Bayar & Upload Bukti
+                  </button>
+                </div>
+              )}
+
+              {/* Lampiran Bukti Transfer Jika Ada */}
+              {activeSlipItem.buktiTransfer && (
+                <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-700 text-xs flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-teal-700" /> Lampiran Bukti Transfer Valid
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewBuktiModal(activeSlipItem.buktiTransfer || null)}
+                      className="print:hidden text-[11px] font-bold text-teal-700 hover:underline cursor-pointer"
+                    >
+                      Perbesar Gambar
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={activeSlipItem.buktiTransfer}
+                      alt="Bukti Transfer"
+                      onClick={() => setPreviewBuktiModal(activeSlipItem.buktiTransfer || null)}
+                      className="h-16 w-auto rounded-lg border border-slate-300 object-cover shadow-2xs cursor-pointer hover:opacity-90 transition"
+                    />
+                    <div className="text-[11px] text-slate-500">
+                      <div>Foto struk bukti transfer telah terlampir dan tersimpan di database.</div>
+                      <div className="font-medium text-slate-700 mt-0.5">Klik gambar untuk melihat struk secara penuh.</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Signatures */}
-              <div className="grid grid-cols-2 gap-8 pt-6 text-center text-xs">
+              <div className="grid grid-cols-2 gap-8 pt-4 text-center text-xs">
                 <div>
-                  <p className="text-slate-400 mb-12">Diterima Oleh,</p>
+                  <p className="text-slate-400 mb-10">Diterima Oleh,</p>
                   <p className="font-bold text-slate-800 border-t border-slate-300 pt-1.5 inline-block min-w-[140px]">
                     {activeSlipItem.nama}
                   </p>
                 </div>
                 <div>
-                  <p className="text-slate-400 mb-12">Disetujui Oleh,</p>
+                  <p className="text-slate-400 mb-10">Disetujui Oleh,</p>
                   <p className="font-bold text-slate-800 border-t border-slate-300 pt-1.5 inline-block min-w-[140px]">
                     Manager / Finance
                   </p>
@@ -1055,6 +1348,265 @@ export default function PayrollView({ currentRole }: { currentRole?: UserRole } 
 
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL KONFIRMASI PEMBAYARAN & UPLOAD BUKTI TF ==================== */}
+      {showPaymentModal && activePaymentItem && renderPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[320] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 my-6 animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base">Konfirmasi Pembayaran Gaji</h3>
+                  <p className="text-xs text-slate-500">Periode {bulanLabel} {selectedTahun} • {activePaymentItem.nama}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowPaymentModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Informasi Transfer & Rekening Tujuan (Box Highlight) */}
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3 mb-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">Total Yang Harus Ditransfer:</span>
+                <span className="text-lg font-black font-mono text-[#1E4648]">
+                  Rp {activePaymentItem.totalGajiBersih.toLocaleString('id-ID')}
+                </span>
+              </div>
+
+              <div className="pt-2.5 border-t border-slate-200/80 flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Rekening Tujuan:</div>
+                  <div className="font-bold text-slate-800 text-xs flex flex-wrap items-center gap-1.5 mt-0.5">
+                    <span>{activePaymentItem.bank || 'Tunai'}</span>
+                    <span className="font-mono text-teal-900 bg-teal-100/70 px-1.5 py-0.5 rounded text-xs font-black">
+                      {activePaymentItem.noRekening || '-'}
+                    </span>
+                    {activePaymentItem.namaRekening && (
+                      <span className="text-slate-500 font-normal">a.n {activePaymentItem.namaRekening}</span>
+                    )}
+                  </div>
+                </div>
+                {activePaymentItem.noRekening && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopyRekening(activePaymentItem.noRekening || '')}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-xl border border-slate-300 shadow-2xs transition cursor-pointer"
+                  >
+                    {copiedRekening ? (
+                      <><Check className="w-3.5 h-3.5 text-emerald-600" /> Tersalin!</>
+                    ) : (
+                      <><Copy className="w-3.5 h-3.5" /> Salin No. Rek</>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Form Upload & Input Pembayaran */}
+            <div className="space-y-3.5 text-xs">
+              {/* Area Upload Bukti Transfer */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Upload className="w-3.5 h-3.5 text-[#1E4648]" />
+                    Upload Foto / Screenshot Bukti Transfer (Struk)
+                  </span>
+                  {payBuktiPreview && (
+                    <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Foto siap disimpan
+                    </span>
+                  )}
+                </label>
+
+                {payBuktiPreview ? (
+                  <div className="relative border-2 border-dashed border-teal-300 bg-teal-50/40 rounded-2xl p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={payBuktiPreview}
+                        alt="Preview Bukti TF"
+                        className="w-16 h-16 object-cover rounded-xl border border-teal-200 shadow-xs cursor-pointer hover:opacity-90"
+                        onClick={() => setPreviewBuktiModal(payBuktiPreview)}
+                      />
+                      <div>
+                        <div className="font-bold text-slate-800 text-xs">Bukti Transfer Terlampir</div>
+                        <div className="text-[10px] text-slate-500">Otomatis dikompres & siap diarsip.</div>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewBuktiModal(payBuktiPreview)}
+                          className="text-[10px] font-bold text-teal-700 hover:underline mt-0.5 inline-block cursor-pointer"
+                        >
+                          Lihat Ukuran Penuh
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <label className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-xl border border-slate-200 text-xs font-bold transition cursor-pointer">
+                        Ganti
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const compressed = await compressImage(file);
+                                setPayBuktiPreview(compressed);
+                              } catch (err) {
+                                showAlert('Gagal memproses gambar.', 'error');
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setPayBuktiPreview(null)}
+                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+                        title="Hapus gambar"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="border-2 border-dashed border-slate-300 hover:border-[#1E4648] bg-slate-50/70 hover:bg-teal-50/30 rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition text-center">
+                    <div className="w-10 h-10 rounded-full bg-teal-100/60 text-[#1E4648] flex items-center justify-center mb-1">
+                      <Upload className="w-5 h-5" />
+                    </div>
+                    <span className="font-bold text-slate-700 text-xs">Klik untuk pilih gambar bukti transfer</span>
+                    <span className="text-[10px] text-slate-400">Dukungan JPG, PNG, WebP (otomatis dikompres & dioptimasi)</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const compressed = await compressImage(file);
+                            setPayBuktiPreview(compressed);
+                          } catch (err) {
+                            showAlert('Gagal memproses gambar.', 'error');
+                          }
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Pilihan Metode & Waktu Transfer */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Metode Pembayaran</label>
+                  <select
+                    value={payMetode}
+                    onChange={e => setPayMetode(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E4648]/20"
+                  >
+                    <option value="Transfer BCA">Transfer BCA</option>
+                    <option value="Transfer Mandiri">Transfer Mandiri</option>
+                    <option value="Transfer BRI">Transfer BRI</option>
+                    <option value="Transfer BNI">Transfer BNI</option>
+                    <option value="Transfer BSI">Transfer BSI</option>
+                    <option value="Transfer Bank Lain">Transfer Bank Lain</option>
+                    <option value="QRIS">QRIS</option>
+                    <option value="Tunai">Tunai / Cash</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tanggal & Waktu Transfer</label>
+                  <input
+                    type="datetime-local"
+                    value={payTanggal}
+                    onChange={e => setPayTanggal(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E4648]/20"
+                  />
+                </div>
+              </div>
+
+              {/* Catatan Pembayaran */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: TF via m-BCA jam 11:30 WIB"
+                  value={payCatatan}
+                  onChange={e => setPayCatatan(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E4648]/20"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 mt-5">
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={savingPayment}
+                onClick={handleSavePayment}
+                className="flex items-center gap-1.5 px-5 py-2 bg-[#1E4648] hover:bg-[#163536] text-white rounded-xl font-bold text-xs shadow-md transition disabled:opacity-50 cursor-pointer"
+              >
+                {savingPayment ? (
+                  <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Menyimpan...</>
+                ) : (
+                  <><CheckCircle className="w-3.5 h-3.5" /> Simpan & Konfirmasi Lunas</>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ==================== LIGHTBOX PREVIEW BUKTI TRANSFER ==================== */}
+      {previewBuktiModal && renderPortal(
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[350]">
+          <div className="relative max-w-2xl w-full bg-slate-900 rounded-3xl p-4 shadow-2xl border border-slate-800 text-center animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-800 text-slate-200">
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <ImageIcon className="w-4 h-4 text-teal-400" />
+                <span>Foto Bukti Transfer (Struk)</span>
+              </div>
+              <button
+                onClick={() => setPreviewBuktiModal(null)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="max-h-[75vh] overflow-auto rounded-2xl flex items-center justify-center bg-black/40 p-2">
+              <img
+                src={previewBuktiModal}
+                alt="Bukti Transfer Penuh"
+                className="max-h-[70vh] w-auto rounded-xl object-contain shadow-md"
+              />
+            </div>
+            <div className="mt-3 text-center">
+              <button
+                type="button"
+                onClick={() => setPreviewBuktiModal(null)}
+                className="px-5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
