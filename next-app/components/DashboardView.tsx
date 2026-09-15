@@ -72,6 +72,7 @@ interface TransaksiItem {
   total: number;
   status: string;
   statusVoid?: string;
+  alasanVoid?: string;
   estimasi?: string;
   estimasiSelesai?: string;
   petugas: string;
