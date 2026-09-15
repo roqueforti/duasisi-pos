@@ -120,6 +120,12 @@ export default function DatabaseEditorView({ currentRole }: DatabaseEditorViewPr
   const [newRowData, setNewRowData] = useState<Record<string, any>>({});
   const [insertingRow, setInsertingRow] = useState<boolean>(false);
 
+  // Edit Full Row Modal State
+  const [showEditModal, setShowEditModal] = useState<boolean>(false);
+  const [editRowData, setEditRowData] = useState<Record<string, any>>({});
+  const [editingRowPk, setEditingRowPk] = useState<any>(null);
+  const [updatingRow, setUpdatingRow] = useState<boolean>(false);
+
   // 1. Load Table Summaries on mount if unlocked
   useEffect(() => {
     if (isUnlocked) {
@@ -400,38 +406,118 @@ export default function DatabaseEditorView({ currentRole }: DatabaseEditorViewPr
 
   const handleOpenInsertModal = () => {
     const initial: Record<string, any> = {};
-    columns.forEach(col => {
-      if (col === primaryKey && primaryKey === 'id') {
-        // Biarkan kosong untuk auto UUID
+    const effectiveCols = columns.length > 0 ? columns : [primaryKey, 'nama', 'harga', 'satuan', 'tipe', 'kategori', 'aktif'];
+
+    effectiveCols.forEach(col => {
+      if (col === primaryKey) {
         initial[col] = '';
-      } else if (col.endsWith('_at')) {
+      } else if (col.endsWith('_at') || col === 'tanggal') {
         initial[col] = new Date().toISOString();
       } else {
         initial[col] = '';
       }
     });
+
+    // Default values ramah pengguna dan aman untuk tiap tabel
+    if (activeTable === 'layanan') {
+      initial.harga = 0;
+      initial.satuan = 'paket';
+      initial.icon = 'Package';
+      initial.tipe = 'SelfService';
+      initial.kategori = 'Self Service';
+      initial.aktif = 'Y';
+      initial.harga_modal = 0;
+      initial.inventory_deduction_qty = 1;
+    } else if (activeTable === 'inventory') {
+      initial.stok = 0;
+      initial.satuan = 'unit';
+      initial.is_dijual = false;
+      initial.harga_jual = 0;
+      initial.stok_minimum = 0;
+    } else if (activeTable === 'pelanggan') {
+      initial.is_member = false;
+      initial.saldo_poin = 0;
+      initial.total_order = 0;
+      initial.stamps_75 = 0;
+      initial.stamps_45 = 0;
+    } else if (activeTable === 'mesin') {
+      initial.tipe = 'Washer';
+      initial.status = 'Siap';
+    } else if (activeTable === 'pegawai') {
+      initial.role = 'STAFF';
+      initial.status = 'Aktif';
+      initial.jabatan = 'Kasir';
+    } else if (activeTable === 'promo') {
+      initial.jenis_diskon = 'Persen';
+      initial.nilai_diskon = 0;
+      initial.status_aktif = true;
+    }
+
     setNewRowData(initial);
     setShowInsertModal(true);
   };
 
+  const handleOpenEditModal = (row: any) => {
+    setEditRowData({ ...row });
+    setEditingRowPk(row[primaryKey]);
+    setShowEditModal(true);
+  };
+
   const handleInsertRowSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validasi esensial sisi klien
+    if (activeTable === 'layanan' && (!newRowData.nama || String(newRowData.nama).trim() === '')) {
+      showAlert('Nama layanan wajib diisi!', 'warning');
+      return;
+    }
+    if (activeTable === 'pelanggan') {
+      if (!newRowData.nama || String(newRowData.nama).trim() === '') {
+        showAlert('Nama pelanggan wajib diisi!', 'warning');
+        return;
+      }
+      if (!newRowData.no_hp || String(newRowData.no_hp).trim() === '') {
+        showAlert('Nomor HP pelanggan wajib diisi!', 'warning');
+        return;
+      }
+    }
+    if (activeTable === 'inventory' && (!newRowData.nama || String(newRowData.nama).trim() === '')) {
+      showAlert('Nama barang inventory wajib diisi!', 'warning');
+      return;
+    }
+    if (activeTable === 'pegawai' && (!newRowData.nama || String(newRowData.nama).trim() === '')) {
+      showAlert('Nama pegawai wajib diisi!', 'warning');
+      return;
+    }
+    if (activeTable === 'mesin' && (!newRowData.nama || !newRowData.tipe)) {
+      showAlert('Nama dan Tipe mesin wajib diisi!', 'warning');
+      return;
+    }
+    if (activeTable === 'promo' && (!newRowData.kode_voucher || String(newRowData.kode_voucher).trim() === '')) {
+      showAlert('Kode voucher wajib diisi!', 'warning');
+      return;
+    }
+
     setInsertingRow(true);
 
     try {
-      // Bersihkan nilai kosong jika id
       const cleanData: Record<string, any> = { ...newRowData };
-      if (!cleanData[primaryKey] && primaryKey === 'id') {
+
+      // Jika primary key kosong, hapus agar backend generate ID unik yang sesuai
+      if (!cleanData[primaryKey] || String(cleanData[primaryKey]).trim() === '') {
         delete cleanData[primaryKey];
       }
 
-      // Convert number/boolean types
+      // Format tipe data
       Object.keys(cleanData).forEach(k => {
         const v = cleanData[k];
-        if (v === 'true') cleanData[k] = true;
-        else if (v === 'false') cleanData[k] = false;
-        else if (v === '') cleanData[k] = null;
-        else if (typeof v === 'string' && !isNaN(Number(v)) && !k.includes('no_') && !k.includes('kode') && !k.includes('phone')) {
+        if (v === 'true' || v === true) cleanData[k] = true;
+        else if (v === 'false' || v === false) cleanData[k] = false;
+        else if (v === '') {
+          if (k.endsWith('_id') || k.startsWith('id_') || k.endsWith('_at') || k === 'tanggal' || k.startsWith('tgl_')) {
+            cleanData[k] = null;
+          }
+        } else if (typeof v === 'string' && !isNaN(Number(v)) && v.trim() !== '' && !k.includes('no_') && !k.includes('hp') && !k.includes('phone') && !k.includes('pin') && !k.includes('kode') && !k.includes('nik') && k !== primaryKey) {
           cleanData[k] = Number(v);
         }
       });
@@ -461,6 +547,211 @@ export default function DatabaseEditorView({ currentRole }: DatabaseEditorViewPr
     } finally {
       setInsertingRow(false);
     }
+  };
+
+  const handleUpdateRowSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdatingRow(true);
+
+    try {
+      const res = await fetch('/api/admin/db-editor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'updateRow',
+          table: activeTable,
+          primaryKey,
+          primaryKeyValue: editingRowPk,
+          rowData: editRowData,
+          actor: 'Manager (Live Editor)',
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showAlert(`Baris '${editingRowPk}' berhasil diperbarui!`, 'success');
+        setShowEditModal(false);
+        loadRows();
+      } else {
+        showAlert(data.message || 'Gagal memperbarui baris.', 'error');
+      }
+    } catch (err: any) {
+      showAlert(err.message || 'Error updating row', 'error');
+    } finally {
+      setUpdatingRow(false);
+    }
+  };
+
+  const renderFieldControl = (
+    col: string,
+    value: any,
+    onChange: (val: any) => void,
+    isPk: boolean,
+    disabled: boolean = false
+  ) => {
+    const strVal = value === null || value === undefined ? '' : String(value);
+
+    // 1. Primary key
+    if (isPk) {
+      return (
+        <div>
+          <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between font-mono">
+            <span>{col}</span>
+            <span className="text-[9px] text-[#1E4648] uppercase font-bold">
+              {disabled ? 'Primary Key (Terkunci)' : 'Primary Key (Auto-generate jika kosong)'}
+            </span>
+          </label>
+          <input
+            type="text"
+            value={strVal}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={disabled ? strVal : `Auto kode ${activeTable === 'layanan' ? 'LAY-...' : 'ID...'}`}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-[#1E4648] focus:bg-white font-mono transition disabled:opacity-60 disabled:cursor-not-allowed"
+          />
+        </div>
+      );
+    }
+
+    // 2. Boolean fields
+    const isBool = ['is_member', 'is_dijual', 'status_aktif', 'reward_ready_7kg', 'reward_ready_4kg'].includes(col);
+    if (isBool) {
+      return (
+        <div>
+          <label className="block text-[11px] font-bold text-slate-700 mb-1 font-mono">{col}</label>
+          <select
+            value={value === true || value === 'true' ? 'true' : 'false'}
+            onChange={(e) => onChange(e.target.value === 'true')}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:border-[#1E4648] focus:bg-white font-mono transition cursor-pointer"
+          >
+            <option value="true">True (Aktif / Ya)</option>
+            <option value="false">False (Nonaktif / Tidak)</option>
+          </select>
+        </div>
+      );
+    }
+
+    // 3. Aktif column (Y/N)
+    if (col === 'aktif') {
+      return (
+        <div>
+          <label className="block text-[11px] font-bold text-slate-700 mb-1 font-mono">{col}</label>
+          <select
+            value={strVal || 'Y'}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:border-[#1E4648] focus:bg-white font-mono transition cursor-pointer"
+          >
+            <option value="Y">Y (Aktif)</option>
+            <option value="N">N (Nonaktif)</option>
+          </select>
+        </div>
+      );
+    }
+
+    // 4. Tipe column in layanan
+    if (col === 'tipe' && activeTable === 'layanan') {
+      return (
+        <div>
+          <label className="block text-[11px] font-bold text-slate-700 mb-1 font-mono">{col}</label>
+          <select
+            value={strVal || 'SelfService'}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:border-[#1E4648] focus:bg-white font-mono transition cursor-pointer"
+          >
+            <option value="SelfService">SelfService</option>
+            <option value="FullService">FullService</option>
+            <option value="Tambahan">Tambahan</option>
+          </select>
+        </div>
+      );
+    }
+
+    // 5. Satuan column in layanan
+    if (col === 'satuan' && activeTable === 'layanan') {
+      return (
+        <div>
+          <label className="block text-[11px] font-bold text-slate-700 mb-1 font-mono">{col}</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={strVal}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="paket, kg, pcs, meter..."
+              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:border-[#1E4648] focus:bg-white font-mono transition"
+            />
+            <select
+              value={['paket', 'kg', 'meter', 'pcs'].includes(strVal) ? strVal : ''}
+              onChange={(e) => { if (e.target.value) onChange(e.target.value); }}
+              className="px-2 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-700 outline-none cursor-pointer"
+            >
+              <option value="">Pilih...</option>
+              <option value="paket">paket</option>
+              <option value="kg">kg</option>
+              <option value="meter">meter</option>
+              <option value="pcs">pcs</option>
+            </select>
+          </div>
+        </div>
+      );
+    }
+
+    // 6. Multiline text
+    if (['alamat', 'catatan', 'detail', 'alasan_void', 'deskripsi'].includes(col)) {
+      return (
+        <div>
+          <label className="block text-[11px] font-bold text-slate-700 mb-1 font-mono">{col}</label>
+          <textarea
+            rows={2}
+            value={strVal}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={`Nilai kolom ${col}...`}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:border-[#1E4648] focus:bg-white font-mono transition resize-none"
+          />
+        </div>
+      );
+    }
+
+    // 7. Numeric columns
+    const isNumber = ['harga', 'stok', 'qty', 'harga_satuan', 'subtotal', 'diskon', 'pajak', 'total', 'nominal_bayar', 'nominal_dp', 'sisa_tagihan', 'kas_awal', 'kas_akhir_fisik', 'selisih_kas', 'stok_minimum', 'harga_jual', 'harga_modal', 'inventory_deduction_qty', 'nilai_diskon', 'min_transaksi', 'maks_potongan', 'kuota', 'dipakai', 'saldo_poin', 'total_order', 'stamps_75', 'stamps_45', 'sisa_waktu_menit', 'step'].includes(col);
+    if (isNumber) {
+      return (
+        <div>
+          <label className="block text-[11px] font-bold text-slate-700 mb-1 font-mono">{col}</label>
+          <input
+            type="number"
+            step="any"
+            value={strVal}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="0"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 outline-none focus:border-[#1E4648] focus:bg-white font-mono transition"
+          />
+        </div>
+      );
+    }
+
+    // 8. Required check
+    const isReq = (col === 'nama' && ['layanan', 'inventory', 'pegawai', 'mesin', 'pelanggan'].includes(activeTable)) ||
+                  (col === 'no_hp' && activeTable === 'pelanggan') ||
+                  (col === 'kode_voucher' && activeTable === 'promo') ||
+                  (col === 'tipe' && activeTable === 'mesin');
+
+    return (
+      <div>
+        <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between font-mono">
+          <span>{col}</span>
+          {isReq && <span className="text-[9px] text-rose-600 font-bold uppercase">Wajib Diisi</span>}
+        </label>
+        <input
+          type="text"
+          value={strVal}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={`Nilai kolom ${col}`}
+          className={`w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-900 outline-none focus:border-[#1E4648] focus:bg-white font-mono transition ${
+            isReq && !strVal ? 'border-amber-300' : 'border-slate-200'
+          }`}
+        />
+      </div>
+    );
   };
 
   const filteredTablesList = useMemo(() => {
@@ -816,7 +1107,7 @@ export default function DatabaseEditorView({ currentRole }: DatabaseEditorViewPr
                   <th className="p-2.5 w-12 text-center text-slate-600 border-r border-slate-200 font-bold bg-slate-100/90">
                     #
                   </th>
-                  <th className="p-2.5 w-16 text-center text-slate-600 border-r border-slate-200 font-bold bg-slate-100/90">
+                  <th className="p-2.5 w-20 text-center text-slate-600 border-r border-slate-200 font-bold bg-slate-100/90">
                     Aksi
                   </th>
                   {columns.map(col => {
@@ -867,15 +1158,24 @@ export default function DatabaseEditorView({ currentRole }: DatabaseEditorViewPr
                         {displayIndex}
                       </td>
 
-                      {/* Row Actions: Delete */}
+                      {/* Row Actions: Edit & Delete */}
                       <td className="p-2 text-center border-r border-slate-200">
-                        <button
-                          onClick={() => handleDeleteRow(pkVal)}
-                          className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                          title={`Hapus baris ${primaryKey} = ${pkVal}`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleOpenEditModal(row)}
+                            className="p-1 rounded text-slate-400 hover:text-[#1E4648] hover:bg-teal-50 transition cursor-pointer"
+                            title={`Edit seluruh baris ${primaryKey} = ${pkVal}`}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteRow(pkVal)}
+                            className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                            title={`Hapus baris ${primaryKey} = ${pkVal}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
 
                       {/* Columns / Cells */}
@@ -1022,22 +1322,18 @@ export default function DatabaseEditorView({ currentRole }: DatabaseEditorViewPr
                 Isi kolom-kolom berikut untuk menambahkan data langsung ke tabel <b>{activeTable}</b>:
               </p>
 
-              {columns.map(col => {
+              {(columns.length > 0 ? columns : [primaryKey, 'nama', 'harga', 'satuan', 'tipe', 'kategori', 'aktif']).map(col => {
                 const isPk = col === primaryKey;
 
                 return (
                   <div key={col}>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
-                      <span className="font-mono">{col}</span>
-                      {isPk && <span className="text-[9px] text-[#1E4648] uppercase font-bold">Primary Key (Kosongkan jika auto UUID)</span>}
-                    </label>
-                    <input
-                      type="text"
-                      value={newRowData[col] ?? ''}
-                      onChange={(e) => setNewRowData({ ...newRowData, [col]: e.target.value })}
-                      placeholder={isPk && primaryKey === 'id' ? 'Auto Generated UUID...' : `Nilai kolom ${col}`}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 outline-none focus:border-[#1E4648] focus:bg-white font-mono transition"
-                    />
+                    {renderFieldControl(
+                      col,
+                      newRowData[col],
+                      (val) => setNewRowData({ ...newRowData, [col]: val }),
+                      isPk,
+                      false
+                    )}
                   </div>
                 );
               })}
@@ -1057,6 +1353,75 @@ export default function DatabaseEditorView({ currentRole }: DatabaseEditorViewPr
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>{insertingRow ? 'Menyimpan...' : 'Simpan Baris Baru'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* MODAL 1B: EDIT FULL ROW - TEMA DUA SISI                            */}
+      {/* =================================================================== */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-[700] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-pop-scale text-slate-800">
+            {/* Header Modal */}
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-teal-50 text-[#1E4648] flex items-center justify-center border border-teal-200">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900">Edit Baris "{activeTable}"</h3>
+                  <p className="text-[10px] text-slate-400 font-mono">{primaryKey} = {editingRowPk}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <form onSubmit={handleUpdateRowSubmit} className="p-5 overflow-y-auto space-y-3 text-xs flex-1">
+              <p className="text-[11px] text-slate-500">
+                Perbarui nilai kolom pada baris ini secara menyeluruh:
+              </p>
+
+              {columns.map(col => {
+                const isPk = col === primaryKey;
+
+                return (
+                  <div key={col}>
+                    {renderFieldControl(
+                      col,
+                      editRowData[col],
+                      (val) => setEditRowData({ ...editRowData, [col]: val }),
+                      isPk,
+                      isPk // Primary key terkunci saat edit
+                    )}
+                  </div>
+                );
+              })}
+
+              <div className="pt-4 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingRow}
+                  className="px-4 py-2 bg-[#1E4648] hover:bg-[#163536] text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition disabled:opacity-50 shadow-xs cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{updatingRow ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
                 </button>
               </div>
             </form>
