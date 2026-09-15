@@ -777,6 +777,40 @@ export async function sbTambahLayanan(payload: any) {
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
   const id = (payload.kode || payload.id || `LAY-${Date.now()}`).trim();
+
+  // Resolusi idInventory ('auto' -> cari/buat item inventory, 'none' -> null)
+  let resolvedIdInventory: string | null = payload.idInventory && payload.idInventory !== 'none' && payload.idInventory !== '-' ? payload.idInventory : null;
+  if (resolvedIdInventory === 'auto') {
+    const { data: existingInv } = await sb
+      .from('inventory')
+      .select('id')
+      .ilike('nama', payload.nama)
+      .maybeSingle();
+
+    if (existingInv?.id) {
+      resolvedIdInventory = existingInv.id;
+    } else {
+      const newInvId = `INV-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000).toString().slice(-2)}`;
+      const { error: invErr } = await sb.from('inventory').insert({
+        id: newInvId,
+        nama: payload.nama,
+        satuan: payload.satuan || 'unit',
+        stok: 0,
+        stok_minimum: 0,
+        is_dijual: false,
+        harga_jual: payload.harga || 0,
+        kategori_layanan: payload.kategori || 'General',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      if (!invErr) {
+        resolvedIdInventory = newInvId;
+      } else {
+        resolvedIdInventory = null;
+      }
+    }
+  }
+
   const { error: layErr } = await sb.from('layanan').insert({
     id,
     nama: payload.nama,
@@ -788,7 +822,7 @@ export async function sbTambahLayanan(payload: any) {
     kategori_drop_off: payload.kategoriDropOff || null,
     kategori_warna: payload.kategoriWarna || null,
     kategori_icon: payload.kategoriIcon || null,
-    id_inventory: payload.idInventory && payload.idInventory !== 'none' ? payload.idInventory : null,
+    id_inventory: resolvedIdInventory,
     inventory_deduction_qty: payload.inventoryDeductionQty !== null && payload.inventoryDeductionQty !== undefined ? Number(payload.inventoryDeductionQty) : 1,
     harga_modal: payload.hargaModal || 0,
     aktif: 'Y',
@@ -837,7 +871,7 @@ export async function sbTambahLayanan(payload: any) {
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             action: 'tambahLayanan',
-            args: [payload],
+            args: [{ ...payload, id, idInventory: resolvedIdInventory }],
             sessionToken: typeof window !== 'undefined' ? localStorage.getItem('gas_session_token') : undefined,
           }),
         }).catch(e => console.warn('[Backup Tambah Layanan ke Google Sheets error]:', e));
@@ -845,12 +879,45 @@ export async function sbTambahLayanan(payload: any) {
     }
   } catch {}
 
-  return { success: true, id };
+  return { success: true, id, idInventory: resolvedIdInventory };
 }
 
 export async function sbUpdateLayanan(id: string, payload: any) {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
+
+  // Resolusi idInventory ('auto' -> cari/buat item inventory, 'none' -> null)
+  let resolvedIdInventory: string | null = payload.idInventory && payload.idInventory !== 'none' && payload.idInventory !== '-' ? payload.idInventory : null;
+  if (resolvedIdInventory === 'auto') {
+    const { data: existingInv } = await sb
+      .from('inventory')
+      .select('id')
+      .ilike('nama', payload.nama)
+      .maybeSingle();
+
+    if (existingInv?.id) {
+      resolvedIdInventory = existingInv.id;
+    } else {
+      const newInvId = `INV-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000).toString().slice(-2)}`;
+      const { error: invErr } = await sb.from('inventory').insert({
+        id: newInvId,
+        nama: payload.nama,
+        satuan: payload.satuan || 'unit',
+        stok: 0,
+        stok_minimum: 0,
+        is_dijual: false,
+        harga_jual: payload.harga || 0,
+        kategori_layanan: payload.kategori || 'General',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      if (!invErr) {
+        resolvedIdInventory = newInvId;
+      } else {
+        resolvedIdInventory = null;
+      }
+    }
+  }
 
   const { error: layErr } = await sb
     .from('layanan')
@@ -864,7 +931,7 @@ export async function sbUpdateLayanan(id: string, payload: any) {
       kategori_drop_off: payload.kategoriDropOff || null,
       kategori_warna: payload.kategoriWarna || null,
       kategori_icon: payload.kategoriIcon || null,
-      id_inventory: payload.idInventory && payload.idInventory !== 'none' ? payload.idInventory : null,
+      id_inventory: resolvedIdInventory,
       inventory_deduction_qty: payload.inventoryDeductionQty !== null && payload.inventoryDeductionQty !== undefined ? Number(payload.inventoryDeductionQty) : 1,
       harga_modal: payload.hargaModal || 0,
       updated_at: new Date().toISOString(),
@@ -3978,18 +4045,91 @@ export async function sbPautkanInventoryLayanan(idLayanan: string, idInventory: 
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase belum dikonfigurasi');
 
+  // 1. Ambil layanan berdasarkan ID (atau fallback nama jika ID berbeda)
+  let { data: lay, error: fetchErr } = await sb
+    .from('layanan')
+    .select('*')
+    .eq('id', idLayanan)
+    .maybeSingle();
+
+  if (!lay) {
+    const { data: layByName } = await sb
+      .from('layanan')
+      .select('*')
+      .ilike('nama', idLayanan)
+      .maybeSingle();
+    if (layByName) lay = layByName;
+  }
+
+  if (!lay) {
+    throw new Error(`Layanan '${idLayanan}' tidak ditemukan di database.`);
+  }
+
+  let finalInvId: string | null = idInventory;
+
+  if (!finalInvId || finalInvId === 'none' || finalInvId === 'NONE' || finalInvId === '-' || finalInvId === '') {
+    finalInvId = null;
+  } else if (finalInvId === 'auto') {
+    // 2. Cek apakah sudah ada item inventaris dengan nama yang cocok
+    const { data: existingInv } = await sb
+      .from('inventory')
+      .select('id')
+      .ilike('nama', lay.nama)
+      .maybeSingle();
+
+    if (existingInv?.id) {
+      finalInvId = existingInv.id;
+    } else {
+      // Buat item inventaris baru secara otomatis
+      const newInvId = `INV-${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000).toString().slice(-2)}`;
+      const { error: invErr } = await sb.from('inventory').insert({
+        id: newInvId,
+        nama: lay.nama,
+        satuan: lay.satuan || 'unit',
+        stok: 0,
+        stok_minimum: 0,
+        is_dijual: false,
+        harga_jual: Number(lay.harga) || 0,
+        kategori_layanan: lay.kategori || 'General',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      if (invErr) throw invErr;
+      finalInvId = newInvId;
+    }
+  }
+
   const { data, error } = await sb
     .from('layanan')
     .update({
-      id_inventory: idInventory || null,
+      id_inventory: finalInvId,
       inventory_deduction_qty: Number(deductionQty) || 1,
+      updated_at: new Date().toISOString(),
     })
-    .eq('id', idLayanan)
+    .eq('id', lay.id)
     .select()
     .single();
 
   if (error) throw error;
-  return { success: true, data };
+
+  // Non-blocking hybrid backup ke Google Sheets jika URL GAS tersedia
+  try {
+    const gasUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
+    if (gasUrl && typeof window !== 'undefined') {
+      setTimeout(() => {
+        fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'pautkanInventoryLayanan',
+            args: [lay.id, finalInvId, 'System'],
+          }),
+        }).catch(() => {});
+      }, 100);
+    }
+  } catch {}
+
+  return { success: true, idLayanan: lay.id, idInventory: finalInvId, data };
 }
 
 function sbFormatWib(dateInput: string | Date | undefined): string {

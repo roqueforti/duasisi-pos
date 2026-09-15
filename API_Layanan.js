@@ -724,8 +724,13 @@ function pautkanInventoryLayanan(idLayanan, idInventory, actor) {
   try {
     lock.waitLock(30000);
     const rows = shL.getDataRange().getValues();
+    const targetKey = String(idLayanan || "").trim().toLowerCase();
+
     for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] === idLayanan) {
+      const rowId = String(rows[i][0] || "").trim().toLowerCase();
+      const rowNama = String(rows[i][1] || "").trim().toLowerCase();
+
+      if (rowId === targetKey || rowNama === targetKey) {
         let finalInvId = idInventory || "";
         const namaLayanan = rows[i][1];
         const satuanLayanan = rows[i][3];
@@ -742,7 +747,7 @@ function pautkanInventoryLayanan(idLayanan, idInventory, actor) {
         addAuditLog(
           actor || "Manager",
           "Pautkan Inventory Layanan",
-          idLayanan,
+          rows[i][0],
           rows[i][9] || "Tanpa Stok",
           finalInvId || "Tanpa Stok",
           `Pautan stok layanan ${namaLayanan}`
@@ -750,13 +755,46 @@ function pautkanInventoryLayanan(idLayanan, idInventory, actor) {
         
         return {
           success: true,
-          idLayanan: idLayanan,
+          idLayanan: rows[i][0],
           idInventory: finalInvId,
           message: finalInvId ? "Berhasil ditautkan ke stok" : "Kaitan stok dilepas"
         };
       }
     }
-    return { success: false, message: "Layanan tidak ditemukan" };
+
+    // Fallback: Jika layanan baru dibuat di database Supabase dan belum tercatat di Sheet,
+    // buatkan baris layanan di Sheet dan tautkan inventarisnya
+    let finalInvId = idInventory || "";
+    if (finalInvId === "auto") {
+      finalInvId = findOrCreateInventoryByName_(idLayanan, "paket", 0, 0);
+    } else if (finalInvId === "none" || finalInvId === "NONE" || finalInvId === "-") {
+      finalInvId = "";
+    }
+
+    const newCode = idLayanan.startsWith("LAY-") ? idLayanan : `LAY-${Date.now()}`;
+    shL.appendRow([
+      newCode,
+      idLayanan,
+      0,
+      "paket",
+      "Package",
+      "Y",
+      "SelfService",
+      "",
+      "Self Service",
+      finalInvId,
+      0,
+      1,
+      ""
+    ]);
+    SpreadsheetApp.flush();
+
+    return {
+      success: true,
+      idLayanan: newCode,
+      idInventory: finalInvId,
+      message: "Layanan berhasil dicatat dan ditautkan ke stok"
+    };
   } finally {
     lock.releaseLock();
   }
